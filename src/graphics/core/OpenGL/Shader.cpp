@@ -132,7 +132,7 @@ std::string Shader::get_file_contents(const char* filepath)
 // Checks if the different Shaders have compiled properly
 void Shader::compileErrors(unsigned int shader, const char* type)
 {
-//#define DEBUG
+#define DEBUG
 #ifdef DEBUG
 	// Stores status of compilation
 	GLint hasCompiled;

@@ -51,7 +51,7 @@ int main()
 	try {
 		AppWindow::init(PLATFORM_OPENGL);
 		AppWindow::start("Rendering  Engine");
-		AppWindow::renderScene(list[3]);
+		AppWindow::renderScene(list[8]);
 		AppWindow::end();
 	}
 	catch (const std::runtime_error& e) {

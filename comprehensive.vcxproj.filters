@@ -596,6 +596,10 @@
     <None Include="Shaders\godRays\blackScreen.vert" />
     <None Include="Shaders\godRays\blackScreen.frag" />
     <None Include="src\apps\ray-tracing\rayTracer.frag" />
+    <None Include="Shaders\deferredIBL\colorPass.frag" />
+    <None Include="Shaders\deferredIBL\colorPass.vert" />
+    <None Include="Shaders\deferredIBL\gPass.frag" />
+    <None Include="Shaders\deferredIBL\gPass.vert" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\ice-snow.png">

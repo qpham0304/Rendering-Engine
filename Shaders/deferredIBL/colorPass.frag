@@ -1,4 +1,4 @@
-#version 460 core
+#version 450 core
 
 struct Light {
     vec3 position;
@@ -36,6 +36,8 @@ uniform bool ssaoOn = false;
 uniform mat4 sunlightMV;
 uniform vec3 sunPos;
 uniform int sampleRadius;
+uniform float time;                 // Time variable for animation
+uniform float rippleStrength;
 
 //------------------------//
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
@@ -129,11 +131,18 @@ vec4 calcLighting() {
     float depthMap = texture(gDepth, uv).r;
     vec3 normal = texture(gNormal, uv).rgb;
     vec3 albedo = pow(texture(gAlbedo, uv).rgb, vec3(2.2));
-    float metallic = texture(gMetalRoughness, uv).b;
-    float roughness = texture(gMetalRoughness, uv).g;
+    // vec3 metalRoughness = texture(gMetalRoughness, uv).rgb;
+    // float metallic = metalRoughness.b;
+    // float roughness = metalRoughness.g;
     float ao = texture(gAlbedo, uv).a;
 	vec3 emissive = texture(gEmissive, uv).rgb;
+    vec3 dudv = texture(gDUV, uv).rgb * 2.0 - 1.0;
     float SSAO = texture(ssaoTex, uv).r;
+    
+    vec3 metalRoughness = texture(gMetalRoughness, uv).rgb;
+    // metalRoughness += dudv;
+    float metallic = metalRoughness.b;
+    float roughness = metalRoughness.g;
 
 	float depth = texture(gDepth, uv).r * 2.0 - 1.0;
     // depth = linearizeDepth(depth);
@@ -209,7 +218,7 @@ vec4 calcLighting() {
     int ssaoCondition = int(ssaoOn);
     color = ssaoCondition * SSAO * color + (1 - ssaoCondition) * color;
 
-
+    
 	color = color / (color + vec3(1.0));					// HDR tone mapping
 	color = gamma ? pow(color, vec3(1.0 / 2.2)) : color;		// Gamma correction
 	

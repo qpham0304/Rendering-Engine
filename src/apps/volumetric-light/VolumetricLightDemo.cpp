@@ -97,7 +97,7 @@ int VolumetricLightDemo::show_demo() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-        shadowMapRenderer.renderShadow(light, models, modelMatrices);
+        //shadowMapRenderer.renderShadow(light, models, modelMatrices);
 
         applicationFBO.Bind();
         glViewport(0, 0, width, height);

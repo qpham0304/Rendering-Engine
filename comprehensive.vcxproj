@@ -374,6 +374,10 @@
     <None Include="Shaders\default.frag" />
     <None Include="Shaders\default.geom" />
     <None Include="Shaders\default.vert" />
+    <None Include="Shaders\deferredIBL\colorPass.frag" />
+    <None Include="Shaders\deferredIBL\colorPass.vert" />
+    <None Include="Shaders\deferredIBL\gPass.frag" />
+    <None Include="Shaders\deferredIBL\gPass.vert" />
     <None Include="Shaders\deferredShading\deferredShading.vert" />
     <None Include="Shaders\deferredShading\deferredShadinw.frag" />
     <None Include="Shaders\equireRectToCubemap.frag" />

@@ -134,6 +134,9 @@ void DeferredIBLDemo::renderDeferredPass()
     scene.getShader("colorPassShader")->setMat4("invProjection", camera.getInProjectionMatrix());
     scene.getShader("colorPassShader")->setMat4("inverseView", camera.getInViewMatrix());
     scene.getShader("colorPassShader")->setBool("gamma", true);
+    scene.getShader("colorPassShader")->setBool("sampleRadius", 2);
+    scene.getShader("colorPassShader")->setBool("time", glfwGetTime());
+    scene.getShader("colorPassShader")->setBool("rippleStrength", 1.0);
 
 
     std::vector<Entity> lights = scene.getEntitiesWith<MLightComponent, TransformComponent>();
@@ -166,9 +169,16 @@ void DeferredIBLDemo::renderDeferredPass()
         index++;
     }
 
+
+
     lightPassFBO.Bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     Utils::OpenGL::Draw::drawQuad();
+
+    if (cubeMap) {
+        //cubeMap->reloadTexture(atmosphereScene.texture);
+        cubeMap->render(camera);
+    }
     lightPassFBO.Unbind();
 
 }
@@ -601,7 +611,7 @@ void DeferredIBLDemo::renderForwardPass()
 
 
     if (cubeMap) {
-        //cubeMap->reloadTexture(atmosphereScene.texture);
+        cubeMap->reloadTexture(atmosphereScene.texture);
         cubeMap->render(camera);
     }
 
@@ -708,6 +718,8 @@ void DeferredIBLDemo::OnAttach()
     ModelLoadEvent event;
     AnimationLoadEvent animationLoadEvent;
 
+    gDUV = Utils::OpenGL::loadTexture("Textures/wdudv.jpg");
+
     try {
         uint32_t helmetID = scene.addEntity("helmet");
         event = ModelLoadEvent("Models/DamagedHelmet/gltf/DamagedHelmet.gltf", scene.entities[helmetID]);
@@ -792,10 +804,10 @@ void DeferredIBLDemo::OnUpdate()
     renderShadow();
     //renderForwardPass();
     renderPrePass();
-    //renderSSAO();
+    renderSSAO();
     renderSSR();
     renderDeferredPass();
-    //renderSkyView();
+    renderSkyView();
 }
 
 void DeferredIBLDemo::OnGuiUpdate()
@@ -817,6 +829,9 @@ void DeferredIBLDemo::OnGuiUpdate()
             particleRenderer.reset();
         }
 
+
+        //ImGui::Text("forward lighting");
+        //ImGui::Image((ImTextureID)applicationFBO.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
         ImGui::Text("shadow texture");
         ImGui::Image((ImTextureID)depthMap.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
         ImGui::Text("atmostphere sky");
