@@ -104,6 +104,7 @@ void DeferredIBLDemo::renderDeferredPass()
     scene.getShader("colorPassShader")->setInt("brdfLUT", 8);
     scene.getShader("colorPassShader")->setInt("ssaoTex", 9);
     scene.getShader("colorPassShader")->setInt("sunDepthMap", 10);
+    scene.getShader("colorPassShader")->setInt("atmosphereMap", 11);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, gDepth);
@@ -129,6 +130,8 @@ void DeferredIBLDemo::renderDeferredPass()
     glBindTexture(GL_TEXTURE_2D, ssaoBlurTexture);
     glActiveTexture(GL_TEXTURE10);
     glBindTexture(GL_TEXTURE_2D, depthMap.texture);
+    glActiveTexture(GL_TEXTURE11);
+    glBindTexture(GL_TEXTURE_2D, atmosphereScene.texture);
 
     scene.getShader("colorPassShader")->setMat4("viewMatrix", camera.getViewMatrix());
     scene.getShader("colorPassShader")->setMat4("invProjection", camera.getInProjectionMatrix());
@@ -226,10 +229,13 @@ void DeferredIBLDemo::renderSkyView()
 {
     int width = AppWindow::width;
     int height = AppWindow::height;
-    float currentFrame = static_cast<float>(glfwGetTime());
+
+    if (!timePaused) {
+        currentFrame = static_cast<float>(glfwGetTime());
+    }
 
     skyViewLUT.Bind();
-    glViewport(0, 0, AppWindow::width, AppWindow::height);
+    glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     Shader skyViewShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/skyViewLUT.frag");
     skyViewShader.Activate();
@@ -251,20 +257,27 @@ void DeferredIBLDemo::renderSkyView()
     skyViewLUT.Unbind();
 
     atmosphereScene.Bind();
-    glViewport(0, 0, AppWindow::width, AppWindow::height);
+    glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     Shader atmosphereShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/atmosphere.frag");
     atmosphereShader.Activate();
     atmosphereShader.setInt("skyLUT", 0);
-    atmosphereShader.setVec2("iChannelResolution", glm::vec2(width, height));
+    atmosphereShader.setInt("transmittanceLUT", 1);
+    atmosphereShader.setInt("multipleScatteredLUT", 2);
+    atmosphereShader.setVec2("LUTResolution", glm::vec2(width, height));
     atmosphereShader.setFloat("iTime", currentFrame);
-    atmosphereShader.setVec2("iMouse", glm::vec2(0.0, 0.0));
     atmosphereShader.setVec3("camPos", camera.getPosition());
     atmosphereShader.setMat4("viewMatrix", camera.getViewMatrix());
     atmosphereShader.setMat4("projectionMatrix", camera.getProjectionMatrix());
+    atmosphereShader.setMat4("invProjection", camera.getInProjectionMatrix());
+    atmosphereShader.setMat4("invView", camera.getInViewMatrix());
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, skyViewLUT.texture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, transmittanceLUT.texture);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, multipleScatteredLUT.texture);
     Utils::OpenGL::Draw::drawQuad();
     atmosphereScene.Unbind();
 }
@@ -817,6 +830,7 @@ void DeferredIBLDemo::OnGuiUpdate()
     if (ImGui::Begin("control")) {
         ImVec2 wsize = ImGui::GetWindowSize();
 
+        ImGui::Checkbox("Pause Time", &timePaused);
         ImGui::DragFloat("Falling speed", &speed, 0.01, -10.0, 10.0);
         ImGui::DragInt("Num Instances", &numRender, particleControl.numInstances / 100.0, 0, particleControl.numInstances, 0, true);
         if (ImGui::DragFloat3("Spawn Area", glm::value_ptr(particleControl.spawnArea), 0.1, 0, 1000.0, 0, true)) {
@@ -834,6 +848,8 @@ void DeferredIBLDemo::OnGuiUpdate()
         //ImGui::Image((ImTextureID)applicationFBO.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
         ImGui::Text("shadow texture");
         ImGui::Image((ImTextureID)depthMap.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
+        ImGui::Text("sky view LUT");
+        ImGui::Image((ImTextureID)skyViewLUT.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
         ImGui::Text("atmostphere sky");
         ImGui::Image((ImTextureID)atmosphereScene.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
         ImGui::Text("SSAO");

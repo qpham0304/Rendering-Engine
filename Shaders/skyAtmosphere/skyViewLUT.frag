@@ -1,4 +1,4 @@
-#version 460 core
+#version 450 core
 
 in vec2 TexCoords;
 uniform sampler2D transmittanceLUT;
@@ -11,19 +11,14 @@ uniform mat4 viewMatrix;
 uniform mat4 projectionMatrix;
 
 const float PI = 3.14159265358;
-
-// Units are in megameters.
-const float groundRadiusMM = 6.360;
+const float groundRadiusMM = 6.360;     // Units are in megameters.
 const float atmosphereRadiusMM = 6.460;
-
-// 200M above the ground.
-vec3 viewPos = vec3(0.0, groundRadiusMM + 0.0002, 0.0);
+vec3 viewPos = vec3(0.0, groundRadiusMM + 0.0002, 0.0); // 200M above the ground.
 
 const vec2 tLUTRes = vec2(256.0, 64.0);
 const vec2 msLUTRes = vec2(32.0, 32.0);
-// Doubled the vertical skyLUT res from the paper, looks way
-// better for sunrise.
-const vec2 skyLUTRes = vec2(200.0, 200.0) * 4;
+// Doubled the vertical skyLUT res from the paper, looks way better for sunrise.
+const vec2 skyLUTRes = vec2(200.0, 200.0) * 4.0;
 
 // These are per megameter.
 const vec3 rayleighScatteringBase = vec3(5.802, 13.558, 33.1);
@@ -33,18 +28,21 @@ const float mieScatteringBase = 3.996;
 const float mieAbsorptionBase = 4.4;
 
 const vec3 ozoneAbsorptionBase = vec3(0.650, 1.881, .085);
+const int numScatteringSteps = 64;
 
 /*
  * Animates the sun movement.
  */
 float getSunAltitude(float time) {
-    const float periodSec = 10.0;
+    const float periodSec = 30.0;
     const float halfPeriod = periodSec / 2.0;
     const float sunriseShift = 0.1;
-    float cyclePoint = (1.0 - abs((mod(time,periodSec)-halfPeriod)/halfPeriod));
+    float cyclePoint = (1.0 - abs((mod(time,periodSec)-halfPeriod)/halfPeriod));     // abs for half cycle
+    // float cyclePoint = (1.0 - (mod(time,periodSec)-halfPeriod)/halfPeriod);
     cyclePoint = (cyclePoint*(1.0+sunriseShift))-sunriseShift;
-    return (0.5*PI)*cyclePoint;
+    return PI * cyclePoint;
 }
+
 vec3 getSunDir(float time) {
     float altitude = getSunAltitude(time);
     return normalize(vec3(0.0, sin(altitude), -cos(altitude)));
@@ -122,7 +120,6 @@ vec3 getValFromMultiScattLUT(sampler2D tex, vec2 bufferRes, vec3 pos, vec3 sunDi
 
 // Buffer C calculates the actual sky-view! It's a lat-long map (or maybe altitude-azimuth is the better term),
 // but the latitude/altitude is non-linear to get more resolution near the horizon.
-const int numScatteringSteps = 32;
 vec3 raymarchScattering(vec3 pos, vec3 rayDir, vec3 sunDir, float tMax, float numSteps) {
     float cosTheta = dot(rayDir, sunDir);
     
@@ -191,8 +188,9 @@ void main( )
     float cosAltitude = cos(altitudeAngle);
     vec3 rayDir = vec3(cosAltitude*sin(azimuthAngle), sin(altitudeAngle), -cosAltitude*cos(azimuthAngle));
 
-
-    float sunAltitude = (0.5*PI) - acos(dot(getSunDir(iTime), up));
+    vec3 sd = vec3(1.0, 0.01, 0.5);
+    // sd = getSunDir(iTime);
+    float sunAltitude = (0.5*PI) - acos(dot(sd, up));
     vec3 sunDir = vec3(0.0, sin(sunAltitude), -cos(sunAltitude));
     
     float atmoDist = rayIntersectSphere(viewPos, rayDir, atmosphereRadiusMM);

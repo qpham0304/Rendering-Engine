@@ -49,10 +49,12 @@ void Application::run() {
 	glfwSwapInterval(1);
 	//glfwSwapInterval(0);
 	while (isRunning) {
+		// Application
 		eventManager.OnUpdate();
 		sceneManager.onUpdate(glfwGetTime());
 		editorLayer.onUpdate();		// render editor as overlay
 
+		//GUI
 		guiController.start();
 		sceneManager.onGuiUpdate(glfwGetTime());
 		editorLayer.onGuiUpdate();	// also render ui after to show overlay

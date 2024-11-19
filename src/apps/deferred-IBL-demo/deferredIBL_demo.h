@@ -18,6 +18,9 @@ private:
 
 	float speed = 0.001f;
 	bool pause = true;
+	bool timePaused = false;
+	float currentFrame = 0.0f;
+
 	bool reset = false;
 	bool isPopulating = false;
 	glm::vec3 spawnArea = glm::vec3(30.0, 10.0, 30.0);

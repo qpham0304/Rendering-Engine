@@ -10,6 +10,18 @@ struct Light {
 const int MAX_NUM_LIGHTS = 100;
 const float PI = 3.14159265359;
 
+const float groundRadiusMM = 6.360;     // Units are in megameters.
+const float atmosphereRadiusMM = 6.460;
+vec3 viewPos = vec3(0.0, groundRadiusMM + 0.0002, 0.0); // 200M above the ground.
+
+const vec2 tLUTRes = vec2(256.0, 64.0);
+// Doubled the vertical skyLUT res from the paper, looks way better for sunrise.
+const vec2 skyLUTRes = vec2(200.0, 200.0) * 4.0;
+
+uniform vec2 iChannelResolution;
+
+uniform sampler2D skyLUT;
+
 
 out vec4 FragColor;
 
@@ -26,6 +38,7 @@ uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
 uniform sampler2D ssaoTex;
 uniform sampler2D sunDepthMap;
+uniform sampler2D atmosphereMap;
 
 uniform Light lights[MAX_NUM_LIGHTS];
 uniform mat4 inverseView;
@@ -100,6 +113,20 @@ float logDepth(float depth, float steepness, float offset) {
 	return (1 / (1 + exp(-steepness * (zVal - offset))));
 }
 
+float getSunAltitude(float time) {
+    const float periodSec = 60.0;
+    const float halfPeriod = periodSec / 2.0;
+    const float sunriseShift = 0.1;
+    float cyclePoint = (1.0 - abs((mod(time,periodSec)-halfPeriod)/halfPeriod));
+    cyclePoint = (cyclePoint*(1.0+sunriseShift))-sunriseShift;
+    return PI * cyclePoint;
+}
+
+vec3 getSunDir(float time) {
+    float altitude = getSunAltitude(time);
+    return normalize(vec3(0.0, sin(altitude), -cos(altitude)));
+}
+
 float calcShadow(vec3 fragPos, vec3 normal) {
     vec4 fragPosLight = sunlightMV * vec4(fragPos, 1.0);
 	vec3 projCoords = fragPosLight.xyz / fragPosLight.w;
@@ -127,8 +154,43 @@ float calcShadow(vec3 fragPos, vec3 normal) {
 	return shadow;
 }
 
+float safeacos(const float x) {
+    return acos(clamp(x, -1.0, 1.0));
+}
+
+vec3 getValFromSkyLUT(vec3 rayDir, vec3 sunDir) {
+    float height = length(viewPos);
+    vec3 up = viewPos / height; // Normalized up direction
+    
+    float horizonAngle = safeacos(sqrt(height * height - groundRadiusMM * groundRadiusMM) / height);
+    float altitudeAngle = horizonAngle - acos(dot(rayDir, up)); // Between -PI/2 and PI/2
+    float azimuthAngle; // Between 0 and 2*PI
+
+    if (abs(altitudeAngle) > (0.5*PI - .0001)) {
+        // Looking nearly straight up or down.
+        azimuthAngle = 0.0;
+    } else {
+        vec3 right = cross(sunDir, up);
+        vec3 forward = cross(up, right);
+        
+        vec3 projectedDir = normalize(rayDir - up*(dot(rayDir, up)));
+        float sinTheta = dot(projectedDir, right);
+        float cosTheta = dot(projectedDir, forward);
+        azimuthAngle = atan(sinTheta, cosTheta) + PI;
+    }
+    
+    // Non-linear mapping of altitude angle. See Section 5.3 of the paper.
+    float v = 0.5 + 0.5*sign(altitudeAngle)*sqrt(abs(altitudeAngle)*2.0/PI);
+    vec2 uv = vec2(azimuthAngle / (2.0*PI), v);
+    uv *= skyLUTRes;
+    uv /= iChannelResolution.xy;
+    
+    return texture(skyLUT, uv).rgb;
+}
+
 vec4 calcLighting() {
-    float depthMap = texture(gDepth, uv).r;
+    float geometryDepthValue = texture(gDepth, uv).r;
+
     vec3 normal = texture(gNormal, uv).rgb;
     vec3 albedo = pow(texture(gAlbedo, uv).rgb, vec3(2.2));
     // vec3 metalRoughness = texture(gMetalRoughness, uv).rgb;
@@ -159,7 +221,7 @@ vec4 calcLighting() {
 	F0 = mix(F0, albedo, metallic);
 	
 	vec3 Lo = vec3(0.0);
-	for(int i = 0; i < MAX_NUM_LIGHTS; i++) {
+	for(int i = 0; i < 0; i++) {
         vec3 lightPosViewSpace = vec3(viewMatrix * vec4(lights[i].position, 1.0));
         
 		vec3 L = normalize(lightPosViewSpace - viewSpacePosition);
@@ -203,21 +265,41 @@ vec4 calcLighting() {
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;	  
 
+    vec2 localUV = uv * 2.0 - 1.0;
+    vec4 target = invProjection * vec4(localUV.x, localUV.y, 1.0 ,1.0);
+    vec3 rayDir = vec3(inverseView * vec4(normalize(target.xyz/target.w), 0.0));
+    float theta = acos(rayDir.y);  // Latitude: angle from the zenith (up axis)
+    float phi = atan(rayDir.z, rayDir.x);  // Longitude: angle around the xy-plane
+    float u = phi / (2.0 * 3.14159265359);  // Normalize phi to [0, 1]
+    float v = theta / 3.14159265359;  // Normalize theta to [0, 1]
+    vec3 ambientColor = texture(atmosphereMap, vec2(u, v)).rgb;
+    vec4 atmosphereAmbient = texture(atmosphereMap, uv);
+
+
     vec3 irradiance = texture(irradianceMap, N).rgb;
     vec3 diffuse = irradiance * albedo;
 
     // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
+    vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
     const float MAX_REFLECTION_LOD = 4.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
-    vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
-	vec3 ambient = (kD * diffuse + specular) * ao;
+    vec3 color;
+
+    // skybox or background where there's no geometry to be exact
+    if (geometryDepthValue == 1.0) {
+        // color = texture(prefilterMap, R).rgb;
+        return atmosphereAmbient;
+    }
+
+    else {
+        vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+	    vec3 ambient = (kD * diffuse + specular) * ao;
 	
-	vec3 color = ambient + Lo + emissive; 
+	    color = ambient + Lo + emissive; 
 
-    int ssaoCondition = int(ssaoOn);
-    color = ssaoCondition * SSAO * color + (1 - ssaoCondition) * color;
-
+        int ssaoCondition = int(ssaoOn);
+        color = ssaoCondition * SSAO * color + (1 - ssaoCondition) * color;
+    }
     
 	color = color / (color + vec3(1.0));					// HDR tone mapping
 	color = gamma ? pow(color, vec3(1.0 / 2.2)) : color;		// Gamma correction

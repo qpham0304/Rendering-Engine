@@ -400,6 +400,10 @@
     <None Include="Shaders\shadow\pointShadowsDepth.vert" />
     <None Include="Shaders\skeletonModel.frag" />
     <None Include="Shaders\skeletonModel.vert" />
+    <None Include="Shaders\skyAtmosphere\atmosphere.frag" />
+    <None Include="Shaders\skyAtmosphere\multipleScatteredLUT.frag" />
+    <None Include="Shaders\skyAtmosphere\skyViewLUT.frag" />
+    <None Include="Shaders\skyAtmosphere\transmittanceLUT.frag" />
     <None Include="Shaders\skybox.frag" />
     <None Include="Shaders\skybox.vert" />
     <None Include="src\apps\ray-tracing\rayTracer.frag" />

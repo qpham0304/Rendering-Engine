@@ -10,7 +10,6 @@ private:
 	unsigned int cubeVAO = 0;
 	unsigned int cubeVBO = 0;
 	unsigned int captureFBO, captureRBO;
-	std::string texturePath;
 
 	Shader equirectangularToCubemapShader;
 	Shader irradianceShader;

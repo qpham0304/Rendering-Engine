@@ -600,6 +600,10 @@
     <None Include="Shaders\deferredIBL\colorPass.vert" />
     <None Include="Shaders\deferredIBL\gPass.frag" />
     <None Include="Shaders\deferredIBL\gPass.vert" />
+    <None Include="Shaders\skyAtmosphere\transmittanceLUT.frag" />
+    <None Include="Shaders\skyAtmosphere\atmosphere.frag" />
+    <None Include="Shaders\skyAtmosphere\multipleScatteredLUT.frag" />
+    <None Include="Shaders\skyAtmosphere\skyViewLUT.frag" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\ice-snow.png">
