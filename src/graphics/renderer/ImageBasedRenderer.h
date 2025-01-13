@@ -11,7 +11,7 @@ private:
 	unsigned int cubeVBO = 0;
 	unsigned int captureFBO, captureRBO;
 
-	Shader equirectangularToCubemapShader;
+	Shader equirectToCubeMapShader;
 	Shader irradianceShader;
 	Shader backgroundShader;
 	Shader prefilterShader;
