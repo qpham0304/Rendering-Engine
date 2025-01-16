@@ -15,7 +15,7 @@ uniform mat4 invProjection;
 const float PI = 3.14159265358;
 const float groundRadiusMM = 6.360;     // Units are in megameters.
 const float atmosphereRadiusMM = 6.460;
-vec3 viewPos = vec3(0.0, groundRadiusMM + 0.05, 0.0); // 200M above the ground.
+vec3 viewPos = vec3(0.0, groundRadiusMM + 0.0002, 0.0); // 200M above the ground.
 
 const vec2 tLUTRes = vec2(256.0, 64.0);
 const vec2 msLUTRes = vec2(32.0, 32.0);
@@ -235,12 +235,12 @@ void main()
     float camWidthScale = 2.0*tan(camFOVWidth/2.0);
     float camHeightScale = camWidthScale*LUTResolution.y/LUTResolution.x;
     
-    // vec3 camDir = normalize(vec3(0.0, 0.27, -1.0));
-    // vec3 camRight = normalize(cross(camDir, vec3(0.0, 1.0, 0.0)));
-    // vec3 camUp = normalize(cross(camRight, camDir));
+    vec3 camDir = normalize(vec3(0.0, 0.27, -1.0));
+    vec3 camRight = normalize(cross(camDir, vec3(0.0, 1.0, 0.0)));
+    vec3 camUp = normalize(cross(camRight, camDir));
     
     vec2 xy = 2.0 * (fragCoord.xy / LUTResolution.xy) - 1.0;
-    // vec3 rayDir = normalize(camDir + camRight*xy.x*camWidthScale + camUp*xy.y*camHeightScale);
+    vec3 rayDir = normalize(camDir + camRight*xy.x*camWidthScale + camUp*xy.y*camHeightScale);
 
     // vec4 rayClip = vec4(xy, -1.0, 1.0);
     // vec4 rayEye = invProjection * rayClip;
@@ -248,9 +248,9 @@ void main()
     // vec4 rayWorld = invView * rayEye;
     // vec3 rayDir = normalize(rayWorld.xyz);
 
-    vec2 localUV = xy;
-    vec4 target = invProjection * vec4(localUV.x, localUV.y, 1.0 ,1.0);
-    vec3 rayDir = vec3(invView * vec4(normalize(target.xyz/target.w), 0.0));
+    // vec2 localUV = xy;
+    // vec4 target = invProjection * vec4(localUV.x, localUV.y, 1.0 ,1.0);
+    // vec3 rayDir = vec3(invView * vec4(normalize(target.xyz/target.w), 0.0));
 
     vec3 lum;
 

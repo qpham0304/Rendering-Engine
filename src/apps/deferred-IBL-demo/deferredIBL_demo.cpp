@@ -178,8 +178,13 @@ void DeferredIBLDemo::renderDeferredPass()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     Utils::OpenGL::Draw::drawQuad();
 
+    float timeDiff = currentFrame - lastFrame;
+
     if (cubeMap) {
-        //cubeMap->reloadTexture(atmosphereScene.texture);
+        //if (timeDiff >= 0.05f) {    // hack to reload cubemap less frequently
+        //    cubeMap->reloadTexture(atmosphereScene.texture);
+        //    lastFrame = currentFrame;
+        //}
         cubeMap->render(camera);
     }
     lightPassFBO.Unbind();
@@ -884,146 +889,6 @@ void DeferredIBLDemo::OnEvent(Event& event)
 
 int DeferredIBLDemo::show_demo()
 {
-/*
-    int width = AppWindow::width;
-    int height = AppWindow::height;
-    Camera camera(width, height, glm::vec3(-6.5f, 3.5f, 8.5f), glm::vec3(0.5, -0.2, -1.0f));
-    ImGuiController guiController;
-    bool guiOn = true;
-    if (guiOn) {
-        guiController.init(AppWindow::window, width, height);
-    }
-
-    float frameCounter = 0.0f;
-    float lastFrame = 0.0f;
-    float deltaTime = 0.0f;
-
-    FrameBuffer transmittanceLUT(width, height);
-    FrameBuffer multipleScatteredLUT(width, height);
-    FrameBuffer skyViewLUT(width, height);
-    FrameBuffer atmosphereScene(width, height);
-
-
-    ////////////////////////////////////////////////////////////
-    GLuint aerialPerspectiveTexture;
-    glGenTextures(1, &aerialPerspectiveTexture);
-    glBindTexture(GL_TEXTURE_3D, aerialPerspectiveTexture);
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA16F, 32, 32, 32, 0, GL_RGBA, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    transmittanceLUT.Bind();
-    glViewport(0, 0, width, height);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    Shader transmittanceShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/transmittanceLUT.frag");
-    transmittanceShader.Activate();
-    Utils::OpenGL::Draw::drawQuad();
-    transmittanceLUT.Unbind();
-
-    multipleScatteredLUT.Bind();
-    glViewport(0, 0, width, height);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    Shader multipleScatteredShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/multipleScatteredLUT.frag");
-    multipleScatteredShader.Activate();
-    multipleScatteredShader.setInt("iChannel0", 0);
-    multipleScatteredShader.setVec2("iChannelResolution", glm::vec2(width, height));
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, transmittanceLUT.texture);
-    Utils::OpenGL::Draw::drawQuad();
-    multipleScatteredLUT.Unbind();
-
-    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-    while (!glfwWindowShouldClose(AppWindow::window)) {
-        camera.onUpdate();
-
-        float currentFrame = static_cast<float>(glfwGetTime());
-        deltaTime = currentFrame - lastFrame;
-
-        frameCounter++;
-        if (deltaTime >= 1 / 2) {
-            std::string FPS = std::to_string((1.0 / deltaTime) * frameCounter);
-            std::string ms = std::to_string((deltaTime / frameCounter) * 1000);
-            std::string updatedTitle = "Deferred Shading Demo - " + FPS + "FPS / " + ms + "ms";
-            glfwSetWindowTitle(AppWindow::window, updatedTitle.c_str());
-            lastFrame = currentFrame;
-            frameCounter = 0;
-        }
-
-        skyViewLUT.Bind();
-        glViewport(0, 0, AppWindow::width, AppWindow::height);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        Shader skyViewShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/skyViewLUT.frag");
-        skyViewShader.Activate();
-        skyViewShader.setInt("transmittanceLUT", 0);
-        skyViewShader.setInt("multipleScatteredLUT", 1);
-        skyViewShader.setVec2("iChannelResolution0", glm::vec2(width, height));
-        skyViewShader.setVec2("iChannelResolution1", glm::vec2(width, height));
-        skyViewShader.setFloat("iTime", currentFrame);
-        skyViewShader.setVec2("iMouse", glm::vec2(0.0, 0.0));
-        skyViewShader.setVec3("camPos", camera.getPosition());
-        skyViewShader.setMat4("viewMatrix", camera.getViewMatrix());
-        skyViewShader.setMat4("projectionMatrix", camera.getProjectionMatrix());
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, transmittanceLUT.texture);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, multipleScatteredLUT.texture);
-        Utils::OpenGL::Draw::drawQuad();
-        skyViewLUT.Unbind();
-
-        atmosphereScene.Bind();
-        glViewport(0, 0, AppWindow::width, AppWindow::height);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        Shader atmosphereShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/atmosphere.frag");
-        atmosphereShader.Activate();
-        atmosphereShader.setInt("skyLUT", 0);
-        atmosphereShader.setVec2("iChannelResolution", glm::vec2(width, height));
-        atmosphereShader.setFloat("iTime", currentFrame);
-        atmosphereShader.setVec2("iMouse", glm::vec2(0.0, 0.0));
-        atmosphereShader.setVec3("camPos", camera.getPosition());
-        atmosphereShader.setMat4("viewMatrix", camera.getViewMatrix());
-        atmosphereShader.setMat4("projectionMatrix", camera.getProjectionMatrix());
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, skyViewLUT.texture);
-        Utils::OpenGL::Draw::drawQuad();
-        atmosphereScene.Unbind();
-
-        if (guiOn) {
-            guiController.start();
-
-            if (ImGui::Begin("control")) {
-                ImVec2 wsize = ImGui::GetWindowSize();
-                ImGui::Image((ImTextureID)transmittanceLUT.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-                ImGui::Image((ImTextureID)multipleScatteredLUT.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-                ImGui::Image((ImTextureID)skyViewLUT.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-                ImGui::EndChild();
-                ImGui::End();
-            }
-
-            if (ImGui::Begin("Application window")) {
-                ImGui::BeginChild("Child");
-                ImVec2 wsize = ImGui::GetWindowSize();
-                int wWidth = static_cast<int>(ImGui::GetWindowWidth());
-                int wHeight = static_cast<int>(ImGui::GetWindowHeight());
-                camera.updateViewResize(wWidth, wHeight);
-                ImGui::Image((ImTextureID)atmosphereScene.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-                if (ImGui::IsItemHovered())
-                    camera.processInput(AppWindow::window);
-                ImGui::EndChild();
-                ImGui::End();
-            }
-
-            guiController.end();
-        }
-
-        glfwPollEvents();
-        glfwSwapBuffers(AppWindow::window);
-    }
-*/
-
 	return 0;
 }
 

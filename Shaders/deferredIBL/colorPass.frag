@@ -188,10 +188,26 @@ vec3 getValFromSkyLUT(vec3 rayDir, vec3 sunDir) {
     return texture(skyLUT, uv).rgb;
 }
 
+// Functions for SH basis evaluation
+vec3 evalSH(vec3 normal, vec3 shCoeffs[9]) {
+    // Predefined spherical harmonic basis functions for 3rd-order SH
+    float x = normal.x, y = normal.y, z = normal.z;
+
+    return shCoeffs[0] +              // L00
+           shCoeffs[1] * y +          // L1-1
+           shCoeffs[2] * z +          // L10
+           shCoeffs[3] * x +          // L11
+           shCoeffs[4] * x * y +      // L2-2
+           shCoeffs[5] * y * z +      // L2-1
+           shCoeffs[6] * (3.0 * z * z - 1.0) * 0.5 + // L20
+           shCoeffs[7] * x * z +      // L21
+           shCoeffs[8] * (x * x - y * y); // L22
+}
+
 vec4 calcLighting() {
     float geometryDepthValue = texture(gDepth, uv).r;
 
-    vec3 normal = texture(gNormal, uv).rgb;
+    vec3 normal = texture(gNormal, uv).rgb;         // view space normal
     vec3 albedo = pow(texture(gAlbedo, uv).rgb, vec3(2.2));
     // vec3 metalRoughness = texture(gMetalRoughness, uv).rgb;
     // float metallic = metalRoughness.b;
@@ -272,11 +288,20 @@ vec4 calcLighting() {
     float phi = atan(rayDir.z, rayDir.x);  // Longitude: angle around the xy-plane
     float u = phi / (2.0 * 3.14159265359);  // Normalize phi to [0, 1]
     float v = theta / 3.14159265359;  // Normalize theta to [0, 1]
-    vec3 ambientColor = texture(atmosphereMap, vec2(u, v)).rgb;
     vec4 atmosphereAmbient = texture(atmosphereMap, uv);
+
+    // Retrieve SH coefficients from the texture
+    vec3 shCoeffs[9]; // SH coefficients for this fragment
+    for (int i = 0; i < 9; i++) {
+        shCoeffs[i] = texelFetch(atmosphereMap, ivec2(uv), 0).rgb;
+    }
+
+    // Evaluate the SH lighting using the normal
+    vec3 ambientLight = evalSH(N, shCoeffs);
 
 
     vec3 irradiance = texture(irradianceMap, N).rgb;
+    irradiance = mix(irradiance, ambientLight, 0.5);
     vec3 diffuse = irradiance * albedo;
 
     // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
@@ -287,8 +312,11 @@ vec4 calcLighting() {
 
     // skybox or background where there's no geometry to be exact
     if (geometryDepthValue == 1.0) {
-        // color = texture(prefilterMap, R).rgb;
-        return atmosphereAmbient;
+        color = texture(prefilterMap, R).rgb;
+        color = mix(color, atmosphereAmbient.rgb, 0.5);
+        return vec4(color, 1.0);
+        // color = atmosphereAmbient;
+        // return atmosphereAmbient;
     }
 
     else {
