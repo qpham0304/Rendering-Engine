@@ -26,8 +26,7 @@ void Application::run() {
 
 	int width = AppWindow::width;
 	int height = AppWindow::height;
-	GLFWwindow*& window = AppWindow::window;
-	guiController.init(window, width, height);
+	guiController.init(AppWindow::window, width, height);
 	editorLayer.init(guiController);
 
 	//std::bind(&Application::onClose, this, std::placeholders::_1);
@@ -35,7 +34,7 @@ void Application::run() {
 		onClose();
 	});
 
-	//TODO: experimentating with file watcher for now
+	//TODO: experimenting with file watcher for now
 	std::unique_ptr<filewatch::FileWatch<std::string>> fileWatcher;
 	fileWatcher.reset(new filewatch::FileWatch<std::string>(
 		"./Shaders",
@@ -44,10 +43,6 @@ void Application::run() {
 		}
 	));
 
-	glfwSetWindowUserPointer(AppWindow::window, this);
-
-	glfwSwapInterval(1);
-	//glfwSwapInterval(0);
 	while (isRunning) {
 		// Application
 		eventManager.OnUpdate();
@@ -60,8 +55,7 @@ void Application::run() {
 		editorLayer.onGuiUpdate();	// also render ui after to show overlay
 		guiController.end();
 
-		AppWindow::pollEvents();
-		AppWindow::swapBuffer();
+		AppWindow::onUpdate();
 	}
 	AppWindow::end();
 }

@@ -144,12 +144,14 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3dll.lib;opengl32.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3dll.lib;opengl32.lib;assimp-vc143-mtd.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <NoEntryPoint>false</NoEntryPoint>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(projectDir)dll\*.dll" "$(OutDir)"</Command>
@@ -165,19 +167,24 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3dll.lib;opengl32.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3dll.lib;opengl32.lib;assimp-vc143-mtd.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(projectDir)dll\*.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\apps\vulkan-setup\FollowDemo.cpp" />
+    <ClCompile Include="src\apps\sandbox\main.cpp" />
+    <ClCompile Include="src\apps\vulkan-setup\VulkanSetupDemo.cpp" />
     <ClCompile Include="src\core\layers\OpenGL\ShadowLayer.cpp" />
     <ClCompile Include="src\core\components\CubeMapComponent.cpp" />
     <ClCompile Include="src\core\components\CameraComponent.cpp" />
@@ -220,7 +227,6 @@
     <ClCompile Include="src\graphics\utils\Utils.cpp" />
     <ClCompile Include="src\core\features\AppWindow.cpp" />
     <ClCompile Include="src\gui\widgets\EntityControlWidget.cpp" />
-    <ClCompile Include="src\apps\sandbox\main.cpp" />
     <ClCompile Include="src\gui\widgets\MenuWidget.cpp" />
     <ClCompile Include="src\gui\widgets\MainViewWidget.cpp" />
     <ClCompile Include="src\gui\widgets\ConsoleLogWidget.cpp" />
@@ -263,6 +269,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\..\Downloads\entt.hpp" />
+    <ClInclude Include="src\apps\vulkan-setup\FollowDemo.h" />
+    <ClInclude Include="src\apps\vulkan-setup\VulkanSetupDemo.h" />
     <ClInclude Include="src\core\layers\ShadowLayer.h" />
     <ClInclude Include="src\core\components\CubeMapComponent.h" />
     <ClInclude Include="Libraries\include\glad\glad.h" />

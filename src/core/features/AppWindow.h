@@ -44,10 +44,9 @@ public:
 	static int init(Platform platform);		// set up and init the graphics api depending on the platform
 	static int start(const char* title);	// start creating windows and context
 	static int end();						// close and terminate the program
-	static void pollEvents();
-	static void swapBuffer();
+	static void onUpdate();
 	
-	// legacy demo within the window, might to a separate project
+	// legacy demo within the window, might move to a separate project
 	static void renderShadowScene(DepthMap& shadowMap, Shader& shadowMapShader, Light& light);
 	static void renderObjectsScene(FrameBuffer& framebuffer, DepthMap& depthMap, std::vector<Light> lights, unsigned int depthMapPoint);
 	static int renderScene();

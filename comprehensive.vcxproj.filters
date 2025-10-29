@@ -120,9 +120,6 @@
     <ClCompile Include="src\gui\widgets\MenuWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\apps\sandbox\main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\core\scene\SceneManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -271,6 +268,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\layers\OpenGL\ShadowLayer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\apps\sandbox\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\apps\vulkan-setup\VulkanSetupDemo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\apps\vulkan-setup\FollowDemo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -546,6 +552,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\core\layers\ShadowLayer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\apps\vulkan-setup\VulkanSetupDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\apps\vulkan-setup\FollowDemo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

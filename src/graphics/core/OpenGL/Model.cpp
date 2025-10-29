@@ -45,7 +45,7 @@ Model& Model::operator=(const Model& other)
     for (auto& mesh : other.meshes) {
         this->meshes.push_back(mesh);
     }
-
+    return *this;
 }
 
 Model::~Model() {

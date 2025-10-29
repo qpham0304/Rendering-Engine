@@ -10,6 +10,7 @@
 #include "../deferred-IBL-demo/deferredIBL_demo.h"
 #include "../ray-tracing/BasicRayTracing.h"
 #include "../particle-demo/ParticleDemo.h"
+#include "../vulkan-setup/VulkanSetupDemo.h"
 #include "../../core/Application.h"
 
 int main()
@@ -24,6 +25,7 @@ int main()
 		auto demo7 = DeferredIBLDemo::run;
 		auto demo8 = BasicRayTracing::run;
 		auto demo9 = ParticleDemo::run;
+		//auto demo10 = VulkanSetupDemo::run;
 
 		std::vector<std::function<int()>>list;
 		list.push_back(demo0);
@@ -36,12 +38,13 @@ int main()
 		list.push_back(demo7);
 		list.push_back(demo8);
 		list.push_back(demo9);
+		//list.push_back(demo10);
 
 	/* 
 		an option for these apps to run independently, without the editor or layer system
 		reason: for simplicity and compatability for apps that are not up to date with the changes
 	*/
-	#define USE_EDITOR
+	//#define USE_EDITOR
 
 	#ifdef USE_EDITOR
 		Application& app = Application::getInstance();
@@ -49,10 +52,12 @@ int main()
 
 	#else
 	try {
-		AppWindow::init(PLATFORM_OPENGL);
-		AppWindow::start("Rendering  Engine");
-		AppWindow::renderScene(list[8]);
-		AppWindow::end();
+		//AppWindow::init(PLATFORM_OPENGL);
+		//AppWindow::start("Rendering  Engine");
+		//AppWindow::renderScene(list[9]);
+		//AppWindow::end();
+
+		VulkanSetupDemo::run();
 	}
 	catch (const std::runtime_error& e) {
 		std::cerr << "Exception caught by main: " << e.what() << std::endl;

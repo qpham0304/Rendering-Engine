@@ -79,7 +79,7 @@ int BasicRayTracing::show_demo()
         if (deltaTime >= 1 / 2) {
             std::string FPS = std::to_string((1.0 / deltaTime) * frameCounter);
             std::string ms = std::to_string((deltaTime / frameCounter) * 1000);
-            std::string updatedTitle = "Deferred Shading Demo - " + FPS + "FPS / " + ms + "ms";
+            std::string updatedTitle = "Path Traced Demo - " + FPS + "FPS / " + ms + "ms";
             glfwSetWindowTitle(AppWindow::window, updatedTitle.c_str());
             lastFrame = currentFrame;
             frameCounter = 0;

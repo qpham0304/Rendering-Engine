@@ -163,6 +163,9 @@ int AppWindow::start(const char* title) {
 		glfwMakeContextCurrent(window);
 	}
 	setEventCallback();
+
+	glfwSwapInterval(1);
+	//glfwSwapInterval(0);
 	return 0;
 }
 
@@ -233,15 +236,14 @@ void AppWindow::setEventCallback()
 		});
 }
 
-void AppWindow::pollEvents()
+void AppWindow::onUpdate()
 {
-	glfwPollEvents();
+	if (AppWindow::platform == PLATFORM_OPENGL) {
+		glfwPollEvents();
+		glfwSwapBuffers(window);
+	}
 }
 
-void AppWindow::swapBuffer()
-{
-	glfwSwapBuffers(window);
-}
 
 void AppWindow::renderShadowScene(DepthMap& shadowMap, Shader& shadowMapShader, Light& light) {
 	shadowMap.Bind();
