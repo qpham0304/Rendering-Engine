@@ -10,24 +10,16 @@
 #include "../../../../src/gui/widgets/IconsFontAwesome5.h"
 
 class Widget {
-private:
-	bool showWidget = true;
-
 protected:
-	Widget() = default;
+    bool showWidget;
+
+    Widget() : showWidget(true) {};
+    Widget(const Widget& other) = default;
+    Widget(Widget&& other) noexcept = default;
+    virtual Widget& operator=(const Widget& other) = default;
+    virtual Widget& operator=(Widget&& other) noexcept = default;
 
 public:
-    // default constructor
-    // Copy constructor
-    Widget(const Widget& other);
-    // Move constructor
-    Widget(Widget&& other) noexcept;
-    // Copy assignment operator
-    Widget& operator=(const Widget& other);
-    // Move assignment operator
-    Widget& operator=(Widget&& other) noexcept;
-    // destructor
     virtual ~Widget() = default;
-
 	virtual void render() = 0;
 };

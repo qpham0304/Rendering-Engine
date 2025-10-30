@@ -5,10 +5,9 @@
 class RightSidebarWidget : public Widget
 {
 protected:
-	RightSidebarWidget() : Widget() {};
+	RightSidebarWidget() : Widget() {}
 
 public:
-
 	virtual void layersControl() = 0;
 	virtual void textureView() = 0;
 	virtual void environmentControl() = 0;

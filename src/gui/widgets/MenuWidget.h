@@ -5,7 +5,7 @@
 class MenuWidget : public Widget
 {
 protected:
-	MenuWidget() = default;
+	MenuWidget() : Widget() {}
 
 public:
 	~MenuWidget() = default;

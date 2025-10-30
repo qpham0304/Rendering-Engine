@@ -17,7 +17,7 @@ protected:
 	std::string selectedModel;
 	bool errorPopupOpen = false;
 
-	LeftSidebarWidget() = default;
+	LeftSidebarWidget() : Widget() {}
 
 public:
 

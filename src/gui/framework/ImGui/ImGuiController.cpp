@@ -88,11 +88,11 @@ void ImGuiController::debugWindow(ImTextureID texture)
 
 	if (ImGui::Begin("Debug Window"))
 	{
-		std::string countVertices = "Vertices: " + std::to_string(SceneManager::getNumVertices() * 3);
-		ImGui::Text(countVertices.c_str());
-		countVertices = "Triangles: " + std::to_string(SceneManager::getNumVertices());
+		//std::string countVertices = "Vertices: " + std::to_string(SceneManager::getNumVertices() * 3);
+		//ImGui::Text(countVertices.c_str());
+		//countVertices = "Triangles: " + std::to_string(SceneManager::getNumVertices());
 		ImGui::SameLine();
-		ImGui::Text(countVertices.c_str());
+		//ImGui::Text(countVertices.c_str());
 		ImGui::Text("Camera positon");
 		ImGui::SameLine();
 		ImGui::Text(x.c_str());
