@@ -10,11 +10,11 @@
 #include <future>
 #include <mutex>
 #include <thread>
-#include "../../gui/GuiController.h"
-#include "../../graphics/utils/Utils.h"
-#include "../../core/components/legacy/Component.h"
-#include "../../graphics/renderer/SkyboxRenderer.h"
-#include "../../core/components/legacy/LightComponent.h"
+#include "../../src/gui/GuiController.h"
+#include "../../src/graphics/utils/Utils.h"
+#include "../../src/core/components/legacy/Component.h"
+#include "../../src/graphics/renderer/SkyboxRenderer.h"
+#include "../../src/core/components/legacy/LightComponent.h"
 
 enum Platform {
 	PLATFORM_UNDEFINED, PLATFORM_OPENGL, PLATFORM_VULKAN, PLATFORM_DIRECTX,
@@ -22,10 +22,13 @@ enum Platform {
 
 class AppWindow
 {
+protected:
+	AppWindow() = default;
+	~AppWindow() = default;
+
 private:
 	static const unsigned int DEFAULT_WIDTH = 720;
 	static const unsigned int DEFAULT_HEIGHT = 1280;
-	AppWindow();
 	static void setEventCallback();
 
 public:
@@ -37,8 +40,6 @@ public:
 	static ImGuizmo::OPERATION GuizmoType;
 	static GLFWwindow* window;
 	static GLFWwindow* sharedWindow;
-
-	// currently bind with an app inside window, remove after done refactoring
 
 	static int init(Platform platform);		// set up and init the graphics api depending on the platform
 	static int start(const char* title);	// start creating windows and context

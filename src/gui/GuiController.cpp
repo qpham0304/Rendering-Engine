@@ -1,6 +1,6 @@
 
 #include "../core/scene/SceneManager.h"
-#include "../core/features/AppWindow.h"
+#include "../core/features/window/appwindow.h"
 #include "framework/ImGui/ImGuiController.h"
 
 /*

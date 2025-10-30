@@ -1,7 +1,7 @@
 #include "ImGuiController.h"
 #include "../../GuiController.h"
 #include "../../src/core/scene/SceneManager.h"
-#include "../../src/core/features/AppWindow.h"
+#include "../../src/core/features/window/appwindow.h"
 
 ImGuiController::ImGuiController()
 {

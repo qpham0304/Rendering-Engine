@@ -1,4 +1,4 @@
-#include "../../core/features/AppWindow.h"
+#include "../../core/features/window/appwindow.h"
 #include "camera.h"
 
 #pragma once

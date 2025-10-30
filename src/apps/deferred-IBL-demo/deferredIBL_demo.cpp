@@ -771,7 +771,7 @@ void DeferredIBLDemo::OnAttach()
             cameraTransform.translateVec,
             glm::vec3(0.5, -0.2, -1.0f)
         );
-        auto pos = cameraEntity.getComponent<CameraComponent>().camera.getPosition();
+        //auto pos = cameraEntity.getComponent<CameraComponent>().camera.getPosition();
         //Console::println(pos.x, " ", pos.y, " ", pos.z);
         cameraEntity.onCameraComponentAdded();
         cameraTransform.translate(glm::vec3(-6.5f, 3.5f, 8.5f));

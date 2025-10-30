@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../core/features/AppWindow.h"
+#include "../../core/features/window/appwindow.h"
 
 class SSAO_Demo
 {

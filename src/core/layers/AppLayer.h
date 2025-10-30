@@ -4,7 +4,7 @@
 #include <memory>
 #include <Shader.h>
 #include "Layer.h"
-#include "../../core/features/AppWindow.h"
+#include "../../core/features/window/appwindow.h"
 #include "camera.h"
 #include "../../src/events/EventManager.h"
 #include "LayerManager.h"

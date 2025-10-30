@@ -1,13 +1,17 @@
 #include <imgui.h>
 
-
-
-
-
 class Themes {
+protected:
+    Themes() = default;
+    virtual void makeTheme() = 0;
 
+    static Themes* instance;
 
 public:
+    static void newTheme() {
+        instance->makeTheme();
+    }
+
 	static void purpleTheme() {
 		auto& colors = ImGui::GetStyle().Colors;
 		colors[ImGuiCol_WindowBg] = ImVec4{ 0.1f, 0.1f, 0.13f, 1.0f };

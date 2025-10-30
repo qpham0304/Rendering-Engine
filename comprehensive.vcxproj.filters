@@ -84,9 +84,6 @@
     <ClCompile Include="src\graphics\core\OpenGL\DepthMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\gui\GuiController.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\graphics\core\OpenGL\Bone.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -97,21 +94,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\core\OpenGL\FrameBuffer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\gui\widgets\ConsoleLogWidget.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\gui\widgets\RightSidebarWidget.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\gui\widgets\Widget.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\gui\widgets\LeftSidebarWidget.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\gui\widgets\MenuWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\scene\SceneManager.cpp">
@@ -168,7 +150,7 @@
     <ClCompile Include="Headers\Input.h">
       <Filter>Header Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\features\AppWindow.cpp">
+    <ClCompile Include="src\core\features\window\AppWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\scene\SceneManager.cpp">
@@ -252,7 +234,7 @@
     <ClCompile Include="src\gui\framework\ImGui\ImGuiController.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ImGuiConsoleLogWidget.cpp">
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiEntityControlWidget.cpp">
@@ -271,6 +253,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiSubViewWidget.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\features\window\platform\GLFW\AppWindowGLFW.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\framework\ImGui\theme\ImGuiThemes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -401,7 +389,7 @@
     <ClInclude Include="src\core\layers\AppLayer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\features\AppWindow.h">
+    <ClInclude Include="src\core\features\window\AppWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Libraries\include\entt\entt.hpp">
@@ -555,6 +543,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiSubViewWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\features\window\platform\GLFW\AppWindowGLFW.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\framework\ImGui\theme\ImGuiThemes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

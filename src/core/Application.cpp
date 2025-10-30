@@ -1,6 +1,6 @@
 #include "Application.h"
 
-#include "../core/features/AppWindow.h"
+#include "../core/features/window/appwindow.h"
 #include "../../src/apps/particle-demo/ParticleDemo.h"
 #include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
 #include "../../src/apps/volumetric-light/VolumetricLightDemo.h"

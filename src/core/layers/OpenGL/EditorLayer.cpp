@@ -2,7 +2,7 @@
 
 //#include "../../gui/GuiController.h"
 //#include "../../src/gui/GuiController.h"
-#include "../../../core/features/AppWindow.h"
+#include "../../../core/features/window/appwindow.h"
 #include "../../features/Timer.h"
 #include "../../../graphics/utils/Utils.h"
 #include "../../src/apps/particle-demo/ParticleDemo.h"
@@ -13,6 +13,7 @@
 #include "../../components/MComponent.h"
 #include "../../components/cameracomponent.h"
 #include "camera.h"
+#include "Input.h"
 
 
 void EditorLayer::mockThreadTasks()
@@ -204,8 +205,6 @@ void EditorLayer::onUpdate()
 
 		for (auto& [id, entity] : scene.entities) {
 			if (entity.hasComponent<CameraComponent>()) {
-				CameraComponent& cameraComponent = entity.getComponent<CameraComponent>();
-				cameraComponent.camera.translate(entity.getComponent<TransformComponent>().translateVec);
 
 				ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
 				TransformComponent& transform = entity.getComponent<TransformComponent>();

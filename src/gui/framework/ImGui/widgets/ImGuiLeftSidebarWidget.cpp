@@ -10,7 +10,7 @@
 #include "../../src/core/components/CameraComponent.h"
 #include "Texture.h"
 #include "../../src/core/scene/SceneManager.h"
-#include "../../src/core/features/AppWindow.h"
+#include "../../src/core/features/window/appwindow.h"
 
 glm::vec3 translateVec(0.0);
 

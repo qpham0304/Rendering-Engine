@@ -182,7 +182,9 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ImGuiConsoleLogWidget.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\theme\ImGuiThemes.cpp" />
+    <ClCompile Include="src\core\features\window\platform\GLFW\AppWindowGLFW.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiEntityControlWidget.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiLeftSidebarWidget.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiMainViewWidget.cpp" />
@@ -227,7 +229,7 @@
     <ClCompile Include="Libraries\include\ImGuizmo\ImSequencer.cpp" />
     <ClCompile Include="src\core\components\legacy\LightComponent.cpp" />
     <ClCompile Include="src\graphics\utils\Utils.cpp" />
-    <ClCompile Include="src\core\features\AppWindow.cpp" />
+    <ClCompile Include="src\core\features\window\AppWindow.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\ImGuiController.cpp" />
     <ClCompile Include="src\graphics\core\OpenGL\FrameBuffer.cpp" />
     <ClCompile Include="src\core\components\legacy\Component.cpp" />
@@ -260,6 +262,8 @@
     <ClCompile Include="src\core\Systems\System.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\gui\framework\ImGui\theme\ImGuiThemes.h" />
+    <ClInclude Include="src\core\features\window\platform\GLFW\AppWindowGLFW.h" />
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.h" />
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiEntityControlWidget.h" />
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiLeftSidebarWidget.h" />
@@ -318,7 +322,7 @@
     <ClInclude Include="src\core\components\headers\LightComponent.h" />
     <ClInclude Include="src\graphics\utils\ltc_matrix.h" />
     <ClInclude Include="src\graphics\utils\Utils.h" />
-    <ClInclude Include="src\core\features\AppWindow.h" />
+    <ClInclude Include="src\core\features\window\AppWindow.h" />
     <ClInclude Include="Headers\OpenGL\Axis.h" />
     <ClInclude Include="Headers\OpenGL\FrameBuffer.h" />
     <ClInclude Include="Headers\OpenGL\Animation.h" />

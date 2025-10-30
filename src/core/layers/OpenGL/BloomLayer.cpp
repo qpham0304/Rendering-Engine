@@ -1,7 +1,7 @@
 #include "../BloomLayer.h"
 #include "../LayerManager.h"
 #include "../../scene/SceneManager.h" // this should be gone once ECS is done setting up
-#include "../../features/AppWindow.h"
+#include "../../features/window/appwindow.h"
 #include "camera.h"
 
 BloomLayer::BloomLayer(const std::string& name) : Layer(name), VAO(0), VBO(0)

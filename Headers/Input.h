@@ -1,5 +1,4 @@
 
-#include <glm/glm.hpp>
 
 // Key Code from GLFW
 enum KeyCodes
