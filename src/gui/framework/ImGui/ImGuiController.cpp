@@ -1,24 +1,7 @@
-
-#include "../core/scene/SceneManager.h"
-#include "../core/features/AppWindow.h"
-#include "framework/ImGui/ImGuiController.h"
-
-/*
-
-#include <vector>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-#include <memory>
-#include <ImGuizmo.h>
-#include "../../widgets/widget.h"
-#include "../../widgets/Themes.h"
-#include "../../widgets/MenuWidget.h"
-#include "../../widgets/LeftSidebarWidget.h"
-#include "../../widgets/RightSidebarWidget.h"
-#include "../../widgets/ConsoleLogWidget.h"
-#include "../../../../src/gui/widgets/IconsFontAwesome5.h"
-
-*/
+#include "ImGuiController.h"
+#include "../../GuiController.h"
+#include "../../src/core/scene/SceneManager.h"
+#include "../../src/core/features/AppWindow.h"
 
 ImGuiController::ImGuiController()
 {
@@ -75,7 +58,7 @@ void ImGuiController::init(GLFWwindow* window, int width, int height)
 	style.TabRounding = 8;
 	style.GrabMinSize = 15;
 
-	std::unique_ptr<MenuWidget> menu = std::make_unique<MenuWidget>();
+	std::unique_ptr<ImGuiMenuWidget> menu = std::make_unique<ImGuiMenuWidget>();
 	widgets.push_back(std::move(menu));
 }
 

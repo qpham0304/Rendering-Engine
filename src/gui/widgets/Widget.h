@@ -7,14 +7,14 @@
 #include<glm/gtc/type_ptr.hpp>
 #include<glm/gtx/rotate_vector.hpp>
 #include<glm/gtx/vector_angle.hpp>
-#include "../../src/gui/headers/IconsFontAwesome5.h"
+#include "../../../../src/gui/widgets/IconsFontAwesome5.h"
 
 class Widget {
 private:
 	bool showWidget = true;
 
 protected:
-	Widget();
+	Widget() = default;
 
 public:
     // default constructor
@@ -27,7 +27,7 @@ public:
     // Move assignment operator
     Widget& operator=(Widget&& other) noexcept;
     // destructor
-    virtual ~Widget();
+    virtual ~Widget() = default;
 
-	virtual void render();
+	virtual void render() = 0;
 };

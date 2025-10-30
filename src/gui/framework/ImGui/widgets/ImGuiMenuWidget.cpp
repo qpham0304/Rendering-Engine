@@ -1,21 +1,21 @@
-#include "MenuWidget.h"
+#include "ImGuiMenuWidget.h"
 
-MenuWidget::MenuWidget() 
+ImGuiMenuWidget::ImGuiMenuWidget() : MenuWidget()
 {
 
 }
 
-MenuWidget::~MenuWidget()
+ImGuiMenuWidget::~ImGuiMenuWidget()
 {
 
 }
 
-void MenuWidget::render()
+void ImGuiMenuWidget::render()
 {
 	MainMenuBar();
 }
 
-void MenuWidget::MainMenuBar()
+void ImGuiMenuWidget::MainMenuBar()
 {
 	if (ImGui::BeginMainMenuBar())
 	{
@@ -35,7 +35,7 @@ void MenuWidget::MainMenuBar()
 	}
 }
 
-void MenuWidget::FileMenu()
+void ImGuiMenuWidget::FileMenu()
 {
 	if (ImGui::BeginMenu("File"))
 	{
@@ -43,17 +43,17 @@ void MenuWidget::FileMenu()
 		{
 
 		}
-		
+
 		if (ImGui::MenuItem("Open"))
 		{
 
 		}
-		
+
 		if (ImGui::MenuItem("Save"))
 		{
 
 		}
-		
+
 		if (ImGui::MenuItem("Exit"))
 		{
 
@@ -62,7 +62,7 @@ void MenuWidget::FileMenu()
 	}
 }
 
-void MenuWidget::EditMenu()
+void ImGuiMenuWidget::EditMenu()
 {
 	if (ImGui::BeginMenu("Edit"))
 	{
@@ -89,7 +89,7 @@ void MenuWidget::EditMenu()
 	}
 }
 
-void MenuWidget::ToolMenu()
+void ImGuiMenuWidget::ToolMenu()
 {
 	if (ImGui::BeginMenu("Tool"))
 	{
@@ -116,7 +116,7 @@ void MenuWidget::ToolMenu()
 	}
 }
 
-void MenuWidget::WindowMenu()
+void ImGuiMenuWidget::WindowMenu()
 {
 	if (ImGui::BeginMenu("Window"))
 	{
@@ -143,7 +143,7 @@ void MenuWidget::WindowMenu()
 	}
 }
 
-void MenuWidget::HelpMenu()
+void ImGuiMenuWidget::HelpMenu()
 {
 	if (ImGui::BeginMenu("Help"))
 	{
@@ -179,3 +179,4 @@ void MenuWidget::HelpMenu()
 		ImGui::EndMenu();
 	}
 }
+

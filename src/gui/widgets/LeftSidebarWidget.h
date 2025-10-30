@@ -10,22 +10,23 @@
 class LeftSidebarWidget : public Widget
 {
 
-private:
+protected:
 	std::vector<std::string> nodes;
 	size_t selectedIndex;
 	Entity* selectedEntity;
 	std::string selectedModel;
 	bool errorPopupOpen = false;
 
-public:
-	LeftSidebarWidget();
+	LeftSidebarWidget() = default;
 
-	void AddComponentDialog(Entity& entity);
-	void ErrorModal(const char* message);
-	void AddItemButton(const std::string&& label = "+ Add");
-	void LightTab();
-	void EntityTab();
-	void ModelsTab();
-	void render() override;
+public:
+
+	virtual void AddComponentDialog(Entity& entity) = 0;
+	virtual void ErrorModal(const char* message) = 0;
+	virtual void AddItemButton(const std::string&& label = "+ Add") = 0;
+	virtual void LightTab() = 0;
+	virtual void EntityTab() = 0;
+	virtual void ModelsTab() = 0;
+	virtual void render() override = 0;
 };
 

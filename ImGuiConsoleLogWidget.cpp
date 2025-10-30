@@ -1,10 +1,7 @@
-#include "widgets/ConsoleLogWidget.h"
-#include "../../core/features/Profiler.h"
 
-ConsoleLogWidget::ConsoleLogWidget()
-{
-
-}
+#include "src/gui/framework/ImGui/widgets/ImGuiConsoleLogWidget.h"
+#include "../../src/core/features/Profiler.h"
+#include <imgui.h>
 
 bool ButtonCenteredOnLine(const char* label, float alignment = 0.5f)
 {
@@ -20,7 +17,12 @@ bool ButtonCenteredOnLine(const char* label, float alignment = 0.5f)
 	return ImGui::Button(label);
 }
 
-void ConsoleLogWidget::render()
+ImGuiConsoleLogWidget::ImGuiConsoleLogWidget() : ConsoleLogWidget()
+{
+
+}
+
+void ImGuiConsoleLogWidget::render()
 {
 	ImGui::BeginGroup();
 	//ImGui::SetNextItemAllowOverlap();

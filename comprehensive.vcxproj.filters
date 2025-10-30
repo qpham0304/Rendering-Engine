@@ -24,7 +24,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="glad.c">
+    <ClCompile Include="Libraries\include\glad\glad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\core\OpenGL\Shader.cpp">
@@ -111,19 +111,10 @@
     <ClCompile Include="src\gui\widgets\LeftSidebarWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\gui\widgets\MainViewWidget.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\gui\widgets\SubViewWidget.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\gui\widgets\MenuWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\scene\SceneManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\gui\widgets\EntityControlWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Libraries\include\ImGuizmo\GraphEditor.cpp">
@@ -144,16 +135,7 @@
     <ClCompile Include="src\graphics\utils\Utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\apps\image-based-rendering\pbr_demo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\apps\area-light\area_light_demo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\graphics\core\OpenGL\DepthCubeMap.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\apps\deferred-rendering\deferred_render_demo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\core\OpenGL\BloomFBO.cpp">
@@ -162,31 +144,13 @@
     <ClCompile Include="src\graphics\core\OpenGL\BloomRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\apps\volumetric-light\VolumetricLightDemo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\graphics\core\OpenGL\DeferredRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\core\OpenGL\ShadowMapRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\apps\SSAO-demo\SSAO_demo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\apps\SSR-demo\SSR_demo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\apps\SSR-view-demo\SSR_view_demo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\apps\ray-tracing\BasicRayTracing.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\core\OpenGL\ParticleGeometry.cpp">
@@ -273,10 +237,40 @@
     <ClCompile Include="src\apps\sandbox\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\apps\vulkan-setup\VulkanSetupDemo.cpp">
+    <ClCompile Include="src\core\Systems\System.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\apps\vulkan-setup\FollowDemo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\apps\vulkan-setup\VulkanSetupDemo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\framework\ImGui\ImGuiController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGuiConsoleLogWidget.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiEntityControlWidget.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiLeftSidebarWidget.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiMainViewWidget.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiMenuWidget.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiRightSidebarWidget.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiSubViewWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -332,31 +326,10 @@
     <ClInclude Include="Headers\OpenGL\FrameBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\gui\headers\ConsoleLogWidget.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\gui\headers\Widget.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\gui\headers\Themes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\gui\headers\MainViewWidget.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\gui\headers\SubViewWidget.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\gui\headers\MenuWidget.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Headers\OpenGL\Axis.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\SceneManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\gui\headers\EntityControlWidget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Libraries\include\ImGuizmo\GraphEditor.h">
@@ -377,43 +350,13 @@
     <ClInclude Include="Libraries\include\ImGuizmo\ImZoomSlider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\gui\headers\LeftSidebarWidget.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\gui\headers\RightSidebarWidget.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\gui\headers\IconsFontAwesome5.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\apps\image-based-rendering\pbr_demo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\apps\area-light\area_light_demo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Headers\OpenGL\DepthCubeMap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\apps\deferred-rendering\deferred_render_demo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\OpenGL\BloomFBO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\apps\volumetric-light\VolumetricLightDemo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\graphics\renderer\ImageBasedRenderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\apps\SSAO-demo\SSAO_demo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\apps\SSR-demo\SSR_demo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\apps\SSR-view-demo\SSR_view_demo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h">
@@ -423,12 +366,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\renderer\AtmosphereRenderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\apps\ray-tracing\BasicRayTracing.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\apps\particle-demo\ParticleDemo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\OpenGL\ParticleGeometry.h">
@@ -465,9 +402,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\core\features\AppWindow.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\Downloads\entt.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Libraries\include\entt\entt.hpp">
@@ -554,10 +488,73 @@
     <ClInclude Include="src\core\layers\ShadowLayer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\apps\vulkan-setup\VulkanSetupDemo.h">
+    <ClInclude Include="src\core\Systems\System.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Libraries\include\FileWatch\FileWatch.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\apps\vulkan-setup\FollowDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\apps\vulkan-setup\VulkanSetupDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\apps\particle-demo\ParticleDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\framework\ImGui\ImGuiController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\widgets\ConsoleLogWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\widgets\EntityControlWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\widgets\IconsFontAwesome5.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\widgets\LeftSidebarWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\widgets\MainViewWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\widgets\MenuWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\widgets\RightSidebarWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\widgets\SubViewWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\widgets\Themes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\widgets\Widget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiEntityControlWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiLeftSidebarWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiMainViewWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiMenuWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiRightSidebarWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiSubViewWidget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -607,7 +604,6 @@
     <None Include="Shaders\godRays\godRays.frag" />
     <None Include="Shaders\godRays\blackScreen.vert" />
     <None Include="Shaders\godRays\blackScreen.frag" />
-    <None Include="src\apps\ray-tracing\rayTracer.frag" />
     <None Include="Shaders\deferredIBL\colorPass.frag" />
     <None Include="Shaders\deferredIBL\colorPass.vert" />
     <None Include="Shaders\deferredIBL\gPass.frag" />

@@ -5,13 +5,13 @@
 #include <imgui_impl_opengl3.h>
 #include <memory>
 #include <ImGuizmo.h>
-#include "headers/widget.h"
-#include "headers/Themes.h"
-#include "headers/MenuWidget.h"
-#include "headers/LeftSidebarWidget.h"
-#include "headers/RightSidebarWidget.h"
-#include "headers/ConsoleLogWidget.h"
-#include "../../src/gui/headers/IconsFontAwesome5.h"
+#include "./widgets/widget.h"
+#include "./widgets/Themes.h"
+#include "./widgets/MenuWidget.h"
+#include "./widgets/LeftSidebarWidget.h"
+#include "./widgets/RightSidebarWidget.h"
+#include "./widgets/ConsoleLogWidget.h"
+#include "../../../../src/gui/widgets/IconsFontAwesome5.h"
 
 class GuiController {
 private:
@@ -25,55 +25,14 @@ protected:
 	int count = 0;
 
 public:
-	virtual void init(GLFWwindow* window, int width, int height) {};
-	virtual void start() {}
-	virtual void render() {}
-	virtual void end() {}
+	virtual void init(GLFWwindow* window, int width, int height) = 0;
+	virtual void start() = 0;
+	virtual void render() = 0;
+	virtual void end() = 0;
+	virtual void onClose() = 0;
 
-	virtual void setTheme(bool darkTheme) {}
-	virtual void useLightTheme() {}
-	virtual void useDarkTheme() {}
-};
-
-//TODO: Move this class to framework/imgui folder once there are other gui framework
-class ImGuiController : public GuiController {
-private:
-	LeftSidebarWidget leftSidebar;
-	RightSidebarWidget rightSidebar;
-	ConsoleLogWidget console;
-	MenuWidget menu;
-
-public:
-	ImGuiController();
-	ImGuiController(bool darkTheme);
-
-
-	// Copy constructor
-	ImGuiController(const ImGuiController& other);
-
-	// Move constructor
-	ImGuiController(ImGuiController&& other) noexcept;
-
-	// Copy assignment operator
-	ImGuiController& operator=(const ImGuiController& other) {}
-
-	// Move assignment operator
-	ImGuiController& operator=(ImGuiController&& other) noexcept {}
-
-	~ImGuiController();
-
-	void init(GLFWwindow* window, int width, int height) override;
-	void start() override;
-	void debugWindow(ImTextureID texture);
-	void applicationWindow();
-	void render() override;
-	void end() override;
-
-	void setTheme(bool darkTheme) override;
-	void useLightTheme() override;
-	void useDarkTheme() override;
-
-	// TODO: add closable tab, ability to on/off open close tab
-	// then reopen them in navigation bar;
+	virtual void setTheme(bool darkTheme) = 0;
+	virtual void useLightTheme() = 0;
+	virtual void useDarkTheme() = 0;
 };
 

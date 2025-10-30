@@ -1,22 +1,23 @@
-#include "LeftSidebarWidget.h"
-#include "../../core/scene/SceneManager.h"
-#include "../../events/EventManager.h"
+#include "ImGuiLeftSidebarWidget.h"
+
+#include "../../src/core/scene/SceneManager.h"
+#include "../../src/events/EventManager.h"
 
 #include <windows.h>
 #include <shobjidl.h> 
-#include "../../graphics/utils/Utils.h"
-#include "../../core/components/MComponent.h"
-#include "../../core/components/CameraComponent.h"
+#include "../../src/graphics/utils/Utils.h"
+#include "../../src/core/components/MComponent.h"
+#include "../../src/core/components/CameraComponent.h"
 #include "Texture.h"
-#include "../../core/scene/SceneManager.h"
-#include "../../core/features/AppWindow.h"
+#include "../../src/core/scene/SceneManager.h"
+#include "../../src/core/features/AppWindow.h"
 
 glm::vec3 translateVec(0.0);
 
 
 static ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow
-                                    | ImGuiTreeNodeFlags_OpenOnDoubleClick
-                                    | ImGuiTreeNodeFlags_SpanAvailWidth;
+| ImGuiTreeNodeFlags_OpenOnDoubleClick
+| ImGuiTreeNodeFlags_SpanAvailWidth;
 
 static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float columnWidth = 100.0f)
 {
@@ -86,7 +87,11 @@ static void DrawVec3Control(const std::string& label, glm::vec3& values, float r
 }
 
 
-void LeftSidebarWidget::AddComponentDialog(Entity& entity) {
+ImGuiLeftSidebarWidget::ImGuiLeftSidebarWidget() : LeftSidebarWidget()
+{
+}
+
+void ImGuiLeftSidebarWidget::AddComponentDialog(Entity& entity) {
 #if defined(_WIN32)
     std::string path = Utils::fileDialog();
 #elif defined(__APPLE__) && defined(__MACH__)
@@ -113,7 +118,7 @@ void LeftSidebarWidget::AddComponentDialog(Entity& entity) {
             component.path = "Loading...";
             std::string uuid = SceneManager::getInstance().addModel(event.id.c_str());     // add model to the manager
             if (component.path != event.id) {   //NOTE: event id is being used as Path
-                component.model = SceneManager::getInstance().models[event.id];     
+                component.model = SceneManager::getInstance().models[event.id];
             }
 
             // if another thread deletes the same model before this add, reset the model component's pointer
@@ -130,7 +135,7 @@ void LeftSidebarWidget::AddComponentDialog(Entity& entity) {
             }
             component.path = event.id;
             glfwMakeContextCurrent(AppWindow::window);
-        };
+            };
         EventManager::getInstance().Queue(event, func);
 #else
         ModelLoadEvent event(path, entity);
@@ -144,8 +149,8 @@ void LeftSidebarWidget::AddComponentDialog(Entity& entity) {
     }
 }
 
-void LeftSidebarWidget::ErrorModal(const char* message) {
-    if (ImGui::BeginPopupModal("Model loading error", &errorPopupOpen, ImGuiWindowFlags_AlwaysAutoResize)){
+void ImGuiLeftSidebarWidget::ErrorModal(const char* message) {
+    if (ImGui::BeginPopupModal("Model loading error", &errorPopupOpen, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text(message);
         ImGui::Separator();
 
@@ -153,13 +158,13 @@ void LeftSidebarWidget::ErrorModal(const char* message) {
         ImGui::PopStyleVar();
 
         ImGui::SetCursorPosX(ImGui::GetWindowWidth() - ImGui::GetWindowContentRegionMax().x / 2);
-        if (ImGui::Button("OK", ImVec2(120, 0))) { 
-            ImGui::CloseCurrentPopup(); 
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
         }
         ImGui::SetItemDefaultFocus();
         ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2(120, 0))) { 
-            ImGui::CloseCurrentPopup(); 
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
     }
@@ -180,13 +185,13 @@ void displayMatrix(glm::mat4& matrix) {
     }
 }
 
-void LeftSidebarWidget::AddItemButton(const std::string&& label) {
+void ImGuiLeftSidebarWidget::AddItemButton(const std::string&& label) {
     if (ImGui::Button(label.c_str(), ImVec2(-1, 0))) {
         SceneManager::getInstance().getActiveScene()->addEntity();
     }
 }
 
-void LeftSidebarWidget::LightTab()
+void ImGuiLeftSidebarWidget::LightTab()
 {
     SceneManager& sceneManager = sceneManager.getInstance();
     Scene* scene = sceneManager.getActiveScene();
@@ -206,14 +211,14 @@ void LeftSidebarWidget::LightTab()
     ImGui::End();
 }
 
-void LeftSidebarWidget::EntityTab() {
+void ImGuiLeftSidebarWidget::EntityTab() {
     ImGui::End();
     SceneManager& sceneManager = sceneManager.getInstance();
     Scene* scene = sceneManager.getActiveScene();
 
     if (ImGui::Begin("Scenes")) {
         AddItemButton("+ Add Entity");
-        
+
         Timer timer("component event", true);
 
         for (auto& [uuid, entity] : scene->entities) {
@@ -295,8 +300,8 @@ void LeftSidebarWidget::EntityTab() {
                     NameComponent& name = entity.getComponent<NameComponent>();
                     name.name = "camera";
                     entity.addComponent<CameraComponent>(
-                        AppWindow::width, 
-                        AppWindow::height, 
+                        AppWindow::width,
+                        AppWindow::height,
                         glm::vec3(transform.translateVec),
                         glm::vec3(0.5, -0.2, -1.0f)
                     );
@@ -319,7 +324,7 @@ void LeftSidebarWidget::EntityTab() {
 
                 ImGui::EndPopup();
             }
-            
+
             if (open) {
                 if (entity.hasComponent<ModelComponent>()) {
                     addModelTex = "Change Model";
@@ -375,7 +380,7 @@ void LeftSidebarWidget::EntityTab() {
     ImGui::End();
 }
 
-void LeftSidebarWidget::ModelsTab()
+void ImGuiLeftSidebarWidget::ModelsTab()
 {
     SceneManager& sceneManager = sceneManager.getInstance();
 
@@ -432,13 +437,7 @@ void LeftSidebarWidget::ModelsTab()
 
 }
 
-
-
-LeftSidebarWidget::LeftSidebarWidget() {
-    selectedIndex = 0;
-}
-
-void LeftSidebarWidget::render()
+void ImGuiLeftSidebarWidget::render()
 {
     Scene* scene = SceneManager::getInstance().getActiveScene();
 

@@ -4,7 +4,7 @@
 #include "scene/SceneManager.h"
 #include "../../src/events/EventManager.h"
 #include "layers/EditorLayer.h"
-#include "../gui/GuiController.h"
+#include "../gui/framework/ImGui/ImGuiController.h"
 
 class Application
 {

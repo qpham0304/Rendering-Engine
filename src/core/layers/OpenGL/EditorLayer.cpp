@@ -1,5 +1,7 @@
 #include "../EditorLayer.h"
 
+//#include "../../gui/GuiController.h"
+//#include "../../src/gui/GuiController.h"
 #include "../../../core/features/AppWindow.h"
 #include "../../features/Timer.h"
 #include "../../../graphics/utils/Utils.h"
@@ -104,9 +106,9 @@ EditorLayer::EditorLayer()
 	onAttach();
 }
 
-void EditorLayer::init(ImGuiController& controller)
+void EditorLayer::init(GuiController* controller)
 {
-	guiController = &controller;
+	guiController = controller;
 	guiController->useDarkTheme();
 	editorCamera.init(AppWindow::width, AppWindow::height, glm::vec3(1.0, 0.0, 0.0), glm::vec3(1.0));
 	sceneManager.addScene("default");

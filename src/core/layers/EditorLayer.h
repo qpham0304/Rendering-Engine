@@ -1,17 +1,19 @@
 #pragma once
 
 #include <memory>
-#include "../..//gui/GuiController.h"
 #include "../../core/scene/SceneManager.h"
 #include "../../events/EventManager.h"
+#include "../../gui/GuiController.h"
 
 class EditorLayer
 {
 private:
+	//class GuiController;
+
 	Camera editorCamera;
 	SceneManager& sceneManager = SceneManager::getInstance();
 	EventManager& eventManager = EventManager::getInstance();
-	ImGuiController* guiController;
+	GuiController* guiController = nullptr;
 	bool GuizmoActive = false;
 	bool drawGrid = false;
 	bool editorActive = true;
@@ -28,7 +30,7 @@ public:
 	EditorLayer();
 	~EditorLayer() = default;
 
-	void init(ImGuiController& controller);
+	void init(GuiController* controller);
 	void onAttach();
 	void onDetach();
 	void onUpdate();

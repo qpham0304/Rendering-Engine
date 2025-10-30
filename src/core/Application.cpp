@@ -27,7 +27,7 @@ void Application::run() {
 	int width = AppWindow::width;
 	int height = AppWindow::height;
 	guiController.init(AppWindow::window, width, height);
-	editorLayer.init(guiController);
+	editorLayer.init(&guiController);
 
 	//std::bind(&Application::onClose, this, std::placeholders::_1);
 	eventManager.Subscribe(EventType::WindowClose, [this](Event& event) {
@@ -47,21 +47,27 @@ void Application::run() {
 		// Application
 		eventManager.OnUpdate();
 		sceneManager.onUpdate(glfwGetTime());
-		editorLayer.onUpdate();		// render editor as overlay
+		
+		bool useEditor = true;
+		if (useEditor) {
+			editorLayer.onUpdate();		// render editor as overlay
 
-		//GUI
-		guiController.start();
-		sceneManager.onGuiUpdate(glfwGetTime());
-		editorLayer.onGuiUpdate();	// also render ui after to show overlay
-		guiController.end();
+			//GUI
+			guiController.start();
+			sceneManager.onGuiUpdate(glfwGetTime());
+			editorLayer.onGuiUpdate();	// also render ui after to show overlay
+			guiController.end();
+		}
 
 		AppWindow::onUpdate();
 	}
+	guiController.onClose();
 	AppWindow::end();
 }
 
 void Application::onClose()
 {
+
 	for (auto& [thread, status] : EventManager::getInstance().threads) {
 		thread.join();
 	}

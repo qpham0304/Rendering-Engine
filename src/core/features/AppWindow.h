@@ -39,21 +39,10 @@ public:
 	static GLFWwindow* sharedWindow;
 
 	// currently bind with an app inside window, remove after done refactoring
-	static ImGuiController guiController;
 
 	static int init(Platform platform);		// set up and init the graphics api depending on the platform
 	static int start(const char* title);	// start creating windows and context
 	static int end();						// close and terminate the program
 	static void onUpdate();
-	
-	// legacy demo within the window, might move to a separate project
-	static void renderShadowScene(DepthMap& shadowMap, Shader& shadowMapShader, Light& light);
-	static void renderObjectsScene(FrameBuffer& framebuffer, DepthMap& depthMap, std::vector<Light> lights, unsigned int depthMapPoint);
-	static int renderScene();
-	static int renderScene(std::function<int()> runFunction);
-	static void renderGuizmo(Component& component, const bool drawCube, const bool drawGrid);
-
-	static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-	static void processProgramInput(GLFWwindow* window);
 };
 

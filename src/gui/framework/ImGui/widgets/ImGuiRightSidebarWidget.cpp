@@ -1,19 +1,23 @@
-#include "RightSidebarWidget.h"
-#include "../../core/scene/SceneManager.h"
-#include "../../core/layers/LayerManager.h"
-#include "../../core/components/MComponent.h"
-#include "../../core/components/CubeMapComponent.h"
+#include "ImGuiRightSidebarWidget.h"
 
-RightSidebarWidget::RightSidebarWidget()
+#include "../../src/core/scene/SceneManager.h"
+#include "../../src/core/layers/LayerManager.h"
+#include "../../src/core/components/MComponent.h"
+#include "../../src/core/components/CubeMapComponent.h"
+
+ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
+    :   RightSidebarWidget(),
+        popupOpen(false),
+        selectedTexture(0)
 {
-    popupOpen = false;
+
 }
 
-void RightSidebarWidget::TextureModal(const ImTextureID& id) {
+void ImGuiRightSidebarWidget::TextureModal(const ImTextureID& id) {
     //ImVec2 appSize = ImGui::GetIO().DisplaySize;
     //ImVec2 popupSize = ImVec2(appSize.y * 0.75f, appSize.y * 0.75f);
     //ImGui::SetNextWindowSize(popupSize);
-    
+
     ImGuiStyle& style = ImGui::GetStyle();
     style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0, 0.0, 0.0, 0.5);
     if (ImGui::BeginPopupModal("Image View", &popupOpen, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -46,14 +50,14 @@ void RightSidebarWidget::TextureModal(const ImTextureID& id) {
     }
 }
 
-void RightSidebarWidget::layersControl()
+void ImGuiRightSidebarWidget::layersControl()
 {
     ImGui::Begin("Layers");
 
     ImGui::End();
 }
 
-void RightSidebarWidget::textureView()
+void ImGuiRightSidebarWidget::textureView()
 {
     ImGui::Begin("Texture View");
     TextureModal((ImTextureID)selectedTexture);
@@ -73,13 +77,13 @@ void RightSidebarWidget::textureView()
                     ImGui::Separator();
                     ImGui::Image((ImTextureID)texture.ID, wsize, ImVec2(0, 1), ImVec2(1, 0));
                     ImGui::PopID();
-                    
+
                     if (ImGui::IsItemClicked()) {
                         selectedTexture = texture.ID;
                         ImGui::OpenPopup("Image View");
                         popupOpen = true;
                     }
-                    
+
                     ImGui::SameLine();
                     ImGui::TextWrapped(path.c_str());
                 }
@@ -89,18 +93,18 @@ void RightSidebarWidget::textureView()
     ImGui::End();
 }
 
-void RightSidebarWidget::environmentControl()
+void ImGuiRightSidebarWidget::environmentControl()
 {
     Scene& scene = *SceneManager::getInstance().getActiveScene();
     auto list = scene.getEntitiesWith<CubeMapComponent>();
     CubeMapComponent* cubeMap = nullptr;
-    
+
     if (!list.empty() && list[0].hasComponent<CubeMapComponent>()) {
         cubeMap = &list[0].getComponent<CubeMapComponent>();
     }
 
     ImGui::Begin("Environment Control");
-    
+
     ImVec2 wsize = ImGui::GetWindowSize();
     int wWidth = static_cast<int>(ImGui::GetWindowWidth());
     int wHeight = static_cast<int>(ImGui::GetWindowHeight());
@@ -114,7 +118,7 @@ void RightSidebarWidget::environmentControl()
             path = Utils::fileDialog();
             if (!path.empty()) {
 
-//#define USE_THREAD
+                //#define USE_THREAD
 #ifdef USE_THREAD
                 AsyncEvent event;
                 auto function = [this, cubeMap, path](AsyncEvent& event) mutable {
@@ -141,7 +145,7 @@ void RightSidebarWidget::environmentControl()
                 cubeMap->reloadTexture();
             }
         }
-    
+
     }
 
     else {
@@ -158,7 +162,7 @@ void RightSidebarWidget::environmentControl()
     ImGui::End();
 }
 
-void RightSidebarWidget::render()
+void ImGuiRightSidebarWidget::render()
 {
     Scene* scene = SceneManager::getInstance().getActiveScene();
 

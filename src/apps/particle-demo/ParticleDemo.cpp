@@ -1,6 +1,7 @@
 #include "ParticleDemo.h"
 #include "../../core/features/Timer.h"
 #include "../../core/scene/SceneManager.h"
+#include "../../gui/framework/ImGui/ImGuiController.h"
 
 Scene* scene;
 
