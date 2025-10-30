@@ -261,6 +261,9 @@
     <ClCompile Include="src\gui\framework\ImGui\theme\ImGuiThemes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\features\pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\OpenGL\VAO.h">
@@ -518,9 +521,6 @@
     <ClInclude Include="src\gui\widgets\SubViewWidget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\gui\widgets\Themes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\gui\widgets\Widget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -549,6 +549,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\gui\framework\ImGui\theme\ImGuiThemes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\Themes\Themes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

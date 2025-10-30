@@ -12,8 +12,9 @@
 #include <mutex>
 #include <thread>
 
-//#define PLATFORM_WINDOWS
-//
-//#ifdef PLATFORM_WINDOWS
-//	#include <windows.h>
-//#endif
+#define PLATFORM_WINDOWS
+
+#ifdef PLATFORM_WINDOWS
+	//#include <windows.h>
+	#include "../src/core/Application.h"
+#endif

@@ -6,12 +6,6 @@
 #include <memory>
 #include <ImGuizmo.h>
 #include "./widgets/widget.h"
-#include "./widgets/Themes.h"
-#include "./widgets/MenuWidget.h"
-#include "./widgets/LeftSidebarWidget.h"
-#include "./widgets/RightSidebarWidget.h"
-#include "./widgets/ConsoleLogWidget.h"
-#include "../../../../src/gui/widgets/IconsFontAwesome5.h"
 
 class GuiController {
 private:

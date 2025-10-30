@@ -2,6 +2,7 @@
 #include "../../GuiController.h"
 #include "../../src/core/scene/SceneManager.h"
 #include "../../src/core/features/window/appwindow.h"
+#include "../ImGui/theme/ImGuiThemes.h"
 
 ImGuiController::ImGuiController()
 {
@@ -183,12 +184,12 @@ void ImGuiController::setTheme(bool darkTheme)
 
 void ImGuiController::useLightTheme()
 {
-	Themes::purpleTheme();
+	ImGuiThemes::purpleTheme();
 }
 
 void ImGuiController::useDarkTheme()
 {
-	Themes::darkTheme();
+	ImGuiThemes::darkTheme();
 
 	auto& colors = ImGui::GetStyle().Colors;
 	colors[ImGuiCol_Tab] = ImVec4(1.000f, 0.684f, 0.000f, 0.208f);

@@ -145,6 +145,9 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -168,6 +171,9 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -182,6 +188,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\core\features\pch.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\theme\ImGuiThemes.cpp" />
     <ClCompile Include="src\core\features\window\platform\GLFW\AppWindowGLFW.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.cpp" />
@@ -262,6 +269,7 @@
     <ClCompile Include="src\core\Systems\System.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Headers\pch.h" />
     <ClInclude Include="src\gui\framework\ImGui\theme\ImGuiThemes.h" />
     <ClInclude Include="src\core\features\window\platform\GLFW\AppWindowGLFW.h" />
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.h" />
@@ -348,6 +356,7 @@
     <ClInclude Include="src\core\layers\SSRLayer.h" />
     <ClInclude Include="src\core\Systems\System.h" />
     <ClInclude Include="src\gui\GuiController.h" />
+    <ClInclude Include="src\gui\Themes\Themes.h" />
     <ClInclude Include="src\gui\widgets\ConsoleLogWidget.h" />
     <ClInclude Include="src\gui\widgets\EntityControlWidget.h" />
     <ClInclude Include="src\gui\widgets\IconsFontAwesome5.h" />
@@ -356,7 +365,6 @@
     <ClInclude Include="src\gui\widgets\MenuWidget.h" />
     <ClInclude Include="src\gui\widgets\RightSidebarWidget.h" />
     <ClInclude Include="src\gui\widgets\SubViewWidget.h" />
-    <ClInclude Include="src\gui\widgets\Themes.h" />
     <ClInclude Include="src\gui\widgets\Widget.h" />
   </ItemGroup>
   <ItemGroup>
