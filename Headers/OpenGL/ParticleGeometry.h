@@ -1,10 +1,8 @@
 #pragma once
 
-#include "Camera.h"
 #include "Shader.h"
 
 #include <memory>
-#include <Shader.h>
 
 struct ParticleControl {
 	glm::vec2 randomRange;
@@ -32,6 +30,8 @@ struct ParticleControl {
 
 	}
 };
+
+class Camera;
 
 class ParticleGeometry
 {
@@ -65,6 +65,6 @@ public:
 	void init(const ParticleControl& control);
 	void clear();
 	void reset();
-	void render(Shader& shader, Camera& camera, int& numRender, float& speed, bool& pause);
+	void render(Shader& shader, Camera* camera, int& numRender, float& speed, bool& pause);
 };
 

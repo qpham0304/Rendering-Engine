@@ -4,6 +4,7 @@
 #include "../../core/components/MComponent.h"
 #include "../../core/components/CameraComponent.h"
 #include "../../core/components/CubeMapComponent.h"
+#include "camera.h"
 
 static glm::vec3 lightPositions[] = {
     glm::vec3(20.00f,  20.0f, 0.0),
@@ -133,9 +134,9 @@ void DeferredIBLDemo::renderDeferredPass()
     glActiveTexture(GL_TEXTURE11);
     glBindTexture(GL_TEXTURE_2D, atmosphereScene.texture);
 
-    scene.getShader("colorPassShader")->setMat4("viewMatrix", camera.getViewMatrix());
-    scene.getShader("colorPassShader")->setMat4("invProjection", camera.getInProjectionMatrix());
-    scene.getShader("colorPassShader")->setMat4("inverseView", camera.getInViewMatrix());
+    scene.getShader("colorPassShader")->setMat4("viewMatrix", camera->getViewMatrix());
+    scene.getShader("colorPassShader")->setMat4("invProjection", camera->getInProjectionMatrix());
+    scene.getShader("colorPassShader")->setMat4("inverseView", camera->getInViewMatrix());
     scene.getShader("colorPassShader")->setBool("gamma", true);
     scene.getShader("colorPassShader")->setBool("sampleRadius", 2);
     scene.getShader("colorPassShader")->setBool("time", glfwGetTime());
@@ -250,9 +251,9 @@ void DeferredIBLDemo::renderSkyView()
     skyViewShader.setVec2("iChannelResolution1", glm::vec2(width, height));
     skyViewShader.setFloat("iTime", currentFrame);
     skyViewShader.setVec2("iMouse", glm::vec2(0.0, 0.0));
-    skyViewShader.setVec3("camPos", camera.getPosition());
-    skyViewShader.setMat4("viewMatrix", camera.getViewMatrix());
-    skyViewShader.setMat4("projectionMatrix", camera.getProjectionMatrix());
+    skyViewShader.setVec3("camPos", camera->getPosition());
+    skyViewShader.setMat4("viewMatrix", camera->getViewMatrix());
+    skyViewShader.setMat4("projectionMatrix", camera->getProjectionMatrix());
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, transmittanceLUT.texture);
@@ -271,11 +272,11 @@ void DeferredIBLDemo::renderSkyView()
     atmosphereShader.setInt("multipleScatteredLUT", 2);
     atmosphereShader.setVec2("LUTResolution", glm::vec2(width, height));
     atmosphereShader.setFloat("iTime", currentFrame);
-    atmosphereShader.setVec3("camPos", camera.getPosition());
-    atmosphereShader.setMat4("viewMatrix", camera.getViewMatrix());
-    atmosphereShader.setMat4("projectionMatrix", camera.getProjectionMatrix());
-    atmosphereShader.setMat4("invProjection", camera.getInProjectionMatrix());
-    atmosphereShader.setMat4("invView", camera.getInViewMatrix());
+    atmosphereShader.setVec3("camPos", camera->getPosition());
+    atmosphereShader.setMat4("viewMatrix", camera->getViewMatrix());
+    atmosphereShader.setMat4("projectionMatrix", camera->getProjectionMatrix());
+    atmosphereShader.setMat4("invProjection", camera->getInProjectionMatrix());
+    atmosphereShader.setMat4("invView", camera->getInViewMatrix());
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, skyViewLUT.texture);
@@ -370,10 +371,10 @@ void DeferredIBLDemo::renderSSAO()
         ssaoShader.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]);
     }
 
-    ssaoShader.setMat4("invProjection", camera.getInProjectionMatrix());
-    ssaoShader.setMat4("invView", camera.getInViewMatrix());
-    ssaoShader.setMat4("projection", camera.getProjectionMatrix());
-    ssaoShader.setMat4("view", camera.getViewMatrix());
+    ssaoShader.setMat4("invProjection", camera->getInProjectionMatrix());
+    ssaoShader.setMat4("invView", camera->getInViewMatrix());
+    ssaoShader.setMat4("projection", camera->getProjectionMatrix());
+    ssaoShader.setMat4("view", camera->getViewMatrix());
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glActiveTexture(GL_TEXTURE0);
@@ -430,10 +431,10 @@ void DeferredIBLDemo::renderSSR()
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, lightPassFBO.texture);
 
-    SSRShader.setMat4("view", camera.getViewMatrix());
-    SSRShader.setMat4("projection", camera.getProjectionMatrix());
-    SSRShader.setMat4("invView", glm::inverse(camera.getViewMatrix()));
-    SSRShader.setMat4("invProjection", glm::inverse(camera.getProjectionMatrix()));
+    SSRShader.setMat4("view", camera->getViewMatrix());
+    SSRShader.setMat4("projection", camera->getProjectionMatrix());
+    SSRShader.setMat4("invView", glm::inverse(camera->getViewMatrix()));
+    SSRShader.setMat4("invProjection", glm::inverse(camera->getProjectionMatrix()));
     SSRShader.setInt("width", AppWindow::width);
     SSRShader.setInt("height", AppWindow::height);
 
@@ -471,7 +472,7 @@ void DeferredIBLDemo::renderShadow()
     //glEnable(GL_DEPTH_TEST);
 
     shadowShader.Activate();
-    //shadowShader.setMat4("mvp", cameraComponents[0].getComponent<CameraComponent>().camera.getMVP());
+    //shadowShader.setMat4("mvp", cameraComponents[0].getComponent<CameraComponent>().camera->getMVP());
     shadowShader.setMat4("mvp", lightMVP);
     
     for (auto entity : entities) {
@@ -539,8 +540,8 @@ void DeferredIBLDemo::renderForwardPass()
 
     pbrShader.Activate();
     pbrShader.setMat4("matrix", glm::mat4(1.0f));
-    pbrShader.setMat4("mvp", camera.getMVP());
-    pbrShader.setVec3("camPos", camera.getPosition());
+    pbrShader.setMat4("mvp", camera->getMVP());
+    pbrShader.setVec3("camPos", camera->getPosition());
     pbrShader.setBool("gamma", true);
 
     auto list = scene.getEntitiesWith<CubeMapComponent>();
@@ -621,7 +622,7 @@ void DeferredIBLDemo::renderForwardPass()
             scene.getShader("lightShader")->Activate();
             scene.getShader("lightShader")->setMat4("matrix", model);
             scene.getShader("lightShader")->setVec3("lightColor", glm::normalize(light.color));
-            scene.getShader("lightShader")->setMat4("mvp", camera.getMVP());
+            scene.getShader("lightShader")->setMat4("mvp", camera->getMVP());
         }
         Utils::OpenGL::Draw::drawSphere(sphereVAO, indexCount);
         index++;
@@ -672,15 +673,15 @@ void DeferredIBLDemo::renderPrePass()
     for (auto& entity : entities) {
         ModelComponent model = entity.getComponent<ModelComponent>();
         glm::mat4& modelMatrix = entity.getComponent<TransformComponent>().getModelMatrix();
-        glm::mat4 modelViewNormal = glm::transpose(glm::inverse(camera.getViewMatrix() * modelMatrix));
+        glm::mat4 modelViewNormal = glm::transpose(glm::inverse(camera->getViewMatrix() * modelMatrix));
         
         scene.getShader("gPassShader")->setFloat("reflectiveMap", 1.0);
         scene.getShader("gPassShader")->setBool("invertedNormals", false);
         scene.getShader("gPassShader")->setBool("invertedTexCoords", false);
         scene.getShader("gPassShader")->setMat4("model", modelMatrix);
         scene.getShader("gPassShader")->setMat4("modelViewNormal", modelViewNormal);
-        scene.getShader("gPassShader")->setMat4("mvp", camera.getMVP() * modelMatrix);
-        scene.getShader("gPassShader")->setMat4("inverseViewMat", camera.getInViewMatrix());
+        scene.getShader("gPassShader")->setMat4("mvp", camera->getMVP() * modelMatrix);
+        scene.getShader("gPassShader")->setMat4("inverseViewMat", camera->getInViewMatrix());
 
         bool hasAnimation = entity.hasComponent<AnimationComponent>();
         scene.getShader("gPassShader")->setBool("hasAnimation", hasAnimation);
@@ -728,7 +729,7 @@ void DeferredIBLDemo::OnAttach()
     setupSSR();
     setupShadow();
 
-    SceneManager::cameraController = &camera;
+    SceneManager::cameraController = camera;
     LayerManager::addFrameBuffer("DeferredIBLDemo", applicationFBO);
     Scene& scene = *SceneManager::getInstance().getActiveScene();
 
@@ -771,7 +772,7 @@ void DeferredIBLDemo::OnAttach()
             cameraTransform.translateVec,
             glm::vec3(0.5, -0.2, -1.0f)
         );
-        //auto pos = cameraEntity.getComponent<CameraComponent>().camera.getPosition();
+        //auto pos = cameraEntity.getComponent<CameraComponent>().camera->getPosition();
         //Console::println(pos.x, " ", pos.y, " ", pos.z);
         cameraEntity.onCameraComponentAdded();
         cameraTransform.translate(glm::vec3(-6.5f, 3.5f, 8.5f));

@@ -1,5 +1,6 @@
 #include "../AppLayer.h"
 #include "../../scene/SceneManager.h"
+#include "camera.h"
 
 void AppLayer::renderControl()
 {
@@ -23,12 +24,12 @@ void AppLayer::renderApplication(const int& fboTexture)
 			ImGui::Image((ImTextureID)fboTexture, wsize, ImVec2(0, 1), ImVec2(1, 0));
 		}
 		//(ImGui::IsItemHovered() && ImGui::IsWindowFocused()) ? isActive = true : false;
-		if (camera.getViewWidth() != wWidth || camera.getViewHeight() != wHeight) {
-			camera.updateViewResize(wWidth, wHeight);
+		if (camera->getViewWidth() != wWidth || camera->getViewHeight() != wHeight) {
+			camera->updateViewResize(wWidth, wHeight);
 		}
 
 		if (ImGui::IsItemHovered() && ImGui::IsWindowFocused()) {
-			camera.processKeyboard(AppWindow::window);
+			camera->processKeyboard(AppWindow::window);
 			isActive = true;
 		}
 		else {
@@ -49,7 +50,8 @@ AppLayer::AppLayer(const std::string& name) : Layer(name), isActive(false), VAO(
 		GL_FLOAT,
 		nullptr
 	);
-	camera.init(
+	camera = new Camera();
+	camera->init(
 		AppWindow::width, 
 		AppWindow::height, 
 		glm::vec3(-6.5f, 3.5f, 8.5f), 
@@ -69,20 +71,20 @@ void AppLayer::OnAttach()
 	eventManager.Subscribe(EventType::MouseScrolled, [this](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
 		if (isActive) {
-			camera.scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
+			camera->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
 		}
 	});
 
 	eventManager.Subscribe(EventType::MouseMoved, [this](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 		if (isActive) {
-			camera.processMouse(mouseEvent.window);
+			camera->processMouse(mouseEvent.window);
 		}
 	});
 
 	eventManager.Subscribe(EventType::WindowResize, [this](Event& event) {
 		WindowResizeEvent& windowResizeEvent = static_cast<WindowResizeEvent&>(event);
-		camera.updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
+		camera->updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
 	});
 }
 
@@ -93,7 +95,7 @@ void AppLayer::OnDetach()
 
 void AppLayer::OnUpdate()
 {
-	camera.onUpdate();
+	camera->onUpdate();
 }
 
 void AppLayer::OnGuiUpdate()

@@ -3,8 +3,9 @@
 #include <Shader.h>
 #include <Texture.h>
 #include <skybox.h>
-#include <camera.h>
 #include <algorithm>
+
+class Camera;
 
 class SkyboxRenderer
 {
@@ -32,8 +33,8 @@ public:
 	void setUniform();
 	void updateTexture(const unsigned int& ID);
 	unsigned int getTextureID();
-	void render(Camera& camera);
-	void render(Camera& camera, const unsigned int&);
+	void render(Camera* camera);
+	void render(Camera* camera, const unsigned int&);
 	void free();
 };
 

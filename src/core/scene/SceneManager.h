@@ -10,9 +10,9 @@
 #include <mutex>
 #include <thread>
 #include "../src/graphics/renderer/SkyboxRenderer.h"
-#include "../components/legacy/Component.h"
-#include "../components/legacy/LightComponent.h"
 #include "Scene.h"
+
+class Camera;
 
 class SceneManager {
 private:
@@ -44,8 +44,6 @@ public:
 	static SceneManager& getInstance();
 
 	//static std::mutex mutex;
-	static std::unordered_map<std::string, std::unique_ptr<Component>> components; //take uuid 
-	static std::unordered_map<std::string, std::unique_ptr<LightComponent>> lights;
 	static Camera* cameraController;
 	static bool gammaCorrection;
 
@@ -61,23 +59,5 @@ public:
 	bool removeModel(const std::string& path);
 	std::string addAnimation(const std::string& path, Model* model);
 	bool removeAnimation(const std::string& path);
-
-	
-	//TODO: refactor these static functions into a new project or remove them completely
-	static void renderPBR(Light& light, UniformProperties& uniforms);
-	static void render(std::vector<Light> light, UniformProperties& uniforms);
-	static void renderShadow(Shader& shadowMapShader, Light& light);
-	static Component* getComponent(std::string id);
-	static Component* getSelectedComponent();
-	static std::string getSelectedID();
-	static int getNumVertices();
-	static void setSelectedID(std::string id);
-	static std::string addComponent(Component& component);
-	static std::string addComponent(const char* path);
-	static std::string addPointLight(glm::vec3 position, glm::vec4 color);
-	static void updatecomponent(std::string id);
-	static void removeComponent(std::string id);
-	static void addShader();
-	static void removeShader();
 };
 

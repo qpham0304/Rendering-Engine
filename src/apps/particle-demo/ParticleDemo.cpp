@@ -2,13 +2,11 @@
 #include "../../core/features/Timer.h"
 #include "../../core/scene/SceneManager.h"
 #include "../../gui/framework/ImGui/ImGuiController.h"
-
-Scene* scene;
+#include "camera.h"
 
 ParticleDemo::ParticleDemo(const std::string& name) : AppLayer(name)
 {
     particleRenderer.init(particleControl);
-    scene = SceneManager::getInstance().getActiveScene();
 }
 
 void ParticleDemo::OnAttach()
@@ -45,7 +43,7 @@ void ParticleDemo::OnUpdate()
     glViewport(0.0, 0.0, AppWindow::width, AppWindow::height);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // RGBA
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    particleRenderer.render(particleShader, *SceneManager::cameraController, numRender, speed, pause);
+    particleRenderer.render(particleShader, SceneManager::cameraController, numRender, speed, pause);
     //skybox->render(camera);
     applicationFBO.Unbind();
 }
@@ -139,9 +137,9 @@ int ParticleDemo::show_demo()
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // RGBA
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        demo->particleRenderer.render(particleShader, camera, demo->numRender, demo->speed, demo->pause);
+        demo->particleRenderer.render(particleShader, &camera, demo->numRender, demo->speed, demo->pause);
 
-        skybox.render(camera);
+        skybox.render(&camera);
 
         applicationFBO.Unbind();
 

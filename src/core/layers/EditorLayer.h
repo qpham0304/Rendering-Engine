@@ -5,12 +5,13 @@
 #include "../../events/EventManager.h"
 #include "../../gui/GuiController.h"
 
+class Camera;
 class EditorLayer
 {
 private:
 	//class GuiController;
 
-	Camera editorCamera;
+	Camera* editorCamera;
 	SceneManager& sceneManager = SceneManager::getInstance();
 	EventManager& eventManager = EventManager::getInstance();
 	GuiController* guiController = nullptr;

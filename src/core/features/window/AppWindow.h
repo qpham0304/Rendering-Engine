@@ -1,20 +1,7 @@
 #pragma once
 
-#include "camera.h" // lots of dependencies here
-#include <Animation.h>
-#include <FrameBuffer.h>
-#include <DepthMap.h>
-#include <DepthCubeMap.h>
-#include <imgui_internal.h>
 #include <set>
-#include <future>
-#include <mutex>
-#include <thread>
 #include "../../src/gui/GuiController.h"
-#include "../../src/graphics/utils/Utils.h"
-#include "../../src/core/components/legacy/Component.h"
-#include "../../src/graphics/renderer/SkyboxRenderer.h"
-#include "../../src/core/components/legacy/LightComponent.h"
 
 enum Platform {
 	PLATFORM_UNDEFINED, PLATFORM_OPENGL, PLATFORM_VULKAN, PLATFORM_DIRECTX,

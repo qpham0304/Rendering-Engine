@@ -20,23 +20,23 @@ void EditorLayer::mockThreadTasks()
 {
 	AsyncEvent addComponentEvent;
 	auto func = [](Event& event) -> void {
-		Component reimu("Models/reimu/reimu.obj");
-		SceneManager::addComponent(reimu);
-		};
+		//Component reimu("Models/reimu/reimu.obj");
+		//SceneManager::addComponent(reimu);
+	};
 	eventManager.Queue(addComponentEvent, func);
 
 	AsyncEvent addComponentEvent1;
 	auto func1 = [](Event& event) -> void {
-		Component reimu("Models/sponza/sponza.obj");
-		SceneManager::addComponent(reimu);
-		};
+		//Component reimu("Models/sponza/sponza.obj");
+		//SceneManager::addComponent(reimu);
+	};
 	eventManager.Queue(addComponentEvent1, func1);
 
 	AsyncEvent addComponentEvent2;
 	auto func2 = [](Event& event) -> void {
-		Component reimu("Models/aru/aru.gltf");
-		SceneManager::addComponent(reimu);
-		};
+		//Component reimu("Models/aru/aru.gltf");
+		//SceneManager::addComponent(reimu);
+	};
 	eventManager.Queue(addComponentEvent2, func2);
 }
 
@@ -111,7 +111,8 @@ void EditorLayer::init(GuiController* controller)
 {
 	guiController = controller;
 	guiController->useDarkTheme();
-	editorCamera.init(AppWindow::width, AppWindow::height, glm::vec3(1.0, 0.0, 0.0), glm::vec3(1.0));
+	editorCamera = new Camera();
+	editorCamera->init(AppWindow::width, AppWindow::height, glm::vec3(1.0, 0.0, 0.0), glm::vec3(1.0));
 	sceneManager.addScene("default");
 	//sceneManager.getScene("default")->addLayer(new ParticleDemo("demo"));
 	//sceneManager.getScene("default")->addLayer(new AppLayer("app"));
@@ -191,7 +192,7 @@ void EditorLayer::onDetach()
 
 void EditorLayer::onUpdate()
 {
-	editorCamera.onUpdate();
+	editorCamera->onUpdate();
 	auto framebuffer = LayerManager::getFrameBuffer("DeferredIBLDemo");
 	
 	Scene& scene = *SceneManager::getInstance().getActiveScene();

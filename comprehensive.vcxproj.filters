@@ -126,12 +126,6 @@
     <ClCompile Include="src\graphics\core\OpenGL\BloomRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\core\OpenGL\DeferredRenderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\core\OpenGL\ShadowMapRenderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -156,16 +150,10 @@
     <ClCompile Include="src\core\scene\SceneManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\components\legacy\LightComponent.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\core\components\ModelComponent.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\scene\Scene.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\core\components\legacy\Component.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\core\OpenGL\SkyboxRenderer.cpp">
@@ -264,6 +252,9 @@
     <ClCompile Include="src\core\features\pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\components\LightComponent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\OpenGL\VAO.h">
@@ -318,9 +309,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\OpenGL\Axis.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\graphics\SceneManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Libraries\include\ImGuizmo\GraphEditor.h">
@@ -404,15 +392,6 @@
     <ClInclude Include="src\core\scene\Scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\components\legacy\Component.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\components\legacy\GridComponent.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\components\legacy\LightComponent.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\core\components\ModelComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -461,13 +440,7 @@
     <ClInclude Include="src\core\components\CameraComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\renderer\DeferredRenderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\graphics\renderer\BloomRenderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\graphics\renderer\ShadowMapRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Libraries\include\glad\glad.h">
@@ -555,6 +528,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\components\LightComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

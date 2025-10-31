@@ -5,15 +5,14 @@
 #include <Shader.h>
 #include "Layer.h"
 #include "../../core/features/window/appwindow.h"
-#include "camera.h"
 #include "../../src/events/EventManager.h"
-#include "LayerManager.h"
+#include "../../src/graphics/renderer/SkyboxRenderer.h"
 
 class AppLayer : public Layer
 {
 protected:
 	FrameBuffer applicationFBO;
-	Camera camera;
+	Camera* camera;
 	std::unique_ptr<SkyboxRenderer> skybox;
 	unsigned int VAO, VBO;
 	bool isActive;

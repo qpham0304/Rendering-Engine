@@ -1,6 +1,7 @@
 #include "ParticleGeometry.h"
 #include "../src/graphics/utils/Utils.h"
 #include "../../../core/features/Timer.h"
+#include "camera.h"
 
 static const float g = 9.8f; // Gravity
 static const float rho = 1.225f; // Air density
@@ -120,13 +121,13 @@ void ParticleGeometry::reset() {
     std::fill(flyDirections.begin(), flyDirections.end(), glm::vec3(0.0));
 }
 
-void ParticleGeometry::render(Shader& shader, Camera& camera, int& numRender, float& speed, bool& pause) {
+void ParticleGeometry::render(Shader& shader, Camera* camera, int& numRender, float& speed, bool& pause) {
     shader.Activate();
-    shader.setMat4("mvp", camera.getMVP());
+    shader.setMat4("mvp", camera->getMVP());
     shader.setVec3("lightColor", glm::vec3(0.7, 0.8, 1.0));
 
     if (!matrixModels.empty()) {
-        glm::mat4 viewMatrix = camera.getViewMatrix();
+        glm::mat4 viewMatrix = camera->getViewMatrix();
         glm::vec3 camRight = glm::vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
         glm::vec3 camUp = glm::vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
 
@@ -142,7 +143,7 @@ void ParticleGeometry::render(Shader& shader, Camera& camera, int& numRender, fl
 
         for (unsigned int i = 0; i < numRender; i++) {
             if (!pause) {
-                float velocity = speed * camera.getDeltaTime();
+                float velocity = speed * camera->getDeltaTime();
                 //flyDirections[i].x -= weights[i] * velocity;
                 flyDirections[i].y -= weights[i] * velocity;
                 //flyDirections[i].z -= weights[i] * velocity;

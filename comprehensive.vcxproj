@@ -188,6 +188,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\core\components\LightComponent.cpp" />
     <ClCompile Include="src\core\features\pch.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\theme\ImGuiThemes.cpp" />
     <ClCompile Include="src\core\features\window\platform\GLFW\AppWindowGLFW.cpp" />
@@ -223,8 +224,6 @@
     <ClCompile Include="src\graphics\core\OpenGL\Renderer.cpp" />
     <ClCompile Include="src\core\components\ModelComponent.cpp" />
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
-    <ClCompile Include="src\graphics\core\OpenGL\ShadowMapRenderer.cpp" />
-    <ClCompile Include="src\graphics\core\OpenGL\DeferredRenderer.cpp" />
     <ClCompile Include="src\graphics\core\OpenGL\ImageBasedRenderer.cpp" />
     <ClCompile Include="src\graphics\core\OpenGL\BloomRenderer.cpp" />
     <ClCompile Include="src\graphics\core\OpenGL\BloomFBO.cpp" />
@@ -234,12 +233,10 @@
     <ClCompile Include="Libraries\include\ImGuizmo\ImGradient.cpp" />
     <ClCompile Include="Libraries\include\ImGuizmo\ImGuizmo.cpp" />
     <ClCompile Include="Libraries\include\ImGuizmo\ImSequencer.cpp" />
-    <ClCompile Include="src\core\components\legacy\LightComponent.cpp" />
     <ClCompile Include="src\graphics\utils\Utils.cpp" />
     <ClCompile Include="src\core\features\window\AppWindow.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\ImGuiController.cpp" />
     <ClCompile Include="src\graphics\core\OpenGL\FrameBuffer.cpp" />
-    <ClCompile Include="src\core\components\legacy\Component.cpp" />
     <ClCompile Include="src\graphics\core\OpenGL\SkyboxRenderer.cpp" />
     <ClCompile Include="src\graphics\core\OpenGL\Animation.cpp" />
     <ClCompile Include="src\graphics\core\OpenGL\Animator.cpp" />
@@ -270,6 +267,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\pch.h" />
+    <ClInclude Include="src\core\components\LightComponent.h" />
     <ClInclude Include="src\gui\framework\ImGui\theme\ImGuiThemes.h" />
     <ClInclude Include="src\core\features\window\platform\GLFW\AppWindowGLFW.h" />
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.h" />
@@ -293,9 +291,6 @@
     <ClInclude Include="Libraries\include\entt\entt.hpp" />
     <ClInclude Include="src\core\features\Profiler.h" />
     <ClInclude Include="src\core\scene\Scene.h" />
-    <ClInclude Include="src\core\components\legacy\Component.h" />
-    <ClInclude Include="src\core\components\legacy\GridComponent.h" />
-    <ClInclude Include="src\core\components\legacy\LightComponent.h" />
     <ClInclude Include="src\core\components\ModelComponent.h" />
     <ClInclude Include="src\graphics\renderer\SkyboxRenderer.h" />
     <ClInclude Include="src\core\layers\AppLayer.h" />
@@ -314,12 +309,10 @@
     <ClInclude Include="src\graphics\renderer\Renderer.h" />
     <ClInclude Include="src\core\components\headers\ModelComponent.h" />
     <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
-    <ClInclude Include="src\graphics\renderer\DeferredRenderer.h" />
     <ClInclude Include="src\graphics\renderer\BloomRenderer.h" />
     <ClInclude Include="Headers\OpenGL\BloomFBO.h" />
     <ClInclude Include="Headers\OpenGL\DepthCubeMap.h" />
     <ClInclude Include="src\graphics\renderer\ImageBasedRenderer.h" />
-    <ClInclude Include="src\graphics\renderer\ShadowMapRenderer.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\GraphEditor.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\ImCurveEdit.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\ImGradient.h" />
@@ -337,7 +330,6 @@
     <ClInclude Include="Headers\OpenGL\Animator.h" />
     <ClInclude Include="Headers\OpenGL\assimp_glm_helpers.h" />
     <ClInclude Include="Headers\OpenGL\Bone.h" />
-    <ClInclude Include="src\graphics\SceneManager.h" />
     <ClInclude Include="src\core\components\headers\GridComponent.h" />
     <ClInclude Include="src\core\components\headers\Component.h" />
     <ClInclude Include="Headers\OpenGL\camera.h" />

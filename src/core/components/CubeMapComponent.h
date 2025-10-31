@@ -3,6 +3,8 @@
 #include "../src/graphics/renderer/ImageBasedRenderer.h"
 #include "../src/graphics/renderer/SkyboxRenderer.h"
 
+class Camera;
+
 class CubeMapComponent
 {
 private:
@@ -17,7 +19,7 @@ public:
 	CubeMapComponent(const std::string& path);
 	~CubeMapComponent();
 
-	void render(Camera& camera);
+	void render(Camera* camera);
 	void bindIBL();
 	void reloadTexture(const std::string& path = "Textures/default/metallic.png");
 	void reloadTexture(const unsigned int& textureID);

@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <Shader.h>
-#include "../../src/core/components/legacy/component.h"
 
 class Renderer
 {

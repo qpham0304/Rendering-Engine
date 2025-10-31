@@ -1,4 +1,7 @@
 #include "../../renderer/DeferredRenderer.h"
+#include "../../src/core/components/LightComponent.h"
+#include "../../src/core/components/MComponent.h"
+#include "Camera.h"
 
 DeferredRenderer::DeferredRenderer(const int width, const int height)
 {
@@ -64,8 +67,9 @@ DeferredRenderer::DeferredRenderer(const int width, const int height)
 
 }
 
-void DeferredRenderer::renderGeometry(Camera& camera, std::vector<Component*>& components)
+void DeferredRenderer::renderGeometry(Camera* cameraPtr, std::vector<Component*>& components)
 {
+    Camera& camera = *cameraPtr;
     glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glm::mat4 projection = glm::perspective(glm::radians(camera.getFOV()), (float)width / (float)height, 0.1f, 100.0f);
@@ -84,8 +88,9 @@ void DeferredRenderer::renderGeometry(Camera& camera, std::vector<Component*>& c
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void DeferredRenderer::renderGeometry(Camera& camera, Component& component)
+void DeferredRenderer::renderGeometry(Camera* cameraPtr, Component& component)
 {
+    Camera& camera = *cameraPtr;
     glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glm::mat4 projection = glm::perspective(glm::radians(camera.getFOV()), (float)width / (float)height, 0.1f, 100.0f);
@@ -113,8 +118,9 @@ void DeferredRenderer::renderGeometry(Camera& camera, Component& component)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void DeferredRenderer::renderColor(Camera& camera, std::vector<Light>& lights)
+void DeferredRenderer::renderColor(Camera* cameraPtr, std::vector<Light>& lights)
 {
+    Camera& camera = *cameraPtr;
     colorShader->Activate();
     colorShader->setInt("gPosition", 0);
     colorShader->setInt("gNormal", 1);

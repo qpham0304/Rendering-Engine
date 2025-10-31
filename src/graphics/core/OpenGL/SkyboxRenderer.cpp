@@ -1,4 +1,5 @@
 #include "../../renderer/SkyboxRenderer.h"
+#include "Camera.h"
 
 void SkyboxRenderer::setup()
 {
@@ -103,10 +104,10 @@ unsigned int SkyboxRenderer::getTextureID()
 	return skybox.textureID();
 }
 
-void SkyboxRenderer::render(Camera& camera)
+void SkyboxRenderer::render(Camera* camera)
 {
-	glm::mat4 projection = camera.getProjectionMatrix();
-	glm::mat4 viewMatrix = glm::mat4(glm::mat3(camera.getViewMatrix()));	 // remove translation from the view matrix
+	glm::mat4 projection = camera->getProjectionMatrix();
+	glm::mat4 viewMatrix = glm::mat4(glm::mat3(camera->getViewMatrix()));	 // remove translation from the view matrix
 	
 	// change depth function so depth test passes when values are equal to depth buffer's content
 	glDepthFunc(GL_LEQUAL);				
@@ -123,10 +124,10 @@ void SkyboxRenderer::render(Camera& camera)
 	glDepthFunc(GL_LESS);
 }
 
-void SkyboxRenderer::render(Camera& camera, const unsigned int& ID)
+void SkyboxRenderer::render(Camera* camera, const unsigned int& ID)
 {
-	glm::mat4 projection = camera.getProjectionMatrix();
-	glm::mat4 viewMatrix = glm::mat4(glm::mat3(camera.getViewMatrix()));	 // remove translation from the view matrix
+	glm::mat4 projection = camera->getProjectionMatrix();
+	glm::mat4 viewMatrix = glm::mat4(glm::mat3(camera->getViewMatrix()));	 // remove translation from the view matrix
 
 	// change depth function so depth test passes when values are equal to depth buffer's content
 	glDepthFunc(GL_LEQUAL);

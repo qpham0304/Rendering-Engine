@@ -1,4 +1,6 @@
 #include "../../renderer/ShadowMapRenderer.h"
+#include "../../../core/components/MComponent.h"
+#include "../../../core/components/LightComponent.h"
 
 ShadowMapRenderer::ShadowMapRenderer(const unsigned int width, const unsigned int height)
 {

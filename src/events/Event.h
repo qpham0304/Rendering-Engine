@@ -1,10 +1,10 @@
 #pragma once
 
 #include <string>
-#include<glad/glad.h>
-#include<GLFW/glfw3.h>
-#include "../core/components/legacy/component.h"
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include "../core/entities/Entity.h"
+#include "../core/components/MComponent.h"
 
 enum class EventType
 {
