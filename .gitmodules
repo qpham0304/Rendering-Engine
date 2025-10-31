@@ -4,3 +4,6 @@
 [submodule "Libraries/include/ImGuizmo"]
 	path = Libraries/include/ImGuizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo.git
+[submodule "Libraries/include/external/json"]
+	path = Libraries/include/external/json
+	url = https://github.com/nlohmann/json
