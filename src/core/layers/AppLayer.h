@@ -4,8 +4,6 @@
 #include <memory>
 #include <Shader.h>
 #include "Layer.h"
-#include "../../core/features/window/appwindow.h"
-#include "../../src/events/EventManager.h"
 #include "../../src/graphics/renderer/SkyboxRenderer.h"
 
 class AppLayer : public Layer

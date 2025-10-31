@@ -9,16 +9,10 @@
 #include <thread>
 #include "Event.h"
 #include "EventListener.h"
-#include "../core/features/Timer.h"
+#include "../../src/core/features/Timer.h"
 
 class EventManager
 {
-private:
-	EventManager() = default;
-	void PublishAsync(EventListener& eventListener);
-	void CleanUpThread();
-	int runningTasks = 0;
-
 public:
 	using EventCallback = std::function<void(Event&)>;
 	using AsyncCallback = std::function<void(AsyncEvent&)>;
@@ -49,7 +43,13 @@ public:
 	void OnUpdate();
 	std::vector<std::pair<std::thread, bool*>> threads;
 
+
 private:
+	EventManager() = default;
+	void PublishAsync(EventListener& eventListener);
+	void CleanUpThread();
+	int runningTasks = 0;
+
 	uint32_t callbackID;
 	std::unordered_map<std::string, std::vector<EventListener>> listeners;
 	std::unordered_map<EventType, std::vector<std::pair<uint32_t, EventCallback>>> callbacks;

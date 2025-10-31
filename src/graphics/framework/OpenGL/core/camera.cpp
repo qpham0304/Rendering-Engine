@@ -4,7 +4,7 @@
 #include "camera.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include "Input.h"
+#include "../../src/window/Input.h"
 
 Camera::Camera()
 {
@@ -173,7 +173,7 @@ void Camera::resetCamera()
 	speed = DEFAULT_SPEED;
 	sensitivity = DEFAULT_SENSITIVITY;
 	yaw = DEFAULT_YAW;
-	pitch = DEFAULT_PITCH_2;
+	pitch = DEFAULT_PITCH_;
 	fov = DEFAULT_FOV;
 	nearPlane = DEFAULT_NEARPLANE;
 	farPlane = DEFAULT_FARPLANE;

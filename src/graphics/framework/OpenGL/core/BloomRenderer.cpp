@@ -1,5 +1,5 @@
-#include "../../renderer/BloomRenderer.h"
-#include "../../utils/Utils.h"
+#include "../../src/graphics/renderer/BloomRenderer.h"
+#include "../../src/graphics/utils/Utils.h"
 
 BloomRenderer::BloomRenderer() : mInit(false) {}
 BloomRenderer::~BloomRenderer() {}

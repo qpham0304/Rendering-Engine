@@ -2,14 +2,15 @@
 
 #include <memory>
 #include "../../core/scene/SceneManager.h"
-#include "../../events/EventManager.h"
-#include "../../gui/GuiController.h"
+#include "../../src/core/events/EventManager.h"
+#include "../../gui/GuiController.h" //TODO: resolve guizmo dependency
 
 class Camera;
+//class GuiController;
+
 class EditorLayer
 {
 private:
-	//class GuiController;
 
 	Camera* editorCamera;
 	SceneManager& sceneManager = SceneManager::getInstance();

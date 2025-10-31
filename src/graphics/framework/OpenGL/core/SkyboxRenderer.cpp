@@ -1,4 +1,4 @@
-#include "../../renderer/SkyboxRenderer.h"
+#include "../../src/graphics/renderer/SkyboxRenderer.h"
 #include "Camera.h"
 
 void SkyboxRenderer::setup()

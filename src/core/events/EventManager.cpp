@@ -1,5 +1,4 @@
 #include "EventManager.h"
-#include "../graphics/utils/Utils.h"
 
 EventManager& EventManager::getInstance()
 {
@@ -20,6 +19,8 @@ uint32_t EventManager::Subscribe(EventType eventType, EventCallback callback)
 	return callbackID++;
 }
 
+//TODO: check what happen if an event is removed mid iteration? 
+// also what about synchronization?
 void EventManager::Unsubscribe(EventType eventType, uint32_t cbID)
 {
 	auto& vector = callbacks[eventType];

@@ -2,6 +2,8 @@
 #include "../../core/features/Timer.h"
 #include "../../core/scene/SceneManager.h"
 #include "../../gui/framework/ImGui/ImGuiController.h"
+#include "../../src/window/AppWindow.h"
+#include "../../src/core/events/EventManager.h"
 #include "camera.h"
 
 ParticleDemo::ParticleDemo(const std::string& name) : AppLayer(name)

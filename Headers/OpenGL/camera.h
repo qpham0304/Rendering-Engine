@@ -2,22 +2,22 @@
 
 #include <glm/glm.hpp>
 
-static const float DEFAULT_SPEED = 0.1f;
-static const float DEFAULT_SENSITIVITY = 0.1f;;
-static const float DEFAULT_YAW = -90.0f;
-//static const float DEFAULT_PITCH = 0.0f;
-static const float DEFAULT_PITCH_2 = 0.0f;
-static const float DEFAULT_FOV = 45.0f;
-static const float DEFAULT_NEARPLANE = 0.1f;
-static const float DEFAULT_FARPLANE = 5000.0f;
-static const unsigned int DEFAULT_WIDTH = 720;
-static const unsigned int DEFAULT_HEIGHT = 1280;
-
 class GLFWwindow;	//TODO decouple GLFW to a more abstract platform
 
 class Camera
 {
 private:
+	const float DEFAULT_SPEED = 0.1f;
+	const float DEFAULT_SENSITIVITY = 0.1f;
+	const float DEFAULT_YAW = -90.0f;
+	const float DEFAULT_PITCH_ = 0.0f;
+	const float DEFAULT_FOV = 45.0f;
+	const float DEFAULT_NEARPLANE = 0.1f;
+	const float DEFAULT_FARPLANE = 5000.0f;
+	const unsigned int DEFAULT_WIDTH = 720;
+	const unsigned int DEFAULT_HEIGHT = 1280;
+
+
 	glm::vec3 defaultPosition = glm:: vec3(0.0f, 0.0f, 3.0f);
 	glm::vec3 defaultOrientation = glm::vec3(0.01f, 0.0f, -1.0f);
 	glm::vec3 defaultUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -42,7 +42,7 @@ private:
 	float speed = DEFAULT_SPEED;
 	float sensitivity = DEFAULT_SENSITIVITY;
 	float yaw = DEFAULT_YAW;
-	float pitch = DEFAULT_PITCH_2;
+	float pitch = DEFAULT_PITCH_;
 	float nearPlane = DEFAULT_NEARPLANE;
 	float farPlane = DEFAULT_FARPLANE;
 

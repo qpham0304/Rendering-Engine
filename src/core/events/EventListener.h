@@ -1,12 +1,12 @@
 #pragma once
 
 #include <functional>
-#include "../graphics/utils/Utils.h"
 #include <iostream>
 #include <any>
 #include <variant>
 #include <stdexcept>
-#include "../core/features/Timer.h"
+#include "../../src/graphics/utils/Utils.h"
+#include "../../src/core/features/Timer.h"
 #include "./Event.h"
 
 class EventListener 

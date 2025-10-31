@@ -5,6 +5,8 @@
 #include "../../core/components/CameraComponent.h"
 #include "../../core/components/CubeMapComponent.h"
 #include "camera.h"
+#include "../../src/window/AppWindow.h"
+#include "../../src/core/events/EventManager.h"
 
 static glm::vec3 lightPositions[] = {
     glm::vec3(20.00f,  20.0f, 0.0),

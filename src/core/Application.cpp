@@ -1,13 +1,10 @@
 #include "Application.h"
+#include <FileWatch.hpp>
 
-#include "../core/features/window/appwindow.h"
-#include "../../src/apps/particle-demo/ParticleDemo.h"
-#include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
-#include "../../src/apps/volumetric-light/VolumetricLightDemo.h"
-#include "features/Timer.h"
-#include "layers/AppLayer.h"
-#include "FileWatch.hpp"
-#include "features/Profiler.h"
+#include "../../src/window/AppWindow.h"
+#include "../../src/core/features/Timer.h"
+#include "../../src/core/layers/AppLayer.h"
+#include "../../src/core/features/Profiler.h"
 
 Application::Application() : isRunning(false)
 {

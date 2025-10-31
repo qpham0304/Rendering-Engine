@@ -3,8 +3,8 @@
 #include <string>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include "../core/entities/Entity.h"
-#include "../core/components/MComponent.h"
+#include "../../core/entities/Entity.h"
+#include "../../core/components/MComponent.h"
 
 enum class EventType
 {

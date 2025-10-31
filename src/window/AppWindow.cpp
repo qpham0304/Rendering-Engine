@@ -1,10 +1,10 @@
 #include "AppWindow.h"
-#include "../Timer.h"
+#include "../../src/core/features/Timer.h"
 #include "../../src/events/Event.h"
 #include "../../src/events/EventManager.h"
-#include "camera.h"
 #include "../../src/core/scene/SceneManager.h"
-#include "Input.h"
+#include "camera.h"
+#include "../../src/window/Input.h"
 
 unsigned int AppWindow::width = DEFAULT_WIDTH;
 unsigned int AppWindow::height = DEFAULT_HEIGHT;

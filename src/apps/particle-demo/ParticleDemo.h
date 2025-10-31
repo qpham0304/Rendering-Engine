@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../../core/features/window/appwindow.h"
 #include "../../core/layers/AppLayer.h"
 #include "ParticleGeometry.h"
 #include <memory>

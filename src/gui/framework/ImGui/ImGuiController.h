@@ -18,16 +18,12 @@ public:
 	ImGuiController(bool darkTheme);
 
 
-	// Copy constructor
-	ImGuiController(const ImGuiController& other);
+	ImGuiController(const ImGuiController& other) = default;
 
-	// Move constructor
-	ImGuiController(ImGuiController&& other) noexcept;
+	ImGuiController(ImGuiController&& other) noexcept = default;
 
-	// Copy assignment operator
 	ImGuiController& operator=(const ImGuiController& other) {}
 
-	// Move assignment operator
 	ImGuiController& operator=(ImGuiController&& other) noexcept {}
 
 	~ImGuiController();

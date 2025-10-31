@@ -1,19 +1,13 @@
 #include "ImGuiLeftSidebarWidget.h"
-
-#include "../../src/core/scene/SceneManager.h"
-#include "../../src/events/EventManager.h"
-
 #include <windows.h>
 #include <shobjidl.h> 
-#include "../../src/graphics/utils/Utils.h"
-#include "../../src/core/components/MComponent.h"
-#include "../../src/core/components/CameraComponent.h"
 #include "Texture.h"
 #include "../../src/core/scene/SceneManager.h"
-#include "../../src/core/features/window/appwindow.h"
-
-glm::vec3 translateVec(0.0);
-
+#include "../../src/core/events/EventManager.h"
+#include "../../src/core/components/MComponent.h"
+#include "../../src/core/components/CameraComponent.h"
+#include "../../src/window/appwindow.h"
+#include "../../src/graphics/utils/Utils.h"
 
 static ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow
 | ImGuiTreeNodeFlags_OpenOnDoubleClick

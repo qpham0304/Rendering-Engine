@@ -1,4 +1,3 @@
-#include "../../core/features/window/appwindow.h"
 #include "camera.h"
 
 

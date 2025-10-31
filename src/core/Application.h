@@ -2,9 +2,13 @@
 
 #include "layers/LayerManager.h"
 #include "scene/SceneManager.h"
-#include "../../src/events/EventManager.h"
+#include "../../src/core/events/EventManager.h"
 #include "layers/EditorLayer.h"
 #include "../gui/framework/ImGui/ImGuiController.h"
+
+struct AppConfig {
+
+};
 
 class Application
 {

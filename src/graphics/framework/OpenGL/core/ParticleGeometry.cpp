@@ -1,6 +1,6 @@
 #include "ParticleGeometry.h"
 #include "../src/graphics/utils/Utils.h"
-#include "../../../core/features/Timer.h"
+#include "../../src/core/features/Timer.h"
 #include "camera.h"
 
 static const float g = 9.8f; // Gravity

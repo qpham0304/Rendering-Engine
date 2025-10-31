@@ -1,5 +1,7 @@
 #include "../AppLayer.h"
-#include "../../scene/SceneManager.h"
+#include "../../src/core/scene/SceneManager.h"
+#include "../../src/window/AppWindow.h"
+#include "../../src/core/events/EventManager.h"
 #include "camera.h"
 
 void AppLayer::renderControl()
