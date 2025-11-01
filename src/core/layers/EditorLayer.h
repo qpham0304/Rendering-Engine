@@ -15,7 +15,7 @@ private:
 	Camera* editorCamera;
 	SceneManager& sceneManager = SceneManager::getInstance();
 	EventManager& eventManager = EventManager::getInstance();
-	GuiController* guiController = nullptr;
+	GuiManager* guiController = nullptr;
 	bool GuizmoActive = false;
 	bool drawGrid = false;
 	bool editorActive = true;
@@ -32,7 +32,7 @@ public:
 	EditorLayer();
 	~EditorLayer() = default;
 
-	void init(GuiController* controller);
+	void init(GuiManager* controller);
 	void onAttach();
 	void onDetach();
 	void onUpdate();

@@ -87,7 +87,7 @@ int ParticleDemo::show_demo()
 
     int width = AppWindow::width;
     int height = AppWindow::height;
-    GLFWwindow* window = AppWindow::window;
+    GLFWwindow* window = AppWindow::window->getWindow();
     Camera camera(width, height, glm::vec3(-3.5f, 1.5f, 5.5f), glm::vec3(0.5, -0.2, -1.0f));
 
     float frameCounter = 0.0f;

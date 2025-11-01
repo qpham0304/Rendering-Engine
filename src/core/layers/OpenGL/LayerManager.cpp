@@ -1,4 +1,5 @@
 #include "../LayerManager.h"
+#include "ImGui.h" // TODO remove when gui is refactored
 
 #define OUT_OF_BOUND_ERROR(index) { \
     std::string msg = "Index out of bound: \"" + std::to_string(index) + "\""; \
@@ -18,7 +19,7 @@ LayerManager::~LayerManager()
 	}
 }
 
-Layer& LayerManager::operator[](const int&& index)
+Layer& LayerManager::operator[](const int index)
 {
 	if (!boundCheck(index)) {
 		OUT_OF_BOUND_ERROR(index);
@@ -50,7 +51,7 @@ bool LayerManager::AddLayer(Layer* layer)
 	return true;
 }
 
-bool LayerManager::RemoveLayer(const int&& index)
+bool LayerManager::RemoveLayer(const int index)
 {
 	if (!boundCheck(index)) {
 		return false;
@@ -65,7 +66,7 @@ bool LayerManager::RemoveLayer(const int&& index)
 	return true;
 }
 
-void LayerManager::EnableLayer(const int&& index)
+void LayerManager::EnableLayer(const int index)
 {
 	if (!boundCheck(index)) {
 		OUT_OF_BOUND_ERROR(index);
@@ -73,7 +74,7 @@ void LayerManager::EnableLayer(const int&& index)
 	m_Layers[index]->m_Enabled = true;
 }
 
-void LayerManager::DisableLayer(const int&& index)
+void LayerManager::DisableLayer(const int index)
 {
 	if (!boundCheck(index)) {
 		OUT_OF_BOUND_ERROR(index);
@@ -89,6 +90,32 @@ const int& LayerManager::size() const
 const std::string& LayerManager::CurrentLayer()
 {
 	return m_Layers[m_SelectedLayer]->GetName();
+}
+
+void LayerManager::onUpdate() 
+{
+	for (const auto& layer : m_Layers) {
+		if (!layer->m_Enabled) {
+			continue;
+		}
+		layer->OnUpdate();
+	}
+}
+
+void LayerManager::onGuiUpdate() 
+{
+	for (auto& layer : m_Layers) {
+		if (!layer->m_Enabled) {
+			continue;
+		}
+		layer->OnGuiUpdate();
+	}
+	for (auto& layer : m_Layers) {
+		if (ImGui::Begin("Layers")) {
+			ImGui::Checkbox(layer->GetName().c_str(), &layer->m_Enabled);
+			ImGui::End();
+		}
+	}
 }
 
 //std::vector<Layer*>::iterator LayerManager::begin()

@@ -2,6 +2,7 @@
 #include "../LayerManager.h"
 #include "../../scene/SceneManager.h" // this should be gone once ECS is done setting up
 #include "../../src/window/appwindow.h"
+#include "Imgui.h"  //TODO: remove when there's no ui dependency
 #include "camera.h"
 
 BloomLayer::BloomLayer(const std::string& name) : Layer(name), VAO(0), VBO(0)

@@ -11,6 +11,7 @@
 #include "../../src/core/components/MComponent.h"
 #include "../../src/core/components/cameracomponent.h"
 #include "../../src/window/Input.h"
+#include "../../src/core/Application.h"
 //#include "../../src/gui/GuiController.h"
 #include "camera.h"
 
@@ -106,7 +107,7 @@ EditorLayer::EditorLayer()
 	onAttach();
 }
 
-void EditorLayer::init(GuiController* controller)
+void EditorLayer::init(GuiManager* controller)
 {
 	guiController = controller;
 	guiController->useDarkTheme();
@@ -115,7 +116,8 @@ void EditorLayer::init(GuiController* controller)
 	sceneManager.addScene("default");
 	//sceneManager.getScene("default")->addLayer(new ParticleDemo("demo"));
 	//sceneManager.getScene("default")->addLayer(new AppLayer("app"));
-	sceneManager.getScene("default")->addLayer(new DeferredIBLDemo("demo"));
+	//sceneManager.getScene("default")->addLayer(new DeferredIBLDemo("demo"));
+	Application::getInstance().layerManager.AddLayer(new DeferredIBLDemo("demo"));
 	modelShader.Init("Shaders/model.vert", "Shaders/model.frag");
 }
 
@@ -257,16 +259,23 @@ void EditorLayer::onGuiUpdate()
 	std::string id;
 	if (ImGui::Begin("Layers")) {
 		Scene* scene = sceneManager.getActiveScene();
+		LayerManager& layerManager = Application::getInstance().layerManager;
 		if (ImGui::Button("add demo layer")) {
-			id = "demo " + std::to_string(scene->layerManager.size());
-			scene->addLayer(new ParticleDemo(id.c_str()));
+			id = "demo " + std::to_string(layerManager.size());
+			//scene->addLayer(new ParticleDemo(id.c_str()));
+			layerManager.AddLayer(new ParticleDemo(id.c_str()));
+
 		}
 		if (ImGui::Button("add bloom layer")) {
-			id = "bloom " + std::to_string(scene->layerManager.size());
-			scene->addLayer(new BloomLayer(id.c_str()));
+			id = "bloom " + std::to_string(layerManager.size());
+			//scene->addLayer(new BloomLayer(id.c_str()));
+			layerManager.AddLayer(new BloomLayer(id.c_str()));
+
 		}
 		if (ImGui::Button("remove layer")) {	//TODO: should be able to delete selected layers
-			scene->removeLayer(1);
+			//scene->removeLayer(1);
+			layerManager.RemoveLayer(1);
+
 		}
 		ImGui::End();
 	}

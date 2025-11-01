@@ -7,7 +7,7 @@
 #include <ImGuizmo.h>
 #include "./widgets/widget.h"
 
-class GuiController {
+class GuiManager {
 private:
 
 protected:

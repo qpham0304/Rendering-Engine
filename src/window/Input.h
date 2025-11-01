@@ -1,5 +1,3 @@
-
-
 // Key Code from GLFW
 enum KeyCodes
 {
@@ -145,11 +143,15 @@ enum MouseCodes
 
 class Input 
 {
-public:
-	static bool IsMousePressed(MouseCodes key);
-	static bool IsKeyPressed(KeyCodes key);
+protected:
+	Input() = default;
 
-	static int GetMouseButton(MouseCodes);
-	static int GetCursorPos(MouseCodes);
-	static int GetKey(MouseCodes);
+public:
+
+	virtual bool isMousePressed(MouseCodes key) = 0;
+	virtual bool isKeyPressed(KeyCodes key) = 0;;
+
+	virtual int getMouseButton(MouseCodes) = 0;
+	virtual int getCursorPos(MouseCodes) = 0;
+	virtual int getKey(MouseCodes) = 0;
 };

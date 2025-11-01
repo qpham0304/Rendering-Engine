@@ -5,10 +5,10 @@
 #include "../../src/core/events/EventManager.h"
 #include "layers/EditorLayer.h"
 #include "../gui/framework/ImGui/ImGuiController.h"
+#include "../../src/core/layers/LayerManager.h"
 
-struct AppConfig {
 
-};
+class AppWindow;
 
 class Application
 {
@@ -19,7 +19,9 @@ private:
 public:
 	SceneManager& sceneManager = SceneManager::getInstance();
 	EventManager& eventManager = EventManager::getInstance();
-	ImGuiController guiController;
+	LayerManager layerManager;
+	std::unique_ptr<GuiManager> guiController;
+	std::unique_ptr<AppWindow> appWindow;
 	EditorLayer editorLayer;
 
 	~Application() = default;

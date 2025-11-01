@@ -96,6 +96,7 @@ void ImGuiLeftSidebarWidget::AddComponentDialog(Entity& entity) {
     // Unknown or unsupported platform
 #endif
 
+
     if (!path.empty()) {
         entity.addComponent<ModelComponent>();
         //NOTE: disable for opengl since it doesn't like buffer generation on a separate thread
@@ -103,33 +104,8 @@ void ImGuiLeftSidebarWidget::AddComponentDialog(Entity& entity) {
 #ifdef USE_THREAD
         AsyncEvent event(path);
         auto func = [&entity](AsyncEvent& event) {
-            glfwMakeContextCurrent(AppWindow::sharedWindow);            //EXPERIMENTING SINCE THIS WILL RACE
-            if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-                std::cerr << "Failed to initialize GLAD for shared context" << std::endl;
-                return;
-            }
-            ModelComponent& component = entity.getComponent<ModelComponent>();
-            component.path = "Loading...";
-            std::string uuid = SceneManager::getInstance().addModel(event.id.c_str());     // add model to the manager
-            if (component.path != event.id) {   //NOTE: event id is being used as Path
-                component.model = SceneManager::getInstance().models[event.id];
-            }
-
-            // if another thread deletes the same model before this add, reset the model component's pointer
-            if (auto lockedModel = component.model.lock()) {
-                if (lockedModel.get() == SceneManager::getInstance().models[event.id].get()) {
-                    Console::println("match address");
-                }
-                Console::println("num references", lockedModel.use_count());
-                Console::println("path", lockedModel.get());
-                Console::println("path", SceneManager::getInstance().models[event.id].get());
-            }
-            else {
-                component.reset();
-            }
-            component.path = event.id;
-            glfwMakeContextCurrent(AppWindow::window);
-            };
+            printf("unimplemented async event");
+        };
         EventManager::getInstance().Queue(event, func);
 #else
         ModelLoadEvent event(path, entity);

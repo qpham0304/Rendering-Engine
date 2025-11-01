@@ -5,10 +5,24 @@
 #include "../../src/core/features/Timer.h"
 #include "../../src/core/layers/AppLayer.h"
 #include "../../src/core/features/Profiler.h"
+#include "../../src/window/platform/GLFW/AppWindowGLFW.h"
+#include "features/PlatformFactory.h"
 
 Application::Application() : isRunning(false)
 {
-	AppWindow::init(PLATFORM_OPENGL);
+	WindowConfig config{};
+	config.title = "Application Untitled";
+	config.renderPlatform = RenderPlatform::OPENGL;
+	config.windowPlatform = WindowPlatform::GLFW;
+	config.width = 1920;
+	config.height = 1080;
+	config.vsync = true;
+
+	PlatformFactory& factory = PlatformFactory::getInstance();
+	appWindow = factory.createWindow(config);
+	AppWindow::window = appWindow.get();	//TODO: find a better solution if possible
+
+	guiController = factory.createGuiManager(GuiPlatform::IMGUI);
 }
 
 Application& Application::getInstance()
@@ -19,17 +33,19 @@ Application& Application::getInstance()
 
 void Application::run() {
 	isRunning = true;
-	AppWindow::start("Application");
+	appWindow->start();
 
-	int width = AppWindow::width;
-	int height = AppWindow::height;
-	guiController.init(AppWindow::window, width, height);
-	editorLayer.init(&guiController);
+	int width = appWindow->width;
+	int height = appWindow->height;
+	printf("width: %d, height: %d", width, height);
+	GLFWwindow* window = appWindow->window->getWindow();
+	guiController->init(window, appWindow->width, appWindow->height);
+	editorLayer.init(guiController.get());
 
 	//std::bind(&Application::onClose, this, std::placeholders::_1);
 	eventManager.Subscribe(EventType::WindowClose, [this](Event& event) {
 		onClose();
-	});
+		});
 
 	//TODO: experimenting with file watcher for now
 	std::unique_ptr<filewatch::FileWatch<std::string>> fileWatcher;
@@ -44,22 +60,24 @@ void Application::run() {
 		// Application
 		eventManager.OnUpdate();
 		sceneManager.onUpdate(glfwGetTime());
-		
+		layerManager.onUpdate();
+
 		bool useEditor = true;
 		if (useEditor) {
 			editorLayer.onUpdate();		// render editor as overlay
 
 			//GUI
-			guiController.start();
+			guiController->start();
 			sceneManager.onGuiUpdate(glfwGetTime());
+			layerManager.onGuiUpdate();
 			editorLayer.onGuiUpdate();	// also render ui after to show overlay
-			guiController.end();
+			guiController->end();
 		}
 
-		AppWindow::onUpdate();
+		appWindow->onUpdate();
 	}
-	guiController.onClose();
-	AppWindow::end();
+	guiController->onClose();
+	appWindow->end();
 }
 
 void Application::onClose()

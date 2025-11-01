@@ -2,6 +2,7 @@
 #include "../../src/core/scene/SceneManager.h"
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/events/EventManager.h"
+#include "Imgui.h"  //TODO: remove when there's no ui dependency
 #include "camera.h"
 
 void AppLayer::renderControl()
@@ -31,7 +32,7 @@ void AppLayer::renderApplication(const int& fboTexture)
 		}
 
 		if (ImGui::IsItemHovered() && ImGui::IsWindowFocused()) {
-			camera->processKeyboard(AppWindow::window);
+			camera->processKeyboard(AppWindow::window->getWindow());
 			isActive = true;
 		}
 		else {

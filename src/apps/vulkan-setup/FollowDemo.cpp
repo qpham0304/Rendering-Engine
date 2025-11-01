@@ -101,8 +101,8 @@ void Demo::mainLoop() {
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		camera.onUpdate();
-		camera.processInput(window);
-		camera.processKeyboard(window);
+		//camera.processInput(window);
+		//camera.processKeyboard(window);
 
 		//orbitCamera.onUpdate();
 		//orbitCamera.processKeyboard(window); // optional pan

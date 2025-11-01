@@ -9,8 +9,8 @@ private:
 	
 
 public:
-	Renderer();
-	~Renderer();
+	Renderer() = default;
+	~Renderer() = default;
 
 	//void registerShader();
 	virtual void render() = 0;

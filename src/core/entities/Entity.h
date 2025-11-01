@@ -10,7 +10,7 @@ private:
 
 public:
 	Entity() = default;
-	Entity(const entt::entity& entity, entt::registry& registry) : entity(entity), registry(&registry) {}
+	Entity(const entt::entity& entity, entt::registry& registry);
 	Entity(const Entity& other) = default;
 	bool operator==(const Entity& other) const;
 	bool operator!=(const Entity& other) const;

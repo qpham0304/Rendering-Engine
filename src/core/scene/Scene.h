@@ -4,8 +4,6 @@
 #include "entt.hpp"
 #include "../entities/Entity.h"
 #include "../layers/LayerManager.h"
-#include "../src/graphics/renderer/ImageBasedRenderer.h"
-#include "../src/graphics/renderer/renderer.h"
 #include "Shader.h"
 
 class Scene
@@ -18,7 +16,7 @@ private:
 
 public:
 	std::unordered_map<uint32_t, Entity> entities;
-	LayerManager layerManager;
+	//LayerManager layerManager;
 
 	bool isEnabled;
 
@@ -26,8 +24,8 @@ public:
 	~Scene() = default;
 
 
-	bool addLayer(Layer* layer);
-	bool removeLayer(int&& index);
+	//bool addLayer(Layer* layer);
+	//bool removeLayer(int&& index);
 
 
 	uint32_t addEntity(const std::string& name = "Entity");

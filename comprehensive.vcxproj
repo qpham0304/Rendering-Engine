@@ -80,7 +80,7 @@
     <CopyLocalProjectReference>true</CopyLocalProjectReference>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Libraries/lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Configuration)-$(Platform)</OutDir>
     <IntDir>$(SolutionDir)bin\$(ProjectName)\Intermediates\$(Configuration)-$(Platform)</IntDir>
@@ -96,7 +96,7 @@
     <CopyLocalProjectReference>true</CopyLocalProjectReference>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Libraries/lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Configuration)-$(Platform)</OutDir>
     <IntDir>$(SolutionDir)bin\$(ProjectName)\Intermediates\$(Configuration)-$(Platform)</IntDir>
@@ -188,8 +188,12 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\core\features\PlatformFactory.cpp" />
+    <ClCompile Include="src\window\platform\GLFW\InputGLFW.cpp" />
+    <ClCompile Include="src\core\features\EngineUtils.cpp" />
     <ClCompile Include="src\core\components\LightComponent.cpp" />
     <ClCompile Include="src\core\features\pch.cpp" />
+    <ClCompile Include="src\core\features\Stream.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\theme\ImGuiThemes.cpp" />
     <ClCompile Include="src\window\platform\GLFW\AppWindowGLFW.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.cpp" />
@@ -266,8 +270,13 @@
     <ClCompile Include="src\core\systems\System.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\core\features\Configs.h" />
+    <ClInclude Include="src\core\features\PlatformFactory.h" />
+    <ClInclude Include="src\window\platform\GLFW\InputGLFW.h" />
+    <ClInclude Include="src\core\features\EngineUtils.h" />
     <ClInclude Include="Headers\pch.h" />
     <ClInclude Include="src\core\components\LightComponent.h" />
+    <ClInclude Include="src\core\features\Stream.h" />
     <ClInclude Include="src\gui\framework\ImGui\theme\ImGuiThemes.h" />
     <ClInclude Include="src\window\platform\GLFW\AppWindowGLFW.h" />
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.h" />

@@ -4,6 +4,11 @@
 
 std::string ACTIVE_SCENE = "default";
 
+Entity::Entity(const entt::entity& entity, entt::registry& registry)
+    : entity(entity), registry(&registry)
+{
+}
+
 bool Entity::operator==(const Entity& other) const
 {
     return entity == (entt::entity) other.getID() && registry == other.registry;

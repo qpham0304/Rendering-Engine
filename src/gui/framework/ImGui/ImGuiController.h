@@ -6,7 +6,7 @@
 #include "widgets/ImGuiRightSidebarWidget.h"
 #include "widgets/ImGuiMenuWidget.h"
 
-class ImGuiController : public GuiController {
+class ImGuiController : public GuiManager {
 private:
 	ImGuiLeftSidebarWidget leftSidebar;
 	ImGuiRightSidebarWidget rightSidebar;

@@ -170,7 +170,7 @@ void ImGuiController::end()
 
 void ImGuiController::onClose()
 {
-	if (AppWindow::platform == PLATFORM_OPENGL) {
+	if (AppWindow::platform == RenderPlatform::OPENGL) {
 		ImGui_ImplOpenGL3_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();

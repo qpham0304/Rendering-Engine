@@ -1,36 +1,40 @@
 #pragma once
 
 #include <set>
-#include "../../src/gui/GuiController.h"
+#include <string>
+#include "../../src/core/features/Configs.h"
 
-enum Platform {
-	PLATFORM_UNDEFINED, PLATFORM_OPENGL, PLATFORM_VULKAN, PLATFORM_DIRECTX,
-};
+class GLFWwindow;
+
 
 class AppWindow
 {
-protected:
-	AppWindow() = default;
+public:
+	static AppWindow* window;
 	~AppWindow() = default;
 
-private:
-	static const unsigned int DEFAULT_WIDTH = 720;
-	static const unsigned int DEFAULT_HEIGHT = 1280;
-	static void setEventCallback();
-
-public:
+	static const std::set<RenderPlatform> supportRenderPlatform;
 	static bool VsyncEnabled;
 	static unsigned int width;
 	static unsigned int height;
-	static Platform platform;
-	static const std::set<Platform> supportPlatform;
-	static ImGuizmo::OPERATION GuizmoType;
-	static GLFWwindow* window;
-	static GLFWwindow* sharedWindow;
+	static RenderPlatform platform;
 
-	static int init(Platform platform);		// set up and init the graphics api depending on the platform
-	static int start(const char* title);	// start creating windows and context
-	static int end();						// close and terminate the program
-	static void onUpdate();
+	virtual GLFWwindow* getWindow() = 0;
+	virtual GLFWwindow* getSharedWindow() = 0;
+
+	virtual int init(WindowConfig config) = 0;		// set up and init the graphics api depending on the platform
+	virtual int start() = 0;	// start creating windows and context
+	virtual int end() = 0;						// close and terminate the program
+	virtual void onUpdate() = 0;
+
+protected:
+	AppWindow() = default;
+
+
+	static const unsigned int DEFAULT_WIDTH = 720;
+	static const unsigned int DEFAULT_HEIGHT = 1280;
+
+	virtual void setEventCallback() = 0;
+	
+	WindowConfig config;
 };
-

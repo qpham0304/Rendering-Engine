@@ -1,5 +1,5 @@
-#include "../../renderer/ImageBasedRenderer.h"
-#include "../../utils/Utils.h"
+#include "../../src/graphics/renderer/ImageBasedRenderer.h"
+#include "../../src/graphics/utils/Utils.h"
 #include "../../src/core/features/Timer.h"
 
 static glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);

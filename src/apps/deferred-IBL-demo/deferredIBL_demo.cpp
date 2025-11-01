@@ -7,6 +7,7 @@
 #include "camera.h"
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/events/EventManager.h"
+#include "ImGui.h" //TODO: remove when gui is decoupled
 
 static glm::vec3 lightPositions[] = {
     glm::vec3(20.00f,  20.0f, 0.0),

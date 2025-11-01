@@ -86,8 +86,6 @@ public:
 	void onUpdate();
 	void updateViewResize(int width, int height);
 	void processInput(GLFWwindow* window);
-	bool processKeyboard(GLFWwindow* window);	//TODO: refactor to not depend upon glfw window
-	bool processMouse(GLFWwindow* window);		//same here
 	void resetCamera();
 	void setCameraSpeed(int speedMultiplier);
 	void translate(const glm::vec3& position);
@@ -95,6 +93,9 @@ public:
 	//TODO: refactor by moving these to global
 	// create a singleton camera that control and manage the view
 	// swap to other camera on selected
+	bool processKeyboard(GLFWwindow* window);	//TODO: refactor to not depend upon glfw window
+	bool processMouse(GLFWwindow* window);		//same here
+
 	void mouseControl(GLFWwindow* window);
 	void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 	void scroll_callback(double xoffset, double yoffset);

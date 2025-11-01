@@ -8,7 +8,7 @@ Scene::Scene(const std::string name) : sceneName(name), isEnabled(true)
 {
 
 }
-
+/*
 bool Scene::addLayer(Layer* layer)
 {
 	return layerManager.AddLayer(layer);
@@ -18,6 +18,7 @@ bool Scene::removeLayer(int&& index)
 {
 	return layerManager.RemoveLayer(std::move(index));
 }
+*/
 
 uint32_t Scene::addEntity(const std::string& name)
 {
@@ -118,16 +119,19 @@ void Scene::onUpdate(const float& deltaTime)
 
 	});
 
+	/*
 	for (const auto& layer : layerManager) {
 		if (!layer->m_Enabled) {
 			continue;
 		}
 		layer->OnUpdate();
 	}
+	*/
 }
 
 void Scene::onGuiUpdate(const float& deltaTime)
 {
+	/*
 	for (auto& layer : layerManager) {
 		if (!layer->m_Enabled) {
 			continue;
@@ -140,6 +144,7 @@ void Scene::onGuiUpdate(const float& deltaTime)
 			ImGui::End();
 		}
 	}
+	*/
 }
 
 const std::string& Scene::getName() const

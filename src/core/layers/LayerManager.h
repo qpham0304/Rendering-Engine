@@ -19,17 +19,20 @@ public:
 	LayerManager() = default;
 	~LayerManager();
 
-	Layer& operator[](const int&& index);
+	Layer& operator[](const int index);
 
 	static bool addFrameBuffer(const std::string& name, FrameBuffer& FBO);
 	static std::shared_ptr<FrameBuffer> getFrameBuffer(const std::string name);
 
 	bool AddLayer(Layer* layer);
-	bool RemoveLayer(const int&& index);
-	void EnableLayer(const int&& index);
-	void DisableLayer(const int&& index);
+	bool RemoveLayer(const int index);
+	void EnableLayer(const int index);
+	void DisableLayer(const int index);
 	const int& size() const;
 	const std::string& CurrentLayer();
+
+	void onUpdate();
+	void onGuiUpdate();
 
 	//std::vector<Layer*>::iterator begin();
 	//std::vector<Layer*>::iterator end();
