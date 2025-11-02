@@ -6,29 +6,35 @@
 #include "layers/EditorLayer.h"
 #include "../gui/framework/ImGui/ImGuiController.h"
 #include "../../src/core/layers/LayerManager.h"
+#include "features/ServiceLocator.h"
+#include "features/PlatformFactory.h"
 
-
-class AppWindow;
 
 class Application
 {
 private:
 	bool isRunning;
-	Application();
+	ServiceLocator serviceLocator;
+	PlatformFactory factory{ serviceLocator };
+
 
 public:
+	Application();
+	
 	SceneManager& sceneManager = SceneManager::getInstance();
 	EventManager& eventManager = EventManager::getInstance();
-	LayerManager layerManager;
+	std::unique_ptr<LayerManager> layerManager;
 	std::unique_ptr<GuiManager> guiController;
 	std::unique_ptr<AppWindow> appWindow;
-	EditorLayer editorLayer;
+	EditorLayer* editorLayer;
 
 	~Application() = default;
 
-	static Application& getInstance();
-
+	void pushLayer(Layer* layer);
+	void init();
+	void start();
 	void run();
+	void end();
 	void onClose();
 };
 

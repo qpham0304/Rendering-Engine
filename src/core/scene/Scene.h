@@ -3,7 +3,6 @@
 #include<glm/glm.hpp>
 #include "entt.hpp"
 #include "../entities/Entity.h"
-#include "../layers/LayerManager.h"
 #include "Shader.h"
 
 class Scene
@@ -16,17 +15,11 @@ private:
 
 public:
 	std::unordered_map<uint32_t, Entity> entities;
-	//LayerManager layerManager;
 
 	bool isEnabled;
 
 	Scene(const std::string name);
 	~Scene() = default;
-
-
-	//bool addLayer(Layer* layer);
-	//bool removeLayer(int&& index);
-
 
 	uint32_t addEntity(const std::string& name = "Entity");
 	bool removeEntity(const uint32_t& uuid);

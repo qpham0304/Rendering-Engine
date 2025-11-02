@@ -3,23 +3,28 @@
 #include "../../src/gui/framework/ImGui/ImGuiController.h"
 
 #define REGISTER_WINDOW_CONSTRUCTOR(constructors_map, platformEnum, ClassType) \
-    constructors_map[platformEnum] = [](WindowConfig config) { \
-        auto window = std::make_unique<ClassType>(); \
-        window->init(config); \
-        return window; \
+    constructors_map[platformEnum] = [this](WindowConfig config) { \
+        auto appWindow = std::make_unique<ClassType>(); \
+        appWindow->init(config); \
+        this->serviceLocator.Register("AppWindow", *appWindow.get());   \
+        return appWindow; \
     };
 
 #define REGISTER_GUI_CONSTRUCTOR(constructors_map, platformEnum, ClassType) \
-    constructors_map[platformEnum] = []() { \
+    constructors_map[platformEnum] = [this]() { \
         auto guiManager = std::make_unique<ClassType>();   \
+        this->serviceLocator.Register("GuiManager", *guiManager.get());   \
         return guiManager;  \
     };
 
-PlatformFactory::PlatformFactory()
+PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
+    : serviceLocator(serviceLocator)
 {
-    //windowConstructors[WindowPlatform::GLFW] = [](WindowConfig config) {
+    //windowConstructors[WindowPlatform::GLFW] = [this](WindowConfig config)  -> std::unique_ptr<AppWindow> {
     //    std::unique_ptr<AppWindow> appWindow = std::make_unique<AppWindowGLFW>();
-    //    appWindow->init(config.renderPlatform);
+    //    appWindow->init(config);
+    //    this->serviceLocator.Register("AppWindow", *appWindow.get());
+
     //    return appWindow;
     //};
     REGISTER_WINDOW_CONSTRUCTOR(windowConstructors, WindowPlatform::GLFW, AppWindowGLFW)
@@ -30,12 +35,6 @@ PlatformFactory::PlatformFactory()
     //    return guiManager;
     //};
     REGISTER_GUI_CONSTRUCTOR(guiConstructors, GuiPlatform::IMGUI, ImGuiController)
-}
-
-PlatformFactory& PlatformFactory::getInstance()
-{
-    static PlatformFactory instance;
-    return instance;
 }
 
 std::unique_ptr<AppWindow> PlatformFactory::createWindow(WindowConfig config)

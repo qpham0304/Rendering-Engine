@@ -1,12 +1,10 @@
 #include "Application.h"
 #include <FileWatch.hpp>
-
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/features/Timer.h"
 #include "../../src/core/layers/AppLayer.h"
 #include "../../src/core/features/Profiler.h"
 #include "../../src/window/platform/GLFW/AppWindowGLFW.h"
-#include "features/PlatformFactory.h"
 
 Application::Application() : isRunning(false)
 {
@@ -18,34 +16,42 @@ Application::Application() : isRunning(false)
 	config.height = 1080;
 	config.vsync = true;
 
-	PlatformFactory& factory = PlatformFactory::getInstance();
+	//separate service modules
 	appWindow = factory.createWindow(config);
+	guiController = factory.createGuiManager(GuiPlatform::IMGUI);
+
+	//engine specific features
+	layerManager = std::make_unique<LayerManager>(serviceLocator);
+
 	AppWindow::window = appWindow.get();	//TODO: find a better solution if possible
 
-	guiController = factory.createGuiManager(GuiPlatform::IMGUI);
+	editorLayer = new EditorLayer("EditorLayer");
 }
 
-Application& Application::getInstance()
+void Application::pushLayer(Layer* layer)
 {
-	static Application application;
-	return application;
+	layerManager->AddLayer(layer);
 }
 
-void Application::run() {
+void Application::init()
+{
 	isRunning = true;
-	appWindow->start();
-
-	int width = appWindow->width;
-	int height = appWindow->height;
-	printf("width: %d, height: %d", width, height);
-	GLFWwindow* window = appWindow->window->getWindow();
-	guiController->init(window, appWindow->width, appWindow->height);
-	editorLayer.init(guiController.get());
 
 	//std::bind(&Application::onClose, this, std::placeholders::_1);
 	eventManager.Subscribe(EventType::WindowClose, [this](Event& event) {
 		onClose();
-		});
+	});
+}
+
+void Application::start()
+{
+	appWindow->start();
+
+	int width = appWindow->width;
+	int height = appWindow->height;
+	GLFWwindow* window = appWindow->window->getWindow();
+	guiController->init(window, appWindow->width, appWindow->height);
+	editorLayer->init(guiController.get());
 
 	//TODO: experimenting with file watcher for now
 	std::unique_ptr<filewatch::FileWatch<std::string>> fileWatcher;
@@ -55,34 +61,39 @@ void Application::run() {
 			std::cout << path << "-" << (int)change_type << "\n";
 		}
 	));
+}
+
+void Application::run() {
+	pushLayer(editorLayer);	// must be the last to be added to layer stack
 
 	while (isRunning) {
 		// Application
 		eventManager.OnUpdate();
 		sceneManager.onUpdate(glfwGetTime());
-		layerManager.onUpdate();
+		layerManager->onUpdate();
 
 		bool useEditor = true;
 		if (useEditor) {
-			editorLayer.onUpdate();		// render editor as overlay
-
-			//GUI
+			//TODO GUI should theese be only done by the guiController
 			guiController->start();
 			sceneManager.onGuiUpdate(glfwGetTime());
-			layerManager.onGuiUpdate();
-			editorLayer.onGuiUpdate();	// also render ui after to show overlay
+			layerManager->onGuiUpdate();
 			guiController->end();
 		}
 
 		appWindow->onUpdate();
 	}
+}
+
+
+void Application::end()
+{
 	guiController->onClose();
 	appWindow->end();
 }
 
 void Application::onClose()
 {
-
 	for (auto& [thread, status] : EventManager::getInstance().threads) {
 		thread.join();
 	}
