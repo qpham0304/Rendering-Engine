@@ -114,6 +114,9 @@ void EditorLayer::init(GuiManager* controller)
 	guiController = controller;
 	guiController->useDarkTheme();
 	editorCamera = new Camera();
+	printf("appwindow: %d\n", manager->Window().width);
+	printf("appwindow: %d\n", manager->Window().height);
+	//printf("appwindow: %d", manager->Window().width);
 	editorCamera->init(manager->Window().width, manager->Window().height, glm::vec3(1.0, 0.0, 0.0), glm::vec3(1.0));
 	sceneManager.addScene("default");
 	//sceneManager.getScene("default")->addLayer(new ParticleDemo("demo"));
