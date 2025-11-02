@@ -2,12 +2,9 @@
 
 #include <vector>
 #include <stack>
-#include <memory>
 #include "Layer.h"
 #include <FrameBuffer.h>
-#include "../../window/AppWindow.h"
-
-class ServiceLocator;
+#include <memory>
 
 class LayerManager
 {
@@ -18,10 +15,8 @@ private:
 
 	bool boundCheck(const int& index);
 
-	AppWindow& appWindow;
-
 public:
-	LayerManager(ServiceLocator& serviceLocator);
+	LayerManager() = default;
 	~LayerManager();
 
 	Layer& operator[](const int index);
@@ -35,7 +30,6 @@ public:
 	void DisableLayer(const int index);
 	const int& size() const;
 	const std::string& CurrentLayer();
-	const AppWindow& Window() const;
 
 	void onUpdate();
 	void onGuiUpdate();

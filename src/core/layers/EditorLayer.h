@@ -8,7 +8,7 @@
 class Camera;
 //class GuiController;
 
-class EditorLayer : public Layer
+class EditorLayer
 {
 private:
 
@@ -29,15 +29,15 @@ private:
 	void renderGuizmo();
 
 public:
-	EditorLayer(const std::string& name = "EditorLayer");
+	EditorLayer();
 	~EditorLayer() = default;
 
 	void init(GuiManager* controller);
-	void OnAttach(LayerManager* manager) override;
-	void OnDetach() override;
-	void OnUpdate() override;
-	void OnGuiUpdate() override;
-	void OnEvent(Event& event) override;
+	void onAttach();
+	void onDetach();
+	void onUpdate();
+	void onGuiUpdate();
+	void onEvent(Event& event);
 	void handleKeyPressed(int keycode);
 };
 

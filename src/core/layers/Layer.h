@@ -3,23 +3,20 @@
 #include <string>
 #include "../../src/core/events/Event.h"
 
-class LayerManager;
-
 class Layer
 {
 protected:
 	std::string m_LayerName;
-	LayerManager* manager;
 
 public:
 	bool m_Enabled;
 	
 	Layer(const std::string& name = "default")
-		: m_LayerName(name), m_Enabled(true), manager(nullptr)
+		: m_LayerName(name), m_Enabled(true) 
 	{
 	}
 
-	virtual void OnAttach(LayerManager* manager) { this->manager = manager; };
+	virtual void OnAttach() = 0;
 	virtual void OnDetach() = 0;
 	virtual void OnUpdate() = 0;
 	virtual void OnGuiUpdate() = 0;

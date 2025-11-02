@@ -3,28 +3,23 @@
 #include "../../src/gui/framework/ImGui/ImGuiController.h"
 
 #define REGISTER_WINDOW_CONSTRUCTOR(constructors_map, platformEnum, ClassType) \
-    constructors_map[platformEnum] = [this](WindowConfig config) { \
-        auto appWindow = std::make_unique<ClassType>(); \
-        appWindow->init(config); \
-        this->serviceLocator.Register("AppWindow", *appWindow.get());   \
-        return appWindow; \
+    constructors_map[platformEnum] = [](WindowConfig config) { \
+        auto window = std::make_unique<ClassType>(); \
+        window->init(config); \
+        return window; \
     };
 
 #define REGISTER_GUI_CONSTRUCTOR(constructors_map, platformEnum, ClassType) \
-    constructors_map[platformEnum] = [this]() { \
+    constructors_map[platformEnum] = []() { \
         auto guiManager = std::make_unique<ClassType>();   \
-        this->serviceLocator.Register("GuiManager", *guiManager.get());   \
         return guiManager;  \
     };
 
-PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
-    : serviceLocator(serviceLocator)
+PlatformFactory::PlatformFactory()
 {
-    //windowConstructors[WindowPlatform::GLFW] = [this](WindowConfig config)  -> std::unique_ptr<AppWindow> {
+    //windowConstructors[WindowPlatform::GLFW] = [](WindowConfig config) {
     //    std::unique_ptr<AppWindow> appWindow = std::make_unique<AppWindowGLFW>();
-    //    appWindow->init(config);
-    //    this->serviceLocator.Register("AppWindow", *appWindow.get());
-
+    //    appWindow->init(config.renderPlatform);
     //    return appWindow;
     //};
     REGISTER_WINDOW_CONSTRUCTOR(windowConstructors, WindowPlatform::GLFW, AppWindowGLFW)
@@ -35,6 +30,12 @@ PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     //    return guiManager;
     //};
     REGISTER_GUI_CONSTRUCTOR(guiConstructors, GuiPlatform::IMGUI, ImGuiController)
+}
+
+PlatformFactory& PlatformFactory::getInstance()
+{
+    static PlatformFactory instance;
+    return instance;
 }
 
 std::unique_ptr<AppWindow> PlatformFactory::createWindow(WindowConfig config)

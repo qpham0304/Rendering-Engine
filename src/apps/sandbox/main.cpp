@@ -1,7 +1,6 @@
 
-//#include "../vulkan-setup/VulkanSetupDemo.h"
+#include "../vulkan-setup/VulkanSetupDemo.h"
 #include "../../core/Application.h"
-#include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
 
 #define USE_EDITOR
 int main()
@@ -12,18 +11,9 @@ int main()
 	*/
 
 	#ifdef USE_EDITOR
-	Application app;
-	app.init();
-
+	Application& app = Application::getInstance();
 	try {
-		app.start();
-
-		//TODO: problem: app layer can only be added after
-		// everything is started so check that before allow adding layer
-		app.pushLayer(new DeferredIBLDemo("demo"));
-
 		app.run();
-		app.end();
 	}
 	catch (const std::runtime_error& e) {
 		std::cerr << "Exception caught by main: " << e.what() << std::endl;

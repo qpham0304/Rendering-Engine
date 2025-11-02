@@ -9,7 +9,7 @@
 #include "../../src/window/AppWindow.h"
 #include "../../graphics/renderer/Renderer.h"
 #include "configs.h"
-#include "ServiceLocator.h"
+
 
 
 // one single file to create all subsystems
@@ -17,10 +17,9 @@
 class PlatformFactory
 {
 private:
-	ServiceLocator& serviceLocator;
-
+	PlatformFactory();
 public:
-	PlatformFactory(ServiceLocator& serviceLocator);
+	static PlatformFactory& getInstance();
 	~PlatformFactory() = default;
 
 	std::unique_ptr<AppWindow> createWindow(WindowConfig config);

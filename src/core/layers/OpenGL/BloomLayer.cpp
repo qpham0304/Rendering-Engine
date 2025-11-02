@@ -4,13 +4,12 @@
 #include "../../src/window/appwindow.h"
 #include "Imgui.h"  //TODO: remove when there's no ui dependency
 #include "camera.h"
-#include "../../src/core/layers/layerManager.h"
 
 BloomLayer::BloomLayer(const std::string& name) : Layer(name), VAO(0), VBO(0)
 {
-    int width = manager->Window().width;
-    int height = manager->Window().height;
-	bloomRenderer.Init(width, height);
+    int width = AppWindow::width;
+    int height = AppWindow::height;
+	bloomRenderer.Init(AppWindow::width, AppWindow::height);
 
     glGenFramebuffers(1, &hdrFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
@@ -45,7 +44,7 @@ BloomLayer::BloomLayer(const std::string& name) : Layer(name), VAO(0), VBO(0)
     bloomShader->setInt("bloomBlur", 1);
 }
 
-void BloomLayer::OnAttach(LayerManager* manager)
+void BloomLayer::OnAttach()
 {
 
 }

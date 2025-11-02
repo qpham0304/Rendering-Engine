@@ -27,7 +27,7 @@ GLFWwindow* AppWindowGLFW::getSharedWindow()
 }
 
 int AppWindowGLFW::init(WindowConfig newConfig) {
-	this->config = newConfig;
+	config = newConfig;
 	width = config.width;
 	height = config.height;
 
@@ -153,22 +153,22 @@ void AppWindowGLFW::setEventCallback()
 		{
 			//Application* application = static_cast<Application*>(glfwGetWindowUserPointer(window));
 			switch (action) {
-				case GLFW_PRESS: {
-					if (key == KEY_ESCAPE) {
-						WindowCloseEvent windowCloseEvent;
-						EventManager::getInstance().Publish(windowCloseEvent);
-					}
-					else {
-						KeyPressedEvent keyPressEvent(key);
-						EventManager::getInstance().Publish(keyPressEvent);
-					}
+			case GLFW_PRESS: {
+				if (key == KEY_ESCAPE) {
+					WindowCloseEvent windowCloseEvent;
+					EventManager::getInstance().Publish(windowCloseEvent);
 				}
-				case GLFW_RELEASE: {
-					//Console::println("released");
+				else {
+					KeyPressedEvent keyPressEvent(key);
+					EventManager::getInstance().Publish(keyPressEvent);
 				}
-				case GLFW_REPEAT: {
-					//Console::println("key repeat");
-				}
+			}
+			case GLFW_RELEASE: {
+				//Console::println("released");
+			}
+			case GLFW_REPEAT: {
+				//Console::println("key repeat");
+			}
 			}
 		});
 

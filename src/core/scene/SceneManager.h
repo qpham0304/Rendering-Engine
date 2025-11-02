@@ -9,6 +9,7 @@
 #include <future>
 #include <mutex>
 #include <thread>
+#include "../src/graphics/renderer/SkyboxRenderer.h"
 #include "Scene.h"
 
 class Camera;

@@ -72,6 +72,9 @@
     <ClCompile Include="src\graphics\utils\Utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\core\features\Timer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -127,6 +130,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\Systems\System.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\apps\vulkan-setup\FollowDemo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\apps\vulkan-setup\VulkanSetupDemo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\gui\framework\ImGui\ImGuiController.cpp">
@@ -255,9 +267,6 @@
     <ClCompile Include="src\core\features\PlatformFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\features\ServiceLocator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\OpenGL\VAO.h">
@@ -339,6 +348,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\renderer\ImageBasedRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\renderer\Renderer.h">
@@ -446,6 +458,15 @@
     <ClInclude Include="Libraries\include\FileWatch\FileWatch.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\apps\vulkan-setup\FollowDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\apps\vulkan-setup\VulkanSetupDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\apps\particle-demo\ParticleDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\gui\framework\ImGui\ImGuiController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -537,9 +558,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\core\features\Configs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\features\ServiceLocator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -10,7 +10,7 @@ class AppLayer : public Layer
 {
 protected:
 	FrameBuffer applicationFBO;
-	std::unique_ptr<Camera> camera;
+	Camera* camera;
 	std::unique_ptr<SkyboxRenderer> skybox;
 	unsigned int VAO, VBO;
 	bool isActive;
@@ -22,7 +22,7 @@ public:
 	AppLayer(const std::string& name);
 	~AppLayer();
 
-	void OnAttach(LayerManager* manager) override;
+	void OnAttach() override;
 	void OnDetach() override;
 	void OnUpdate() override;
 	void OnGuiUpdate() override;

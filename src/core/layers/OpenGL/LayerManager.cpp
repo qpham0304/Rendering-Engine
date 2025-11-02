@@ -1,6 +1,5 @@
 #include "../LayerManager.h"
 #include "ImGui.h" // TODO remove when gui is refactored
-#include "../../features/ServiceLocator.h"
 
 #define OUT_OF_BOUND_ERROR(index) { \
     std::string msg = "Index out of bound: \"" + std::to_string(index) + "\""; \
@@ -11,12 +10,6 @@ std::unordered_map<std::string, std::shared_ptr<FrameBuffer>> LayerManager::fram
 
 bool LayerManager::boundCheck(const int& index) {
 	return !(index < 0 || index >= m_Layers.size());
-}
-
-LayerManager::LayerManager(ServiceLocator& serviceLocator)
-	:	appWindow(serviceLocator.Get<AppWindow>("AppWindow")),
-		m_SelectedLayer(-1)
-{
 }
 
 LayerManager::~LayerManager()
@@ -53,7 +46,7 @@ std::shared_ptr<FrameBuffer> LayerManager::getFrameBuffer(const std::string name
 
 bool LayerManager::AddLayer(Layer* layer)
 {
-	layer->OnAttach(this);
+	layer->OnAttach();
 	m_Layers.push_back(layer);
 	return true;
 }
@@ -66,6 +59,9 @@ bool LayerManager::RemoveLayer(const int index)
 	m_Layers[index]->OnDetach();
 	delete m_Layers[index];
 
+	//auto it = m_Layers.begin();
+	//std::advance(it, index);
+	//m_Layers.erase(it);
 	m_Layers.erase(m_Layers.begin() + index);
 	return true;
 }
@@ -94,11 +90,6 @@ const int& LayerManager::size() const
 const std::string& LayerManager::CurrentLayer()
 {
 	return m_Layers[m_SelectedLayer]->GetName();
-}
-
-const AppWindow& LayerManager::Window() const
-{
-	return appWindow;
 }
 
 void LayerManager::onUpdate() 

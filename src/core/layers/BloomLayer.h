@@ -19,7 +19,7 @@ public:
 	BloomLayer(const std::string& name);
 	~BloomLayer() = default;
 
-	void OnAttach(LayerManager* manager) override;
+	void OnAttach() override;
 	void OnDetach() override;
 	void OnUpdate() override;
 	void OnGuiUpdate() override;

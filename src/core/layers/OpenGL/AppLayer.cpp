@@ -4,8 +4,6 @@
 #include "../../src/core/events/EventManager.h"
 #include "Imgui.h"  //TODO: remove when there's no ui dependency
 #include "camera.h"
-#include "../../features/ServiceLocator.h"
-#include "../../src/core/layers/layerManager.h"
 
 void AppLayer::renderControl()
 {
@@ -47,22 +45,18 @@ void AppLayer::renderApplication(const int& fboTexture)
 
 AppLayer::AppLayer(const std::string& name) : Layer(name), isActive(false), VAO(0), VBO(0)
 {
-	//AppWindow& app = serviceLocator->Get<AppWindow>("AppWindow");
-	int width = manager->Window().width;
-	int height = manager->Window().width;
-
 	applicationFBO.Init(
-		width,
-		height,
+		AppWindow::width,
+		AppWindow::height,
 		GL_RGBA32F,
 		GL_RGBA,
 		GL_FLOAT,
 		nullptr
 	);
-	camera = std::make_unique< Camera>();
+	camera = new Camera();
 	camera->init(
-		width, 
-		height, 
+		AppWindow::width, 
+		AppWindow::height, 
 		glm::vec3(-6.5f, 3.5f, 8.5f), 
 		glm::vec3(0.5, -0.2, -1.0f)
 	);
@@ -74,53 +68,8 @@ AppLayer::~AppLayer()
 	OnDetach();
 }
 
-void AppLayer::OnAttach(LayerManager* manager)
+void AppLayer::OnAttach()
 {
-	EventManager::getInstance().Subscribe(EventType::ModelLoadEvent, [](Event& event) {
-		ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
-		if (!e.entity.hasComponent<ModelComponent>()) {
-			e.entity.addComponent<ModelComponent>();
-		}
-
-		ModelComponent& component = e.entity.getComponent<ModelComponent>();
-		component.path = "Loading...";
-		std::string uuid = SceneManager::getInstance().addModel(e.path.c_str());
-
-		if (component.path != e.path && !uuid.empty()) {
-			component.model = SceneManager::getInstance().models[uuid];
-			component.path = e.path;
-		}
-
-		else {
-			ImGui::OpenPopup("Failed to load file, please check the format");
-			component.reset();
-		}
-		});
-
-	EventManager::getInstance().Subscribe(EventType::AnimationLoadEvent, [](Event& event) {
-		AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
-		if (!e.entity.hasComponent<AnimationComponent>()) {
-			e.entity.addComponent<AnimationComponent>();
-		}
-
-		AnimationComponent& animationComponent = e.entity.getComponent<AnimationComponent>();
-		ModelComponent& modelComponent = e.entity.getComponent<ModelComponent>();
-		animationComponent.path = "Loading...";
-		std::string uuid = SceneManager::getInstance().addAnimation(e.path.c_str(), modelComponent.model.lock().get());
-
-		if (animationComponent.path != e.path && !uuid.empty()) {
-			animationComponent.animation = SceneManager::getInstance().animations[uuid];
-			animationComponent.animator.Init(SceneManager::getInstance().animations[uuid].get());
-			animationComponent.path = e.path;
-		}
-
-		else {
-			ImGui::OpenPopup("Failed to load file, please check the format");
-			animationComponent.reset();
-		}
-		});
-
-
 	EventManager& eventManager = EventManager::getInstance();
 	eventManager.Subscribe(EventType::MouseScrolled, [this](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
