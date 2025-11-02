@@ -266,16 +266,16 @@ void ImGuiLeftSidebarWidget::EntityTab() {
 
                 if (ImGui::MenuItem("Add Camera")) {
                     //light.position = transform.translateVec;
-                    TransformComponent& transform = entity.getComponent<TransformComponent>();
-                    NameComponent& name = entity.getComponent<NameComponent>();
-                    name.name = "camera";
-                    entity.addComponent<CameraComponent>(
-                        AppWindow::width,
-                        AppWindow::height,
-                        glm::vec3(transform.translateVec),
-                        glm::vec3(0.5, -0.2, -1.0f)
-                    );
-                    entity.onCameraComponentAdded();    // have entity subscribe to a component added event
+                    //TransformComponent& transform = entity.getComponent<TransformComponent>();
+                    //NameComponent& name = entity.getComponent<NameComponent>();
+                    //name.name = "camera";
+                    //entity.addComponent<CameraComponent>(
+                    //    AppWindow::width,
+                    //    AppWindow::height,
+                    //    glm::vec3(transform.translateVec),
+                    //    glm::vec3(0.5, -0.2, -1.0f)
+                    //);
+                    //entity.onCameraComponentAdded();    // have entity subscribe to a component added event
                 }
 
                 ImGui::BeginDisabled(!entity.hasComponent<ModelComponent>());
