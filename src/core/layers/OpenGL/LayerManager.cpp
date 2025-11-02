@@ -120,10 +120,9 @@ void LayerManager::onGuiUpdate()
 		layer->OnGuiUpdate();
 	}
 	for (auto& layer : m_Layers) {
-		if (ImGui::Begin("Layers")) {
-			ImGui::Checkbox(layer->GetName().c_str(), &layer->m_Enabled);
-			ImGui::End();
-		}
+		ImGui::Begin("Layers");
+		ImGui::Checkbox(layer->GetName().c_str(), &layer->m_Enabled);
+		ImGui::End();
 	}
 }
 

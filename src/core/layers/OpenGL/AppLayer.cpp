@@ -9,10 +9,9 @@
 
 void AppLayer::renderControl()
 {
-	if (ImGui::Begin("control")) {
+	ImGui::Begin("control");
 
-		ImGui::End();
-	}
+	ImGui::End();
 }
 
 void AppLayer::renderApplication(const int& fboTexture)

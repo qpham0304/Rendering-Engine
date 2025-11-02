@@ -51,7 +51,6 @@ void Application::start()
 	int height = appWindow->height;
 	GLFWwindow* window = appWindow->window->getWindow();
 	guiController->init(window, appWindow->width, appWindow->height);
-	pushLayer(editorLayer);	// must be the last to be added to layer stack
 	editorLayer->init(guiController.get());
 
 	//TODO: experimenting with file watcher for now
@@ -65,6 +64,7 @@ void Application::start()
 }
 
 void Application::run() {
+	pushLayer(editorLayer);	// must be the last to be added to layer stack
 
 	while (isRunning) {
 		// Application

@@ -182,7 +182,6 @@ void ImGuiLeftSidebarWidget::LightTab()
 }
 
 void ImGuiLeftSidebarWidget::EntityTab() {
-    ImGui::End();
     SceneManager& sceneManager = sceneManager.getInstance();
     Scene* scene = sceneManager.getActiveScene();
 
@@ -353,58 +352,55 @@ void ImGuiLeftSidebarWidget::EntityTab() {
 void ImGuiLeftSidebarWidget::ModelsTab()
 {
     SceneManager& sceneManager = sceneManager.getInstance();
+    ImGui::Begin("Models Browser");
+    for (auto [uuid, model] : sceneManager.models) {
+        ImGui::PushID(uuid.c_str());
+        ImGuiTreeNodeFlags node_flags = base_flags;
 
-    if (ImGui::Begin("Models Browser")) {
-        for (auto [uuid, model] : sceneManager.models) {
-            ImGui::PushID(uuid.c_str());
-            ImGuiTreeNodeFlags node_flags = base_flags;
+        if (selectedModel == uuid) {
+            node_flags |= ImGuiTreeNodeFlags_Selected;
+        }
 
-            if (selectedModel == uuid) {
-                node_flags |= ImGuiTreeNodeFlags_Selected;
+        std::string displayPath = (model->getPath().empty() ? uuid : model->getPath());
+        bool open = (ImGui::TreeNodeEx(displayPath.c_str(), node_flags));
+        bool showPopup = ImGui::BeginPopupContextItem("Add Component");
+        if (showPopup) {
+            if (ImGui::MenuItem("Copy Path")) {
+                ImGui::SetClipboardText(model->getPath().c_str());
             }
 
-            std::string displayPath = (model->getPath().empty() ? uuid : model->getPath());
-            bool open = (ImGui::TreeNodeEx(displayPath.c_str(), node_flags));
-            bool showPopup = ImGui::BeginPopupContextItem("Add Component");
-            if (showPopup) {
-                if (ImGui::MenuItem("Copy Path")) {
-                    ImGui::SetClipboardText(model->getPath().c_str());
-                }
-
-                if (ImGui::MenuItem("Load Model")) {
-                    std::string uuid = Utils::fileDialog();
-                    if (!uuid.empty()) {
-                        sceneManager.addModel(uuid);
-                    }
-                }
-
-                if (ImGui::MenuItem("Delete Model")) {
-                    sceneManager.removeModel(uuid);
-                }
-
-                ImGui::EndPopup();
-            }
-
-            if (open) {
-                ImGui::TreePop();
-            }
-
-            if (ImGui::IsItemHovered() && !showPopup) {
-                if (ImGui::IsAnyItemHovered()) {
-                    ImGui::BeginTooltip();
-                    ImGui::Text(uuid.c_str());
-                    ImGui::EndTooltip();
+            if (ImGui::MenuItem("Load Model")) {
+                std::string uuid = Utils::fileDialog();
+                if (!uuid.empty()) {
+                    sceneManager.addModel(uuid);
                 }
             }
 
-            if (ImGui::IsItemClicked()) {
-                selectedModel = uuid;
+            if (ImGui::MenuItem("Delete Model")) {
+                sceneManager.removeModel(uuid);
+            }
+
+            ImGui::EndPopup();
+        }
+
+        if (open) {
+            ImGui::TreePop();
+        }
+
+        if (ImGui::IsItemHovered() && !showPopup) {
+            if (ImGui::IsAnyItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text(uuid.c_str());
+                ImGui::EndTooltip();
             }
         }
-        ImGui::PopID();
-        ImGui::End();
-    }
 
+        if (ImGui::IsItemClicked()) {
+            selectedModel = uuid;
+        }
+        ImGui::PopID();
+    }
+    ImGui::End();
 }
 
 void ImGuiLeftSidebarWidget::render()

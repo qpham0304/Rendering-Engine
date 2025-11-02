@@ -113,22 +113,22 @@ void EditorLayer::init(GuiManager* controller)
 {
 	guiController = controller;
 	guiController->useDarkTheme();
-	editorCamera = new Camera();
-	printf("appwindow: %d\n", manager->Window().width);
-	printf("appwindow: %d\n", manager->Window().height);
-	//printf("appwindow: %d", manager->Window().width);
-	editorCamera->init(manager->Window().width, manager->Window().height, glm::vec3(1.0, 0.0, 0.0), glm::vec3(1.0));
 	sceneManager.addScene("default");
-	//sceneManager.getScene("default")->addLayer(new ParticleDemo("demo"));
-	//sceneManager.getScene("default")->addLayer(new AppLayer("app"));
-	//sceneManager.getScene("default")->addLayer(new DeferredIBLDemo("demo"));
-	//Application::getInstance().layerManager->AddLayer(new DeferredIBLDemo("demo"));
 	modelShader.Init("Shaders/model.vert", "Shaders/model.frag");
 }
 
 void EditorLayer::OnAttach(LayerManager* manager)
 {
 	Layer::OnAttach(manager);
+
+	if (!SceneManager::cameraController) {
+		editorCamera = new Camera();
+		editorCamera->init(manager->Window().width, manager->Window().height, glm::vec3(1.0, 0.0, 0.0), glm::vec3(1.0));
+		SceneManager::cameraController = editorCamera;
+	}
+	else {
+		editorCamera = SceneManager::cameraController;
+	}
 
 	EventManager::getInstance().Subscribe(EventType::ModelLoadEvent, [](Event& event) {
 		ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
@@ -264,28 +264,27 @@ void EditorLayer::OnGuiUpdate()
 	}
 
 	std::string id;
-	if (ImGui::Begin("Layers")) {
-		Scene* scene = sceneManager.getActiveScene();
-		//LayerManager& layerManager = *Application::getInstance().layerManager;
-		if (ImGui::Button("add demo layer")) {
-			//id = "demo " + std::to_string(layerManager.size());
-			//scene->addLayer(new ParticleDemo(id.c_str()));
-			//layerManager.AddLayer(new ParticleDemo(id.c_str()));
+	ImGui::Begin("Layers");
+	Scene* scene = sceneManager.getActiveScene();
+	//LayerManager& layerManager = *Application::getInstance().layerManager;
+	if (ImGui::Button("add demo layer")) {
+		//id = "demo " + std::to_string(layerManager.size());
+		//scene->addLayer(new ParticleDemo(id.c_str()));
+		//layerManager.AddLayer(new ParticleDemo(id.c_str()));
 
-		}
-		if (ImGui::Button("add bloom layer")) {
-			//id = "bloom " + std::to_string(layerManager.size());
-			//scene->addLayer(new BloomLayer(id.c_str()));
-			//layerManager.AddLayer(new BloomLayer(id.c_str()));
-
-		}
-		if (ImGui::Button("remove layer")) {	//TODO: should be able to delete selected layers
-			//scene->removeLayer(1);
-			//layerManager.RemoveLayer(1);
-
-		}
-		ImGui::End();
 	}
+	if (ImGui::Button("add bloom layer")) {
+		//id = "bloom " + std::to_string(layerManager.size());
+		//scene->addLayer(new BloomLayer(id.c_str()));
+		//layerManager.AddLayer(new BloomLayer(id.c_str()));
+
+	}
+	if (ImGui::Button("remove layer")) {	//TODO: should be able to delete selected layers
+		//scene->removeLayer(1);
+		//layerManager.RemoveLayer(1);
+
+	}
+	ImGui::End();
 }
 
 void EditorLayer::OnEvent(Event& event)

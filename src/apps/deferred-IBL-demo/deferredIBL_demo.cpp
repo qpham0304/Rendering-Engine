@@ -842,52 +842,50 @@ void DeferredIBLDemo::OnGuiUpdate()
 {
     Scene& scene = *SceneManager::getInstance().getActiveScene();
 
-    if (ImGui::Begin("control")) {
-        ImVec2 wsize = ImGui::GetWindowSize();
+    ImGui::Begin("control");
+    ImVec2 wsize = ImGui::GetWindowSize();
 
-        ImGui::Checkbox("Pause Time", &timePaused);
-        ImGui::DragFloat("Falling speed", &speed, 0.01, -10.0, 10.0);
-        ImGui::DragInt("Num Instances", &numRender, particleControl.numInstances / 100.0, 0, particleControl.numInstances, 0, true);
-        if (ImGui::DragFloat3("Spawn Area", glm::value_ptr(particleControl.spawnArea), 0.1, 0, 1000.0, 0, true)) {
-            particleRenderer.clear();
-            particleRenderer.init(particleControl);
-        }
-        ImGui::Checkbox("Pause", &pause);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset")) {
-            particleRenderer.reset();
-        }
-
-
-        //ImGui::Text("forward lighting");
-        //ImGui::Image((ImTextureID)applicationFBO.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-        ImGui::Text("shadow texture");
-        ImGui::Image((ImTextureID)depthMap.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-        ImGui::Text("sky view LUT");
-        ImGui::Image((ImTextureID)skyViewLUT.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-        ImGui::Text("atmostphere sky");
-        ImGui::Image((ImTextureID)atmosphereScene.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-        ImGui::Text("SSAO");
-        ImGui::Image((ImTextureID)ssaoTexture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-        ImGui::Text("Blured SSAO");
-        ImGui::Image((ImTextureID)ssaoBlurTexture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-
-        ImGui::Text("gAlbedo");
-        ImGui::Image((ImTextureID)gAlbedo, wsize, ImVec2(0, 1), ImVec2(1, 0));
-        ImGui::Text("gNormal");
-        ImGui::Image((ImTextureID)gNormal, wsize, ImVec2(0, 1), ImVec2(1, 0));
-        ImGui::Text("gMetalRoughness");
-        ImGui::Image((ImTextureID)gMetalRoughness, wsize, ImVec2(0, 1), ImVec2(1, 0));
-        ImGui::Text("gEmissive");
-        ImGui::Image((ImTextureID)gEmissive, wsize, ImVec2(0, 1), ImVec2(1, 0));
-        ImGui::Text("gDUV");
-        ImGui::Image((ImTextureID)gDUV, wsize, ImVec2(0, 1), ImVec2(1, 0));
-        ImGui::Text("gDepth");
-        ImGui::Image((ImTextureID)gDepth, wsize, ImVec2(0, 1), ImVec2(1, 0));
-
-        ImGui::End();
-
+    ImGui::Checkbox("Pause Time", &timePaused);
+    ImGui::DragFloat("Falling speed", &speed, 0.01, -10.0, 10.0);
+    ImGui::DragInt("Num Instances", &numRender, particleControl.numInstances / 100.0, 0, particleControl.numInstances, 0, true);
+    if (ImGui::DragFloat3("Spawn Area", glm::value_ptr(particleControl.spawnArea), 0.1, 0, 1000.0, 0, true)) {
+        particleRenderer.clear();
+        particleRenderer.init(particleControl);
     }
+    ImGui::Checkbox("Pause", &pause);
+    ImGui::SameLine();
+    if (ImGui::Button("Reset")) {
+        particleRenderer.reset();
+    }
+
+
+    //ImGui::Text("forward lighting");
+    //ImGui::Image((ImTextureID)applicationFBO.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("shadow texture");
+    ImGui::Image((ImTextureID)depthMap.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("sky view LUT");
+    ImGui::Image((ImTextureID)skyViewLUT.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("atmostphere sky");
+    ImGui::Image((ImTextureID)atmosphereScene.texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("SSAO");
+    ImGui::Image((ImTextureID)ssaoTexture, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("Blured SSAO");
+    ImGui::Image((ImTextureID)ssaoBlurTexture, wsize, ImVec2(0, 1), ImVec2(1, 0));
+
+    ImGui::Text("gAlbedo");
+    ImGui::Image((ImTextureID)gAlbedo, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("gNormal");
+    ImGui::Image((ImTextureID)gNormal, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("gMetalRoughness");
+    ImGui::Image((ImTextureID)gMetalRoughness, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("gEmissive");
+    ImGui::Image((ImTextureID)gEmissive, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("gDUV");
+    ImGui::Image((ImTextureID)gDUV, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::Text("gDepth");
+    ImGui::Image((ImTextureID)gDepth, wsize, ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::End();
+
     
     AppLayer::renderApplication(ssrSceneFBO.texture);
 }
