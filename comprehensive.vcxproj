@@ -188,6 +188,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
     <ClCompile Include="src\core\features\PlatformFactory.cpp" />
     <ClCompile Include="src\core\features\ServiceLocator.cpp" />
     <ClCompile Include="src\window\platform\GLFW\InputGLFW.cpp" />
@@ -267,6 +268,7 @@
     <ClCompile Include="src\core\systems\System.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
     <ClInclude Include="src\core\features\Configs.h" />
     <ClInclude Include="src\core\features\PlatformFactory.h" />
     <ClInclude Include="src\core\features\ServiceLocator.h" />

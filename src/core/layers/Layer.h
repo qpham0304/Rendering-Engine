@@ -13,7 +13,7 @@ protected:
 
 public:
 	bool m_Enabled;
-	
+	//Layer() = default;
 	Layer(const std::string& name = "default")
 		: m_LayerName(name), m_Enabled(true), manager(nullptr)
 	{

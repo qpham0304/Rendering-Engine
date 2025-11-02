@@ -10,6 +10,7 @@
 #include <mutex>
 #include <thread>
 #include "Scene.h"
+#include "Animator.h"	//animation dependency
 
 class Camera;
 

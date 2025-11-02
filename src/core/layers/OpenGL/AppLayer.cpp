@@ -45,9 +45,20 @@ void AppLayer::renderApplication(const int& fboTexture)
 	}
 }
 
-AppLayer::AppLayer(const std::string& name) : Layer(name), isActive(false), VAO(0), VBO(0)
+AppLayer::AppLayer(const std::string& name) 
+	: Layer(name), isActive(false), VAO(0), VBO(0)
 {
-	//AppWindow& app = serviceLocator->Get<AppWindow>("AppWindow");
+}
+
+AppLayer::~AppLayer()
+{
+	OnDetach();
+}
+
+void AppLayer::OnAttach(LayerManager* manager)
+{
+	Layer::OnAttach(manager);
+
 	int width = manager->Window().width;
 	int height = manager->Window().width;
 
@@ -61,21 +72,13 @@ AppLayer::AppLayer(const std::string& name) : Layer(name), isActive(false), VAO(
 	);
 	camera = std::make_unique< Camera>();
 	camera->init(
-		width, 
-		height, 
-		glm::vec3(-6.5f, 3.5f, 8.5f), 
+		width,
+		height,
+		glm::vec3(-6.5f, 3.5f, 8.5f),
 		glm::vec3(0.5, -0.2, -1.0f)
 	);
 	skybox.reset(new SkyboxRenderer());
-}
-
-AppLayer::~AppLayer()
-{
-	OnDetach();
-}
-
-void AppLayer::OnAttach(LayerManager* manager)
-{
+	
 	EventManager::getInstance().Subscribe(EventType::ModelLoadEvent, [](Event& event) {
 		ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
 		if (!e.entity.hasComponent<ModelComponent>()) {
