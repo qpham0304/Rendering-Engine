@@ -6,13 +6,15 @@
 #include "camera.h"
 #include "../../src/window/Input.h"
 
-unsigned int AppWindow::width = DEFAULT_WIDTH;
-unsigned int AppWindow::height = DEFAULT_HEIGHT;
 bool AppWindow::VsyncEnabled = false;
 
 RenderPlatform AppWindow::platform = RenderPlatform::UNDEFINED;
 const std::set<RenderPlatform> AppWindow::supportRenderPlatform = { RenderPlatform::OPENGL };
 
-//AppWindow* AppWindow::window = nullptr;
-//AppWindow* AppWindow::sharedWindow = nullptr;
 AppWindow* AppWindow::window = nullptr;
+
+
+WindowConfig AppWindow::getWindowConfig() const
+{
+	return config;
+}

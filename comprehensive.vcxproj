@@ -189,6 +189,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\core\features\PlatformFactory.cpp" />
+    <ClCompile Include="src\core\features\ServiceLocator.cpp" />
     <ClCompile Include="src\window\platform\GLFW\InputGLFW.cpp" />
     <ClCompile Include="src\core\features\EngineUtils.cpp" />
     <ClCompile Include="src\core\components\LightComponent.cpp" />
@@ -203,10 +204,7 @@
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiMenuWidget.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiRightSidebarWidget.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiSubViewWidget.cpp" />
-    <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp" />
     <ClCompile Include="src\apps\sandbox\main.cpp" />
-    <ClCompile Include="src\apps\vulkan-setup\FollowDemo.cpp" />
-    <ClCompile Include="src\apps\vulkan-setup\VulkanSetupDemo.cpp" />
     <ClCompile Include="src\core\layers\OpenGL\ShadowLayer.cpp" />
     <ClCompile Include="src\core\components\CubeMapComponent.cpp" />
     <ClCompile Include="src\core\components\CameraComponent.cpp" />
@@ -227,7 +225,6 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\AtmosphereRenderer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\Renderer.cpp" />
     <ClCompile Include="src\core\components\ModelComponent.cpp" />
-    <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\ImageBasedRenderer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\BloomRenderer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\BloomFBO.cpp" />
@@ -272,6 +269,7 @@
   <ItemGroup>
     <ClInclude Include="src\core\features\Configs.h" />
     <ClInclude Include="src\core\features\PlatformFactory.h" />
+    <ClInclude Include="src\core\features\ServiceLocator.h" />
     <ClInclude Include="src\window\platform\GLFW\InputGLFW.h" />
     <ClInclude Include="src\core\features\EngineUtils.h" />
     <ClInclude Include="Headers\pch.h" />
@@ -287,9 +285,6 @@
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiRightSidebarWidget.h" />
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiSubViewWidget.h" />
     <ClInclude Include="Libraries\include\FileWatch\FileWatch.hpp" />
-    <ClInclude Include="src\apps\particle-demo\ParticleDemo.h" />
-    <ClInclude Include="src\apps\vulkan-setup\FollowDemo.h" />
-    <ClInclude Include="src\apps\vulkan-setup\VulkanSetupDemo.h" />
     <ClInclude Include="src\core\layers\ShadowLayer.h" />
     <ClInclude Include="src\core\components\CubeMapComponent.h" />
     <ClInclude Include="Libraries\include\glad\glad.h" />
@@ -317,7 +312,6 @@
     <ClInclude Include="src\graphics\renderer\AtmosphereRenderer.h" />
     <ClInclude Include="src\graphics\renderer\Renderer.h" />
     <ClInclude Include="src\core\components\headers\ModelComponent.h" />
-    <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
     <ClInclude Include="src\graphics\renderer\BloomRenderer.h" />
     <ClInclude Include="Headers\OpenGL\BloomFBO.h" />
     <ClInclude Include="Headers\OpenGL\DepthCubeMap.h" />

@@ -3,6 +3,8 @@
 #include "../../src/core/scene/SceneManager.h"
 #include "../../src/window/appwindow.h"
 #include "../ImGui/theme/ImGuiThemes.h"
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include "camera.h"
 
 ImGuiController::ImGuiController()
