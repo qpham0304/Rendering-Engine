@@ -1,4 +1,5 @@
 #pragma once
+
 #include "../../AppWindow.h"
 
 class GLFWwindow;
@@ -16,10 +17,12 @@ public:
 	GLFWwindow* getWindow() override;
 	GLFWwindow* getSharedWindow() override;
 
+
 	virtual int init(WindowConfig platform) override;		// set up and init the graphics api depending on the platform
 	virtual int start() override;	// start creating windows and context
 	virtual int end() override;						// close and terminate the program
 	virtual void onUpdate() override;
+	virtual double getTime() override;
 
 protected:
 	virtual void setEventCallback() override;

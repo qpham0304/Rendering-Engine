@@ -1,11 +1,12 @@
 #pragma once
 
+#include <memory>
 #include <set>
 #include <string>
 #include "../../src/core/features/Configs.h"
+#include "Input.h"
 
 class GLFWwindow;
-
 
 class AppWindow
 {
@@ -24,16 +25,22 @@ public:
 	virtual int start() = 0;					// start creating windows and context
 	virtual int end() = 0;						// close and terminate the program
 	virtual void onUpdate() = 0;
+	virtual double getTime() = 0;
 
 	WindowConfig getWindowConfig() const;
+	bool isMousePressed(MouseCodes mouseCode);
+	bool isKeyPressed(KeyCodes keyCode);
+	int getMouseButton(MouseCodes mouseCode);
+	void getCursorPos(double* x, double* y);
+	int getKey(KeyCodes keyCode);
 
 	unsigned int width;
 	unsigned int height;
 
 protected:
-	
 	AppWindow() = default;
 
+	std::unique_ptr<Input> input;
 
 	virtual void setEventCallback() = 0;
 	

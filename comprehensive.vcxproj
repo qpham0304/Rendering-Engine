@@ -272,6 +272,7 @@
     <ClInclude Include="src\core\features\Configs.h" />
     <ClInclude Include="src\core\features\PlatformFactory.h" />
     <ClInclude Include="src\core\features\ServiceLocator.h" />
+    <ClInclude Include="src\window\InputKeyCode.h" />
     <ClInclude Include="src\window\platform\GLFW\InputGLFW.h" />
     <ClInclude Include="src\core\features\EngineUtils.h" />
     <ClInclude Include="Headers\pch.h" />

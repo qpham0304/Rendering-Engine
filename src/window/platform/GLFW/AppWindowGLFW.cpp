@@ -4,11 +4,11 @@
 #include <GLFW/glfw3.h>
 #include "../../src/core/features/Timer.h"
 #include "../../src/core/events/eventManager.h"
-#include "../../src/window/Input.h"
+#include "InputGLFW.h"
 
 AppWindowGLFW::AppWindowGLFW() : AppWindow()
 {
-
+	input = std::make_unique<InputGLFW>();
 }
 
 AppWindowGLFW::~AppWindowGLFW()
@@ -104,7 +104,16 @@ int AppWindowGLFW::start() {
 
 		glfwMakeContextCurrent(window);
 	}
+	
 	setEventCallback();
+
+	//TODO: HEY THIS WORKS but you REGRET IT LATER
+	//((InputGLFW*)input.get())->window = window;	// shorter but how can read
+	InputGLFW* tmp = dynamic_cast<InputGLFW*>(input.get());
+	if (!tmp) {
+		throw std::runtime_error("AppWindowGLFW: failed to cast Input to type InputGLFW");
+	} 
+	tmp->window = window;
 
 	glfwSwapInterval(1);
 	//glfwSwapInterval(0);
@@ -128,6 +137,11 @@ void AppWindowGLFW::onUpdate()
 		glfwPollEvents();
 		glfwSwapBuffers(window);
 	}
+}
+
+double AppWindowGLFW::getTime()
+{
+	return glfwGetTime();
 }
 
 

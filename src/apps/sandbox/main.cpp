@@ -1,5 +1,5 @@
 
-#include "../vulkan-setup/VulkanSetupDemo.h"
+//#include "../vulkan-setup/VulkanSetupDemo.h"
 #include "../../core/Application.h"
 #include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
 
@@ -11,7 +11,7 @@ int main()
 		reason: for simplicity and compatability for apps that are not up to date with the changes
 	*/
 
-	//#ifdef USE_EDITOR
+	#ifdef USE_EDITOR
 	Application app;
 	app.init();
 

@@ -2,9 +2,6 @@
 
 #include "../../src/window/appwindow.h"
 #include "../../src/core/features/Timer.h"
-//#include "../../src/graphics/utils/Utils.h"
-//#include "../../src/apps/particle-demo/ParticleDemo.h"
-//#include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
 #include "../../src/core/events/EventManager.h"
 #include "../../src/core/layers/AppLayer.h"
 #include "../../src/core/layers/BloomLayer.h"
@@ -43,6 +40,7 @@ void EditorLayer::mockThreadTasks()
 
 void EditorLayer::renderGuizmo()
 {
+	ImGuizmo::BeginFrame();
 	glm::vec3 translateVector(0.0f, 0.0f, 0.0f);
 	glm::vec3 scaleVector(1.0f, 1.0f, 1.0f);
 
@@ -60,11 +58,20 @@ void EditorLayer::renderGuizmo()
 		glm::mat4& transform = transformComponent.getModelMatrix();
 
 		ImGuizmo::SetOrthographic(false);
-		ImGuizmo::SetDrawlist();
+		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
 		float wd = (float)ImGui::GetWindowWidth();
 		float wh = (float)ImGui::GetWindowHeight();
 
-		ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, wd, wh);
+		ImVec2 windowPos = ImGui::GetWindowPos();
+		ImGuizmo::SetRect(windowPos.x, windowPos.y, wd, wh);
+		//ImVec2 viewportPos = ImGui::GetMainViewport()->Pos;
+		//ImGuizmo::SetRect(
+		//	windowPos.x - viewportPos.x,
+		//	windowPos.y - viewportPos.y,
+		//	ImGui::GetWindowWidth(),
+		//	ImGui::GetWindowHeight()
+		//);
+
 		glm::mat4 identity(1.0f);
 
 		if (drawGrid) {
@@ -177,6 +184,7 @@ void EditorLayer::OnAttach(LayerManager* manager)
 
 	EventManager::getInstance().Subscribe(EventType::MouseMoved, [&](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
+
 		if (GuizmoActive && editorActive) {
 			mouseEvent.Handled = true;	// block mouse event from other layers
 		}
