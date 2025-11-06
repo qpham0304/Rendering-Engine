@@ -6,26 +6,10 @@
 #include "../../src/core/features/Profiler.h"
 #include "../../src/window/platform/GLFW/AppWindowGLFW.h"
 
-Application::Application() : isRunning(false)
+Application::Application(WindowConfig windowConfig) 
+	: isRunning(false), windowConfig(windowConfig)
 {
-	WindowConfig config{};
-	config.title = "Application Untitled";
-	config.renderPlatform = RenderPlatform::OPENGL;
-	config.windowPlatform = WindowPlatform::GLFW;
-	config.width = 1920;
-	config.height = 1080;
-	config.vsync = true;
 
-	//separate service modules
-	appWindow = factory.createWindow(config);
-	guiController = factory.createGuiManager(GuiPlatform::IMGUI);
-
-	//engine specific features
-	layerManager = std::make_unique<LayerManager>(serviceLocator);
-
-	AppWindow::window = appWindow.get();	//TODO: find a better solution if possible
-
-	editorLayer = new EditorLayer("EditorLayer");
 }
 
 void Application::pushLayer(Layer* layer)
@@ -35,6 +19,19 @@ void Application::pushLayer(Layer* layer)
 
 void Application::init()
 {
+	//separate service modules
+	appWindow = platformFactory.createWindow(windowConfig.windowPlatform);
+	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
+
+	//engine specific features
+	layerManager = std::make_unique<LayerManager>(serviceLocator);
+
+	//Binding platform widow to single ton app window
+	//TODO: find a better solution if possible
+	AppWindow::window = appWindow.get();
+
+	editorLayer = new EditorLayer("EditorLayer");
+
 	isRunning = true;
 
 	//std::bind(&Application::onClose, this, std::placeholders::_1);
@@ -45,13 +42,9 @@ void Application::init()
 
 void Application::start()
 {
-	appWindow->start();
-
-	int width = appWindow->width;
-	int height = appWindow->height;
-	GLFWwindow* window = appWindow->window->getWindow();
-	guiController->init(window, appWindow->width, appWindow->height);
-	editorLayer->init(guiController.get());
+	appWindow->init(windowConfig);
+	guiManager->init(windowConfig);
+	editorLayer->init(guiManager.get());
 
 	//TODO: experimenting with file watcher for now
 	std::unique_ptr<filewatch::FileWatch<std::string>> fileWatcher;
@@ -75,10 +68,10 @@ void Application::run() {
 		bool useEditor = true;
 		if (useEditor) {
 			//TODO GUI should theese be only done by the guiController
-			guiController->start();
+			guiManager->start();
 			sceneManager.onGuiUpdate(glfwGetTime());
 			layerManager->onGuiUpdate();
-			guiController->end();
+			guiManager->end();
 		}
 
 		appWindow->onUpdate();
@@ -88,8 +81,8 @@ void Application::run() {
 
 void Application::end()
 {
-	guiController->onClose();
-	appWindow->end();
+	guiManager->onClose();
+	appWindow->onClose();
 }
 
 void Application::onClose()

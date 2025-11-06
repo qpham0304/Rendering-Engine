@@ -7,19 +7,17 @@ class LayerManager;
 
 class Layer
 {
-protected:
-	std::string m_LayerName;
-	LayerManager* manager;
-
 public:
 	bool m_Enabled;
+
+public:
 	//Layer() = default;
 	Layer(const std::string& name = "default")
-		: m_LayerName(name), m_Enabled(true), manager(nullptr)
+		: m_LayerName(name), m_Enabled(true), m_Manager(nullptr)
 	{
 	}
 
-	virtual void OnAttach(LayerManager* manager) { this->manager = manager; };
+	virtual void OnAttach(LayerManager* manager) { this->m_Manager = manager; };
 	virtual void OnDetach() = 0;
 	virtual void OnUpdate() = 0;
 	virtual void OnGuiUpdate() = 0;
@@ -28,5 +26,9 @@ public:
 	const std::string& GetName() const { 
 		return m_LayerName; 
 	}
+
+protected:
+	std::string m_LayerName;
+	LayerManager* m_Manager;
 };
 

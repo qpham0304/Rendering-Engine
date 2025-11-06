@@ -14,20 +14,20 @@ const std::set<RenderPlatform> AppWindow::supportRenderPlatform = { RenderPlatfo
 AppWindow* AppWindow::window = nullptr;
 
 
-WindowConfig AppWindow::getWindowConfig() const
+const WindowConfig& AppWindow::getWindowConfig() const
 {
 	return config;
 }
 
-bool AppWindow::isMousePressed(MouseCodes mouseCode){
+bool AppWindow::isMousePressed(MouseCodes mouseCode) const {
 	return input->isMousePressed(mouseCode);
 }
 
-bool AppWindow::isKeyPressed(KeyCodes keyCode) {
+bool AppWindow::isKeyPressed(KeyCodes keyCode) const {
 	return input->isKeyPressed(keyCode);
 }
 
-int AppWindow::getMouseButton(MouseCodes mouseCode) {
+int AppWindow::getMouseButton(MouseCodes mouseCode) const {
 	return input->getMouseButton(mouseCode);
 }
 
@@ -35,6 +35,6 @@ void AppWindow::getCursorPos(double* x, double* y) {
 	return input->getCursorPos(x, y);
 }
 
-int AppWindow::getKey(KeyCodes keyCode) {
+int AppWindow::getKey(KeyCodes keyCode) const {
 	return input->getKey(keyCode);
 }

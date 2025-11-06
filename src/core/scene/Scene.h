@@ -7,17 +7,11 @@
 
 class Scene
 {
-private:
-	std::string sceneName;
-	entt::registry registry;
-	std::vector<Entity> selectedEntities;
-	std::unordered_map <std::string, std::shared_ptr<Shader>> shaders;
-
 public:
+	bool isEnabled;
 	std::unordered_map<uint32_t, Entity> entities;
 
-	bool isEnabled;
-
+public:
 	Scene(const std::string name);
 	~Scene() = default;
 
@@ -61,5 +55,11 @@ public:
 	void onUpdate(const float& deltaTime);
 	void onGuiUpdate(const float& deltaTime);
 	const std::string& getName() const;
+
+private:
+	std::string sceneName;
+	entt::registry registry;
+	std::vector<Entity> selectedEntities;
+	std::unordered_map <std::string, std::shared_ptr<Shader>> shaders;
 };
 

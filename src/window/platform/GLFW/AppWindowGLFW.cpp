@@ -66,10 +66,6 @@ int AppWindowGLFW::init(WindowConfig newConfig) {
 		height = mode->height * 2 / 3;
 	}
 
-	return 0;
-}
-
-int AppWindowGLFW::start() {
 	if (platform == RenderPlatform::UNDEFINED) {
 		throw std::runtime_error("Platform not specified have you called init() with supported platform yet?");
 	}
@@ -104,24 +100,25 @@ int AppWindowGLFW::start() {
 
 		glfwMakeContextCurrent(window);
 	}
-	
+
 	setEventCallback();
 
-	//TODO: HEY THIS WORKS but you REGRET IT LATER
 	//((InputGLFW*)input.get())->window = window;	// shorter but how can read
 	InputGLFW* tmp = dynamic_cast<InputGLFW*>(input.get());
 	if (!tmp) {
 		throw std::runtime_error("AppWindowGLFW: failed to cast Input to type InputGLFW");
-	} 
+	}
 	tmp->window = window;
 
-	glfwSwapInterval(1);
+	glfwSwapInterval(config.vsync);
+	//glfwSwapInterval(1);
 	//glfwSwapInterval(0);
 
 	return 0;
 }
 
-int AppWindowGLFW::end() {
+
+int AppWindowGLFW::onClose() {
 	if (platform == RenderPlatform::OPENGL) {
 		glfwMakeContextCurrent(nullptr);
 		glfwDestroyWindow(window);
@@ -139,7 +136,7 @@ void AppWindowGLFW::onUpdate()
 	}
 }
 
-double AppWindowGLFW::getTime()
+double AppWindowGLFW::getTime() const
 {
 	return glfwGetTime();
 }

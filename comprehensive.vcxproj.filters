@@ -258,6 +258,9 @@
     <ClCompile Include="src\core\features\ServiceLocator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\OpenGL\VAO.h">
@@ -293,7 +296,7 @@
     <ClInclude Include="Headers\OpenGL\DepthMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\gui\GuiController.h">
+    <ClInclude Include="src\gui\GuiManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\OpenGL\Animation.h">
@@ -540,6 +543,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\core\features\ServiceLocator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\window\InputKeyCode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

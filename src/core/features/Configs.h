@@ -16,8 +16,9 @@ enum class RenderPlatform {
 
 struct WindowConfig {
 	std::string title = "Untitled";
-	RenderPlatform renderPlatform = RenderPlatform::UNDEFINED;
 	WindowPlatform windowPlatform = WindowPlatform::UNDEFINED;
+	RenderPlatform renderPlatform = RenderPlatform::UNDEFINED;
+	GuiPlatform guiPlatform = GuiPlatform::UNDEFINED;
 	int width = 1280;
 	int height = 720;
 	bool vsync = true;

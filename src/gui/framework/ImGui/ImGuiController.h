@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../GuiController.h"
+#include "../../GuiManager.h"
 #include "widgets/ImGuiConsoleLogWidget.h"
 #include "widgets/ImGuiLeftSidebarWidget.h"
 #include "widgets/ImGuiRightSidebarWidget.h"
@@ -28,7 +28,7 @@ public:
 
 	~ImGuiController();
 
-	void init(GLFWwindow* window, int width, int height) override;
+	void init(WindowConfig config) override;
 	void start() override;
 	void debugWindow(ImTextureID texture);
 	void applicationWindow();

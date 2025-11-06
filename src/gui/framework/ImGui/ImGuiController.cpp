@@ -1,5 +1,5 @@
 #include "ImGuiController.h"
-#include "../../GuiController.h"
+#include "../../GuiManager.h"
 #include "../../src/core/scene/SceneManager.h"
 #include "../../src/window/appwindow.h"
 #include "../ImGui/theme/ImGuiThemes.h"
@@ -20,7 +20,7 @@ ImGuiController::ImGuiController(bool darkTheme)
 	this->darkTheme = darkTheme;
 }
 
-void ImGuiController::init(GLFWwindow* window, int width, int height)
+void ImGuiController::init(WindowConfig config)
 {
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 
@@ -44,8 +44,24 @@ void ImGuiController::init(GLFWwindow* window, int width, int height)
 	icons_config.GlyphOffset.x = -1.75f;
 
 	// Setup ImGui GLFW and OpenGL bindings
-	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init("#version 330");
+
+	void* appWindow = AppWindow::window->getWindow();
+	if (config.windowPlatform == WindowPlatform::GLFW) {
+		if (config.renderPlatform == RenderPlatform::OPENGL) {
+			ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(appWindow), true);
+			ImGui_ImplOpenGL3_Init("#version 330");
+		}
+		else if (config.renderPlatform == RenderPlatform::VULKAN) {
+			//ImGui_ImplGlfw_InitForVulkan(static_cast<GLFWwindow*>(appWindow), true);
+			throw std::runtime_error("ImGuiController: Vulkan ImGui initialization not implemented yet");
+		}
+		else {
+			throw std::runtime_error("ImGuiController: Unsupported render platform for ImGui initialization with GLFW");
+		}
+	}
+	else {
+		throw std::runtime_error("ImGuiController: Unsupported window platform for ImGui initialization");
+	}
 
 	io.Fonts->AddFontFromFileTTF("src/gui/fonts/Roboto/Roboto-Regular.ttf", fontSize);
 	io.Fonts->AddFontFromFileTTF("src/gui/fonts/fa/" FONT_ICON_FILE_NAME_FAS, fontSize*0.75, &icons_config, icons_ranges);

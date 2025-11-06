@@ -12,22 +12,16 @@
 
 class Application
 {
-private:
-	bool isRunning;
-	ServiceLocator serviceLocator;
-	PlatformFactory factory{ serviceLocator };
-
-
 public:
-	Application();
-	
 	SceneManager& sceneManager = SceneManager::getInstance();
 	EventManager& eventManager = EventManager::getInstance();
 	std::unique_ptr<LayerManager> layerManager;
-	std::unique_ptr<GuiManager> guiController;
+	std::unique_ptr<GuiManager> guiManager;
 	std::unique_ptr<AppWindow> appWindow;
 	EditorLayer* editorLayer;
 
+public:
+	Application(WindowConfig windowConfig);
 	~Application() = default;
 
 	void pushLayer(Layer* layer);
@@ -36,5 +30,11 @@ public:
 	void run();
 	void end();
 	void onClose();
+
+private:
+	bool isRunning;
+	WindowConfig windowConfig;
+	ServiceLocator serviceLocator;
+	PlatformFactory platformFactory{ serviceLocator };
 };
 

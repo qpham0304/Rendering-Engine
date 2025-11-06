@@ -30,7 +30,7 @@ static float customLerp(float a, float b, float f)
 
 void DeferredIBLDemo::setupBuffers()
 {
-    const AppWindow& window  = manager->Window();
+    const AppWindow& window  = m_Manager->Window();
     int width = window.width;
     int height = window.height;
 
@@ -199,7 +199,7 @@ void DeferredIBLDemo::renderDeferredPass()
 
 void DeferredIBLDemo::setupSkyView()
 {
-    const AppWindow& window = manager->Window();
+    const AppWindow& window = m_Manager->Window();
     int width = window.width;
     int height = window.height;
     transmittanceLUT.Init(width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
@@ -239,7 +239,7 @@ void DeferredIBLDemo::setupSkyView()
 
 void DeferredIBLDemo::renderSkyView()
 {
-    const AppWindow& window = manager->Window();
+    const AppWindow& window = m_Manager->Window();
     int width = window.width;
     int height = window.height;
 
@@ -302,7 +302,7 @@ void DeferredIBLDemo::setupSSAO()
     glGenTextures(1, &ssaoTexture);
     glBindTexture(GL_TEXTURE_2D, ssaoTexture);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, manager->Window().width, manager->Window().height, 0, GL_RED, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_Manager->Window().width, m_Manager->Window().height, 0, GL_RED, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoTexture, 0);
@@ -316,7 +316,7 @@ void DeferredIBLDemo::setupSSAO()
     glGenTextures(1, &ssaoBlurTexture);
     glBindTexture(GL_TEXTURE_2D, ssaoBlurTexture);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, manager->Window().width, manager->Window().height, 0, GL_RED, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_Manager->Window().width, m_Manager->Window().height, 0, GL_RED, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoBlurTexture, 0);
@@ -371,7 +371,7 @@ void DeferredIBLDemo::renderSSAO()
     ssaoShader.setInt("texNoise", 2);
     ssaoShader.setVec2(
         "noiseScale", 
-        glm::vec2(manager->Window().width / 4.0f, manager->Window().height / 4.0f)
+        glm::vec2(m_Manager->Window().width / 4.0f, m_Manager->Window().height / 4.0f)
     );     // tile noise texture over screen based
 
     for (unsigned int i = 0; i < 64; ++i) {
@@ -409,7 +409,7 @@ void DeferredIBLDemo::renderSSAO()
 
 void DeferredIBLDemo::setupSSR()
 {
-    ssrSceneFBO.Init(manager->Window().width, manager->Window().height, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
+    ssrSceneFBO.Init(m_Manager->Window().width, m_Manager->Window().height, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
 
 }
 
@@ -442,8 +442,8 @@ void DeferredIBLDemo::renderSSR()
     SSRShader.setMat4("projection", camera->getProjectionMatrix());
     SSRShader.setMat4("invView", glm::inverse(camera->getViewMatrix()));
     SSRShader.setMat4("invProjection", glm::inverse(camera->getProjectionMatrix()));
-    SSRShader.setInt("width", manager->Window().width);
-    SSRShader.setInt("height", manager->Window().height);
+    SSRShader.setInt("width", m_Manager->Window().width);
+    SSRShader.setInt("height", m_Manager->Window().height);
 
 
     Utils::OpenGL::Draw::drawQuad();
@@ -465,7 +465,7 @@ void DeferredIBLDemo::renderShadow()
     auto& light = lightEntities[0].getComponent<MLightComponent>();
 
     glm::mat4 lightOrtho = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
-    glm::mat4 lightPerspective = glm::perspective(glm::radians(90.0f), (float)manager->Window().width / manager->Window().height, 0.1f, 100.0f);
+    glm::mat4 lightPerspective = glm::perspective(glm::radians(90.0f), (float)m_Manager->Window().width / m_Manager->Window().height, 0.1f, 100.0f);
     
     glm::mat4 lightView = glm::lookAt(light.position, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0, 1.0, 0.0));
     glm::mat4 lightMVP = lightOrtho * lightView;
@@ -473,7 +473,7 @@ void DeferredIBLDemo::renderShadow()
     Shader shadowShader("Shaders/shadowMap.vert", "Shaders/shadowMap.frag");
 
     depthMap.Bind();
-    glViewport(0, 0, manager->Window().width, manager->Window().height);
+    glViewport(0, 0, m_Manager->Window().width, m_Manager->Window().height);
     glClear(GL_DEPTH_BUFFER_BIT);
     //glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // RGBA
     //glEnable(GL_DEPTH_TEST);
@@ -536,7 +536,7 @@ void DeferredIBLDemo::renderForwardPass()
     pbrShader.setInt("brdfLUT", 8);
 
     applicationFBO.Bind();
-    glViewport(0, 0, manager->Window().width, manager->Window().height);
+    glViewport(0, 0, m_Manager->Window().width, m_Manager->Window().height);
     glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
@@ -659,7 +659,7 @@ void DeferredIBLDemo::renderPrePass()
     scene.getShader("gPassShader")->setInt("duvMap", 6);
 
     glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
-    glViewport(0, 0, manager->Window().width, manager->Window().height);
+    glViewport(0, 0, m_Manager->Window().width, m_Manager->Window().height);
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);

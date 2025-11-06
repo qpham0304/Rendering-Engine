@@ -12,7 +12,17 @@ int main()
 	*/
 
 	#ifdef USE_EDITOR
-	Application app;
+
+	WindowConfig windowConfig{};
+	windowConfig.title = "Application Untitled";
+	windowConfig.windowPlatform = WindowPlatform::GLFW;
+	windowConfig.renderPlatform = RenderPlatform::OPENGL;
+	windowConfig.guiPlatform = GuiPlatform::IMGUI;
+	windowConfig.width = 1920;
+	windowConfig.height = 1080;
+	windowConfig.vsync = true;
+
+	Application app(windowConfig);
 	app.init();
 
 	try {

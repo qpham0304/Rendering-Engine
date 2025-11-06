@@ -2,8 +2,6 @@
 
 #include <glm/glm.hpp>
 
-class GLFWwindow;	//TODO decouple GLFW to a more abstract platform
-
 class Camera
 {
 private:
@@ -85,7 +83,7 @@ public:
 	void init(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation);
 	void onUpdate();
 	void updateViewResize(int width, int height);
-	void processInput(GLFWwindow* window);
+	void processInput();
 	void resetCamera();
 	void setCameraSpeed(int speedMultiplier);
 	void translate(const glm::vec3& position);
@@ -93,12 +91,12 @@ public:
 	//TODO: refactor by moving these to global
 	// create a singleton camera that control and manage the view
 	// swap to other camera on selected
-	bool processKeyboard(GLFWwindow* window);	//TODO: refactor to not depend upon glfw window
-	bool processMouse(GLFWwindow* window);		//same here
-
-	void mouseControl(GLFWwindow* window);
-	void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+	bool processKeyboard();	//TODO: refactor to not depend upon glfw window
+	bool processMouse();		//same here
 	void scroll_callback(double xoffset, double yoffset);
-	void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+	void key_callback(int key, int scancode, int action, int mods);
+
+private:
+	void mouseControl();
 };
 

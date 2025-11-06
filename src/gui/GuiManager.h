@@ -6,6 +6,7 @@
 #include <memory>
 #include <ImGuizmo.h>
 #include "./widgets/widget.h"
+#include "../../src/core/features/Configs.h"
 
 class GuiManager {
 private:
@@ -19,7 +20,7 @@ protected:
 	int count = 0;
 
 public:
-	virtual void init(GLFWwindow* window, int width, int height) = 0;
+	virtual void init(WindowConfig config) = 0;
 	virtual void start() = 0;
 	virtual void render() = 0;
 	virtual void end() = 0;

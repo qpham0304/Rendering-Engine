@@ -111,7 +111,7 @@ float Camera::getDeltaTime()
 	return deltaTime;
 }
 
-bool Camera::processKeyboard(GLFWwindow* window) {
+bool Camera::processKeyboard() {
 	AppWindow* appWindow = AppWindow::window;
 	
 	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -151,14 +151,14 @@ bool Camera::processKeyboard(GLFWwindow* window) {
 	return isPressing;
 }
 
-bool Camera::processMouse(GLFWwindow* window) {
+bool Camera::processMouse() {
 
 	bool isMouseMoved = false;
 	AppWindow* appWindow = AppWindow::window;
 
 	if (appWindow->isMousePressed(MOUSE_BUTTON_LEFT)) {
 		isMouseMoved = true;
-		mouseControl(window);
+		mouseControl();
 	}
 	else if (!appWindow->isMousePressed(MOUSE_BUTTON_LEFT)) {
 		// Unhides cursor since camera is not looking around anymore
@@ -193,14 +193,14 @@ void Camera::translate(const glm::vec3& position)
 }
 
 
-void Camera::processInput(GLFWwindow* window)
+void Camera::processInput()
 {
-	bool isMouseMoved = processMouse(window);
-	bool isKeyboardMoved = processKeyboard(window);
+	bool isMouseMoved = processMouse();
+	bool isKeyboardMoved = processKeyboard();
 	cameraMove = isMouseMoved || isKeyboardMoved;
 }
 
-void Camera::mouseControl(GLFWwindow* window)
+void Camera::mouseControl()
 {
 	double x;
 	double y;
@@ -258,11 +258,6 @@ void Camera::mouseControl(GLFWwindow* window)
 	orientation = glm::normalize(front);
 }
 
-void Camera::mouse_callback(GLFWwindow* window, double x, double y)
-{
-	mouseControl(window);
-}
-
 void Camera::scroll_callback(double xoffset, double yoffset)
 {
 	fov -= (float)yoffset;
@@ -272,8 +267,8 @@ void Camera::scroll_callback(double xoffset, double yoffset)
 		fov = 45.0f;
 }
 
-void Camera::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	processKeyboard(window);
+void Camera::key_callback(int key, int scancode, int action, int mods) {
+	processKeyboard();
 }
 
 

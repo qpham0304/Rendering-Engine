@@ -3,7 +3,7 @@
 #include <memory>
 #include "../../core/scene/SceneManager.h"
 #include "../../src/core/events/EventManager.h"
-#include "../../gui/GuiController.h" //TODO: resolve guizmo dependency
+#include "../../gui/GuiManager.h" //TODO: resolve guizmo dependency
 #include "../../core/layers/Layer.h"
 class Camera;
 //class GuiController;

@@ -5,7 +5,7 @@
 #include <functional>
 #include <memory>
 
-#include "../../src/gui/GuiController.h"
+#include "../../src/gui/GuiManager.h"
 #include "../../src/window/AppWindow.h"
 #include "../../graphics/renderer/Renderer.h"
 #include "configs.h"
@@ -23,14 +23,14 @@ public:
 	PlatformFactory(ServiceLocator& serviceLocator);
 	~PlatformFactory() = default;
 
-	std::unique_ptr<AppWindow> createWindow(WindowConfig config);
-	std::unique_ptr<GuiManager> createGuiManager(GuiPlatform platform);
+	std::unique_ptr<AppWindow> createWindow(WindowPlatform config);
+	std::unique_ptr<GuiManager> createGuiManager(GuiPlatform config);
 	std::unique_ptr<Renderer> createRenderer(RenderPlatform platform);
 	//receive different configs from ui, window, graphics api, sound
 	//physics and so on to create the appropriate system from the given config
 
 private:
-	typedef std::function<std::unique_ptr<AppWindow>(WindowConfig)> WindowConstructor;
+	typedef std::function<std::unique_ptr<AppWindow>()> WindowConstructor;
 	typedef std::function<std::unique_ptr<GuiManager>()> GuiConstructor;
 	typedef std::function<std::unique_ptr<Renderer>()> RendererConstructor;
 	//typedef std::function <std::unique_ptr<GPUDevice>() DeviceConstructors;

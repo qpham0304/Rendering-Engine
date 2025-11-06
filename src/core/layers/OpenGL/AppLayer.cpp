@@ -33,7 +33,7 @@ void AppLayer::renderApplication(const int& fboTexture)
 		}
 
 		if (ImGui::IsItemHovered() && ImGui::IsWindowFocused()) {
-			camera->processKeyboard(AppWindow::window->getWindow());
+			camera->processKeyboard();
 			isActive = true;
 		}
 		else {
@@ -134,7 +134,7 @@ void AppLayer::OnAttach(LayerManager* manager)
 	eventManager.Subscribe(EventType::MouseMoved, [this](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 		if (isActive) {
-			camera->processMouse(mouseEvent.window);
+			camera->processMouse();
 		}
 	});
 

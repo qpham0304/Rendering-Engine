@@ -353,7 +353,7 @@
     <ClInclude Include="src\core\layers\SSAOLayer.h" />
     <ClInclude Include="src\core\layers\SSRLayer.h" />
     <ClInclude Include="src\core\systems\System.h" />
-    <ClInclude Include="src\gui\GuiController.h" />
+    <ClInclude Include="src\gui\GuiManager.h" />
     <ClInclude Include="src\gui\Themes\Themes.h" />
     <ClInclude Include="src\gui\widgets\ConsoleLogWidget.h" />
     <ClInclude Include="src\gui\widgets\EntityControlWidget.h" />
