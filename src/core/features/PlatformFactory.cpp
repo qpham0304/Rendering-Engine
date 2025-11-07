@@ -1,6 +1,7 @@
 #include "PlatformFactory.h"
 #include "../../src/window/platform/GLFW/AppWindowGLFW.h"
 #include "../../src/gui/framework/ImGui/ImGuiController.h"
+#include "../../src/logging/framework/LoggerSpd.h"
 
 #define REGISTER_WINDOW_CONSTRUCTOR(constructors_map, platformEnum, ClassType) \
     constructors_map[platformEnum] = [this]() { \
@@ -16,12 +17,21 @@
         return guiManager;  \
     };
 
+#define REGISTER_LOGGER_CONSTRUCTOR(constructors_map, platformEnum, ClassType) \
+    constructors_map[platformEnum] = [this](std::string_view name) { \
+        auto logger = std::make_unique<ClassType>(name.data());   \
+        this->serviceLocator.Register("Logger", *logger.get());   \
+        return logger;  \
+    };
+
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)
 {
-    REGISTER_WINDOW_CONSTRUCTOR(windowConstructors, WindowPlatform::GLFW, AppWindowGLFW)
+    REGISTER_WINDOW_CONSTRUCTOR(windowConstructors, WindowPlatform::GLFW, AppWindowGLFW);
 
-    REGISTER_GUI_CONSTRUCTOR(guiConstructors, GuiPlatform::IMGUI, ImGuiController)
+    REGISTER_GUI_CONSTRUCTOR(guiConstructors, GuiPlatform::IMGUI, ImGuiController);
+
+	REGISTER_LOGGER_CONSTRUCTOR(loggerConstructors, LoggerPlatform::SPDLOG, LoggerSpd);
 }
 
 std::unique_ptr<AppWindow> PlatformFactory::createWindow(WindowPlatform platform)
@@ -46,4 +56,12 @@ std::unique_ptr<Renderer> PlatformFactory::createRenderer(RenderPlatform platfor
         throw std::runtime_error("failed to create window, platform not supported");
     }
     return rendererConstructors[platform]();
+}
+
+std::unique_ptr<Logger> PlatformFactory::createLogger(LoggerPlatform platform, std::string_view name)
+{
+    if (loggerConstructors.find(platform) == loggerConstructors.end()) {
+        throw std::runtime_error("failed to create window, platform not supported");
+    }
+    return loggerConstructors[platform](name);
 }

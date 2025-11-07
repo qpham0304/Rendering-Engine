@@ -7,3 +7,6 @@
 [submodule "Libraries/include/external/json"]
 	path = Libraries/include/external/json
 	url = https://github.com/nlohmann/json
+[submodule "Libraries/include/spdlog"]
+	path = Libraries/include/spdlog
+	url = https://github.com/gabime/spdlog.git

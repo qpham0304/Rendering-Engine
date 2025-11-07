@@ -14,6 +14,10 @@ enum class RenderPlatform {
 	UNDEFINED, OPENGL, VULKAN, DIRECTX,
 };
 
+enum class LoggerPlatform {
+	UNDEFINED, SPDLOG
+};
+
 struct WindowConfig {
 	std::string title = "Untitled";
 	WindowPlatform windowPlatform = WindowPlatform::UNDEFINED;

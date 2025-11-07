@@ -261,6 +261,9 @@
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\logging\framework\LoggerSpd.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\OpenGL\VAO.h">
@@ -549,6 +552,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\window\InputKeyCode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\logging\Logger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\logging\framework\LoggerSpd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

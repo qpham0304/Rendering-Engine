@@ -20,7 +20,7 @@ public:
 	unsigned int height;
 
 public:
-	~AppWindow() = default;
+	virtual ~AppWindow() = default;
 
 	virtual void* getWindow() = 0;
 	virtual void* getSharedWindow() = 0;

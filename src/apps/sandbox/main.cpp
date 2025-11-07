@@ -20,7 +20,7 @@ int main()
 	windowConfig.guiPlatform = GuiPlatform::IMGUI;
 	windowConfig.width = 1920;
 	windowConfig.height = 1080;
-	windowConfig.vsync = true;
+	windowConfig.vsync = false;
 
 	Application app(windowConfig);
 	app.init();

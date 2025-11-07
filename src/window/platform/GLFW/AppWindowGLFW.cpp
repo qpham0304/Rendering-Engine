@@ -13,7 +13,7 @@ AppWindowGLFW::AppWindowGLFW() : AppWindow()
 
 AppWindowGLFW::~AppWindowGLFW()
 {
-
+	//input.reset();
 }
 
 void* AppWindowGLFW::getWindow()

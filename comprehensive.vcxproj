@@ -80,7 +80,7 @@
     <CopyLocalProjectReference>true</CopyLocalProjectReference>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(SolutionDir)Libraries\include\spdlog\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Libraries/lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Configuration)-$(Platform)</OutDir>
     <IntDir>$(SolutionDir)bin\$(ProjectName)\Intermediates\$(Configuration)-$(Platform)</IntDir>
@@ -96,7 +96,7 @@
     <CopyLocalProjectReference>true</CopyLocalProjectReference>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(SolutionDir)Libraries\include\spdlog\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Libraries/lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Configuration)-$(Platform)</OutDir>
     <IntDir>$(SolutionDir)bin\$(ProjectName)\Intermediates\$(Configuration)-$(Platform)</IntDir>
@@ -142,17 +142,18 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;vulkan-1.lib;spdlog.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <NoEntryPoint>false</NoEntryPoint>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
@@ -168,19 +169,20 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;vulkan-1.lib;spdlog.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -191,6 +193,7 @@
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
     <ClCompile Include="src\core\features\PlatformFactory.cpp" />
     <ClCompile Include="src\core\features\ServiceLocator.cpp" />
+    <ClCompile Include="src\logging\framework\LoggerSpd.cpp" />
     <ClCompile Include="src\window\platform\GLFW\InputGLFW.cpp" />
     <ClCompile Include="src\core\features\EngineUtils.cpp" />
     <ClCompile Include="src\core\components\LightComponent.cpp" />
@@ -272,6 +275,8 @@
     <ClInclude Include="src\core\features\Configs.h" />
     <ClInclude Include="src\core\features\PlatformFactory.h" />
     <ClInclude Include="src\core\features\ServiceLocator.h" />
+    <ClInclude Include="src\logging\framework\LoggerSpd.h" />
+    <ClInclude Include="src\logging\Logger.h" />
     <ClInclude Include="src\window\InputKeyCode.h" />
     <ClInclude Include="src\window\platform\GLFW\InputGLFW.h" />
     <ClInclude Include="src\core\features\EngineUtils.h" />

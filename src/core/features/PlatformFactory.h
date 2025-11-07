@@ -8,6 +8,7 @@
 #include "../../src/gui/GuiManager.h"
 #include "../../src/window/AppWindow.h"
 #include "../../graphics/renderer/Renderer.h"
+#include "../../logging/Logger.h"
 #include "configs.h"
 #include "ServiceLocator.h"
 
@@ -26,6 +27,7 @@ public:
 	std::unique_ptr<AppWindow> createWindow(WindowPlatform config);
 	std::unique_ptr<GuiManager> createGuiManager(GuiPlatform config);
 	std::unique_ptr<Renderer> createRenderer(RenderPlatform platform);
+	std::unique_ptr<Logger> createLogger(LoggerPlatform platform, std::string_view name);
 	//receive different configs from ui, window, graphics api, sound
 	//physics and so on to create the appropriate system from the given config
 
@@ -33,11 +35,12 @@ private:
 	typedef std::function<std::unique_ptr<AppWindow>()> WindowConstructor;
 	typedef std::function<std::unique_ptr<GuiManager>()> GuiConstructor;
 	typedef std::function<std::unique_ptr<Renderer>()> RendererConstructor;
+	typedef std::function<std::unique_ptr<Logger>(std::string_view name)> LoggerConstructor;
 	//typedef std::function <std::unique_ptr<GPUDevice>() DeviceConstructors;
 	
 	std::unordered_map<WindowPlatform, WindowConstructor>  windowConstructors;
 	std::unordered_map<GuiPlatform, GuiConstructor>  guiConstructors;
 	std::unordered_map<RenderPlatform, RendererConstructor>  rendererConstructors;
-
+	std::unordered_map<LoggerPlatform, LoggerConstructor>  loggerConstructors;
 };
 
