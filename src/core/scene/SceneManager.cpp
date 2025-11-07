@@ -78,7 +78,7 @@ bool SceneManager::removeScene(const std::string& name)
 	}
 }
 
-void SceneManager::onUpdate(const float&& deltaTime)
+void SceneManager::onUpdate(const float deltaTime)
 {
 	for (auto& [name, scene] : scenes) {
 		if(!scene->isEnabled) {
@@ -88,7 +88,7 @@ void SceneManager::onUpdate(const float&& deltaTime)
 	}
 }
 
-void SceneManager::onGuiUpdate(const float&& deltaTime)
+void SceneManager::onGuiUpdate(const float deltaTime)
 {
 	for (auto& [name, scene] : scenes) {
 		scene->onGuiUpdate(deltaTime);

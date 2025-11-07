@@ -3,10 +3,9 @@
 #include <memory>
 #include "../../core/scene/SceneManager.h"
 #include "../../src/core/events/EventManager.h"
-#include "../../gui/GuiManager.h" //TODO: resolve guizmo dependency
 #include "../../core/layers/Layer.h"
 class Camera;
-//class GuiController;
+class GuiManager;
 
 class EditorLayer : public Layer
 {
@@ -21,7 +20,6 @@ private:
 	bool editorActive = true;
 	bool flipUV = true;
 	bool faceCamera = false;
-	ImGuizmo::OPERATION GuizmoType = ImGuizmo::OPERATION::TRANSLATE;
 	Shader modelShader;
 	uint32_t keyEventID;
 

@@ -1,12 +1,10 @@
 #pragma once
 
 #include <vector>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
 #include <memory>
-#include <ImGuizmo.h>
 #include "./widgets/widget.h"
 #include "../../src/core/features/Configs.h"
+class TransformComponent;
 
 class GuiManager {
 private:
@@ -18,6 +16,8 @@ protected:
 	int width = 0;
 	int height = 0;
 	int count = 0;
+	bool GuizmoActive = false;
+	bool drawGrid = false;
 
 public:
 	virtual void init(WindowConfig config) = 0;
@@ -29,5 +29,12 @@ public:
 	virtual void setTheme(bool darkTheme) = 0;
 	virtual void useLightTheme() = 0;
 	virtual void useDarkTheme() = 0;
+	
+	virtual void renderGuizmo(TransformComponent& transformComponent) = 0;
+	virtual void GuizmoTranslate() = 0;
+	virtual void GuizmoRotate() = 0;
+	virtual void GuizmoScale() = 0;
+public:
+
 };
 

@@ -22,8 +22,8 @@ public:
 public:
 	~AppWindow() = default;
 
-	virtual GLFWwindow* getWindow() = 0;
-	virtual GLFWwindow* getSharedWindow() = 0;
+	virtual void* getWindow() = 0;
+	virtual void* getSharedWindow() = 0;
 
 	virtual int init(WindowConfig config) = 0;	// set up and init the graphics api depending on the platform
 	virtual int onClose() = 0;						// close and terminate the program

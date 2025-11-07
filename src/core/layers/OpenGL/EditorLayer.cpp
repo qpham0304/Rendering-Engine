@@ -10,9 +10,8 @@
 #include "../../src/window/Input.h"
 #include "../../src/core/Application.h"
 #include "../../src/core/layers/layerManager.h"
-//#include "../../src/gui/GuiController.h"
+#include "../../src/gui/GuiManager.h"
 #include "camera.h"
-
 
 void EditorLayer::mockThreadTasks()
 {
@@ -40,73 +39,12 @@ void EditorLayer::mockThreadTasks()
 
 void EditorLayer::renderGuizmo()
 {
-	ImGuizmo::BeginFrame();
-	glm::vec3 translateVector(0.0f, 0.0f, 0.0f);
-	glm::vec3 scaleVector(1.0f, 1.0f, 1.0f);
-
-	float viewManipulateRight = ImGui::GetIO().DisplaySize.x;
-	float viewManipulateTop = 0;
-
-	auto v = &SceneManager::cameraController->getViewMatrix()[0][0];
-	auto p = glm::value_ptr(SceneManager::cameraController->getProjectionMatrix());
 	Scene* scene = SceneManager::getInstance().getActiveScene();
 	std::vector<Entity> selectedEntities = scene->getSelectedEntities();
 
 	if (!selectedEntities.empty()) {
 		auto& transformComponent = selectedEntities[0].getComponent<TransformComponent>();
-
-		glm::mat4& transform = transformComponent.getModelMatrix();
-
-		ImGuizmo::SetOrthographic(false);
-		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
-		float wd = (float)ImGui::GetWindowWidth();
-		float wh = (float)ImGui::GetWindowHeight();
-
-		ImVec2 windowPos = ImGui::GetWindowPos();
-		ImGuizmo::SetRect(windowPos.x, windowPos.y, wd, wh);
-		//ImVec2 viewportPos = ImGui::GetMainViewport()->Pos;
-		//ImGuizmo::SetRect(
-		//	windowPos.x - viewportPos.x,
-		//	windowPos.y - viewportPos.y,
-		//	ImGui::GetWindowWidth(),
-		//	ImGui::GetWindowHeight()
-		//);
-
-		glm::mat4 identity(1.0f);
-
-		if (drawGrid) {
-			ImGuizmo::DrawGrid(v, p, glm::value_ptr(identity), 100.f);
-		}
-
-		bool res = ImGuizmo::Manipulate(
-			v, 
-			p, 
-			(ImGuizmo::OPERATION)GuizmoType, 
-			ImGuizmo::LOCAL, 
-			glm::value_ptr(transform)
-		);
-		viewManipulateRight = ImGui::GetWindowPos().x + wd;
-		viewManipulateTop = ImGui::GetWindowPos().y;
-		ImGuizmo::ViewManipulate(
-			v, 
-			5.0f, 
-			ImVec2(viewManipulateRight - 128, viewManipulateTop), 
-			ImVec2(128, 128), 0x10101010
-		);
-
-		if (ImGuizmo::IsUsing()) {
-			GuizmoActive = true;
-			glm::vec3 translation, rotation, scale;
-			Utils::Math::DecomposeTransform(transform, translation, rotation, scale);
-			glm::vec3 deltaRotation = rotation - transformComponent.rotateVec;
-
-			transformComponent.translateVec = translation;
-			transformComponent.rotateVec += deltaRotation;
-			transformComponent.scaleVec = scale;
-		}
-		else {
-			GuizmoActive = false;
-		}
+		guiController->renderGuizmo(transformComponent);
 	}
 }
 
@@ -303,13 +241,13 @@ void EditorLayer::OnEvent(Event& event)
 void EditorLayer::handleKeyPressed(int keycode)
 {
 	if (keycode == KEY_T) {
-		GuizmoType = ImGuizmo::OPERATION::TRANSLATE;
+		guiController->GuizmoTranslate();
 	}
 	if (keycode == KEY_R) {
-		GuizmoType = ImGuizmo::OPERATION::ROTATE;
+		guiController->GuizmoRotate();
 	}
 	if (keycode == KEY_Z) {
-		GuizmoType = ImGuizmo::OPERATION::SCALE;
+		guiController->GuizmoScale();
 	}
 	if (keycode == KEY_DELETE) {
 		Scene* scene = SceneManager::getInstance().getActiveScene();

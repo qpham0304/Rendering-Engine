@@ -60,16 +60,17 @@ void Application::run() {
 	pushLayer(editorLayer);	// must be the last to be added to layer stack
 
 	while (isRunning) {
+		float dt = appWindow->getTime();
 		// Application
 		eventManager.OnUpdate();
-		sceneManager.onUpdate(glfwGetTime());
+		sceneManager.onUpdate(dt);
 		layerManager->onUpdate();
 
 		bool useEditor = true;
 		if (useEditor) {
 			//TODO GUI should theese be only done by the guiController
 			guiManager->start();
-			sceneManager.onGuiUpdate(glfwGetTime());
+			sceneManager.onGuiUpdate(dt);
 			layerManager->onGuiUpdate();
 			guiManager->end();
 		}

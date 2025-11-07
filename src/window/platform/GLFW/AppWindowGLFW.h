@@ -14,8 +14,8 @@ public:
 	AppWindowGLFW();
 	~AppWindowGLFW();
 
-	GLFWwindow* getWindow() override;
-	GLFWwindow* getSharedWindow() override;
+	void* getWindow() override;
+	void* getSharedWindow() override;
 
 
 	virtual int init(WindowConfig platform) override;		// set up and init the graphics api depending on the platform

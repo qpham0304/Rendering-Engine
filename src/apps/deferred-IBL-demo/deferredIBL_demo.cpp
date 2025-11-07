@@ -144,7 +144,7 @@ void DeferredIBLDemo::renderDeferredPass()
     scene.getShader("colorPassShader")->setMat4("inverseView", camera->getInViewMatrix());
     scene.getShader("colorPassShader")->setBool("gamma", true);
     scene.getShader("colorPassShader")->setBool("sampleRadius", 2);
-    scene.getShader("colorPassShader")->setBool("time", glfwGetTime());
+    scene.getShader("colorPassShader")->setBool("time", AppWindow::window->getTime());
     scene.getShader("colorPassShader")->setBool("rippleStrength", 1.0);
 
 
@@ -244,7 +244,7 @@ void DeferredIBLDemo::renderSkyView()
     int height = window.height;
 
     if (!timePaused) {
-        currentFrame = static_cast<float>(glfwGetTime());
+        currentFrame = static_cast<float>(AppWindow::window->getTime());
     }
 
     skyViewLUT.Bind();
@@ -603,7 +603,7 @@ void DeferredIBLDemo::renderForwardPass()
         }
         model->Draw(pbrShader);
 
-        float currentTime = static_cast<float>(glfwGetTime());
+        float currentTime = static_cast<float>(AppWindow::window->getTime());
         float dt = currentTime - lf;
         lf = currentTime;
         animationComponent.animator.UpdateAnimation(dt);
@@ -704,7 +704,7 @@ void DeferredIBLDemo::renderPrePass()
             }
 
 
-            float currentTime = static_cast<float>(glfwGetTime());
+            float currentTime = static_cast<float>(AppWindow::window->getTime());
             float dt = currentTime - lf;
             lf = currentTime;
             animationComponent.animator.UpdateAnimation(dt);

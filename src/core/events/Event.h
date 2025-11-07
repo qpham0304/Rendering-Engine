@@ -1,8 +1,6 @@
 #pragma once
 
 #include <string>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include "../../core/entities/Entity.h"
 #include "../../core/components/MComponent.h"
 
@@ -32,9 +30,8 @@ class MouseMoveEvent : public Event
 public:
 	double m_x = 0;
 	double m_y = 0;
-	GLFWwindow* window;
 
-	MouseMoveEvent(GLFWwindow*& window, double x, double y) : m_x(x), m_y(y), window(window) {}
+	MouseMoveEvent(double x, double y) : m_x(x), m_y(y) {}
 
 	EventType GetEventType() const override {
 		return EventType::MouseMoved;
@@ -54,9 +51,8 @@ class MouseScrollEvent : public Event
 public:
 	double m_x = 0;
 	double m_y = 0;
-	GLFWwindow* window;
 
-	MouseScrollEvent(GLFWwindow*& window, double x, double y) : m_x(x), m_y(y), window(window) {}
+	MouseScrollEvent(double x, double y) : m_x(x), m_y(y){}
 
 	EventType GetEventType() const override {
 		return EventType::MouseScrolled;
@@ -115,9 +111,8 @@ class WindowResizeEvent : public Event
 public:
 	int m_width;
 	int m_height;
-	GLFWwindow* window;
 
-	WindowResizeEvent(GLFWwindow*& window, int width, int height) : m_width(width), m_height(height), window(window) {}
+	WindowResizeEvent(int width, int height) : m_width(width), m_height(height){}
 
 	EventType GetEventType() const override {
 		return EventType::WindowResize;

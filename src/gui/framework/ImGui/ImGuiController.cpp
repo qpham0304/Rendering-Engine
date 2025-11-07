@@ -5,7 +5,11 @@
 #include "../ImGui/theme/ImGuiThemes.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 #include "camera.h"
+#include "../../../graphics/utils/Utils.h"
+#include "../../src/core/components/MComponent.h"
 
 ImGuiController::ImGuiController()
 {
@@ -195,7 +199,6 @@ void ImGuiController::onClose()
 	}
 }
 
-
 void ImGuiController::setTheme(bool darkTheme)
 {
 	this->darkTheme = darkTheme;
@@ -233,3 +236,82 @@ void ImGuiController::useDarkTheme()
 	colors[ImGuiCol_ButtonActive] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
 	colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
 }
+
+void ImGuiController::renderGuizmo(TransformComponent& transformComponent)
+{
+	ImGuizmo::BeginFrame();
+	glm::vec3 translateVector(0.0f, 0.0f, 0.0f);
+	glm::vec3 scaleVector(1.0f, 1.0f, 1.0f);
+
+	float viewManipulateRight = ImGui::GetIO().DisplaySize.x;
+	float viewManipulateTop = 0;
+
+	auto v = &SceneManager::cameraController->getViewMatrix()[0][0];
+	auto p = glm::value_ptr(SceneManager::cameraController->getProjectionMatrix());
+
+	glm::mat4& transform = transformComponent.getModelMatrix();
+
+	ImGuizmo::SetOrthographic(false);
+	ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+	float wd = (float)ImGui::GetWindowWidth();
+	float wh = (float)ImGui::GetWindowHeight();
+
+	ImVec2 windowPos = ImGui::GetWindowPos();
+	ImGuizmo::SetRect(windowPos.x, windowPos.y, wd, wh);
+	//ImVec2 viewportPos = ImGui::GetMainViewport()->Pos;
+	//ImGuizmo::SetRect(
+	//	windowPos.x - viewportPos.x,
+	//	windowPos.y - viewportPos.y,
+	//	ImGui::GetWindowWidth(),
+	//	ImGui::GetWindowHeight()
+	//);
+
+	glm::mat4 identity(1.0f);
+
+	if (drawGrid) {
+		ImGuizmo::DrawGrid(v, p, glm::value_ptr(identity), 100.f);
+	}
+
+	bool res = ImGuizmo::Manipulate(
+		v,
+		p,
+		(ImGuizmo::OPERATION)GuizmoType,
+		ImGuizmo::LOCAL,
+		glm::value_ptr(transform)
+	);
+	viewManipulateRight = ImGui::GetWindowPos().x + wd;
+	viewManipulateTop = ImGui::GetWindowPos().y;
+	ImGuizmo::ViewManipulate(
+		v,
+		5.0f,
+		ImVec2(viewManipulateRight - 128, viewManipulateTop),
+		ImVec2(128, 128), 0x10101010
+	);
+
+	if (ImGuizmo::IsUsing()) {
+		GuizmoActive = true;
+		glm::vec3 translation, rotation, scale;
+		Utils::Math::DecomposeTransform(transform, translation, rotation, scale);	// graphics utils dependency, resolve when have time
+		glm::vec3 deltaRotation = rotation - transformComponent.rotateVec;
+
+		transformComponent.translateVec = translation;
+		transformComponent.rotateVec += deltaRotation;
+		transformComponent.scaleVec = scale;
+	}
+	else {
+		GuizmoActive = false;
+	}
+}
+
+void ImGuiController::GuizmoTranslate() 
+{
+	GuizmoType = ImGuizmo::OPERATION::TRANSLATE;
+};
+void ImGuiController::GuizmoRotate() 
+{
+	GuizmoType = ImGuizmo::OPERATION::ROTATE;
+};
+void ImGuiController::GuizmoScale() 
+{
+	GuizmoType = ImGuizmo::OPERATION::SCALE;
+};

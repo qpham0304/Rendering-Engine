@@ -16,12 +16,12 @@ AppWindowGLFW::~AppWindowGLFW()
 
 }
 
-GLFWwindow* AppWindowGLFW::getWindow()
+void* AppWindowGLFW::getWindow()
 {
 	return window;
 }
 
-GLFWwindow* AppWindowGLFW::getSharedWindow()
+void* AppWindowGLFW::getSharedWindow()
 {
 	return sharedWindow;
 }
@@ -148,14 +148,14 @@ void AppWindowGLFW::setEventCallback()
 	glfwSetCursorPosCallback(window, [](GLFWwindow* window, double x, double y)
 		{
 			Timer timer("cursor event", true);
-			MouseMoveEvent cursorMoveEvent(window, x, y);
+			MouseMoveEvent cursorMoveEvent(x, y);
 			EventManager::getInstance().Publish(cursorMoveEvent);
 		});
 
 	glfwSetScrollCallback(window, [](GLFWwindow* window, double x, double y)
 		{
 			Timer timer("scroll event", true);
-			MouseScrollEvent scrollEvent(window, x, y);
+			MouseScrollEvent scrollEvent(x, y);
 			EventManager::getInstance().Publish(scrollEvent);
 			//EventManager::getInstance().Publish("mouseScrollEvent", x, y);
 		});
@@ -185,7 +185,7 @@ void AppWindowGLFW::setEventCallback()
 
 	glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height)
 		{
-			WindowResizeEvent resizeEvent(window, width, height);
+			WindowResizeEvent resizeEvent(width, height);
 			EventManager::getInstance().Publish(resizeEvent);
 		});
 

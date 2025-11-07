@@ -52,8 +52,8 @@ public:
 	Scene* getScene(const std::string& name);
 	Scene* getActiveScene();
 	bool removeScene(const std::string& name);
-	void onUpdate(const float&& deltaTime);
-	void onGuiUpdate(const float&& deltaTime);
+	void onUpdate(const float deltaTime);
+	void onGuiUpdate(const float deltaTime);
 	std::string addModel(const std::string& path);
 	std::string addModelFromMeshes(std::vector<Mesh>& meshes);
 	bool removeModel(const std::string& path);
