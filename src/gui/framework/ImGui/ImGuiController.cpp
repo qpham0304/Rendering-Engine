@@ -303,15 +303,15 @@ void ImGuiController::renderGuizmo(TransformComponent& transformComponent)
 	}
 }
 
-void ImGuiController::GuizmoTranslate() 
+void ImGuiController::guizmoTranslate() 
 {
 	GuizmoType = ImGuizmo::OPERATION::TRANSLATE;
 };
-void ImGuiController::GuizmoRotate() 
+void ImGuiController::guizmoRotate() 
 {
 	GuizmoType = ImGuizmo::OPERATION::ROTATE;
 };
-void ImGuiController::GuizmoScale() 
+void ImGuiController::guizmoScale() 
 {
 	GuizmoType = ImGuizmo::OPERATION::SCALE;
 };

@@ -45,17 +45,17 @@ BloomLayer::BloomLayer(const std::string& name) : Layer(name), VAO(0), VBO(0)
     bloomShader->setInt("bloomBlur", 1);
 }
 
-void BloomLayer::OnAttach(LayerManager* manager)
+void BloomLayer::onAttach(LayerManager* manager)
 {
 
 }
 
-void BloomLayer::OnDetach()
+void BloomLayer::onDetach()
 {
 
 }
 
-void BloomLayer::OnUpdate()
+void BloomLayer::onUpdate()
 {
 	Shader lightShader("Shaders/light.vert", "Shaders/light.frag");
 	Shader bloomShader("Shaders/bloom/bloom.vert", "Shaders/bloom/bloom.frag");
@@ -110,7 +110,7 @@ void BloomLayer::OnUpdate()
 	}
 }
 
-void BloomLayer::OnGuiUpdate()
+void BloomLayer::onGuiUpdate()
 {
     ImVec2 wsize = ImGui::GetWindowSize();
     ImGui::Image((ImTextureID)colorBuffers[0], wsize, ImVec2(0, 1), ImVec2(1, 0));
@@ -118,7 +118,7 @@ void BloomLayer::OnGuiUpdate()
     ImGui::Image((ImTextureID)bloomRenderer.BloomTexture(), wsize, ImVec2(0, 1), ImVec2(1, 0));
 }
 
-void BloomLayer::OnEvent(Event& event)
+void BloomLayer::onEvent(Event& event)
 {
 
 }

@@ -20,21 +20,21 @@ void EditorLayer::mockThreadTasks()
 		//Component reimu("Models/reimu/reimu.obj");
 		//SceneManager::addComponent(reimu);
 	};
-	eventManager.Queue(addComponentEvent, func);
+	eventManager.queue(addComponentEvent, func);
 
 	AsyncEvent addComponentEvent1;
 	auto func1 = [](Event& event) -> void {
 		//Component reimu("Models/sponza/sponza.obj");
 		//SceneManager::addComponent(reimu);
 	};
-	eventManager.Queue(addComponentEvent1, func1);
+	eventManager.queue(addComponentEvent1, func1);
 
 	AsyncEvent addComponentEvent2;
 	auto func2 = [](Event& event) -> void {
 		//Component reimu("Models/aru/aru.gltf");
 		//SceneManager::addComponent(reimu);
 	};
-	eventManager.Queue(addComponentEvent2, func2);
+	eventManager.queue(addComponentEvent2, func2);
 }
 
 void EditorLayer::renderGuizmo()
@@ -62,9 +62,9 @@ void EditorLayer::init(GuiManager* controller)
 	modelShader.Init("Shaders/model.vert", "Shaders/model.frag");
 }
 
-void EditorLayer::OnAttach(LayerManager* manager)
+void EditorLayer::onAttach(LayerManager* manager)
 {
-	Layer::OnAttach(manager);
+	Layer::onAttach(manager);
 
 	if (!SceneManager::cameraController) {
 		editorCamera = new Camera();
@@ -75,7 +75,7 @@ void EditorLayer::OnAttach(LayerManager* manager)
 		editorCamera = SceneManager::cameraController;
 	}
 
-	EventManager::getInstance().Subscribe(EventType::ModelLoadEvent, [](Event& event) {
+	EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [](Event& event) {
 		ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
 		if (!e.entity.hasComponent<ModelComponent>()) {
 			e.entity.addComponent<ModelComponent>();
@@ -96,7 +96,7 @@ void EditorLayer::OnAttach(LayerManager* manager)
 		}
 	});
 
-	EventManager::getInstance().Subscribe(EventType::AnimationLoadEvent, [](Event& event) {
+	EventManager::getInstance().subscribe(EventType::AnimationLoadEvent, [](Event& event) {
 		AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
 		if (!e.entity.hasComponent<AnimationComponent>()) {
 			e.entity.addComponent<AnimationComponent>();
@@ -120,7 +120,7 @@ void EditorLayer::OnAttach(LayerManager* manager)
 	});
 
 
-	EventManager::getInstance().Subscribe(EventType::MouseMoved, [&](Event& event) {
+	EventManager::getInstance().subscribe(EventType::MouseMoved, [&](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 
 		if (GuizmoActive && editorActive) {
@@ -128,7 +128,7 @@ void EditorLayer::OnAttach(LayerManager* manager)
 		}
 	});
 
-	keyEventID = EventManager::getInstance().Subscribe(EventType::KeyPressed, [&](Event& event) {
+	keyEventID = EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (GuizmoActive || editorActive) {
 			handleKeyPressed(keyPressedEvent.keyCode);
@@ -139,12 +139,12 @@ void EditorLayer::OnAttach(LayerManager* manager)
 
 }
 
-void EditorLayer::OnDetach()
+void EditorLayer::onDetach()
 {
 
 }
 
-void EditorLayer::OnUpdate()
+void EditorLayer::onUpdate()
 {
 	editorCamera->onUpdate();
 	auto framebuffer = LayerManager::getFrameBuffer("DeferredIBLDemo");
@@ -194,7 +194,7 @@ void EditorLayer::OnUpdate()
 	}
 }
 
-void EditorLayer::OnGuiUpdate()
+void EditorLayer::onGuiUpdate()
 {
 	guiController->render();
 	//if(ImGui::Button("addmock data")){
@@ -216,24 +216,24 @@ void EditorLayer::OnGuiUpdate()
 	if (ImGui::Button("add demo layer")) {
 		//id = "demo " + std::to_string(layerManager.size());
 		//scene->addLayer(new ParticleDemo(id.c_str()));
-		//layerManager.AddLayer(new ParticleDemo(id.c_str()));
+		//layerManager.addLayer(new ParticleDemo(id.c_str()));
 
 	}
 	if (ImGui::Button("add bloom layer")) {
 		//id = "bloom " + std::to_string(layerManager.size());
 		//scene->addLayer(new BloomLayer(id.c_str()));
-		//layerManager.AddLayer(new BloomLayer(id.c_str()));
+		//layerManager.addLayer(new BloomLayer(id.c_str()));
 
 	}
 	if (ImGui::Button("remove layer")) {	//TODO: should be able to delete selected layers
 		//scene->removeLayer(1);
-		//layerManager.RemoveLayer(1);
+		//layerManager.removeLayer(1);
 
 	}
 	ImGui::End();
 }
 
-void EditorLayer::OnEvent(Event& event)
+void EditorLayer::onEvent(Event& event)
 {
 
 }
@@ -241,13 +241,13 @@ void EditorLayer::OnEvent(Event& event)
 void EditorLayer::handleKeyPressed(int keycode)
 {
 	if (keycode == KEY_T) {
-		guiController->GuizmoTranslate();
+		guiController->guizmoTranslate();
 	}
 	if (keycode == KEY_R) {
-		guiController->GuizmoRotate();
+		guiController->guizmoRotate();
 	}
 	if (keycode == KEY_Z) {
-		guiController->GuizmoScale();
+		guiController->guizmoScale();
 	}
 	if (keycode == KEY_DELETE) {
 		Scene* scene = SceneManager::getInstance().getActiveScene();
@@ -258,6 +258,6 @@ void EditorLayer::handleKeyPressed(int keycode)
 	}
 	if (keycode == KEY_G) {
 		Console::println("receiving key event");
-		EventManager::getInstance().Unsubscribe(EventType::KeyPressed, keyEventID);
+		EventManager::getInstance().unsubscribe(EventType::KeyPressed, keyEventID);
 	}
 }

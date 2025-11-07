@@ -51,19 +51,19 @@ std::shared_ptr<FrameBuffer> LayerManager::getFrameBuffer(const std::string name
 	return nullptr;
 }
 
-bool LayerManager::AddLayer(Layer* layer)
+bool LayerManager::addLayer(Layer* layer)
 {
-	layer->OnAttach(this);
+	layer->onAttach(this);
 	m_Layers.push_back(layer);
 	return true;
 }
 
-bool LayerManager::RemoveLayer(const int index)
+bool LayerManager::removeLayer(const int index)
 {
 	if (!boundCheck(index)) {
 		return false;
 	}
-	m_Layers[index]->OnDetach();
+	m_Layers[index]->onDetach();
 	delete m_Layers[index];
 
 	m_Layers.erase(m_Layers.begin() + index);
@@ -107,7 +107,7 @@ void LayerManager::onUpdate()
 		if (!layer->m_Enabled) {
 			continue;
 		}
-		layer->OnUpdate();
+		layer->onUpdate();
 	}
 }
 
@@ -117,7 +117,7 @@ void LayerManager::onGuiUpdate()
 		if (!layer->m_Enabled) {
 			continue;
 		}
-		layer->OnGuiUpdate();
+		layer->onGuiUpdate();
 	}
 	for (auto& layer : m_Layers) {
 		ImGui::Begin("Layers");

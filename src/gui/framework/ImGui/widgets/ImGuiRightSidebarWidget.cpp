@@ -132,7 +132,7 @@ void ImGuiRightSidebarWidget::environmentControl()
                     }
                     glfwMakeContextCurrent(AppWindow::window);
                     };
-                EventManager::getInstance().Queue(event, function);
+                EventManager::getInstance().queue(event, function);
 #else
                 if (cubeMap) {
                     cubeMap->reloadTexture(path);

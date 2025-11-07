@@ -6,7 +6,7 @@ EventManager& EventManager::getInstance()
 	return instance;
 }
 
-uint32_t EventManager::Subscribe(EventType eventType, EventCallback callback)
+uint32_t EventManager::subscribe(EventType eventType, EventCallback callback)
 {
 	if (callbacks.find(eventType) != callbacks.end()) {
 		callbacks[eventType].emplace_back(std::make_pair(callbackID, std::move(callback)));
@@ -21,7 +21,7 @@ uint32_t EventManager::Subscribe(EventType eventType, EventCallback callback)
 
 //TODO: check what happen if an event is removed mid iteration? 
 // also what about synchronization?
-void EventManager::Unsubscribe(EventType eventType, uint32_t cbID)
+void EventManager::unsubscribe(EventType eventType, uint32_t cbID)
 {
 	auto& vector = callbacks[eventType];
 	int index = 0;
@@ -37,7 +37,7 @@ void EventManager::Unsubscribe(EventType eventType, uint32_t cbID)
 	}
 }
 
-void EventManager::Publish(Event& event)
+void EventManager::publish(Event& event)
 {
 	if (callbacks.find(event.GetEventType()) != callbacks.end()) {
 		for (const auto& [id, callback] : callbacks[event.GetEventType()]) {
@@ -49,13 +49,13 @@ void EventManager::Publish(Event& event)
 	}
 }
 
-void EventManager::PublishAsync(EventListener& eventListener)
+void EventManager::publishAsync(EventListener& eventListener)
 {
 	std::scoped_lock<std::mutex> lock(queueMutex);
 	eventListener.onEvent();
 }
 
-void EventManager::CleanUpThread()
+void EventManager::cleanUpThread()
 {
 	int counter = 0;
 
@@ -72,14 +72,14 @@ void EventManager::CleanUpThread()
 	}
 }
 
-void EventManager::Queue(AsyncEvent event, AsyncCallback callback)
+void EventManager::queue(AsyncEvent event, AsyncCallback callback)
 {
 	std::scoped_lock<std::mutex> lock(queueMutex);
 	eventQueue.push(std::make_pair(std::move(event), std::move(callback)));
 	runningTasks++;
 }
 
-void EventManager::Subscribe(const std::string& event, EventListener& listener) {
+void EventManager::subscribe(const std::string& event, EventListener& listener) {
 	if (listeners.find(event) != listeners.end()) {
 		listeners[event].emplace_back(std::move(listener));
 	}
@@ -91,7 +91,7 @@ void EventManager::Subscribe(const std::string& event, EventListener& listener) 
 //TODO: use semaphore instead for running tasks instead of manual primitive
 //intead of joining threads per completed task, just keep them alive then clean all up on close
 //tldr: just use async instead
-void EventManager::OnUpdate()
+void EventManager::onUpdate()
 {
 	Timer timer("thread queue", true);
 
@@ -112,6 +112,6 @@ void EventManager::OnUpdate()
 	}
 
 	if (eventQueue.empty()) {
-		CleanUpThread();
+		cleanUpThread();
 	}
 }

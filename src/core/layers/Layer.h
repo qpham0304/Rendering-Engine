@@ -17,11 +17,11 @@ public:
 	{
 	}
 
-	virtual void OnAttach(LayerManager* manager) { this->m_Manager = manager; };
-	virtual void OnDetach() = 0;
-	virtual void OnUpdate() = 0;
-	virtual void OnGuiUpdate() = 0;
-	virtual void OnEvent(Event& event) = 0;
+	virtual void onAttach(LayerManager* manager) { this->m_Manager = manager; };
+	virtual void onDetach() = 0;
+	virtual void onUpdate() = 0;
+	virtual void onGuiUpdate() = 0;
+	virtual void onEvent(Event& event) = 0;
 
 	const std::string& GetName() const { 
 		return m_LayerName; 

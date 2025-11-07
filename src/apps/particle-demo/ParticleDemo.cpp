@@ -11,9 +11,9 @@ ParticleDemo::ParticleDemo(const std::string& name) : AppLayer(name)
     particleRenderer.init(particleControl);
 }
 
-void ParticleDemo::OnAttach(LayerManager* manager)
+void ParticleDemo::onAttach(LayerManager* manager)
 {
-    AppLayer::OnAttach(manager);
+    AppLayer::onAttach(manager);
     //SceneManager::cameraController = &camera;
     //camera = *SceneManager::cameraController;
     //EventManager& eventManager = EventManager::getInstance();
@@ -28,15 +28,15 @@ void ParticleDemo::OnAttach(LayerManager* manager)
 	EventManager& eventManager = EventManager::getInstance();
 }
 
-void ParticleDemo::OnDetach()
+void ParticleDemo::onDetach()
 {
-    AppLayer::OnDetach();
+    AppLayer::onDetach();
 }
 
-void ParticleDemo::OnUpdate()
+void ParticleDemo::onUpdate()
 {
     glEnable(GL_DEPTH_TEST);
-    AppLayer::OnUpdate();
+    AppLayer::onUpdate();
     Shader lightShader("Shaders/light.vert", "Shaders/light.frag");
     Shader particleShader("Shaders/particle.vert", "Shaders/particle.frag");
     Shader renderScene("Shaders/postProcess/renderQuad.vert", "Shaders/postProcess/renderQuad.frag");
@@ -50,9 +50,9 @@ void ParticleDemo::OnUpdate()
     applicationFBO.Unbind();
 }
 
-void ParticleDemo::OnGuiUpdate()
+void ParticleDemo::onGuiUpdate()
 {
-    AppLayer::OnGuiUpdate();
+    AppLayer::onGuiUpdate();
     if (ImGui::Begin("control")) {
         ImGui::BeginChild("gBuffers textures");
         ImVec2 wsize = ImGui::GetWindowSize();
@@ -76,9 +76,9 @@ void ParticleDemo::OnGuiUpdate()
     }
 }
 
-void ParticleDemo::OnEvent(Event& event)
+void ParticleDemo::onEvent(Event& event)
 {
-    AppLayer::OnEvent(event);
+    AppLayer::onEvent(event);
 }
 
 int ParticleDemo::show_demo()

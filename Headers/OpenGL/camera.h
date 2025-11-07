@@ -47,19 +47,19 @@ private:
 	float deltaTime = 0.0f;	// Time between current frame and last frame
 	float lastFrame = 0.0f; // Time of last frame
 
-	void ReCalculateView();
-	void ReCalculateProjection();
-	void Setup(unsigned int& width, unsigned int& height, glm::vec3& position);
-	void SetupOrientation(glm::vec3& orientation);
+	void reCalculateView();
+	void reCalculateProjection();
+	void setup(unsigned int& width, unsigned int& height, glm::vec3& position);
+	void setupOrientation(glm::vec3& orientation);
 
 	float fov = DEFAULT_FOV;
 	glm::mat4 view;
 	glm::mat4 inView;
 	glm::mat4 projection;
 	glm::mat4 inProjection;
+	glm::mat4 mvp;
 
 public:
-	glm::mat4 mvp;	// TODO: area light demo is coupling this, fix then move to private
 
 	Camera();
 	Camera(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation);

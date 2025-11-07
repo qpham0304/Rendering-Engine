@@ -14,7 +14,7 @@ Application::Application(WindowConfig windowConfig)
 
 void Application::pushLayer(Layer* layer)
 {
-	layerManager->AddLayer(layer);
+	layerManager->addLayer(layer);
 }
 
 void Application::init()
@@ -35,7 +35,7 @@ void Application::init()
 	isRunning = true;
 
 	//std::bind(&Application::onClose, this, std::placeholders::_1);
-	eventManager.Subscribe(EventType::WindowClose, [this](Event& event) {
+	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		onClose();
 	});
 }
@@ -62,7 +62,7 @@ void Application::run() {
 	while (isRunning) {
 		float dt = appWindow->getTime();
 		// Application
-		eventManager.OnUpdate();
+		eventManager.onUpdate();
 		sceneManager.onUpdate(dt);
 		layerManager->onUpdate();
 

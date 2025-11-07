@@ -51,12 +51,12 @@ AppLayer::AppLayer(const std::string& name)
 
 AppLayer::~AppLayer()
 {
-	OnDetach();
+	onDetach();
 }
 
-void AppLayer::OnAttach(LayerManager* manager)
+void AppLayer::onAttach(LayerManager* manager)
 {
-	Layer::OnAttach(manager);
+	Layer::onAttach(manager);
 
 	int width = manager->Window().width;
 	int height = manager->Window().width;
@@ -78,7 +78,7 @@ void AppLayer::OnAttach(LayerManager* manager)
 	);
 	skybox.reset(new SkyboxRenderer());
 	
-	EventManager::getInstance().Subscribe(EventType::ModelLoadEvent, [](Event& event) {
+	EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [](Event& event) {
 		ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
 		if (!e.entity.hasComponent<ModelComponent>()) {
 			e.entity.addComponent<ModelComponent>();
@@ -99,7 +99,7 @@ void AppLayer::OnAttach(LayerManager* manager)
 		}
 		});
 
-	EventManager::getInstance().Subscribe(EventType::AnimationLoadEvent, [](Event& event) {
+	EventManager::getInstance().subscribe(EventType::AnimationLoadEvent, [](Event& event) {
 		AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
 		if (!e.entity.hasComponent<AnimationComponent>()) {
 			e.entity.addComponent<AnimationComponent>();
@@ -124,37 +124,37 @@ void AppLayer::OnAttach(LayerManager* manager)
 
 
 	EventManager& eventManager = EventManager::getInstance();
-	eventManager.Subscribe(EventType::MouseScrolled, [this](Event& event) {
+	eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
 		if (isActive) {
 			camera->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
 		}
 	});
 
-	eventManager.Subscribe(EventType::MouseMoved, [this](Event& event) {
+	eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 		if (isActive) {
 			camera->processMouse();
 		}
 	});
 
-	eventManager.Subscribe(EventType::WindowResize, [this](Event& event) {
+	eventManager.subscribe(EventType::WindowResize, [this](Event& event) {
 		WindowResizeEvent& windowResizeEvent = static_cast<WindowResizeEvent&>(event);
 		camera->updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
 	});
 }
 
-void AppLayer::OnDetach()
+void AppLayer::onDetach()
 {
 	SceneManager::cameraController = nullptr;
 }
 
-void AppLayer::OnUpdate()
+void AppLayer::onUpdate()
 {
 	camera->onUpdate();
 }
 
-void AppLayer::OnGuiUpdate()
+void AppLayer::onGuiUpdate()
 {
 	//ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 	renderControl();
@@ -162,7 +162,7 @@ void AppLayer::OnGuiUpdate()
 	//ImGui::PopStyleVar();
 }
 
-void AppLayer::OnEvent(Event& event)
+void AppLayer::onEvent(Event& event)
 {
 
 }

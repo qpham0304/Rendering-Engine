@@ -1,4 +1,5 @@
-#include"Shader.h"
+#include "Shader.h"
+#include <glad/glad.h>
 
 static bool validateFormat(const char* str) {
 	size_t len = std::strlen(str);
@@ -135,7 +136,7 @@ void Shader::compileErrors(unsigned int shader, const char* type)
 #define DEBUG
 #ifdef DEBUG
 	// Stores status of compilation
-	GLint hasCompiled;
+	int hasCompiled;
 	// Character array to store error message in
 	char infoLog[1024];
 	if (type != "PROGRAM")

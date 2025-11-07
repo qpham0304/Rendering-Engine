@@ -42,9 +42,9 @@ public:
 	void useDarkTheme() override;
 
 	void renderGuizmo(TransformComponent& transformComponent) override;
-	void GuizmoTranslate() override;
-	void GuizmoRotate() override;
-	void GuizmoScale() override;
+	void guizmoTranslate() override;
+	void guizmoRotate() override;
+	void guizmoScale() override;
 
 
 	// TODO: add closable tab, ability to on/off open close tab

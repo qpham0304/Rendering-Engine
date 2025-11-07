@@ -31,9 +31,9 @@ public:
 	virtual void useDarkTheme() = 0;
 	
 	virtual void renderGuizmo(TransformComponent& transformComponent) = 0;
-	virtual void GuizmoTranslate() = 0;
-	virtual void GuizmoRotate() = 0;
-	virtual void GuizmoScale() = 0;
+	virtual void guizmoTranslate() = 0;
+	virtual void guizmoRotate() = 0;
+	virtual void guizmoScale() = 0;
 public:
 
 };

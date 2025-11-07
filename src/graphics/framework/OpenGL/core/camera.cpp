@@ -9,31 +9,31 @@ Camera::Camera()
 	width = DEFAULT_WIDTH;
 	height = DEFAULT_HEIGHT;
 	position = glm::vec3(0.0);
-	Setup(width, height, position);
-	SetupOrientation(orientation);
+	setup(width, height, position);
+	setupOrientation(orientation);
 }
 
 Camera::Camera(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation)
 {
-	Setup(width, height, position);
-	SetupOrientation(orientation);
+	setup(width, height, position);
+	setupOrientation(orientation);
 }
 
 Camera::Camera(unsigned int width, unsigned int height, glm::vec3 position)
 {
-	Setup(width, height, position);
+	setup(width, height, position);
 }
 
 void Camera::init(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation)
 {
-	Setup(width, height, position);
-	SetupOrientation(orientation);
+	setup(width, height, position);
+	setupOrientation(orientation);
 }
 
 void Camera::onUpdate()
 {
-	ReCalculateView();
-	ReCalculateProjection();
+	reCalculateView();
+	reCalculateProjection();
 	mvp = projection * view;
 	right = glm::normalize(glm::cross(orientation, up));
 	double currentFrame = AppWindow::window->getTime();
@@ -114,8 +114,8 @@ bool Camera::processKeyboard() {
 	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	bool isPressing = false;
 
-	shiftPressed = appWindow->isMousePressed((MouseCodes)appWindow->getKey(KEY_LEFT_SHIFT))
-		|| appWindow->isKeyPressed((KeyCodes)appWindow->getKey(KEY_RIGHT_SHIFT));
+	shiftPressed = appWindow->isKeyPressed(KEY_LEFT_SHIFT)
+		|| appWindow->isKeyPressed(KEY_RIGHT_SHIFT);
 
 	if (appWindow->isKeyPressed(KEY_W)) {
 		position += orientation * speed;
@@ -269,19 +269,19 @@ void Camera::key_callback(int key, int scancode, int action, int mods) {
 }
 
 
-void Camera::ReCalculateView()
+void Camera::reCalculateView()
 {
 	view = glm::lookAt(position, position + orientation, up);
 	inView = glm::inverse(view);
 }
 
-void Camera::ReCalculateProjection()
+void Camera::reCalculateProjection()
 {
 	projection = glm::perspective(glm::radians(fov), (float)width / height, nearPlane, farPlane);
 	inProjection = glm::inverse(projection);
 }
 
-void Camera::Setup(unsigned int& width, unsigned int& height, glm::vec3& position)
+void Camera::setup(unsigned int& width, unsigned int& height, glm::vec3& position)
 {
 	this->width = width;
 	this->height = height;
@@ -292,7 +292,7 @@ void Camera::Setup(unsigned int& width, unsigned int& height, glm::vec3& positio
 	this->right = glm::cross(defaultUp, defaultOrientation);
 }
 
-void Camera::SetupOrientation(glm::vec3& orientation)
+void Camera::setupOrientation(glm::vec3& orientation)
 {
 	if (orientation.x == 0.0)		// hack to avoid camera lock at 0.0;
 		orientation.x = 0.01;

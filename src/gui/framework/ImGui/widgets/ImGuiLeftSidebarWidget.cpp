@@ -106,10 +106,10 @@ void ImGuiLeftSidebarWidget::AddComponentDialog(Entity& entity) {
         auto func = [&entity](AsyncEvent& event) {
             printf("unimplemented async event");
         };
-        EventManager::getInstance().Queue(event, func);
+        EventManager::getInstance().queue(event, func);
 #else
         ModelLoadEvent event(path, entity);
-        EventManager::getInstance().Publish(event);
+        EventManager::getInstance().publish(event);
 #endif
         ModelComponent& component = entity.getComponent<ModelComponent>();
         if (component.path == "None") {
@@ -246,7 +246,7 @@ void ImGuiLeftSidebarWidget::EntityTab() {
                     std::string path = Utils::fileDialog();
                     if (!path.empty()) {
                         ModelLoadEvent event(path, entity);
-                        EventManager::getInstance().Publish(event);
+                        EventManager::getInstance().publish(event);
                     }
                 }
 
@@ -282,7 +282,7 @@ void ImGuiLeftSidebarWidget::EntityTab() {
                     std::string path = Utils::fileDialog();
                     if (!path.empty()) {
                         AnimationLoadEvent event(path, entity);
-                        EventManager::getInstance().Publish(event);
+                        EventManager::getInstance().publish(event);
                     }
                 }
                 ImGui::EndDisabled();

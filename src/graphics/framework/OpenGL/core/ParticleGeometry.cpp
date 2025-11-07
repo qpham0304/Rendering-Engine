@@ -2,6 +2,7 @@
 #include "../src/graphics/utils/Utils.h"
 #include "../../src/core/features/Timer.h"
 #include "camera.h"
+#include <glad/glad.h>
 
 static const float g = 9.8f; // Gravity
 static const float rho = 1.225f; // Air density

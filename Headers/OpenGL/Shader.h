@@ -1,17 +1,12 @@
 #ifndef SHADER_CLASS_H
 #define SHADER_CLASS_H
 
-#include<glad/glad.h>
 #include<string>
 #include<fstream>
 #include<sstream>
 #include<iostream>
 #include<cerrno>
 #include<glm/glm.hpp>
-#include<glm/gtc/matrix_transform.hpp>
-#include<glm/gtc/type_ptr.hpp>
-#include<glm/gtx/rotate_vector.hpp>
-#include<glm/gtx/vector_angle.hpp>
 #include<unordered_map>
 #include<cstring>
 
@@ -27,11 +22,11 @@ private:
 	static std::vector<std::string> split(const std::string& str);
 	static std::vector<UniformData> parseShaderUniforms(const std::string& content);
 	
-	GLuint getUniformLocation(const std::string& name) const;
-	GLuint createShader(const char* vertexFile, const char* fragmentFile);
-	GLuint createShader(const char* vertexFile, const char* fragmentFile, const char* geometryFile);
+	unsigned int getUniformLocation(const std::string& name) const;
+	unsigned int createShader(const char* vertexFile, const char* fragmentFile);
+	unsigned int createShader(const char* vertexFile, const char* fragmentFile, const char* geometryFile);
 	
-	mutable std::unordered_map<std::string, GLuint> cache;
+	mutable std::unordered_map<std::string, unsigned int> cache;
 	std::vector<UniformData> uniforms;
 
 	std::string vertPath;
@@ -41,7 +36,7 @@ private:
 
 public:
 	// Reference ID of the Shader Program
-	GLuint ID;
+	unsigned int ID;
 	std::string type;
 	
 	Shader(const char* vertexFile, const char* fragmentFile);

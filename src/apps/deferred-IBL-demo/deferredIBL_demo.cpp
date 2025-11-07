@@ -1,14 +1,20 @@
 #include "deferredIBL_demo.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtx/vector_angle.hpp>
 #include "ParticleGeometry.h"
+#include "camera.h"
 #include "../../core/scene/SceneManager.h"
 #include "../../core/components/MComponent.h"
 #include "../../core/components/CameraComponent.h"
 #include "../../core/components/CubeMapComponent.h"
-#include "camera.h"
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/events/EventManager.h"
-#include "ImGui.h" //TODO: remove when gui is decoupled
 #include "../../src/core/layers/layerManager.h"
+#include "../../graphics/renderer/ShadowMapRenderer.h"
+#include "../../src/gui/GuiManager.h"   // need this to use imgui for now
+
 
 static glm::vec3 lightPositions[] = {
     glm::vec3(20.00f,  20.0f, 0.0),
@@ -722,9 +728,9 @@ DeferredIBLDemo::DeferredIBLDemo(const std::string& name) : AppLayer(name)
 
 }
 
-void DeferredIBLDemo::OnAttach(LayerManager* manager)
+void DeferredIBLDemo::onAttach(LayerManager* manager)
 {
-    AppLayer::OnAttach(manager);
+    AppLayer::onAttach(manager);
     
     //particleRenderer.init(particleControl);
     pbrShader.Init("Shaders/default-2.vert", "Shaders/default-2.frag");
@@ -751,25 +757,25 @@ void DeferredIBLDemo::OnAttach(LayerManager* manager)
     try {
         uint32_t helmetID = scene.addEntity("helmet");
         event = ModelLoadEvent("Models/DamagedHelmet/gltf/DamagedHelmet.gltf", scene.entities[helmetID]);
-        EventManager::getInstance().Publish(event);
+        EventManager::getInstance().publish(event);
         transform = &scene.entities[helmetID].getComponent<TransformComponent>();
         transform->translate(glm::vec3(2.0, 3.0, -3.0));
 
         uint32_t aruID = scene.addEntity("aru");
         event = ModelLoadEvent("Models/aru/aru.gltf", scene.entities[aruID]);
-        EventManager::getInstance().Publish(event);
+        EventManager::getInstance().publish(event);
         animationLoadEvent = AnimationLoadEvent("Models/aru/aru.gltf", scene.entities[aruID]);
-        EventManager::getInstance().Publish(animationLoadEvent);
+        EventManager::getInstance().publish(animationLoadEvent);
         transform = &scene.entities[aruID].getComponent<TransformComponent>();
         transform->translate(glm::vec3(-5.8, 3.0, 5.8));
 
-        uint32_t terrainID = scene.addEntity("terrain");
-        event = ModelLoadEvent("Models/death-valley-terrain/scene.gltf", scene.entities[terrainID]);
-        EventManager::getInstance().Publish(event);
-        transform = &scene.entities[terrainID].getComponent<TransformComponent>();
-        transform->translate(glm::vec3(0.0, -5.0, 0.0));
-        transform->rotate(glm::radians(glm::vec3(180.0, 0.0, 0.0)));
-        transform->scale(glm::vec3(50.0));
+        //uint32_t terrainID = scene.addEntity("terrain");
+        //event = ModelLoadEvent("Models/death-valley-terrain/scene.gltf", scene.entities[terrainID]);
+        //EventManager::getInstance().publish(event);
+        //transform = &scene.entities[terrainID].getComponent<TransformComponent>();
+        //transform->translate(glm::vec3(0.0, -5.0, 0.0));
+        //transform->rotate(glm::radians(glm::vec3(180.0, 0.0, 0.0)));
+        //transform->scale(glm::vec3(50.0));
 
         uint32_t cameraEntityID = scene.addEntity("camera");
         Entity& cameraEntity = scene.entities[cameraEntityID];
@@ -820,14 +826,14 @@ void DeferredIBLDemo::OnAttach(LayerManager* manager)
 
 }
 
-void DeferredIBLDemo::OnDetach()
+void DeferredIBLDemo::onDetach()
 {
-    AppLayer::OnDetach();
+    AppLayer::onDetach();
 }
 
-void DeferredIBLDemo::OnUpdate()
+void DeferredIBLDemo::onUpdate()
 {
-    AppLayer::OnUpdate();
+    AppLayer::onUpdate();
 
     renderShadow();
     //renderForwardPass();
@@ -838,7 +844,7 @@ void DeferredIBLDemo::OnUpdate()
     renderSkyView();
 }
 
-void DeferredIBLDemo::OnGuiUpdate()
+void DeferredIBLDemo::onGuiUpdate()
 {
     Scene& scene = *SceneManager::getInstance().getActiveScene();
 
@@ -890,9 +896,9 @@ void DeferredIBLDemo::OnGuiUpdate()
     AppLayer::renderApplication(ssrSceneFBO.texture);
 }
 
-void DeferredIBLDemo::OnEvent(Event& event)
+void DeferredIBLDemo::onEvent(Event& event)
 {
-    AppLayer::OnEvent(event);
+    AppLayer::onEvent(event);
 }
 
 int DeferredIBLDemo::show_demo()

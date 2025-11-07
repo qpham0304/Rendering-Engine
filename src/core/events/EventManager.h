@@ -21,10 +21,10 @@ public:
 	
 	static EventManager& getInstance();
 	
-	void Subscribe(const std::string& event, EventListener& listener);
+	void subscribe(const std::string& event, EventListener& listener);
 
 	template<typename... Args>
-	void Publish(const std::string& event, Args... args) {
+	void publish(const std::string& event, Args... args) {
 		if (listeners.find(event) != listeners.end()) {
 			std::vector<EventListener>& events = listeners[event];
 			for (EventListener& e : events) {
@@ -36,18 +36,18 @@ public:
 		}
 	}
 
-	uint32_t Subscribe(EventType eventType, EventCallback callback);
-	void Unsubscribe(EventType eventType, uint32_t cbID);
-	void Publish(Event& event);
-	void Queue(AsyncEvent event, AsyncCallback callback);
-	void OnUpdate();
+	uint32_t subscribe(EventType eventType, EventCallback callback);
+	void unsubscribe(EventType eventType, uint32_t cbID);
+	void publish(Event& event);
+	void queue(AsyncEvent event, AsyncCallback callback);
+	void onUpdate();
 	std::vector<std::pair<std::thread, bool*>> threads;
 
 
 private:
 	EventManager() = default;
-	void PublishAsync(EventListener& eventListener);
-	void CleanUpThread();
+	void publishAsync(EventListener& eventListener);
+	void cleanUpThread();
 	int runningTasks = 0;
 
 	uint32_t callbackID;

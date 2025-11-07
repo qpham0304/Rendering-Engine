@@ -149,15 +149,15 @@ void AppWindowGLFW::setEventCallback()
 		{
 			Timer timer("cursor event", true);
 			MouseMoveEvent cursorMoveEvent(x, y);
-			EventManager::getInstance().Publish(cursorMoveEvent);
+			EventManager::getInstance().publish(cursorMoveEvent);
 		});
 
 	glfwSetScrollCallback(window, [](GLFWwindow* window, double x, double y)
 		{
 			Timer timer("scroll event", true);
 			MouseScrollEvent scrollEvent(x, y);
-			EventManager::getInstance().Publish(scrollEvent);
-			//EventManager::getInstance().Publish("mouseScrollEvent", x, y);
+			EventManager::getInstance().publish(scrollEvent);
+			//EventManager::getInstance().publish("mouseScrollEvent", x, y);
 		});
 
 	glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -167,11 +167,11 @@ void AppWindowGLFW::setEventCallback()
 				case GLFW_PRESS: {
 					if (key == KEY_ESCAPE) {
 						WindowCloseEvent windowCloseEvent;
-						EventManager::getInstance().Publish(windowCloseEvent);
+						EventManager::getInstance().publish(windowCloseEvent);
 					}
 					else {
 						KeyPressedEvent keyPressEvent(key);
-						EventManager::getInstance().Publish(keyPressEvent);
+						EventManager::getInstance().publish(keyPressEvent);
 					}
 				}
 				case GLFW_RELEASE: {
@@ -186,12 +186,12 @@ void AppWindowGLFW::setEventCallback()
 	glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height)
 		{
 			WindowResizeEvent resizeEvent(width, height);
-			EventManager::getInstance().Publish(resizeEvent);
+			EventManager::getInstance().publish(resizeEvent);
 		});
 
 	glfwSetWindowCloseCallback(window, [](GLFWwindow* window)
 		{
 			WindowCloseEvent closeEvent;
-			EventManager::getInstance().Publish(closeEvent);
+			EventManager::getInstance().publish(closeEvent);
 		});
 }
