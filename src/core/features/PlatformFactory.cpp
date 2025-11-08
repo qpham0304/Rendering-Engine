@@ -20,7 +20,7 @@
 #define REGISTER_LOGGER_CONSTRUCTOR(constructors_map, platformEnum, ClassType) \
     constructors_map[platformEnum] = [this](std::string_view name) { \
         auto logger = std::make_unique<ClassType>(name.data());   \
-        this->serviceLocator.Register("Logger", *logger.get());   \
+        this->serviceLocator.Register(std::string("Logger.") + name.data(), *logger.get());   \
         return logger;  \
     };
 
@@ -32,6 +32,7 @@ PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     REGISTER_GUI_CONSTRUCTOR(guiConstructors, GuiPlatform::IMGUI, ImGuiController);
 
 	REGISTER_LOGGER_CONSTRUCTOR(loggerConstructors, LoggerPlatform::SPDLOG, LoggerSpd);
+	//loggerRegistry.Register<LoggerSpd>(LoggerPlatform::SPDLOG, serviceLocator, "Logger");
 }
 
 std::unique_ptr<AppWindow> PlatformFactory::createWindow(WindowPlatform platform)
@@ -64,4 +65,5 @@ std::unique_ptr<Logger> PlatformFactory::createLogger(LoggerPlatform platform, s
         throw std::runtime_error("failed to create window, platform not supported");
     }
     return loggerConstructors[platform](name);
+    //return loggerRegistry.Create(platform);
 }

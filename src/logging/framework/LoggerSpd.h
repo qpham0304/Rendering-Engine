@@ -6,6 +6,7 @@
 class LoggerSpd : public Logger
 {
 public:
+    LoggerSpd() = default;
     explicit LoggerSpd(const std::string& name);
     ~LoggerSpd() override = default;
 

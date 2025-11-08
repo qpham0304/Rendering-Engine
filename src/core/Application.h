@@ -19,7 +19,8 @@ public:
 	std::unique_ptr<GuiManager> guiManager;
 	std::unique_ptr<AppWindow> appWindow;
 	EditorLayer* editorLayer;
-	std::unique_ptr<Logger> logger;
+	std::unique_ptr<Logger> engineLogger;
+	std::unique_ptr<Logger> clientLogger;
 
 public:
 	Application(WindowConfig windowConfig);

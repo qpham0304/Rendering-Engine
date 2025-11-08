@@ -42,5 +42,6 @@ private:
 	std::unordered_map<GuiPlatform, GuiConstructor>  guiConstructors;
 	std::unordered_map<RenderPlatform, RendererConstructor>  rendererConstructors;
 	std::unordered_map<LoggerPlatform, LoggerConstructor>  loggerConstructors;
+	ConstructorRegistry<Logger, LoggerPlatform> loggerRegistry;
 };
 
