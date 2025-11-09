@@ -2,6 +2,7 @@
 //#include "../vulkan-setup/VulkanSetupDemo.h"
 #include "../../core/Application.h"
 #include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
+#include "../../src/apps/particle-demo/particleDemo.h"
 
 #define USE_EDITOR
 int main()
@@ -31,6 +32,7 @@ int main()
 		//TODO: problem: app layer can only be added after
 		// everything is started so check that before allow adding layer
 		app.pushLayer(new DeferredIBLDemo("demo"));
+		//app.pushLayer(new ParticleDemo("particle demo"));
 
 		app.run();
 		app.end();

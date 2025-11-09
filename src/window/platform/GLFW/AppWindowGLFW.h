@@ -7,23 +7,22 @@ class GLFWwindow;
 class AppWindowGLFW : public AppWindow
 {
 private:
-	GLFWwindow* window;
-	GLFWwindow* sharedWindow;
+	GLFWwindow* m_WindowHandle;
+	GLFWwindow* m_SharedWindowHandle;
 
 public:
 	AppWindowGLFW();
 	~AppWindowGLFW();
 
-	void* getWindow() override;
-	void* getSharedWindow() override;
-
 
 	virtual int init(WindowConfig platform) override;		// set up and init the graphics api depending on the platform
 	virtual int onClose() override;						// close and terminate the program
 	virtual void onUpdate() override;
-	virtual double getTime() const override;
 
 protected:
-	virtual void setEventCallback() override;
+	void* _getWindow() override;
+	void* _getSharedWindow() override;
+	virtual double _getTime() const override;
+	virtual void _setEventCallback() override;
 };
 

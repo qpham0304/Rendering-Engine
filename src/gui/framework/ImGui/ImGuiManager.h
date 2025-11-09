@@ -10,24 +10,24 @@
 #include "widgets/ImGuiRightSidebarWidget.h"
 #include "widgets/ImGuiMenuWidget.h"
 
-class ImGuiController : public GuiManager 
+class ImGuiManager : public GuiManager 
 {
 public:
 
 public:
-	ImGuiController();
-	ImGuiController(bool darkTheme);
+	ImGuiManager();
+	ImGuiManager(bool darkTheme);
 
 
-	ImGuiController(const ImGuiController& other) = default;
+	ImGuiManager(const ImGuiManager& other) = default;
 
-	ImGuiController(ImGuiController&& other) noexcept = default;
+	ImGuiManager(ImGuiManager&& other) noexcept = default;
 
-	ImGuiController& operator=(const ImGuiController& other) {}
+	ImGuiManager& operator=(const ImGuiManager& other) {}
 
-	ImGuiController& operator=(ImGuiController&& other) noexcept {}
+	ImGuiManager& operator=(ImGuiManager&& other) noexcept {}
 
-	~ImGuiController();
+	~ImGuiManager();
 
 	void init(WindowConfig config) override;
 	void start() override;

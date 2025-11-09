@@ -36,9 +36,8 @@ static float customLerp(float a, float b, float f)
 
 void DeferredIBLDemo::setupBuffers()
 {
-    const AppWindow& window  = m_Manager->Window();
-    int width = window.width;
-    int height = window.height;
+    int width = AppWindow::getWidth();
+    int height = AppWindow::getHeight();
 
     glGenFramebuffers(1, &gBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
@@ -150,7 +149,7 @@ void DeferredIBLDemo::renderDeferredPass()
     scene.getShader("colorPassShader")->setMat4("inverseView", camera->getInViewMatrix());
     scene.getShader("colorPassShader")->setBool("gamma", true);
     scene.getShader("colorPassShader")->setBool("sampleRadius", 2);
-    scene.getShader("colorPassShader")->setBool("time", AppWindow::window->getTime());
+    scene.getShader("colorPassShader")->setBool("time", AppWindow::getTime());
     scene.getShader("colorPassShader")->setBool("rippleStrength", 1.0);
 
 
@@ -205,9 +204,8 @@ void DeferredIBLDemo::renderDeferredPass()
 
 void DeferredIBLDemo::setupSkyView()
 {
-    const AppWindow& window = m_Manager->Window();
-    int width = window.width;
-    int height = window.height;
+    int width = AppWindow::getWidth();
+    int height = AppWindow::getHeight();
     transmittanceLUT.Init(width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
     multipleScatteredLUT.Init(width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
     skyViewLUT.Init(width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
@@ -245,12 +243,11 @@ void DeferredIBLDemo::setupSkyView()
 
 void DeferredIBLDemo::renderSkyView()
 {
-    const AppWindow& window = m_Manager->Window();
-    int width = window.width;
-    int height = window.height;
+    int width = AppWindow::getWidth();
+    int height = AppWindow::getHeight();
 
     if (!timePaused) {
-        currentFrame = static_cast<float>(AppWindow::window->getTime());
+        currentFrame = static_cast<float>(AppWindow::getTime());
     }
 
     skyViewLUT.Bind();
@@ -308,7 +305,7 @@ void DeferredIBLDemo::setupSSAO()
     glGenTextures(1, &ssaoTexture);
     glBindTexture(GL_TEXTURE_2D, ssaoTexture);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_Manager->Window().width, m_Manager->Window().height, 0, GL_RED, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, AppWindow::getWidth(), AppWindow::getHeight(), 0, GL_RED, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoTexture, 0);
@@ -322,7 +319,7 @@ void DeferredIBLDemo::setupSSAO()
     glGenTextures(1, &ssaoBlurTexture);
     glBindTexture(GL_TEXTURE_2D, ssaoBlurTexture);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_Manager->Window().width, m_Manager->Window().height, 0, GL_RED, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, AppWindow::getWidth(), AppWindow::getHeight(), 0, GL_RED, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoBlurTexture, 0);
@@ -377,7 +374,7 @@ void DeferredIBLDemo::renderSSAO()
     ssaoShader.setInt("texNoise", 2);
     ssaoShader.setVec2(
         "noiseScale", 
-        glm::vec2(m_Manager->Window().width / 4.0f, m_Manager->Window().height / 4.0f)
+        glm::vec2(AppWindow::getWidth() / 4.0f, AppWindow::getHeight() / 4.0f)
     );     // tile noise texture over screen based
 
     for (unsigned int i = 0; i < 64; ++i) {
@@ -415,7 +412,7 @@ void DeferredIBLDemo::renderSSAO()
 
 void DeferredIBLDemo::setupSSR()
 {
-    ssrSceneFBO.Init(m_Manager->Window().width, m_Manager->Window().height, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
+    ssrSceneFBO.Init(AppWindow::getWidth(), AppWindow::getHeight(), GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
 
 }
 
@@ -448,8 +445,8 @@ void DeferredIBLDemo::renderSSR()
     SSRShader.setMat4("projection", camera->getProjectionMatrix());
     SSRShader.setMat4("invView", glm::inverse(camera->getViewMatrix()));
     SSRShader.setMat4("invProjection", glm::inverse(camera->getProjectionMatrix()));
-    SSRShader.setInt("width", m_Manager->Window().width);
-    SSRShader.setInt("height", m_Manager->Window().height);
+    SSRShader.setInt("width", AppWindow::getWidth());
+    SSRShader.setInt("height", AppWindow::getHeight());
 
 
     Utils::OpenGL::Draw::drawQuad();
@@ -471,7 +468,7 @@ void DeferredIBLDemo::renderShadow()
     auto& light = lightEntities[0].getComponent<MLightComponent>();
 
     glm::mat4 lightOrtho = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
-    glm::mat4 lightPerspective = glm::perspective(glm::radians(90.0f), (float)m_Manager->Window().width / m_Manager->Window().height, 0.1f, 100.0f);
+    glm::mat4 lightPerspective = glm::perspective(glm::radians(90.0f), (float)AppWindow::getWidth() / AppWindow::getHeight(), 0.1f, 100.0f);
     
     glm::mat4 lightView = glm::lookAt(light.position, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0, 1.0, 0.0));
     glm::mat4 lightMVP = lightOrtho * lightView;
@@ -479,7 +476,7 @@ void DeferredIBLDemo::renderShadow()
     Shader shadowShader("Shaders/shadowMap.vert", "Shaders/shadowMap.frag");
 
     depthMap.Bind();
-    glViewport(0, 0, m_Manager->Window().width, m_Manager->Window().height);
+    glViewport(0, 0, AppWindow::getWidth(), AppWindow::getHeight());
     glClear(GL_DEPTH_BUFFER_BIT);
     //glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // RGBA
     //glEnable(GL_DEPTH_TEST);
@@ -542,7 +539,7 @@ void DeferredIBLDemo::renderForwardPass()
     pbrShader.setInt("brdfLUT", 8);
 
     applicationFBO.Bind();
-    glViewport(0, 0, m_Manager->Window().width, m_Manager->Window().height);
+    glViewport(0, 0, AppWindow::getWidth(), AppWindow::getHeight());
     glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
@@ -609,7 +606,7 @@ void DeferredIBLDemo::renderForwardPass()
         }
         model->Draw(pbrShader);
 
-        float currentTime = static_cast<float>(AppWindow::window->getTime());
+        float currentTime = static_cast<float>(AppWindow::getTime());
         float dt = currentTime - lf;
         lf = currentTime;
         animationComponent.animator.UpdateAnimation(dt);
@@ -665,7 +662,7 @@ void DeferredIBLDemo::renderPrePass()
     scene.getShader("gPassShader")->setInt("duvMap", 6);
 
     glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
-    glViewport(0, 0, m_Manager->Window().width, m_Manager->Window().height);
+    glViewport(0, 0, AppWindow::getWidth(), AppWindow::getHeight());
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
@@ -710,7 +707,7 @@ void DeferredIBLDemo::renderPrePass()
             }
 
 
-            float currentTime = static_cast<float>(AppWindow::window->getTime());
+            float currentTime = static_cast<float>(AppWindow::getTime());
             float dt = currentTime - lf;
             lf = currentTime;
             animationComponent.animator.UpdateAnimation(dt);
@@ -735,8 +732,8 @@ void DeferredIBLDemo::onAttach(LayerManager* manager)
     //particleRenderer.init(particleControl);
     pbrShader.Init("Shaders/default-2.vert", "Shaders/default-2.frag");
     particleShader.Init("Shaders/particle.vert", "Shaders/particle.frag");
-    lightPassFBO.Init(manager->Window().width, manager->Window().height, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
-    depthMap.Init(manager->Window().width, manager->Window().height);
+    lightPassFBO.Init(AppWindow::getWidth(), AppWindow::getHeight(), GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
+    depthMap.Init(AppWindow::getWidth(), AppWindow::getHeight());
 
     setupBuffers();
     setupSSAO();
@@ -782,8 +779,8 @@ void DeferredIBLDemo::onAttach(LayerManager* manager)
         TransformComponent& cameraTransform = cameraEntity.getComponent<TransformComponent>();
         cameraTransform.translate(glm::vec3(-6.5f, 3.5f, 8.5f));
         auto& cameraComponent = cameraEntity.addComponent<CameraComponent>(
-            manager->Window().width,
-            manager->Window().height,
+            AppWindow::getWidth(),
+            AppWindow::getHeight(),
             cameraTransform.translateVec,
             glm::vec3(0.5, -0.2, -1.0f)
         );

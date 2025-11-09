@@ -1,5 +1,4 @@
 #include "AppWindowGLFW.h"
-#include <stdexcept>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "../../src/core/features/Timer.h"
@@ -8,23 +7,16 @@
 
 AppWindowGLFW::AppWindowGLFW() : AppWindow()
 {
+	window = this;
 	input = std::make_unique<InputGLFW>();
 }
 
+
 AppWindowGLFW::~AppWindowGLFW()
 {
-	//input.reset();
+	input.reset();
 }
 
-void* AppWindowGLFW::getWindow()
-{
-	return window;
-}
-
-void* AppWindowGLFW::getSharedWindow()
-{
-	return sharedWindow;
-}
 
 int AppWindowGLFW::init(WindowConfig newConfig) {
 	this->config = newConfig;
@@ -71,44 +63,44 @@ int AppWindowGLFW::init(WindowConfig newConfig) {
 	}
 
 	else if (platform == RenderPlatform::OPENGL) {
-		window = glfwCreateWindow(width, height, config.title.c_str(), NULL, NULL);
+		m_WindowHandle = glfwCreateWindow(width, height, config.title.c_str(), NULL, NULL);
 
-		if (window == NULL) {
+		if (m_WindowHandle == NULL) {
 			throw std::runtime_error("Failed to create GLFW window");
 			glfwTerminate();
 			return -1;
 		}
-		glfwMakeContextCurrent(window);
+		glfwMakeContextCurrent(m_WindowHandle);
 
 		if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 			throw std::runtime_error("Failed to initialize GLAD for main context");
-			glfwDestroyWindow(window);
+			glfwDestroyWindow(m_WindowHandle);
 			glfwTerminate();
 			return -1;
 		}
 
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);	// Set Invisible for second context
-		sharedWindow = glfwCreateWindow(width, height, "", NULL, window);
+		m_SharedWindowHandle = glfwCreateWindow(width, height, "", NULL, m_WindowHandle);
 
-		if (sharedWindow == NULL) {
+		if (m_SharedWindowHandle == NULL) {
 			throw std::runtime_error("Failed to create shared GLFW window");
-			glfwDestroyWindow(window);
+			glfwDestroyWindow(m_WindowHandle);
 			glfwTerminate();
 			return -1;
 		}
-		glfwMakeContextCurrent(sharedWindow);
+		glfwMakeContextCurrent(m_SharedWindowHandle);
 
-		glfwMakeContextCurrent(window);
+		glfwMakeContextCurrent(m_WindowHandle);
 	}
 
-	setEventCallback();
+	_setEventCallback();
 
 	//((InputGLFW*)input.get())->window = window;	// shorter but how can read
 	InputGLFW* tmp = dynamic_cast<InputGLFW*>(input.get());
 	if (!tmp) {
 		throw std::runtime_error("AppWindowGLFW: failed to cast Input to type InputGLFW");
 	}
-	tmp->window = window;
+	tmp->window = m_WindowHandle;
 
 	glfwSwapInterval(config.vsync);
 	//glfwSwapInterval(1);
@@ -121,38 +113,51 @@ int AppWindowGLFW::init(WindowConfig newConfig) {
 int AppWindowGLFW::onClose() {
 	if (platform == RenderPlatform::OPENGL) {
 		glfwMakeContextCurrent(nullptr);
-		glfwDestroyWindow(window);
-		glfwDestroyWindow(sharedWindow);
+		glfwDestroyWindow(m_WindowHandle);
+		glfwDestroyWindow(m_SharedWindowHandle);
 		glfwTerminate();
 	}
 	return 0;
 }
 
+
 void AppWindowGLFW::onUpdate()
 {
 	if (AppWindow::platform == RenderPlatform::OPENGL) {
 		glfwPollEvents();
-		glfwSwapBuffers(window);
+		glfwSwapBuffers(m_WindowHandle);
 	}
 }
 
-double AppWindowGLFW::getTime() const
+
+void* AppWindowGLFW::_getWindow()
+{
+	return m_WindowHandle;
+}
+
+
+void* AppWindowGLFW::_getSharedWindow()
+{
+	return m_SharedWindowHandle;
+}
+
+
+double AppWindowGLFW::_getTime() const
 {
 	return glfwGetTime();
 }
 
 
-
-void AppWindowGLFW::setEventCallback()
+void AppWindowGLFW::_setEventCallback()
 {
-	glfwSetCursorPosCallback(window, [](GLFWwindow* window, double x, double y)
+	glfwSetCursorPosCallback(m_WindowHandle, [](GLFWwindow* window, double x, double y)
 		{
 			Timer timer("cursor event", true);
 			MouseMoveEvent cursorMoveEvent(x, y);
 			EventManager::getInstance().publish(cursorMoveEvent);
 		});
 
-	glfwSetScrollCallback(window, [](GLFWwindow* window, double x, double y)
+	glfwSetScrollCallback(m_WindowHandle, [](GLFWwindow* window, double x, double y)
 		{
 			Timer timer("scroll event", true);
 			MouseScrollEvent scrollEvent(x, y);
@@ -160,7 +165,7 @@ void AppWindowGLFW::setEventCallback()
 			//EventManager::getInstance().publish("mouseScrollEvent", x, y);
 		});
 
-	glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
+	glfwSetKeyCallback(m_WindowHandle, [](GLFWwindow* window, int key, int scancode, int action, int mods)
 		{
 			//Application* application = static_cast<Application*>(glfwGetWindowUserPointer(window));
 			switch (action) {
@@ -183,13 +188,13 @@ void AppWindowGLFW::setEventCallback()
 			}
 		});
 
-	glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height)
+	glfwSetWindowSizeCallback(m_WindowHandle, [](GLFWwindow* window, int width, int height)
 		{
 			WindowResizeEvent resizeEvent(width, height);
 			EventManager::getInstance().publish(resizeEvent);
 		});
 
-	glfwSetWindowCloseCallback(window, [](GLFWwindow* window)
+	glfwSetWindowCloseCallback(m_WindowHandle, [](GLFWwindow* window)
 		{
 			WindowCloseEvent closeEvent;
 			EventManager::getInstance().publish(closeEvent);

@@ -12,38 +12,42 @@ class AppWindow
 {
 public:
 	static const std::set<RenderPlatform> supportRenderPlatform;
-	static bool VsyncEnabled;
 	static RenderPlatform platform;
 
-	static AppWindow* window;
-	unsigned int width;
-	unsigned int height;
 
 public:
 	virtual ~AppWindow() = default;
 
-	virtual void* getWindow() = 0;
-	virtual void* getSharedWindow() = 0;
-
-	virtual int init(WindowConfig config) = 0;	// set up and init the graphics api depending on the platform
-	virtual int onClose() = 0;						// close and terminate the program
+	virtual int init(WindowConfig config) = 0;
+	virtual int onClose() = 0;
 	virtual void onUpdate() = 0;
-	virtual double getTime() const = 0;
 
-	const WindowConfig& getWindowConfig() const;
-	bool isMousePressed(MouseCodes mouseCode) const;
-	bool isKeyPressed(KeyCodes keyCode) const;
-	int getMouseButton(MouseCodes mouseCode) const;
-	void getCursorPos(double* x, double* y);
-	int getKey(KeyCodes keyCode) const;
-
+	static const WindowConfig& getWindowConfig();
+	static bool isMousePressed(MouseCodes mouseCode);
+	static bool isKeyPressed(KeyCodes keyCode);
+	static int getMouseButton(MouseCodes mouseCode);
+	static void getCursorPos(double* x, double* y);
+	static int getKey(KeyCodes keyCode);
+	static double getTime();
+	static unsigned int getWidth();
+	static unsigned int getHeight();
+	static void* getWindowHandle();
 
 protected:
+	virtual void* _getWindow() = 0;
+	virtual void* _getSharedWindow() = 0;
+	virtual void _setEventCallback() = 0;
+	virtual double _getTime() const = 0;
+
+protected:
+	static AppWindow* window;
+	
 	AppWindow() = default;
 
-	std::unique_ptr<Input> input;
+	unsigned int width;
+	unsigned int height;
 	WindowConfig config;
+	std::unique_ptr<Input> input;
 
-	
-	virtual void setEventCallback() = 0;
+private:
 };

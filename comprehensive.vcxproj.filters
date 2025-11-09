@@ -129,7 +129,7 @@
     <ClCompile Include="src\core\Systems\System.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\gui\framework\ImGui\ImGuiController.cpp">
+    <ClCompile Include="src\gui\framework\ImGui\ImGuiManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.cpp">
@@ -262,6 +262,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\logging\framework\LoggerSpd.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -452,7 +455,7 @@
     <ClInclude Include="Libraries\include\FileWatch\FileWatch.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\gui\framework\ImGui\ImGuiController.h">
+    <ClInclude Include="src\gui\framework\ImGui\ImGuiManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\gui\widgets\ConsoleLogWidget.h">
@@ -558,6 +561,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\logging\framework\LoggerSpd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\apps\particle-demo\ParticleDemo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

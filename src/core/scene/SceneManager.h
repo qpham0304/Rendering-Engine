@@ -43,9 +43,7 @@ public:
 
 	static SceneManager& getInstance();
 
-	//static std::mutex mutex;
 	static Camera* cameraController;
-	static bool gammaCorrection;
 
 	bool addScene(const std::string& name);
 	bool addScene(std::unique_ptr<Scene> scene);

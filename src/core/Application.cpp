@@ -23,14 +23,13 @@ void Application::init()
 	appWindow = platformFactory.createWindow(windowConfig.windowPlatform);
 	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
 	engineLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Engine");
-	//clientLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Client");
+	clientLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Client");
 
 	//engine specific features
 	layerManager = std::make_unique<LayerManager>(serviceLocator);
 
 	//Binding platform widow to single ton app window
 	//TODO: find a better solution if possible
-	AppWindow::window = appWindow.get();
 
 	editorLayer = new EditorLayer("EditorLayer");
 
@@ -41,11 +40,11 @@ void Application::init()
 	engineLogger->warn("Easy padding in numbers like {:08d}", 12);
 	engineLogger->critical("Support for int: {0:d};  hex: {0:x};  oct: {0:o}; bin: {0:b}", 42);
 	engineLogger->info("Support for floats {:03.2f}", 1.23456);
-	//clientLogger->info("Positional args are {1} {0}..", "too", "supported");
-	//clientLogger->info("{:<30}", "left aligned");
+	clientLogger->info("Positional args are {1} {0}..", "too", "supported");
+	clientLogger->info("{:<30}", "left aligned");
 
-	//clientLogger->setLevel(LogLevel::Debug); // Set *global* log level to debug
-	//clientLogger->debug("This message should be displayed..");
+	clientLogger->setLevel(LogLevel::Debug); // Set *global* log level to debug
+	clientLogger->debug("This message should be displayed..");
 
 	// Compile time log levels
 	// Note that this does not change the current log level, it will only
@@ -93,7 +92,6 @@ void Application::run() {
 			layerManager->onGuiUpdate();
 			guiManager->end();
 		}
-
 		appWindow->onUpdate();
 	}
 }

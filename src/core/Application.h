@@ -1,14 +1,11 @@
 #pragma once
 
-#include "layers/LayerManager.h"
-#include "scene/SceneManager.h"
-#include "../../src/core/events/EventManager.h"
-#include "layers/EditorLayer.h"
-#include "../gui/framework/ImGui/ImGuiController.h"
 #include "../../src/core/layers/LayerManager.h"
-#include "features/ServiceLocator.h"
-#include "features/PlatformFactory.h"
-
+#include "../../src/core/scene/SceneManager.h"
+#include "../../src/core/events/EventManager.h"
+#include "../../src/core/features/ServiceLocator.h"
+#include "../../src/core/features/PlatformFactory.h"
+#include "../../src/core/layers/EditorLayer.h"
 
 class Application
 {
@@ -18,9 +15,9 @@ public:
 	std::unique_ptr<LayerManager> layerManager;
 	std::unique_ptr<GuiManager> guiManager;
 	std::unique_ptr<AppWindow> appWindow;
-	EditorLayer* editorLayer;
 	std::unique_ptr<Logger> engineLogger;
 	std::unique_ptr<Logger> clientLogger;
+	EditorLayer* editorLayer;
 
 public:
 	Application(WindowConfig windowConfig);

@@ -1,4 +1,4 @@
-#include "ImGuiController.h"
+#include "ImGuiManager.h"
 #include "../../GuiManager.h"
 #include "../../src/core/scene/SceneManager.h"
 #include "../../src/window/appwindow.h"
@@ -11,20 +11,20 @@
 #include "../../../graphics/utils/Utils.h"
 #include "../../src/core/components/MComponent.h"
 
-ImGuiController::ImGuiController()
+ImGuiManager::ImGuiManager()
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 }
 
-ImGuiController::ImGuiController(bool darkTheme)
+ImGuiManager::ImGuiManager(bool darkTheme)
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	this->darkTheme = darkTheme;
 }
 
-void ImGuiController::init(WindowConfig config)
+void ImGuiManager::init(WindowConfig config)
 {
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 
@@ -49,7 +49,7 @@ void ImGuiController::init(WindowConfig config)
 
 	// Setup ImGui GLFW and OpenGL bindings
 
-	void* appWindow = AppWindow::window->getWindow();
+	void* appWindow = AppWindow::getWindowHandle();
 	if (config.windowPlatform == WindowPlatform::GLFW) {
 		if (config.renderPlatform == RenderPlatform::OPENGL) {
 			ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(appWindow), true);
@@ -57,14 +57,14 @@ void ImGuiController::init(WindowConfig config)
 		}
 		else if (config.renderPlatform == RenderPlatform::VULKAN) {
 			//ImGui_ImplGlfw_InitForVulkan(static_cast<GLFWwindow*>(appWindow), true);
-			throw std::runtime_error("ImGuiController: Vulkan ImGui initialization not implemented yet");
+			throw std::runtime_error("ImGuiManager: Vulkan ImGui initialization not implemented yet");
 		}
 		else {
-			throw std::runtime_error("ImGuiController: Unsupported render platform for ImGui initialization with GLFW");
+			throw std::runtime_error("ImGuiManager: Unsupported render platform for ImGui initialization with GLFW");
 		}
 	}
 	else {
-		throw std::runtime_error("ImGuiController: Unsupported window platform for ImGui initialization");
+		throw std::runtime_error("ImGuiManager: Unsupported window platform for ImGui initialization");
 	}
 
 	io.Fonts->AddFontFromFileTTF("src/gui/fonts/Roboto/Roboto-Regular.ttf", fontSize);
@@ -86,9 +86,9 @@ void ImGuiController::init(WindowConfig config)
 	widgets.push_back(std::move(menu));
 }
 
-ImGuiController::~ImGuiController() = default;
+ImGuiManager::~ImGuiManager() = default;
 
-void ImGuiController::start()
+void ImGuiManager::start()
 {
 	if (width == -1 && height == -1) {
 		throw std::logic_error("Object not fully initialized. Did you call init() function before start?");
@@ -103,7 +103,7 @@ void ImGuiController::start()
 	ImGui::DockSpaceOverViewport(0);
 }
 
-void ImGuiController::debugWindow(ImTextureID texture)
+void ImGuiManager::debugWindow(ImTextureID texture)
 {
 	glm::vec3 camPos = SceneManager::cameraController->getPosition();
 	std::string x = "x: " + std::to_string(camPos.x).substr(0, 4);
@@ -135,7 +135,7 @@ void ImGuiController::debugWindow(ImTextureID texture)
 	ImGui::End();
 }
 
-void ImGuiController::applicationWindow()
+void ImGuiManager::applicationWindow()
 {
 	//start group
 	ImGui::SetCursorPos(ImVec2(10.0f, 10.0f));
@@ -164,7 +164,7 @@ void ImGuiController::applicationWindow()
 	ImGui::PopStyleColor();
 }
 
-void ImGuiController::render()
+void ImGuiManager::render()
 {
 	for (const auto& widget : widgets) {
 		widget->render();
@@ -176,7 +176,7 @@ void ImGuiController::render()
 }
 
 //ImGui
-void ImGuiController::end()
+void ImGuiManager::end()
 {
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -190,7 +190,7 @@ void ImGuiController::end()
 	}
 }
 
-void ImGuiController::onClose()
+void ImGuiManager::onClose()
 {
 	if (AppWindow::platform == RenderPlatform::OPENGL) {
 		ImGui_ImplOpenGL3_Shutdown();
@@ -199,17 +199,17 @@ void ImGuiController::onClose()
 	}
 }
 
-void ImGuiController::setTheme(bool darkTheme)
+void ImGuiManager::setTheme(bool darkTheme)
 {
 	this->darkTheme = darkTheme;
 }
 
-void ImGuiController::useLightTheme()
+void ImGuiManager::useLightTheme()
 {
 	ImGuiThemes::purpleTheme();
 }
 
-void ImGuiController::useDarkTheme()
+void ImGuiManager::useDarkTheme()
 {
 	ImGuiThemes::darkTheme();
 
@@ -237,7 +237,7 @@ void ImGuiController::useDarkTheme()
 	colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
 }
 
-void ImGuiController::renderGuizmo(TransformComponent& transformComponent)
+void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 {
 	ImGuizmo::BeginFrame();
 	glm::vec3 translateVector(0.0f, 0.0f, 0.0f);
@@ -303,15 +303,15 @@ void ImGuiController::renderGuizmo(TransformComponent& transformComponent)
 	}
 }
 
-void ImGuiController::guizmoTranslate() 
+void ImGuiManager::guizmoTranslate() 
 {
 	GuizmoType = ImGuizmo::OPERATION::TRANSLATE;
 };
-void ImGuiController::guizmoRotate() 
+void ImGuiManager::guizmoRotate() 
 {
 	GuizmoType = ImGuizmo::OPERATION::ROTATE;
 };
-void ImGuiController::guizmoScale() 
+void ImGuiManager::guizmoScale() 
 {
 	GuizmoType = ImGuizmo::OPERATION::SCALE;
 };

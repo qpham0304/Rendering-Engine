@@ -191,6 +191,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
+    <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp" />
     <ClCompile Include="src\core\features\PlatformFactory.cpp" />
     <ClCompile Include="src\core\features\ServiceLocator.cpp" />
     <ClCompile Include="src\logging\framework\LoggerSpd.cpp" />
@@ -240,7 +241,7 @@
     <ClCompile Include="Libraries\include\ImGuizmo\ImSequencer.cpp" />
     <ClCompile Include="src\graphics\utils\Utils.cpp" />
     <ClCompile Include="src\window\AppWindow.cpp" />
-    <ClCompile Include="src\gui\framework\ImGui\ImGuiController.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\ImGuiManager.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\FrameBuffer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\SkyboxRenderer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\Animation.cpp" />
@@ -272,6 +273,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
+    <ClInclude Include="src\apps\particle-demo\ParticleDemo.h" />
     <ClInclude Include="src\core\features\Configs.h" />
     <ClInclude Include="src\core\features\PlatformFactory.h" />
     <ClInclude Include="src\core\features\ServiceLocator.h" />
@@ -330,7 +332,7 @@
     <ClInclude Include="Libraries\include\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\ImSequencer.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\ImZoomSlider.h" />
-    <ClInclude Include="src\gui\framework\ImGui\ImGuiController.h" />
+    <ClInclude Include="src\gui\framework\ImGui\ImGuiManager.h" />
     <ClInclude Include="src\core\components\headers\LightComponent.h" />
     <ClInclude Include="src\graphics\utils\ltc_matrix.h" />
     <ClInclude Include="src\graphics\utils\Utils.h" />

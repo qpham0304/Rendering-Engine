@@ -8,8 +8,8 @@
 
 BloomLayer::BloomLayer(const std::string& name) : Layer(name), VAO(0), VBO(0)
 {
-    int width = m_Manager->Window().width;
-    int height = m_Manager->Window().height;
+    int width = AppWindow::getWidth();
+    int height = AppWindow::getHeight();
 	bloomRenderer.Init(width, height);
 
     glGenFramebuffers(1, &hdrFBO);

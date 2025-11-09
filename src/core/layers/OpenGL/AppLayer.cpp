@@ -58,8 +58,8 @@ void AppLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);
 
-	int width = manager->Window().width;
-	int height = manager->Window().height;
+	int width = AppWindow::getWidth();
+	int height = AppWindow::getHeight();
 
 	applicationFBO.Init(
 		width,

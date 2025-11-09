@@ -36,7 +36,7 @@ void Camera::onUpdate()
 	reCalculateProjection();
 	mvp = projection * view;
 	right = glm::normalize(glm::cross(orientation, up));
-	double currentFrame = AppWindow::window->getTime();
+	double currentFrame = AppWindow::getTime();
 	deltaTime = currentFrame - lastFrame;
 	lastFrame = currentFrame;
 	speed = 2.5f * deltaTime * speedMultiplier;
@@ -109,39 +109,38 @@ float Camera::getDeltaTime()
 }
 
 bool Camera::processKeyboard() {
-	AppWindow* appWindow = AppWindow::window;
 	
 	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	bool isPressing = false;
 
-	shiftPressed = appWindow->isKeyPressed(KEY_LEFT_SHIFT)
-		|| appWindow->isKeyPressed(KEY_RIGHT_SHIFT);
+	shiftPressed = AppWindow::isKeyPressed(KEY_LEFT_SHIFT)
+		|| AppWindow::isKeyPressed(KEY_RIGHT_SHIFT);
 
-	if (appWindow->isKeyPressed(KEY_W)) {
+	if (AppWindow::isKeyPressed(KEY_W)) {
 		position += orientation * speed;
 		isPressing = true;
 	}
-	if (appWindow->isKeyPressed(KEY_S)) {
+	if (AppWindow::isKeyPressed(KEY_S)) {
 		position -= orientation * speed;
 		isPressing = true;
 	}
-	if (appWindow->isKeyPressed(KEY_A)) {
+	if (AppWindow::isKeyPressed(KEY_A)) {
 		position -= glm::normalize(glm::cross(orientation, up)) * speed;
 		isPressing = true;
 	}
-	if (appWindow->isKeyPressed(KEY_D)) {
+	if (AppWindow::isKeyPressed(KEY_D)) {
 		position += glm::normalize(glm::cross(orientation, up)) * speed;
 		isPressing = true;
 	}
-	if (appWindow->isKeyPressed(KEY_SPACE) && !shiftPressed) {
+	if (AppWindow::isKeyPressed(KEY_SPACE) && !shiftPressed) {
 		position += glm::normalize(up) * speed;
 		isPressing = true;
 	}
-	if (appWindow->isKeyPressed(KEY_SPACE) && shiftPressed) {
+	if (AppWindow::isKeyPressed(KEY_SPACE) && shiftPressed) {
 		position -= glm::normalize(up) * speed;
 		isPressing = true;
 	}
-	if (appWindow->isKeyPressed(KEY_R) && shiftPressed) {
+	if (AppWindow::isKeyPressed(KEY_R) && shiftPressed) {
 		resetCamera();
 		isPressing = true;
 	}
@@ -151,13 +150,12 @@ bool Camera::processKeyboard() {
 bool Camera::processMouse() {
 
 	bool isMouseMoved = false;
-	AppWindow* appWindow = AppWindow::window;
 
-	if (appWindow->isMousePressed(MOUSE_BUTTON_LEFT)) {
+	if (AppWindow::isMousePressed(MOUSE_BUTTON_LEFT)) {
 		isMouseMoved = true;
 		mouseControl();
 	}
-	else if (!appWindow->isMousePressed(MOUSE_BUTTON_LEFT)) {
+	else if (!AppWindow::isMousePressed(MOUSE_BUTTON_LEFT)) {
 		// Unhides cursor since camera is not looking around anymore
 		// Makes sure the next time the camera looks around it doesn't jump
 		firstClick = true;
@@ -201,7 +199,7 @@ void Camera::mouseControl()
 {
 	double x;
 	double y;
-	AppWindow::window->getCursorPos(&x, &y);
+	AppWindow::getCursorPos(&x, &y);
 
 	float xpos = static_cast<float>(x);
 	float ypos = static_cast<float>(y);

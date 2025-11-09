@@ -68,7 +68,7 @@ void EditorLayer::onAttach(LayerManager* manager)
 
 	if (!SceneManager::cameraController) {
 		editorCamera = new Camera();
-		editorCamera->init(manager->Window().width, manager->Window().height, glm::vec3(1.0, 0.0, 0.0), glm::vec3(1.0));
+		editorCamera->init(AppWindow::getWidth(), AppWindow::getHeight(), glm::vec3(1.0, 0.0, 0.0), glm::vec3(1.0));
 		SceneManager::cameraController = editorCamera;
 	}
 	else {

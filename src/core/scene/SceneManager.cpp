@@ -9,9 +9,6 @@ Camera* SceneManager::cameraController = nullptr;
 std::string SceneManager::selectedID = "";
 std::mutex SceneManager::mtx;
 
-
-bool SceneManager::gammaCorrection = true;
-
 SceneManager::SceneManager() {
 	
 }

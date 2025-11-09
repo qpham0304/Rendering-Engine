@@ -6,35 +6,52 @@
 #include "../../src/core/scene/SceneManager.h"
 #include "../../src/window/Input.h"
 
-bool AppWindow::VsyncEnabled = false;
-
 RenderPlatform AppWindow::platform = RenderPlatform::UNDEFINED;
 const std::set<RenderPlatform> AppWindow::supportRenderPlatform = { RenderPlatform::OPENGL };
-
 AppWindow* AppWindow::window = nullptr;
 
 
-const WindowConfig& AppWindow::getWindowConfig() const
+const WindowConfig& AppWindow::getWindowConfig()
 {
-	return config;
+	return window->config;
 }
 
-bool AppWindow::isMousePressed(MouseCodes mouseCode) const {
-	return input->isMousePressed(mouseCode);
+bool AppWindow::isMousePressed(MouseCodes mouseCode) {
+	return window->input->isMousePressed(mouseCode);
 }
 
-bool AppWindow::isKeyPressed(KeyCodes keyCode) const {
-	return input->isKeyPressed(keyCode);
+bool AppWindow::isKeyPressed(KeyCodes keyCode) {
+	return window->input->isKeyPressed(keyCode);
 }
 
-int AppWindow::getMouseButton(MouseCodes mouseCode) const {
-	return input->getMouseButton(mouseCode);
+int AppWindow::getMouseButton(MouseCodes mouseCode) {
+	return window->input->getMouseButton(mouseCode);
 }
 
 void AppWindow::getCursorPos(double* x, double* y) {
-	return input->getCursorPos(x, y);
+	return window->input->getCursorPos(x, y);
 }
 
-int AppWindow::getKey(KeyCodes keyCode) const {
-	return input->getKey(keyCode);
+int AppWindow::getKey(KeyCodes keyCode) {
+	return window->input->getKey(keyCode);
+}
+
+double AppWindow::getTime()
+{
+	return window->_getTime();
+}
+
+unsigned int AppWindow::getWidth()
+{
+	return window->width;
+}
+
+unsigned int AppWindow::getHeight()
+{
+	return window->height;
+}
+
+void* AppWindow::getWindowHandle()
+{
+	return window->_getWindow();
 }

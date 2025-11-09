@@ -35,7 +35,6 @@ public:
 	void DisableLayer(const int index);
 	const int& size() const;
 	const std::string& CurrentLayer();
-	const AppWindow& Window() const;
 
 	void onUpdate();
 	void onGuiUpdate();

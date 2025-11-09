@@ -12,13 +12,32 @@
 #include "configs.h"
 #include "ServiceLocator.h"
 
-
 // one single file to create all subsystems
 // might separate into files per subsystem but good enough for now
 class PlatformFactory
 {
-private:
-	ServiceLocator& serviceLocator;
+public:
+	template<typename Interface, typename PlatformEnum, typename... Args>
+	class ConstructorRegistry {
+	public:
+		using Constructor = std::function<std::unique_ptr<Interface>(Args...)>;
+		std::unordered_map<PlatformEnum, Constructor> constructors;
+
+
+		void Register(PlatformEnum key, Constructor constructor) {
+			constructors[key] = constructor;
+		}
+
+		template<typename... CallArgs>
+		std::unique_ptr<Interface> Create(PlatformEnum platform, CallArgs&&... args) {
+			auto it = constructors.find(platform);
+			if (it == constructors.end()) {
+				throw std::runtime_error("No constructor registered for the given platform.");
+			}
+			return it->second(std::forward<CallArgs>(args)...);
+		}
+	};
+
 
 public:
 	PlatformFactory(ServiceLocator& serviceLocator);
@@ -32,16 +51,11 @@ public:
 	//physics and so on to create the appropriate system from the given config
 
 private:
-	typedef std::function<std::unique_ptr<AppWindow>()> WindowConstructor;
-	typedef std::function<std::unique_ptr<GuiManager>()> GuiConstructor;
-	typedef std::function<std::unique_ptr<Renderer>()> RendererConstructor;
-	typedef std::function<std::unique_ptr<Logger>(std::string_view name)> LoggerConstructor;
-	//typedef std::function <std::unique_ptr<GPUDevice>() DeviceConstructors;
-	
-	std::unordered_map<WindowPlatform, WindowConstructor>  windowConstructors;
-	std::unordered_map<GuiPlatform, GuiConstructor>  guiConstructors;
-	std::unordered_map<RenderPlatform, RendererConstructor>  rendererConstructors;
-	std::unordered_map<LoggerPlatform, LoggerConstructor>  loggerConstructors;
-	ConstructorRegistry<Logger, LoggerPlatform> loggerRegistry;
+	ServiceLocator& serviceLocator;
+
+	ConstructorRegistry<AppWindow, WindowPlatform> windowRegistry;
+	ConstructorRegistry<GuiManager, GuiPlatform> guiRegistry;
+	ConstructorRegistry<Renderer, RenderPlatform> rendererRegistry;
+	ConstructorRegistry<Logger, LoggerPlatform, std::string_view> loggerRegistry;
 };
 

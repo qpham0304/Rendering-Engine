@@ -96,11 +96,6 @@ const std::string& LayerManager::CurrentLayer()
 	return m_Layers[m_SelectedLayer]->GetName();
 }
 
-const AppWindow& LayerManager::Window() const
-{
-	return appWindow;
-}
-
 void LayerManager::onUpdate() 
 {
 	for (const auto& layer : m_Layers) {
