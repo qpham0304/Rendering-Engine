@@ -3,17 +3,17 @@
 #include <memory>
 #include <set>
 #include <string>
-#include "../../src/core/features/Configs.h"
 #include "Input.h"
+#include "../../src/core/features/Configs.h"
+#include "../../src/services/Service.h"
 
 class GLFWwindow;
 
-class AppWindow
+class AppWindow : public Service
 {
 public:
 	static const std::set<RenderPlatform> supportRenderPlatform;
 	static RenderPlatform platform;
-
 
 public:
 	virtual ~AppWindow() = default;
@@ -34,6 +34,8 @@ public:
 	static void* getWindowHandle();
 
 protected:
+	AppWindow(std::string serviceName = "AppWindow");
+	
 	virtual void* _getWindow() = 0;
 	virtual void* _getSharedWindow() = 0;
 	virtual void _setEventCallback() = 0;
@@ -41,13 +43,9 @@ protected:
 
 protected:
 	static AppWindow* window;
-	
-	AppWindow() = default;
 
 	unsigned int width;
 	unsigned int height;
 	WindowConfig config;
 	std::unique_ptr<Input> input;
-
-private:
 };

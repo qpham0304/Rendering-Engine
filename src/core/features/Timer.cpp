@@ -1,6 +1,6 @@
 #include "Timer.h"
-#include "../../src/graphics/utils/Utils.h"
 #include "Profiler.h"
+#include <string>
 
 Timer::Timer() : label("default")
 {
@@ -18,11 +18,11 @@ Timer::~Timer() {
     if (!guiOn) {
         oss << "Operation took: " << ms << " ms " << "label: " << label;
         std::string timeTaken = oss.str();
-        Console::println(timeTaken);
+		printf("timer: %s\n", timeTaken.c_str());
     }
 
     else {
-        Profiler::getInstance().addTracker({ label, ms });
+        Profiler::addTracker(ProfilerData(label, ms));
     }
 }
 

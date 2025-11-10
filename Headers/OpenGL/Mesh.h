@@ -1,12 +1,7 @@
 #pragma once
-#include <glad/glad.h>
 #include <string>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/rotate_vector.hpp>
-#include <glm/gtx/vector_angle.hpp>
 #include <vector>
-#include "Shader.h"
+#include <glm/glm.hpp>
 #include "Texture.h"
 
 #define MAX_BONE_INFLUENCE 4
@@ -23,24 +18,28 @@ struct Vertex {
 	float m_Weights[MAX_BONE_INFLUENCE];	//weights from each bone
 };
 
+class Shader;
+
 class Mesh
 {
+public:
+	std::vector<Vertex> vertices;
+	std::vector<unsigned int> indices;
+	std::vector<Texture> textures;
+
+public:
+	int getNumVertices();
+	Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
+	~Mesh();
+	void Delete();
+	void Draw(Shader& shader);
+
 private:
 	unsigned int VAO, VBO, EBO;
 	int numVertices = 0;
 
+private:
 	void setup();
-
-public:
-	std::vector<Vertex> vertices;
-	std::vector<GLuint> indices;
-	std::vector<Texture> textures;
-
-	int getNumVertices();
-	Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, std::vector<Texture> textures);
-	~Mesh();
-	void Delete();
-	void Draw(Shader& shader);
 
 };
 

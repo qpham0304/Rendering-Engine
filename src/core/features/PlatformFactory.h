@@ -9,20 +9,20 @@
 #include "../../src/window/AppWindow.h"
 #include "../../graphics/renderer/Renderer.h"
 #include "../../logging/Logger.h"
+#include "../../src/services/Service.h"
 #include "configs.h"
 #include "ServiceLocator.h"
 
 // one single file to create all subsystems
 // might separate into files per subsystem but good enough for now
+
 class PlatformFactory
 {
-public:
 	template<typename Interface, typename PlatformEnum, typename... Args>
 	class ConstructorRegistry {
 	public:
 		using Constructor = std::function<std::unique_ptr<Interface>(Args...)>;
 		std::unordered_map<PlatformEnum, Constructor> constructors;
-
 
 		void Register(PlatformEnum key, Constructor constructor) {
 			constructors[key] = constructor;
@@ -47,8 +47,19 @@ public:
 	std::unique_ptr<GuiManager> createGuiManager(GuiPlatform config);
 	std::unique_ptr<Renderer> createRenderer(RenderPlatform platform);
 	std::unique_ptr<Logger> createLogger(LoggerPlatform platform, std::string_view name);
-	//receive different configs from ui, window, graphics api, sound
-	//physics and so on to create the appropriate system from the given config
+
+
+private:
+	template<typename Interface, typename Concrete, typename... Args>
+		requires std::derived_from<Interface, Service>
+	auto RegisterConstructor(std::string_view serviceName) {
+		return [this, serviceName](Args&&... args) -> std::unique_ptr<Interface> {
+			std::unique_ptr<Interface> instance = std::make_unique<Concrete>(std::forward<Args>(args)...);
+			serviceLocator.Register(instance->getServiceName(), *instance);
+			return instance;
+		};
+	}
+
 
 private:
 	ServiceLocator& serviceLocator;
@@ -56,6 +67,5 @@ private:
 	ConstructorRegistry<AppWindow, WindowPlatform> windowRegistry;
 	ConstructorRegistry<GuiManager, GuiPlatform> guiRegistry;
 	ConstructorRegistry<Renderer, RenderPlatform> rendererRegistry;
-	ConstructorRegistry<Logger, LoggerPlatform, std::string_view> loggerRegistry;
+	ConstructorRegistry<Logger, LoggerPlatform, std::string> loggerRegistry;
 };
-

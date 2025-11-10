@@ -267,6 +267,12 @@
     <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\services\Service.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\layers\Layer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\OpenGL\VAO.h">
@@ -564,6 +570,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\apps\particle-demo\ParticleDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\services\Service.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

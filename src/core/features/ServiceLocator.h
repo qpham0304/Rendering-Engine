@@ -17,12 +17,12 @@ public:
     ServiceLocator() = default;
 
     template<typename T>
-    void Register(std::string&& serviceName, T& serviceRef) {
+    void Register(std::string_view serviceName, T& serviceRef) {
         if (!hasService(serviceName)) {
-            services[serviceName] = &serviceRef;
+            services[serviceName.data()] = &serviceRef;
         }
         else {
-            throw std::runtime_error("Service already registered: " + serviceName);
+            throw std::runtime_error("Service already registered: " + std::string(serviceName));
         }
     }
 
@@ -34,6 +34,8 @@ public:
         }
         throw std::runtime_error("Service not found: " + serviceName);
     }
+
+    void ListServices();
 
 private:
     bool hasService(std::string_view) const;

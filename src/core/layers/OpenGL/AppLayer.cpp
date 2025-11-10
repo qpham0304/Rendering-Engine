@@ -4,8 +4,9 @@
 #include "../../src/core/events/EventManager.h"
 #include "Imgui.h"  //TODO: remove when there's no ui dependency
 #include "camera.h"
-#include "../../features/ServiceLocator.h"
 #include "../../src/core/layers/layerManager.h"
+#include "../../src/core/features/ServiceLocator.h"
+#include "../../src/logging/Logger.h"
 
 void AppLayer::renderControl()
 {
@@ -57,6 +58,9 @@ AppLayer::~AppLayer()
 void AppLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);
+
+	Log().setLevel(LogLevel::Debug);
+	Log().debug("AppLayer Attached");
 
 	int width = AppWindow::getWidth();
 	int height = AppWindow::getHeight();

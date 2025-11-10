@@ -194,7 +194,9 @@
     <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp" />
     <ClCompile Include="src\core\features\PlatformFactory.cpp" />
     <ClCompile Include="src\core\features\ServiceLocator.cpp" />
+    <ClCompile Include="src\core\layers\Layer.cpp" />
     <ClCompile Include="src\logging\framework\LoggerSpd.cpp" />
+    <ClCompile Include="src\services\Service.cpp" />
     <ClCompile Include="src\window\platform\GLFW\InputGLFW.cpp" />
     <ClCompile Include="src\core\features\EngineUtils.cpp" />
     <ClCompile Include="src\core\components\LightComponent.cpp" />
@@ -279,6 +281,7 @@
     <ClInclude Include="src\core\features\ServiceLocator.h" />
     <ClInclude Include="src\logging\framework\LoggerSpd.h" />
     <ClInclude Include="src\logging\Logger.h" />
+    <ClInclude Include="src\services\Service.h" />
     <ClInclude Include="src\window\InputKeyCode.h" />
     <ClInclude Include="src\window\platform\GLFW\InputGLFW.h" />
     <ClInclude Include="src\core\features\EngineUtils.h" />

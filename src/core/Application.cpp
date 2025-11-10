@@ -24,15 +24,21 @@ void Application::init()
 	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
 	engineLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Engine");
 	clientLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Client");
-
 	//engine specific features
 	layerManager = std::make_unique<LayerManager>(serviceLocator);
 
-	//Binding platform widow to single ton app window
-	//TODO: find a better solution if possible
-
 	editorLayer = new EditorLayer("EditorLayer");
 
+	services.push_back(appWindow.get());
+	services.push_back(guiManager.get());
+	services.push_back(engineLogger.get());
+	services.push_back(clientLogger.get());
+
+
+	engineLogger->warn(appWindow->getServiceName());
+	engineLogger->warn(guiManager->getServiceName());
+	engineLogger->warn(engineLogger->getServiceName());
+	engineLogger->warn(clientLogger->getServiceName());
 
 	engineLogger->info("Welcome to spdlog!");
 	engineLogger->error("Some error message with arg: {}", 1);
@@ -45,10 +51,6 @@ void Application::init()
 
 	clientLogger->setLevel(LogLevel::Debug); // Set *global* log level to debug
 	clientLogger->debug("This message should be displayed..");
-
-	// Compile time log levels
-	// Note that this does not change the current log level, it will only
-	// remove (depending on SPDLOG_ACTIVE_LEVEL) the call on the release code.
 
 	isRunning = true;
 

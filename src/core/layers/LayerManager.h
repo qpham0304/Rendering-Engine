@@ -8,7 +8,6 @@
 #include "../../window/AppWindow.h"
 
 class ServiceLocator;
-
 class LayerManager
 {
 private:
@@ -16,15 +15,19 @@ private:
 	std::vector<Layer*> m_Layers;
 	int m_SelectedLayer;
 
-	bool boundCheck(const int& index);
+	bool boundCheck(const int& index) const;
 
 	AppWindow& appWindow;
+	ServiceLocator& serviceLocator;
 
 public:
+	friend class Layer;
+
 	LayerManager(ServiceLocator& serviceLocator);
 	~LayerManager();
 
 	Layer& operator[](const int index);
+	const Layer& operator[](const int index) const;
 
 	static bool addFrameBuffer(const std::string& name, FrameBuffer& FBO);
 	static std::shared_ptr<FrameBuffer> getFrameBuffer(const std::string name);

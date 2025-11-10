@@ -6,28 +6,19 @@
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)
 {
-    windowRegistry.Register(WindowPlatform::GLFW,
-        [this]() -> std::unique_ptr<AppWindow> {
-            auto appWindow = std::make_unique<AppWindowGLFW>();
-            this->serviceLocator.Register("AppWindow", *appWindow);
-            return appWindow;
-        }
-	);
+    windowRegistry.Register(
+        WindowPlatform::GLFW,
+        RegisterConstructor<AppWindow, AppWindowGLFW>("AppWindow")
+    );
 
-    guiRegistry.Register(GuiPlatform::IMGUI,
-        [this]() -> std::unique_ptr<GuiManager> {
-            auto guiManager = std::make_unique<ImGuiManager>();
-            this->serviceLocator.Register("GuiManager", *guiManager);
-            return guiManager;
-        }
-	);
-    
-    loggerRegistry.Register(LoggerPlatform::SPDLOG,
-        [this](std::string_view name) -> std::unique_ptr<Logger> {
-            auto logger = std::make_unique<LoggerSpd>(name.data());
-            this->serviceLocator.Register(std::string("Logger") + std::string(name), *logger);
-            return logger;
-        }
+    guiRegistry.Register(
+        GuiPlatform::IMGUI,
+        RegisterConstructor<GuiManager, ImGuiManager>("GuiManager")
+    );
+
+    loggerRegistry.Register(
+        LoggerPlatform::SPDLOG,
+        RegisterConstructor<Logger, LoggerSpd, std::string>("Logger")
     );
 }
 
@@ -48,5 +39,5 @@ std::unique_ptr<Renderer> PlatformFactory::createRenderer(RenderPlatform platfor
 
 std::unique_ptr<Logger> PlatformFactory::createLogger(LoggerPlatform platform, std::string_view name)
 {
-    return loggerRegistry.Create(platform, name);
+    return loggerRegistry.Create(platform, name.data());
 }

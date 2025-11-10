@@ -257,7 +257,6 @@ void EditorLayer::handleKeyPressed(int keycode)
 		}
 	}
 	if (keycode == KEY_G) {
-		Console::println("receiving key event");
 		EventManager::getInstance().unsubscribe(EventType::KeyPressed, keyEventID);
 	}
 }

@@ -1,7 +1,8 @@
 #include "Profiler.h"
 #include "../../graphics/utils/Utils.h"
+#include "imgui.h"
 
-Profiler& Profiler::getInstance()
+Profiler& Profiler::_getInstance()
 {
 	static Profiler instance;
 	return instance;
@@ -9,15 +10,30 @@ Profiler& Profiler::getInstance()
 
 void Profiler::addTracker(ProfilerData&& data)
 {
-	profileList[data.name] = data.time;
+	_getInstance()._addTracker(std::move(data));
 }
 
-void Profiler::addTracker(ProfilerData& data)
+void Profiler::addTracker(const ProfilerData& data)
+{
+	_getInstance()._addTracker(data);
+}
+
+void Profiler::display()
+{
+	_getInstance()._display();
+}
+
+void Profiler::_addTracker(ProfilerData&& data)
 {
 	profileList[data.name] = data.time;
 }
 
-void Profiler::display()
+void Profiler::_addTracker(const ProfilerData& data)
+{
+	profileList[data.name] = data.time;
+}
+
+void Profiler::_display()
 {
 	ImGui::Begin("Profiler");
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 

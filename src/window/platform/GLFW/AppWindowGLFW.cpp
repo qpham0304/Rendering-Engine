@@ -5,9 +5,10 @@
 #include "../../src/core/events/eventManager.h"
 #include "InputGLFW.h"
 
-AppWindowGLFW::AppWindowGLFW() : AppWindow()
+AppWindowGLFW::AppWindowGLFW() 
+	: AppWindow(), m_WindowHandle(nullptr), m_SharedWindowHandle(nullptr)
 {
-	window = this;
+	window = &*this;
 	input = std::make_unique<InputGLFW>();
 }
 
@@ -23,99 +24,36 @@ int AppWindowGLFW::init(WindowConfig newConfig) {
 	width = config.width;
 	height = config.height;
 
-	AppWindow::platform = config.renderPlatform;
+	platform = config.renderPlatform;
 	if (supportRenderPlatform.find(config.renderPlatform) == supportRenderPlatform.end()) {
 		throw std::runtime_error("Platform unsupported");
 	}
 
-	if (AppWindow::platform == RenderPlatform::OPENGL) {
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-		// Initialize GLFW
-		if (!glfwInit())
-			return -1;
-
-		// Get primary monitor
-		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-		if (!monitor) {
-			throw std::runtime_error("Failed to get primary monitor");
-			glfwTerminate();
-			return -1;
-		}
-
-		// Get monitor video mode
-		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-		if (!mode) {
-			throw std::runtime_error("Failed to get video mode");
-			glfwTerminate();
-			return -1;
-		}
-
-		// force window to always proportional to what every user's screen has
-		width = mode->width * 2 / 3;
-		height = mode->height * 2 / 3;
-	}
-
-	if (platform == RenderPlatform::UNDEFINED) {
-		throw std::runtime_error("Platform not specified have you called init() with supported platform yet?");
-	}
-
-	else if (platform == RenderPlatform::OPENGL) {
-		m_WindowHandle = glfwCreateWindow(width, height, config.title.c_str(), NULL, NULL);
-
-		if (m_WindowHandle == NULL) {
-			throw std::runtime_error("Failed to create GLFW window");
-			glfwTerminate();
-			return -1;
-		}
-		glfwMakeContextCurrent(m_WindowHandle);
-
-		if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-			throw std::runtime_error("Failed to initialize GLAD for main context");
-			glfwDestroyWindow(m_WindowHandle);
-			glfwTerminate();
-			return -1;
-		}
-
-		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);	// Set Invisible for second context
-		m_SharedWindowHandle = glfwCreateWindow(width, height, "", NULL, m_WindowHandle);
-
-		if (m_SharedWindowHandle == NULL) {
-			throw std::runtime_error("Failed to create shared GLFW window");
-			glfwDestroyWindow(m_WindowHandle);
-			glfwTerminate();
-			return -1;
-		}
-		glfwMakeContextCurrent(m_SharedWindowHandle);
-
-		glfwMakeContextCurrent(m_WindowHandle);
+	switch (platform) {
+		case RenderPlatform::OPENGL: _initOpenGL(); break;
+		case RenderPlatform::VULKAN: throw std::runtime_error("Vulkan not supported yet in GLFW window"); break;
+		default: throw std::runtime_error("Render platform not supported"); break;
 	}
 
 	_setEventCallback();
 
-	//((InputGLFW*)input.get())->window = window;	// shorter but how can read
-	InputGLFW* tmp = dynamic_cast<InputGLFW*>(input.get());
-	if (!tmp) {
+	InputGLFW* inputHandle = dynamic_cast<InputGLFW*>(input.get());
+	if (!inputHandle) {
 		throw std::runtime_error("AppWindowGLFW: failed to cast Input to type InputGLFW");
 	}
-	tmp->window = m_WindowHandle;
+	inputHandle->m_WindowHandle = m_WindowHandle;
 
 	glfwSwapInterval(config.vsync);
-	//glfwSwapInterval(1);
-	//glfwSwapInterval(0);
 
 	return 0;
 }
 
 
 int AppWindowGLFW::onClose() {
-	if (platform == RenderPlatform::OPENGL) {
-		glfwMakeContextCurrent(nullptr);
-		glfwDestroyWindow(m_WindowHandle);
-		glfwDestroyWindow(m_SharedWindowHandle);
-		glfwTerminate();
+	switch (platform) {
+		case RenderPlatform::OPENGL: _onCloseOpenGL(); break;
+		case RenderPlatform::VULKAN: _onCloseVulkan(); break;
+		default: throw std::runtime_error("Platform not supported for onClose"); break;
 	}
 	return 0;
 }
@@ -123,9 +61,10 @@ int AppWindowGLFW::onClose() {
 
 void AppWindowGLFW::onUpdate()
 {
-	if (AppWindow::platform == RenderPlatform::OPENGL) {
-		glfwPollEvents();
-		glfwSwapBuffers(m_WindowHandle);
+	switch (platform) {
+		case RenderPlatform::OPENGL: _onUpdateOpenGL(); break;
+		case RenderPlatform::VULKAN: _onUpdateVulkan(); break;
+		default: throw std::runtime_error("Platform not supported for onUpdate"); break;
 	}
 }
 
@@ -199,4 +138,103 @@ void AppWindowGLFW::_setEventCallback()
 			WindowCloseEvent closeEvent;
 			EventManager::getInstance().publish(closeEvent);
 		});
+}
+
+
+/*
+	OpenGL specfic implementations
+*/
+
+int AppWindowGLFW::_initOpenGL()
+{
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	// Initialize GLFW
+	if (!glfwInit())
+		return -1;
+
+	// Get primary monitor
+	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+	if (!monitor) {
+		throw std::runtime_error("Failed to get primary monitor");
+		glfwTerminate();
+		return -1;
+	}
+
+	// Get monitor video mode
+	const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+	if (!mode) {
+		throw std::runtime_error("Failed to get video mode");
+		glfwTerminate();
+		return -1;
+	}
+
+	// force window to always proportional to what every user's screen has
+	width = mode->width * 2 / 3;
+	height = mode->height * 2 / 3;
+
+	m_WindowHandle = glfwCreateWindow(width, height, config.title.c_str(), NULL, NULL);
+
+	if (m_WindowHandle == NULL) {
+		throw std::runtime_error("Failed to create GLFW window");
+		glfwTerminate();
+		return -1;
+	}
+	glfwMakeContextCurrent(m_WindowHandle);
+
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+		throw std::runtime_error("Failed to initialize GLAD for main context");
+		glfwDestroyWindow(m_WindowHandle);
+		glfwTerminate();
+		return -1;
+	}
+
+	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);	// Set Invisible for second context
+	m_SharedWindowHandle = glfwCreateWindow(width, height, "", NULL, m_WindowHandle);
+
+	if (m_SharedWindowHandle == NULL) {
+		throw std::runtime_error("Failed to create shared GLFW window");
+		glfwDestroyWindow(m_WindowHandle);
+		glfwTerminate();
+		return -1;
+	}
+	glfwMakeContextCurrent(m_SharedWindowHandle);
+
+	glfwMakeContextCurrent(m_WindowHandle);
+}
+
+void AppWindowGLFW::_onCloseOpenGL()
+{
+	glfwMakeContextCurrent(nullptr);
+	glfwDestroyWindow(m_WindowHandle);
+	glfwDestroyWindow(m_SharedWindowHandle);
+	glfwTerminate();
+}
+
+void AppWindowGLFW::_onUpdateOpenGL()
+{
+	glfwPollEvents();
+	glfwSwapBuffers(m_WindowHandle);
+}
+
+/*
+	Vulkan specfic implementations
+*/
+
+int AppWindowGLFW::_initVulkan()
+{
+	throw std::runtime_error("Vulkan init not yet implemented");
+}
+
+void AppWindowGLFW::_onCloseVulkan()
+{
+	throw std::runtime_error("Vulkan onClose not yet implemented");
+
+}
+
+void AppWindowGLFW::_onUpdateVulkan()
+{
+	throw std::runtime_error("Vulkan onUpdate not yet implemented");
 }

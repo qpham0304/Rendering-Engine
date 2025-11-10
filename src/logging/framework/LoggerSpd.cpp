@@ -23,12 +23,11 @@ static inline spdlog::level::level_enum toSpdLevel(LogLevel level)
     SPDLOG_DEBUG("Some debug message");
 }
 
-
-LoggerSpd::LoggerSpd(const std::string& name)
-    :m_Logger (std::make_unique<SpdLogHandle>())
-
+LoggerSpd::LoggerSpd(std::string name)
+    :   Logger(name + std::string("_LoggerPSD")), 
+        m_Logger(std::make_unique<SpdLogHandle>()) 
 {
-    m_Logger->logger = spdlog::stdout_color_mt(name);
+    m_Logger->logger = spdlog::stdout_color_mt(name.data());
     m_Logger->logger->set_pattern("%^[%H:%M:%S %z] [%n] [%l] [thread %t] %v%$");
 
 }

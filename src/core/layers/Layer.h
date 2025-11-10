@@ -4,6 +4,8 @@
 #include "../../src/core/events/Event.h"
 
 class LayerManager;
+class Logger;
+class ServiceLocator;
 
 class Layer
 {
@@ -11,13 +13,9 @@ public:
 	bool m_Enabled;
 
 public:
-	//Layer() = default;
-	Layer(const std::string& name = "default")
-		: m_LayerName(name), m_Enabled(true), m_Manager(nullptr)
-	{
-	}
+	Layer(const std::string& name);
 
-	virtual void onAttach(LayerManager* manager) { this->m_Manager = manager; };
+	virtual void onAttach(LayerManager* manager);
 	virtual void onDetach() = 0;
 	virtual void onUpdate() = 0;
 	virtual void onGuiUpdate() = 0;
@@ -30,5 +28,13 @@ public:
 protected:
 	std::string m_LayerName;
 	LayerManager* m_Manager;
+
+protected:
+	Logger& Log() const {
+		return *m_Logger;
+	}
+
+private:
+	Logger* m_Logger;
 };
 

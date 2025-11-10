@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <format>
+#include "../../src/services/Service.h"
 
 // Core logging macros
 #define ENGINE_CORE_TRACE(...)    ::Engine::Log::CoreLogger()->trace(__VA_ARGS__)
@@ -28,7 +29,7 @@ enum class LogLevel {
 };
 
 
-class Logger
+class Logger : public Service
 {
 public:
     virtual ~Logger() = default;
@@ -72,9 +73,12 @@ public:
     }
 
 protected:
-	Logger() = default;
+    Logger(std::string name = "Logger") : Service(name) {};
 
     virtual void logMessage(LogLevel level, const std::string& message) = 0;
+    virtual int init(WindowConfig platform) override { return 0; };
+    virtual int onClose() override { return 0; };
+    virtual void onUpdate() override {};
 
 private:
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "imgui.h"
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -12,18 +11,22 @@ struct ProfilerData {
 
 class Profiler
 {
-private:
-	std::unordered_map<std::string, double> profileList;
-	
-	Profiler() = default;
-
 public:
 	~Profiler() = default;
 
-	static Profiler& getInstance();
+	static void addTracker(ProfilerData&& data);
+	static void addTracker(const ProfilerData& data);
+	static void display();
 
-	void addTracker(ProfilerData&& data);
-	void addTracker(ProfilerData& data);
-	void display();
+private:
+	Profiler() = default;
+	
+	static Profiler& _getInstance();
+	void _addTracker(ProfilerData&& data);
+	void _addTracker(const ProfilerData& data);
+	void _display();
+
+private:
+	std::unordered_map<std::string, double> profileList;
+
 };
-

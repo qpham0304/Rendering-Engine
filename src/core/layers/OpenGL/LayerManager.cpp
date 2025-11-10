@@ -9,12 +9,13 @@
 
 std::unordered_map<std::string, std::shared_ptr<FrameBuffer>> LayerManager::frameBuffers = {};
 
-bool LayerManager::boundCheck(const int& index) {
+bool LayerManager::boundCheck(const int& index) const {
 	return !(index < 0 || index >= m_Layers.size());
 }
 
 LayerManager::LayerManager(ServiceLocator& serviceLocator)
 	:	appWindow(serviceLocator.Get<AppWindow>("AppWindow")),
+		serviceLocator(serviceLocator),
 		m_SelectedLayer(-1)
 {
 }
@@ -27,6 +28,14 @@ LayerManager::~LayerManager()
 }
 
 Layer& LayerManager::operator[](const int index)
+{
+	if (!boundCheck(index)) {
+		OUT_OF_BOUND_ERROR(index);
+	}
+	return *m_Layers[index];
+}
+
+const Layer& LayerManager::operator[](const int index) const
 {
 	if (!boundCheck(index)) {
 		OUT_OF_BOUND_ERROR(index);

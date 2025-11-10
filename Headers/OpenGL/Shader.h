@@ -17,31 +17,15 @@ struct UniformData {
 
 class Shader
 {
-private:
-	static std::string get_file_contents(const char* filename);
-	static std::vector<std::string> split(const std::string& str);
-	static std::vector<UniformData> parseShaderUniforms(const std::string& content);
-	
-	unsigned int getUniformLocation(const std::string& name) const;
-	unsigned int createShader(const char* vertexFile, const char* fragmentFile);
-	unsigned int createShader(const char* vertexFile, const char* fragmentFile, const char* geometryFile);
-	
-	mutable std::unordered_map<std::string, unsigned int> cache;
-	std::vector<UniformData> uniforms;
-
-	std::string vertPath;
-	std::string fragPath;
-	std::string geomPath;
-	std::string tessPath;
-
 public:
 	// Reference ID of the Shader Program
 	unsigned int ID;
 	std::string type;
-	
+
+public:
+	Shader();
 	Shader(const char* vertexFile, const char* fragmentFile);
 	Shader(const char* vertexFile, const char* fragmentFile, const char* geometryFile);
-	Shader();
 	//Shader(const Shader& other);
 	//Shader& operator=(const Shader& other);
 	//Shader(Shader&& other) noexcept;
@@ -68,6 +52,24 @@ public:
     void setMat2(const std::string& name, const glm::mat2& mat);
     void setMat3(const std::string& name, const glm::mat3& mat);
     void setMat4(const std::string& name, const glm::mat4& mat);
+
+private:
+	static std::string get_file_contents(const char* filename);
+	static std::vector<std::string> split(const std::string& str);
+	static std::vector<UniformData> parseShaderUniforms(const std::string& content);
+
+	unsigned int getUniformLocation(const std::string& name) const;
+	unsigned int createShader(const char* vertexFile, const char* fragmentFile);
+	unsigned int createShader(const char* vertexFile, const char* fragmentFile, const char* geometryFile);
+
+private:
+	mutable std::unordered_map<std::string, unsigned int> cache;
+	std::vector<UniformData> uniforms;
+
+	std::string vertPath;
+	std::string fragPath;
+	std::string geomPath;
+	std::string tessPath;
 };
 
 #endif

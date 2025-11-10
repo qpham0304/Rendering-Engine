@@ -18,24 +18,20 @@ public:
 	ImGuiManager();
 	ImGuiManager(bool darkTheme);
 
-
 	ImGuiManager(const ImGuiManager& other) = default;
-
 	ImGuiManager(ImGuiManager&& other) noexcept = default;
-
-	ImGuiManager& operator=(const ImGuiManager& other) {}
-
-	ImGuiManager& operator=(ImGuiManager&& other) noexcept {}
+	ImGuiManager& operator=(const ImGuiManager& other) = default;
+	ImGuiManager& operator=(ImGuiManager&& other) noexcept = default;
 
 	~ImGuiManager();
 
-	void init(WindowConfig config) override;
+	int init(WindowConfig config) override;
 	void start() override;
 	void debugWindow(ImTextureID texture);
 	void applicationWindow();
 	void render() override;
 	void end() override;
-	void onClose() override;
+	int onClose() override;
 
 	void setTheme(bool darkTheme) override;
 	void useLightTheme() override;

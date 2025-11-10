@@ -11,6 +11,15 @@ const std::set<RenderPlatform> AppWindow::supportRenderPlatform = { RenderPlatfo
 AppWindow* AppWindow::window = nullptr;
 
 
+AppWindow::AppWindow(std::string serviceName)
+	: Service(serviceName),
+	width(0),
+	height(0),
+	config(),
+	input(nullptr)
+{
+}
+
 const WindowConfig& AppWindow::getWindowConfig()
 {
 	return window->config;

@@ -24,5 +24,14 @@ protected:
 	void* _getSharedWindow() override;
 	virtual double _getTime() const override;
 	virtual void _setEventCallback() override;
+
+	//platform specific implementations
+	int _initOpenGL();
+	void _onCloseOpenGL();
+	void _onUpdateOpenGL();
+
+	int _initVulkan();
+	void _onCloseVulkan();
+	void _onUpdateVulkan();
 };
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include<glad/glad.h>
 #include<stb/stb_image.h>
 #include"Shader.h"
 
@@ -10,9 +9,9 @@ class Texture
 private:
 	void loadTexture(const char* path, bool flip);
 public:
-	GLuint ID;
+	unsigned int ID;
 	std::string type;
-	GLuint unit = 0;
+	unsigned int unit = 0;
 	std::string path;
 
 	Texture() = default;
@@ -31,7 +30,7 @@ public:
 	~Texture();
 
 	void Init(const char* path, const char* texType, bool flipUV);
-	void texUnit(Shader& shader, const char* uniform, GLuint unit);
+	void texUnit(Shader& shader, const char* uniform, unsigned int unit);
 	void Bind();
 	void Unbind();
 	void Delete();

@@ -4,9 +4,11 @@
 #include <memory>
 #include "./widgets/widget.h"
 #include "../../src/core/features/Configs.h"
+#include "../../src/services/Service.h"
+
 class TransformComponent;
 
-class GuiManager {
+class GuiManager : public Service {
 private:
 
 protected:
@@ -19,12 +21,16 @@ protected:
 	bool GuizmoActive = false;
 	bool drawGrid = false;
 
+protected:
+	GuiManager(std::string serviceName = "GuiManager") : Service(serviceName) {};
+
 public:
-	virtual void init(WindowConfig config) = 0;
+	virtual int init(WindowConfig config) override { return 0; };
 	virtual void start() = 0;
 	virtual void render() = 0;
+	virtual void onUpdate() override {};
 	virtual void end() = 0;
-	virtual void onClose() = 0;
+	virtual int onClose() override { return 0; };
 
 	virtual void setTheme(bool darkTheme) = 0;
 	virtual void useLightTheme() = 0;

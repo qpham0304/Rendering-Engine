@@ -11,6 +11,7 @@
 #include <future>
 #include <mutex>
 #include <thread>
+#include <cstring>
 
 #define PLATFORM_WINDOWS
 

@@ -6,12 +6,6 @@ class AppWindow;
 
 class Input 
 {
-protected:
-	friend class AppWindow;
-	AppWindow* appWindow;
-
-	Input() = default;
-
 public:
 	virtual ~Input() = default;
 
@@ -20,4 +14,8 @@ public:
 	virtual int getMouseButton(MouseCodes key) = 0;
 	virtual void getCursorPos(double* x, double* y) = 0;
 	virtual int getKey(KeyCodes key) = 0;
+
+protected:
+	Input() = default;
+
 };

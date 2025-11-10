@@ -31,6 +31,7 @@ public:
 	void onClose();
 
 private:
+	std::vector<Service*> services;
 	bool isRunning;
 	WindowConfig windowConfig;
 	ServiceLocator serviceLocator;

@@ -4,15 +4,10 @@
 #include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
 #include "../../src/apps/particle-demo/particleDemo.h"
 
-#define USE_EDITOR
+#define RUN_STANDALONE
 int main()
 {
-	/* 
-		an option for these apps to run independently, without the editor or layer system
-		reason: for simplicity and compatability for apps that are not up to date with the changes
-	*/
-
-	#ifdef USE_EDITOR
+	#ifdef RUN_STANDALONE
 
 	WindowConfig windowConfig{};
 	windowConfig.title = "Application Untitled";

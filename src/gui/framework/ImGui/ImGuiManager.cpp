@@ -11,20 +11,20 @@
 #include "../../../graphics/utils/Utils.h"
 #include "../../src/core/components/MComponent.h"
 
-ImGuiManager::ImGuiManager()
+ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 }
 
-ImGuiManager::ImGuiManager(bool darkTheme)
+ImGuiManager::ImGuiManager(bool darkTheme) : GuiManager()
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	this->darkTheme = darkTheme;
 }
 
-void ImGuiManager::init(WindowConfig config)
+int ImGuiManager::init(WindowConfig config)
 {
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 
@@ -190,13 +190,14 @@ void ImGuiManager::end()
 	}
 }
 
-void ImGuiManager::onClose()
+int ImGuiManager::onClose()
 {
 	if (AppWindow::platform == RenderPlatform::OPENGL) {
 		ImGui_ImplOpenGL3_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 	}
+	return 0;
 }
 
 void ImGuiManager::setTheme(bool darkTheme)

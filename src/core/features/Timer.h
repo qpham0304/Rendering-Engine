@@ -1,9 +1,13 @@
 #pragma once
 
 #include <chrono>
-#include <string>
 class Timer
 {
+public:
+	Timer();
+	Timer(const char* label, const bool guiOn = false);
+	~Timer();
+
 private:
 	std::chrono::steady_clock::time_point start;
 	std::chrono::steady_clock::time_point end;
@@ -13,10 +17,4 @@ private:
 
 	void Start();
 	float Stop();
-
-public:
-	Timer();
-	Timer(const char* label, const bool guiOn = false);
-	~Timer();
 };
-
