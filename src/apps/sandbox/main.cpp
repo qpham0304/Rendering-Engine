@@ -1,10 +1,10 @@
 
-//#include "../vulkan-setup/VulkanSetupDemo.h"
+#include "../vulkan-demo/VulkanSetupDemo.h"
 #include "../../core/Application.h"
 #include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
 #include "../../src/apps/particle-demo/particleDemo.h"
 
-#define RUN_STANDALONE
+//#define RUN_STANDALONE
 int main()
 {
 	#ifdef RUN_STANDALONE

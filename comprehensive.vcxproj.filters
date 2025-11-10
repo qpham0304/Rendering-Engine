@@ -273,6 +273,12 @@
     <ClCompile Include="src\core\layers\Layer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\apps\vulkan-demo\FollowDemo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\apps\vulkan-demo\VulkanSetupDemo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\OpenGL\VAO.h">
@@ -575,6 +581,12 @@
     <ClInclude Include="src\services\Service.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\apps\vulkan-demo\FollowDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\apps\vulkan-demo\VulkanSetupDemo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="comprehensive.rc">
@@ -630,6 +642,13 @@
     <None Include="Shaders\skyAtmosphere\atmosphere.frag" />
     <None Include="Shaders\skyAtmosphere\multipleScatteredLUT.frag" />
     <None Include="Shaders\skyAtmosphere\skyViewLUT.frag" />
+    <None Include="src\apps\vulkan-demo\shaders\compile.bat">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="src\apps\vulkan-demo\shaders\default.frag" />
+    <None Include="src\apps\vulkan-demo\shaders\default.frag.spv" />
+    <None Include="src\apps\vulkan-demo\shaders\default.vert" />
+    <None Include="src\apps\vulkan-demo\shaders\default.vert.spv" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\ice-snow.png">

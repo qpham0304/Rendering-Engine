@@ -192,6 +192,7 @@
   <ItemGroup>
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
     <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp" />
+    <ClCompile Include="src\apps\vulkan-demo\FollowDemo.cpp" />
     <ClCompile Include="src\core\features\PlatformFactory.cpp" />
     <ClCompile Include="src\core\features\ServiceLocator.cpp" />
     <ClCompile Include="src\core\layers\Layer.cpp" />
@@ -272,10 +273,12 @@
     <ClCompile Include="src\core\layers\OpenGL\SSAOLayer.cpp" />
     <ClCompile Include="src\core\layers\OpenGL\SSRLayer.cpp" />
     <ClCompile Include="src\core\systems\System.cpp" />
+    <ClCompile Include="src\apps\vulkan-demo\VulkanSetupDemo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
     <ClInclude Include="src\apps\particle-demo\ParticleDemo.h" />
+    <ClInclude Include="src\apps\vulkan-demo\FollowDemo.h" />
     <ClInclude Include="src\core\features\Configs.h" />
     <ClInclude Include="src\core\features\PlatformFactory.h" />
     <ClInclude Include="src\core\features\ServiceLocator.h" />
@@ -374,6 +377,7 @@
     <ClInclude Include="src\gui\widgets\RightSidebarWidget.h" />
     <ClInclude Include="src\gui\widgets\SubViewWidget.h" />
     <ClInclude Include="src\gui\widgets\Widget.h" />
+    <ClInclude Include="src\apps\vulkan-demo\VulkanSetupDemo.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="comprehensive.rc" />
@@ -427,6 +431,11 @@
     <None Include="Shaders\skyAtmosphere\transmittanceLUT.frag" />
     <None Include="Shaders\skybox.frag" />
     <None Include="Shaders\skybox.vert" />
+    <None Include="src\apps\vulkan-demo\shaders\compile.bat" />
+    <None Include="src\apps\vulkan-demo\shaders\default.frag" />
+    <None Include="src\apps\vulkan-demo\shaders\default.frag.spv" />
+    <None Include="src\apps\vulkan-demo\shaders\default.vert" />
+    <None Include="src\apps\vulkan-demo\shaders\default.vert.spv" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\ice-snow.png" />
