@@ -4,6 +4,11 @@
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
+#include "../../src/window/platform/GLFW/AppWindowGLFW.h"
+#include "../../src/window/AppWindow.h"
+
+Demo* Demo::demoInstance = nullptr;
+
 
 static const std::vector<Demo::Vertex> vertices = {
 	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
@@ -52,11 +57,31 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 }
 
 void Demo::run() {
-	//camera.init(WIDTH, HEIGHT,
-	//	glm::vec3(2.0f, 2.0f, 2.0f),
-	//	glm::normalize(glm::vec3(0.0f, 0.0f, 0.0f) - glm::vec3(2.0f, 2.0f, 2.0f)));
+	demoInstance = this;
 
-	//orbitCamera.init(WIDTH, HEIGHT,
+	WindowConfig windowConfig{};
+	windowConfig.title = "Application Untitled";
+	windowConfig.windowPlatform = WindowPlatform::GLFW;
+	windowConfig.renderPlatform = RenderPlatform::VULKAN;
+	windowConfig.guiPlatform = GuiPlatform::IMGUI;
+	windowConfig.width = 1920;
+	windowConfig.height = 1080;
+	windowConfig.vsync = false;
+
+	appWindow = platformFactory.createWindow(windowConfig.windowPlatform);
+	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
+
+	appWindow->init(windowConfig);
+	windowHandle = static_cast<GLFWwindow*>(AppWindow::getWindowHandle());
+
+	//guiManager->init(windowConfig);
+
+
+	camera.init(AppWindow::getWidth(), AppWindow::getHeight(),
+		glm::vec3(2.0f, 2.0f, 2.0f),
+		glm::normalize(glm::vec3(0.0f, 0.0f, 0.0f) - glm::vec3(2.0f, 2.0f, 2.0f)));
+
+	//orbitCamera.init(AppWindow::getWidth(), AppWindow::getHeight(),
 	//	glm::vec3(2.0f, 2.0f, 2.0f),
 	//	glm::normalize(glm::vec3(0.0f, 0.0f, 0.0f) - glm::vec3(2.0f, 2.0f, 2.0f)));
 
@@ -64,7 +89,7 @@ void Demo::run() {
 	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
 	pushConstantData.data = 0.1f;
 
-	initWindow();
+	//initWindow();
 	initVulkan();
 	mainLoop();
 	printf("\n==========running==========\n\n");
@@ -97,24 +122,29 @@ void Demo::initVulkan() {
 
 void Demo::mainLoop() {
 	bool keyPressed = false;
+	isRunning = true;
 
-	while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();
-		//camera.onUpdate();
-		//camera.processInput(window);
-		//camera.processKeyboard(window);
+	while (!glfwWindowShouldClose(windowHandle)) {
+		appWindow->onUpdate();
+
+		glfwSetScrollCallback(windowHandle, scroll_callback);
+
+
+		camera.onUpdate();
+		camera.processInput();
+		camera.processKeyboard();
 
 		//orbitCamera.onUpdate();
 		//orbitCamera.processKeyboard(window); // optional pan
 		//orbitCamera.mouseControl(window);    // orbit rotation
-		glfwSetScrollCallback(window, scroll_callback);
 
-		int action = glfwGetKey(window, GLFW_KEY_1);
-		if (action == GLFW_PRESS && !keyPressed) {
+		
+		bool action = AppWindow::isKeyPressed(KEY_1);
+		if (action && !keyPressed) {
 			pushConstantData.flag = !pushConstantData.flag;
 			keyPressed = true;
 		}
-		else if (action == GLFW_RELEASE) {
+		else if (!action) {
 			keyPressed = false;
 		}
 
@@ -162,19 +192,7 @@ void Demo::cleanup() {
 	}
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
-	glfwDestroyWindow(window);
-	glfwTerminate();
-}
-
-void Demo::initWindow() {
-	glfwInit();
-
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-
-	window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-	glfwSetWindowUserPointer(window, this);
-	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+	appWindow->onClose();
 }
 
 
@@ -288,7 +306,7 @@ void Demo::createLogicalDevice() {
 }
 
 void Demo::createSurface() {
-	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+	if (glfwCreateWindowSurface(instance, windowHandle, nullptr, &surface) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create window surface!");
 	}
 }
@@ -739,10 +757,10 @@ void Demo::updateUniformBuffer(uint32_t currentImage)
 
 	UniformBufferObject ubo{};
 	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+	//ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
 	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	//ubo.view = camera.getViewMatrix();
-	//ubo.proj = camera.getProjectionMatrix();
+	ubo.view = camera.getViewMatrix();
+	ubo.proj = camera.getProjectionMatrix();
 
 	//ubo.model = glm::mat4(1.0f);
 	//ubo.view = orbitCamera.getViewMatrix();
@@ -1017,7 +1035,7 @@ VkExtent2D Demo::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
 	}
 	else {
 		int width, height;
-		glfwGetFramebufferSize(window, &width, &height);
+		glfwGetFramebufferSize(windowHandle, &width, &height);
 
 		VkExtent2D actualExtent = {
 			static_cast<uint32_t>(width),
@@ -1200,9 +1218,9 @@ void Demo::drawFrame()
 void Demo::recreateSwapChain() {
 	int width = 0;
 	int height = 0;
-	glfwGetFramebufferSize(window, &width, &height);
+	glfwGetFramebufferSize(windowHandle, &width, &height);
 	while (width == 0 || height == 0) {
-		glfwGetFramebufferSize(window, &width, &height);
+		glfwGetFramebufferSize(windowHandle, &width, &height);
 		glfwWaitEvents();
 	}
 

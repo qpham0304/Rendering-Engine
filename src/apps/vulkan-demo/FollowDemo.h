@@ -19,11 +19,65 @@
 #include <set>
 #include <glm/glm.hpp>
 #include <array>
+#include <memory>
 #include "Camera.h"
 //#include "OrbitCamera.h"
 
+
+#include "../../src/core/features/ServiceLocator.h"
+#include "../../src/core/features/PlatformFactory.h"
+
+
+struct ImGuiContext {
+    VkInstance instance = VK_NULL_HANDLE;
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    uint32_t graphicsQueueFamily = 0;
+    VkQueue graphicsQueue = VK_NULL_HANDLE;
+    uint32_t minImageCount = 0;
+    uint32_t swapchainImageCount = 0;
+    VkRenderPass renderPass = VK_NULL_HANDLE;
+    VkCommandPool commandPool = VK_NULL_HANDLE;
+	VkDevice device = VK_NULL_HANDLE;
+};
+
 class Demo
 {
+public:
+    static Demo* demoInstance;
+
+public:
+	//TODO return the context out for imgui init
+    static ImGuiContext GetContext() {
+        ImGuiContext context{};
+        context.instance = demoInstance->instance;
+        auto queueIndices = demoInstance->findQueueFamilies(demoInstance->physicalDevice);
+        if (!queueIndices.graphicsFamily.has_value()) {
+            throw std::runtime_error("Graphics queue family not found");
+        }
+
+        context.graphicsQueueFamily = queueIndices.graphicsFamily.value();
+        context.graphicsQueue = demoInstance->graphicsQueue;
+
+        context.minImageCount = static_cast<uint32_t>(demoInstance->swapChainImages.size());
+        context.swapchainImageCount = context.minImageCount;
+
+        context.renderPass = demoInstance->renderPass;
+        context.commandPool = demoInstance->commandPool;
+
+		context.device = demoInstance->device;
+
+
+        return context;
+    }
+
+
+private:
+    ServiceLocator serviceLocator;
+    PlatformFactory platformFactory{ serviceLocator };
+    std::unique_ptr<AppWindow> appWindow;
+    std::unique_ptr<GuiManager> guiManager;
+    bool isRunning;
+
 public:
     Demo() = default;
     void run();
@@ -76,9 +130,6 @@ public:
 
 
 public:
-    static const uint32_t WIDTH = 800;
-    static const uint32_t HEIGHT = 600;
-
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
         auto app = reinterpret_cast<Demo*>(glfwGetWindowUserPointer(window));
@@ -127,7 +178,7 @@ private:
     };
 
 
-    GLFWwindow* window;
+    GLFWwindow* windowHandle;
     VkSurfaceKHR surface;
     VkInstance instance;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -183,7 +234,7 @@ private:
     void mainLoop();
     void cleanup();
 
-    void initWindow();
+    //void initWindow();
     void createInstance();
     void selectPhysicalDevice();
     void createLogicalDevice();

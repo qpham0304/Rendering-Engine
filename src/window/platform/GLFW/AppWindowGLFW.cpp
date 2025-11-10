@@ -5,6 +5,10 @@
 #include "../../src/core/events/eventManager.h"
 #include "InputGLFW.h"
 
+static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+	throw std::runtime_error("framebufferResizeCallback not implemented yet");
+}
+
 AppWindowGLFW::AppWindowGLFW() 
 	: AppWindow(), m_WindowHandle(nullptr), m_SharedWindowHandle(nullptr)
 {
@@ -31,7 +35,7 @@ int AppWindowGLFW::init(WindowConfig newConfig) {
 
 	switch (platform) {
 		case RenderPlatform::OPENGL: _initOpenGL(); break;
-		case RenderPlatform::VULKAN: throw std::runtime_error("Vulkan not supported yet in GLFW window"); break;
+		case RenderPlatform::VULKAN: _initVulkan(); break;
 		default: throw std::runtime_error("Render platform not supported"); break;
 	}
 
@@ -77,6 +81,9 @@ void* AppWindowGLFW::_getWindow()
 
 void* AppWindowGLFW::_getSharedWindow()
 {
+	if(platform != RenderPlatform::OPENGL) {
+		throw std::runtime_error("Shared window is only available for OpenGL platform");
+	}
 	return m_SharedWindowHandle;
 }
 
@@ -225,16 +232,27 @@ void AppWindowGLFW::_onUpdateOpenGL()
 
 int AppWindowGLFW::_initVulkan()
 {
-	throw std::runtime_error("Vulkan init not yet implemented");
+	glfwInit();
+
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+
+	m_WindowHandle = glfwCreateWindow(width, height, "Vulkan Demo", nullptr, nullptr);
+	glfwSetWindowUserPointer(m_WindowHandle, this);
+	glfwSetFramebufferSizeCallback(m_WindowHandle, framebufferResizeCallback);
+
+	return 0;
 }
 
 void AppWindowGLFW::_onCloseVulkan()
 {
-	throw std::runtime_error("Vulkan onClose not yet implemented");
-
+	glfwDestroyWindow(m_WindowHandle);
+	glfwTerminate();
 }
 
 void AppWindowGLFW::_onUpdateVulkan()
 {
-	throw std::runtime_error("Vulkan onUpdate not yet implemented");
+	glfwPollEvents();
+
+	//throw std::runtime_error("Vulkan onUpdate not yet implemented");
 }

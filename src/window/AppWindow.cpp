@@ -7,7 +7,7 @@
 #include "../../src/window/Input.h"
 
 RenderPlatform AppWindow::platform = RenderPlatform::UNDEFINED;
-const std::set<RenderPlatform> AppWindow::supportRenderPlatform = { RenderPlatform::OPENGL };
+const std::set<RenderPlatform> AppWindow::supportRenderPlatform = { RenderPlatform::OPENGL, RenderPlatform::VULKAN };
 AppWindow* AppWindow::window = nullptr;
 
 

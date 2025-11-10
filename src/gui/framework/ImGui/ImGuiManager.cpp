@@ -7,9 +7,11 @@
 #include <GLFW/glfw3.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_impl_vulkan.h>
 #include "camera.h"
 #include "../../../graphics/utils/Utils.h"
 #include "../../src/core/components/MComponent.h"
+#include "../../src/apps/Vulkan-demo/FollowDemo.h"
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
@@ -48,7 +50,6 @@ int ImGuiManager::init(WindowConfig config)
 	icons_config.GlyphOffset.x = -1.75f;
 
 	// Setup ImGui GLFW and OpenGL bindings
-
 	void* appWindow = AppWindow::getWindowHandle();
 	if (config.windowPlatform == WindowPlatform::GLFW) {
 		if (config.renderPlatform == RenderPlatform::OPENGL) {
@@ -56,8 +57,33 @@ int ImGuiManager::init(WindowConfig config)
 			ImGui_ImplOpenGL3_Init("#version 330");
 		}
 		else if (config.renderPlatform == RenderPlatform::VULKAN) {
-			//ImGui_ImplGlfw_InitForVulkan(static_cast<GLFWwindow*>(appWindow), true);
+			ImGui_ImplGlfw_InitForVulkan(static_cast<GLFWwindow*>(appWindow), true);
+			//ImGuiContext context = Demo::GetContext();
+
+			//VkDescriptorPool imguiPool = createImguiDescriptorPool(device);
+
+			// Vulkan init info
+			//ImGui_ImplVulkan_InitInfo init_info = {};
+			//init_info.Instance = context.instance;
+			//init_info.PhysicalDevice = context.physicalDevice;
+			//init_info.Device = context.device;
+			//init_info.QueueFamily = context.graphicsQueueFamily;
+			//init_info.Queue = context.graphicsQueue;
+			//init_info.PipelineCache = VK_NULL_HANDLE;
+			//init_info.DescriptorPool = imguiPool;
+			//init_info.Allocator = nullptr;
+			//init_info.MinImageCount = context.minImageCount;
+			//init_info.ImageCount = context.swapchainImageCount;
+			//init_info.CheckVkResultFn = [](VkResult err) { if (err != VK_SUCCESS) abort(); };
+
+			//ImGui_ImplVulkan_Init(&init_info, renderPass);
+
+			//VkCommandBuffer cmdBuf = beginSingleUseCommandBuffer(device, commandPool);
+			//ImGui_ImplVulkan_CreateFontsTexture(cmdBuf);
+			//endSingleUseCommandBuffer(device, commandPool, graphicsQueue, cmdBuf);
+			//ImGui_ImplVulkan_DestroyFontUploadObjects();
 			throw std::runtime_error("ImGuiManager: Vulkan ImGui initialization not implemented yet");
+
 		}
 		else {
 			throw std::runtime_error("ImGuiManager: Unsupported render platform for ImGui initialization with GLFW");

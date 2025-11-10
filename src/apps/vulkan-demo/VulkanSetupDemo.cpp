@@ -4,26 +4,14 @@
 int VulkanSetupDemo::show_demo()
 {
     Demo app;
+    app.run();
 
-    try {
-        app.run();
-    }
-    catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 int VulkanSetupDemo::run()
 {
-    try {
-        show_demo();
-        return 0;
-    }
-    catch (const std::runtime_error& e) {
-        std::cerr << "Exception: " << e.what() << std::endl;
-        return -1;
-    }
+    show_demo();
+
+    return 0;
 }
