@@ -64,3 +64,8 @@ void* AppWindow::getWindowHandle()
 {
 	return window->_getWindow();
 }
+
+void AppWindow::setContext(AppWindow* other)
+{
+	window = other;
+}

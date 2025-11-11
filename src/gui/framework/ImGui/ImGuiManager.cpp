@@ -1,17 +1,17 @@
 #include "ImGuiManager.h"
-#include "../../GuiManager.h"
+#include "../../src/gui/GuiManager.h"
 #include "../../src/core/scene/SceneManager.h"
 #include "../../src/window/appwindow.h"
-#include "../ImGui/theme/ImGuiThemes.h"
+#include "../../src/gui/framework/ImGui/theme/ImGuiThemes.h"
+#include "../../src/graphics/utils/Utils.h"
+#include "../../src/core/components/MComponent.h"
+#include "../../src/apps/Vulkan-demo/FollowDemo.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_vulkan.h>
 #include "camera.h"
-#include "../../../graphics/utils/Utils.h"
-#include "../../src/core/components/MComponent.h"
-#include "../../src/apps/Vulkan-demo/FollowDemo.h"
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
@@ -126,7 +126,36 @@ void ImGuiManager::start()
 	ImGui::NewFrame();
 
 	// Create a dock space
+#define DOCK_SPACE_TRANSPARENT
+#ifdef DOCK_SPACE_TRANSPARENT
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
+
+	ImGui::SetNextWindowPos(viewport->WorkPos);
+	ImGui::SetNextWindowSize(viewport->WorkSize);
+	ImGui::SetNextWindowViewport(viewport->ID);
+
+	ImGuiWindowFlags host_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus |
+		ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0)); // transparent background
+
+	ImGui::Begin("MainDockSpace", nullptr, host_window_flags);
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar(3);
+
+	// Create dockspace node that lets ImGui windows dock
+	ImGui::DockSpace(ImGui::GetID("MainDockSpaceID"), ImVec2(0, 0), dockspace_flags);
+	ImGui::End();
+#else
 	ImGui::DockSpaceOverViewport(0);
+
+#endif
 }
 
 void ImGuiManager::debugWindow(ImTextureID texture)

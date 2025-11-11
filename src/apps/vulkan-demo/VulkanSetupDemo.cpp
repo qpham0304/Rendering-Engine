@@ -1,17 +1,19 @@
 #include "VulkanSetupDemo.h"
 #include "FollowDemo.h"
-
-int VulkanSetupDemo::show_demo()
-{
-    Demo app;
-    app.run();
-
-    return 0;
-}
+#include "example_glfw_vulkan.h"
 
 int VulkanSetupDemo::run()
 {
-    show_demo();
+//#define RUN_GUI
+#ifdef RUN_GUI
+    EXAMPLE_GLFW_VULKAN example;
+    example.run();
+
+#else
+    Demo app;
+    app.run();
+
+#endif
 
     return 0;
 }

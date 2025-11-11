@@ -1,6 +1,6 @@
-#include "../LayerManager.h"
+#include "LayerManager.h"
 #include "ImGui.h" // TODO remove when gui is refactored
-#include "../../features/ServiceLocator.h"
+#include "../../src/core/features/ServiceLocator.h"
 
 #define OUT_OF_BOUND_ERROR(index) { \
     std::string msg = "Index out of bound: \"" + std::to_string(index) + "\""; \

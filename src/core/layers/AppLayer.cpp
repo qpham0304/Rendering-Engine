@@ -1,4 +1,4 @@
-#include "../AppLayer.h"
+#include "AppLayer.h"
 #include "../../src/core/scene/SceneManager.h"
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/events/EventManager.h"
@@ -58,9 +58,7 @@ AppLayer::~AppLayer()
 void AppLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);
-
-	Log().setLevel(LogLevel::Debug);
-	Log().debug("AppLayer Attached");
+	setLogScopeClient();
 
 	int width = AppWindow::getWidth();
 	int height = AppWindow::getHeight();

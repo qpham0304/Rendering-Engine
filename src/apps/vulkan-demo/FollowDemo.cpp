@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include "../../src/window/platform/GLFW/AppWindowGLFW.h"
 #include "../../src/window/AppWindow.h"
+#include "../../src/core/events/EventManager.h"
 
 Demo* Demo::demoInstance = nullptr;
 
@@ -60,7 +61,7 @@ void Demo::run() {
 	demoInstance = this;
 
 	WindowConfig windowConfig{};
-	windowConfig.title = "Application Untitled";
+	windowConfig.title = "Vulkan Demo Application";
 	windowConfig.windowPlatform = WindowPlatform::GLFW;
 	windowConfig.renderPlatform = RenderPlatform::VULKAN;
 	windowConfig.guiPlatform = GuiPlatform::IMGUI;
@@ -84,6 +85,12 @@ void Demo::run() {
 	//orbitCamera.init(AppWindow::getWidth(), AppWindow::getHeight(),
 	//	glm::vec3(2.0f, 2.0f, 2.0f),
 	//	glm::normalize(glm::vec3(0.0f, 0.0f, 0.0f) - glm::vec3(2.0f, 2.0f, 2.0f)));
+
+
+	EventManager::getInstance().subscribe(EventType::WindowResize, [this](Event& event) {
+		WindowResizeEvent& windowResizeEvent = static_cast<WindowResizeEvent&>(event);
+		camera.updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
+	});
 
 	pushConstantData.color = glm::vec3(1.0f, 1.0f, 0.0f);
 	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -126,9 +133,6 @@ void Demo::mainLoop() {
 
 	while (!glfwWindowShouldClose(windowHandle)) {
 		appWindow->onUpdate();
-
-		glfwSetScrollCallback(windowHandle, scroll_callback);
-
 
 		camera.onUpdate();
 		camera.processInput();

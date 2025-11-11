@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Layer.h"
 #include "Shader.h"
-#include "../../graphics/renderer/BloomRenderer.h"
+#include "../../src/core/layers/Layer.h"
+#include "../../src/graphics/renderer/BloomRenderer.h"
 
 class BloomLayer : public Layer
 {

@@ -26,9 +26,9 @@ public:
 		int type,
 		const void* data
 	);
+
 	void Bind();
 	void Unbind();
 	void Delete();
-
 };
 

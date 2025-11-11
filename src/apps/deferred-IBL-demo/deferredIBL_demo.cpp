@@ -728,6 +728,7 @@ DeferredIBLDemo::DeferredIBLDemo(const std::string& name) : AppLayer(name)
 void DeferredIBLDemo::onAttach(LayerManager* manager)
 {
     AppLayer::onAttach(manager);
+	Log().debug("Deferred IBL Demo Layer Attached");
     
     //particleRenderer.init(particleControl);
     pbrShader.Init("Shaders/default-2.vert", "Shaders/default-2.frag");

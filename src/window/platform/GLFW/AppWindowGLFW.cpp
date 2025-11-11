@@ -5,10 +5,6 @@
 #include "../../src/core/events/eventManager.h"
 #include "InputGLFW.h"
 
-static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-	throw std::runtime_error("framebufferResizeCallback not implemented yet");
-}
-
 AppWindowGLFW::AppWindowGLFW() 
 	: AppWindow(), m_WindowHandle(nullptr), m_SharedWindowHandle(nullptr)
 {
@@ -105,7 +101,7 @@ void AppWindowGLFW::_setEventCallback()
 
 	glfwSetScrollCallback(m_WindowHandle, [](GLFWwindow* window, double x, double y)
 		{
-			Timer timer("scroll event", true);
+			Timer timer("scroll event", false);
 			MouseScrollEvent scrollEvent(x, y);
 			EventManager::getInstance().publish(scrollEvent);
 			//EventManager::getInstance().publish("mouseScrollEvent", x, y);
@@ -145,6 +141,13 @@ void AppWindowGLFW::_setEventCallback()
 			WindowCloseEvent closeEvent;
 			EventManager::getInstance().publish(closeEvent);
 		});
+
+	//glfwSetFramebufferSizeCallback(m_WindowHandle, [](GLFWwindow* window)
+	//	{
+	//		//WindowCloseEvent frmebufferResizeEvent;
+	//		//EventManager::getInstance().publish(frmebufferResizeEvent);
+	//	});
+
 }
 
 
@@ -182,6 +185,18 @@ int AppWindowGLFW::_initOpenGL()
 	width = mode->width * 2 / 3;
 	height = mode->height * 2 / 3;
 
+	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);	// Set Invisible for the second context
+	m_SharedWindowHandle = glfwCreateWindow(width, height, "", NULL, m_WindowHandle);
+
+	if (m_SharedWindowHandle == NULL) {
+		throw std::runtime_error("Failed to create shared GLFW window");
+		glfwTerminate();
+		return -1;
+	}
+
+	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+	//glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);	// disable title bar
+
 	m_WindowHandle = glfwCreateWindow(width, height, config.title.c_str(), NULL, NULL);
 
 	if (m_WindowHandle == NULL) {
@@ -197,19 +212,6 @@ int AppWindowGLFW::_initOpenGL()
 		glfwTerminate();
 		return -1;
 	}
-
-	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);	// Set Invisible for second context
-	m_SharedWindowHandle = glfwCreateWindow(width, height, "", NULL, m_WindowHandle);
-
-	if (m_SharedWindowHandle == NULL) {
-		throw std::runtime_error("Failed to create shared GLFW window");
-		glfwDestroyWindow(m_WindowHandle);
-		glfwTerminate();
-		return -1;
-	}
-	glfwMakeContextCurrent(m_SharedWindowHandle);
-
-	glfwMakeContextCurrent(m_WindowHandle);
 }
 
 void AppWindowGLFW::_onCloseOpenGL()
@@ -224,6 +226,10 @@ void AppWindowGLFW::_onUpdateOpenGL()
 {
 	glfwPollEvents();
 	glfwSwapBuffers(m_WindowHandle);
+	
+	// Clear background for dock space
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
 }
 
 /*
@@ -237,9 +243,8 @@ int AppWindowGLFW::_initVulkan()
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-	m_WindowHandle = glfwCreateWindow(width, height, "Vulkan Demo", nullptr, nullptr);
+	m_WindowHandle = glfwCreateWindow(width, height, config.title.c_str(), nullptr, nullptr);
 	glfwSetWindowUserPointer(m_WindowHandle, this);
-	glfwSetFramebufferSizeCallback(m_WindowHandle, framebufferResizeCallback);
 
 	return 0;
 }

@@ -80,8 +80,9 @@ void Application::run() {
 	pushLayer(editorLayer);	// must be the last to be added to layer stack
 
 	while (isRunning) {
-		float dt = appWindow->getTime();
 		// Application
+		appWindow->onUpdate();
+		float dt = appWindow->getTime();
 		eventManager.onUpdate();
 		sceneManager.onUpdate(dt);
 		layerManager->onUpdate();
@@ -94,7 +95,6 @@ void Application::run() {
 			layerManager->onGuiUpdate();
 			guiManager->end();
 		}
-		appWindow->onUpdate();
 	}
 }
 

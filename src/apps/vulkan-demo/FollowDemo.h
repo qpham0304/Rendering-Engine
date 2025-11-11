@@ -130,7 +130,6 @@ public:
 
 
 public:
-
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
         auto app = reinterpret_cast<Demo*>(glfwGetWindowUserPointer(window));
         app->framebufferResized = true;
@@ -138,10 +137,6 @@ public:
         demo->camera.updateViewResize(width, height);
     }
 
-    static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-        Demo* demo = static_cast<Demo*>(glfwGetWindowUserPointer(window));
-        //demo->orbitCamera.scroll_callback(xoffset, yoffset);
-    }
 
 private:
     static const int MAX_FRAMES_IN_FLIGHT = 2;

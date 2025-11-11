@@ -1,10 +1,9 @@
-#include "../EditorLayer.h"
+#include "EditorLayer.h"
 
 #include "../../src/window/appwindow.h"
 #include "../../src/core/features/Timer.h"
 #include "../../src/core/events/EventManager.h"
 #include "../../src/core/layers/AppLayer.h"
-#include "../../src/core/layers/BloomLayer.h"
 #include "../../src/core/components/MComponent.h"
 #include "../../src/core/components/cameracomponent.h"
 #include "../../src/window/Input.h"

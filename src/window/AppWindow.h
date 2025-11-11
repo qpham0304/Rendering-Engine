@@ -32,6 +32,7 @@ public:
 	static unsigned int getWidth();
 	static unsigned int getHeight();
 	static void* getWindowHandle();
+	static void setContext(AppWindow* other);
 
 protected:
 	AppWindow(std::string serviceName = "AppWindow");

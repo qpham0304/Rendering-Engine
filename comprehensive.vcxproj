@@ -80,7 +80,7 @@
     <CopyLocalProjectReference>true</CopyLocalProjectReference>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(SolutionDir)Libraries\include\spdlog\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Libraries/include\glfw\include;$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(SolutionDir)Libraries\include\spdlog\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Libraries/lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Configuration)-$(Platform)</OutDir>
     <IntDir>$(SolutionDir)bin\$(ProjectName)\Intermediates\$(Configuration)-$(Platform)</IntDir>
@@ -96,7 +96,7 @@
     <CopyLocalProjectReference>true</CopyLocalProjectReference>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(SolutionDir)Libraries\include\spdlog\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Libraries/include\glfw\include;$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(SolutionDir)Libraries\include\spdlog\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Libraries/lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Configuration)-$(Platform)</OutDir>
     <IntDir>$(SolutionDir)bin\$(ProjectName)\Intermediates\$(Configuration)-$(Platform)</IntDir>
@@ -190,12 +190,21 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderer\RenderDeviceOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\renderer\RenderDeviceVulkan.cpp" />
+    <ClCompile Include="src\graphics\renderer\RenderDevice.cpp" />
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
     <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp" />
     <ClCompile Include="src\apps\vulkan-demo\FollowDemo.cpp" />
     <ClCompile Include="src\core\features\PlatformFactory.cpp" />
     <ClCompile Include="src\core\features\ServiceLocator.cpp" />
     <ClCompile Include="src\core\layers\Layer.cpp" />
+    <ClCompile Include="src\graphics\renderpasses\BloomLayer.cpp" />
+    <ClCompile Include="src\graphics\renderpasses\RenderPass.cpp" />
+    <ClCompile Include="src\graphics\renderpasses\ShadowLayer.cpp" />
+    <ClCompile Include="src\graphics\renderpasses\SSAOLayer.cpp" />
+    <ClCompile Include="src\graphics\renderpasses\SSRLayer.cpp" />
     <ClCompile Include="src\logging\framework\LoggerSpd.cpp" />
     <ClCompile Include="src\services\Service.cpp" />
     <ClCompile Include="src\window\platform\GLFW\InputGLFW.cpp" />
@@ -213,18 +222,16 @@
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiRightSidebarWidget.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiSubViewWidget.cpp" />
     <ClCompile Include="src\apps\sandbox\main.cpp" />
-    <ClCompile Include="src\core\layers\OpenGL\ShadowLayer.cpp" />
     <ClCompile Include="src\core\components\CubeMapComponent.cpp" />
     <ClCompile Include="src\core\components\CameraComponent.cpp" />
     <ClCompile Include="src\core\components\MComponent.cpp" />
     <ClCompile Include="src\core\entities\Entity.cpp" />
-    <ClCompile Include="src\core\layers\OpenGL\BloomLayer.cpp" />
     <ClCompile Include="src\window\Input.h" />
     <ClCompile Include="src\core\features\Profiler.cpp" />
     <ClCompile Include="src\core\scene\Scene.cpp" />
-    <ClCompile Include="src\core\layers\OpenGL\AppLayer.cpp" />
-    <ClCompile Include="src\core\layers\OpenGL\LayerManager.cpp" />
-    <ClCompile Include="src\core\layers\OpenGL\EditorLayer.cpp" />
+    <ClCompile Include="src\core\layers\AppLayer.cpp" />
+    <ClCompile Include="src\core\layers\LayerManager.cpp" />
+    <ClCompile Include="src\core\layers\EditorLayer.cpp" />
     <ClCompile Include="src\core\scene\SceneManager.cpp" />
     <ClCompile Include="src\core\events\EventManager.cpp" />
     <ClCompile Include="src\core\Application.cpp" />
@@ -270,18 +277,27 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\Texture.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\VAO.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\VBO.cpp" />
-    <ClCompile Include="src\core\layers\OpenGL\SSAOLayer.cpp" />
-    <ClCompile Include="src\core\layers\OpenGL\SSRLayer.cpp" />
     <ClCompile Include="src\core\systems\System.cpp" />
     <ClCompile Include="src\apps\vulkan-demo\VulkanSetupDemo.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Libraries\include\imgui\backends\imgui_impl_vulkan.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\renderer\RenderDeviceOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\renderer\RenderDeviceVulkan.h" />
+    <ClInclude Include="src\graphics\renderer\RenderDevice.h" />
     <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
     <ClInclude Include="src\apps\particle-demo\ParticleDemo.h" />
+    <ClInclude Include="src\apps\vulkan-demo\example_glfw_vulkan.h" />
     <ClInclude Include="src\apps\vulkan-demo\FollowDemo.h" />
     <ClInclude Include="src\core\features\Configs.h" />
     <ClInclude Include="src\core\features\PlatformFactory.h" />
     <ClInclude Include="src\core\features\ServiceLocator.h" />
+    <ClInclude Include="src\graphics\renderer\ShadowMapRenderer.h" />
+    <ClInclude Include="src\graphics\renderpasses\BloomPass.h" />
+    <ClInclude Include="src\graphics\renderpasses\RenderPass.h" />
+    <ClInclude Include="src\graphics\renderpasses\ShadowLayer.h" />
+    <ClInclude Include="src\graphics\renderpasses\SSAOLayer.h" />
+    <ClInclude Include="src\graphics\renderpasses\SSRLayer.h" />
     <ClInclude Include="src\logging\framework\LoggerSpd.h" />
     <ClInclude Include="src\logging\Logger.h" />
     <ClInclude Include="src\services\Service.h" />
@@ -301,13 +317,11 @@
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiRightSidebarWidget.h" />
     <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiSubViewWidget.h" />
     <ClInclude Include="Libraries\include\FileWatch\FileWatch.hpp" />
-    <ClInclude Include="src\core\layers\ShadowLayer.h" />
     <ClInclude Include="src\core\components\CubeMapComponent.h" />
     <ClInclude Include="Libraries\include\glad\glad.h" />
     <ClInclude Include="src\core\components\CameraComponent.h" />
     <ClInclude Include="src\core\components\MComponent.h" />
     <ClInclude Include="src\core\entities\Entity.h" />
-    <ClInclude Include="src\core\layers\BloomLayer.h" />
     <ClInclude Include="Libraries\include\entt\entt.hpp" />
     <ClInclude Include="src\core\features\Profiler.h" />
     <ClInclude Include="src\core\scene\Scene.h" />
@@ -363,8 +377,6 @@
     <ClInclude Include="Headers\OpenGL\VBO.h" />
     <ClInclude Include="Headers\OpenGL\skybox.h" />
     <ClInclude Include="src\core\components\headers\SkyboxComponent.h" />
-    <ClInclude Include="src\core\layers\SSAOLayer.h" />
-    <ClInclude Include="src\core\layers\SSRLayer.h" />
     <ClInclude Include="src\core\systems\System.h" />
     <ClInclude Include="src\gui\GuiManager.h" />
     <ClInclude Include="src\gui\Themes\Themes.h" />

@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <format>
+#include <vector>
 #include "../../src/services/Service.h"
 
 // Core logging macros
@@ -28,6 +29,7 @@ enum class LogLevel {
     Debug,
 };
 
+class WindowConfig;
 
 class Logger : public Service
 {
@@ -81,5 +83,5 @@ protected:
     virtual void onUpdate() override {};
 
 private:
-
+	//static Logger* loggerInstance;
 };

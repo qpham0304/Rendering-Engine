@@ -5,9 +5,14 @@
 #include <Shader.h>
 #include "Layer.h"
 #include "../../src/graphics/renderer/SkyboxRenderer.h"
+#include "../../src/logging/Logger.h"
 
 class AppLayer : public Layer
 {
+private:
+	using Layer::setLogScopeEngine;
+	using Layer::setLogScopeClient;
+
 protected:
 	FrameBuffer applicationFBO;
 	std::unique_ptr<Camera> camera;
