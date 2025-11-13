@@ -13,7 +13,6 @@ class AppWindow : public Service
 {
 public:
 	static const std::set<RenderPlatform> supportRenderPlatform;
-	static RenderPlatform platform;
 
 public:
 	virtual ~AppWindow() = default;
@@ -33,6 +32,7 @@ public:
 	static unsigned int getHeight();
 	static void* getWindowHandle();
 	static void setContext(AppWindow* other);
+	static void createWindowSurface(void* instance, void* surface);
 
 protected:
 	AppWindow(std::string serviceName = "AppWindow");
@@ -41,12 +41,13 @@ protected:
 	virtual void* _getSharedWindow() = 0;
 	virtual void _setEventCallback() = 0;
 	virtual double _getTime() const = 0;
+	virtual void _createWindowSurface(void* instance, void* surface) = 0;
 
 protected:
 	static AppWindow* window;
 
-	unsigned int width;
-	unsigned int height;
-	WindowConfig config;
-	std::unique_ptr<Input> input;
+	unsigned int m_width;
+	unsigned int m_height;
+
+	std::unique_ptr<Input> m_input;
 };

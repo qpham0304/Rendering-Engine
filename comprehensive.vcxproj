@@ -191,9 +191,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_vulkan.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\renderer\RenderDeviceOpenGL.cpp" />
-    <ClCompile Include="src\graphics\framework\Vulkan\renderer\RenderDeviceVulkan.cpp" />
-    <ClCompile Include="src\graphics\renderer\RenderDevice.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\RenderDeviceVulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanBuffer.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanDevice.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanFrameBuffer.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanPipeline.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanShader.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanSwapChain.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanTexture.cpp" />
+    <ClCompile Include="src\graphics\renderers\Buffer.cpp" />
+    <ClCompile Include="src\graphics\RenderDevice.cpp" />
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
     <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp" />
     <ClCompile Include="src\apps\vulkan-demo\FollowDemo.cpp" />
@@ -237,11 +245,11 @@
     <ClCompile Include="src\core\Application.cpp" />
     <ClCompile Include="src\core\features\Timer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\ParticleGeometry.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\AtmosphereRenderer.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Renderer.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\AtmosphereRenderer.cpp" />
+    <ClCompile Include="src\graphics\renderers\Renderer.cpp" />
     <ClCompile Include="src\core\components\ModelComponent.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\ImageBasedRenderer.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\BloomRenderer.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\ImageBasedRenderer.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\BloomRenderer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\BloomFBO.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\DepthCubeMap.cpp" />
     <ClCompile Include="Libraries\include\ImGuizmo\GraphEditor.cpp" />
@@ -252,8 +260,8 @@
     <ClCompile Include="src\graphics\utils\Utils.cpp" />
     <ClCompile Include="src\window\AppWindow.cpp" />
     <ClCompile Include="src\gui\framework\ImGui\ImGuiManager.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\FrameBuffer.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\SkyboxRenderer.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\FrameBuffer.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\SkyboxRenderer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\Animation.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\Animator.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\Bone.cpp" />
@@ -282,9 +290,17 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Libraries\include\imgui\backends\imgui_impl_vulkan.h" />
-    <ClInclude Include="src\graphics\framework\OpenGL\renderer\RenderDeviceOpenGL.h" />
-    <ClInclude Include="src\graphics\framework\Vulkan\renderer\RenderDeviceVulkan.h" />
-    <ClInclude Include="src\graphics\renderer\RenderDevice.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\RenderDeviceVulkan.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanBuffer.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanDevice.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanFrameBuffer.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanPipeline.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanShader.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanSwapChain.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanTexture.h" />
+    <ClInclude Include="src\graphics\renderers\Buffer.h" />
+    <ClInclude Include="src\graphics\RenderDevice.h" />
     <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
     <ClInclude Include="src\apps\particle-demo\ParticleDemo.h" />
     <ClInclude Include="src\apps\vulkan-demo\example_glfw_vulkan.h" />
@@ -292,7 +308,7 @@
     <ClInclude Include="src\core\features\Configs.h" />
     <ClInclude Include="src\core\features\PlatformFactory.h" />
     <ClInclude Include="src\core\features\ServiceLocator.h" />
-    <ClInclude Include="src\graphics\renderer\ShadowMapRenderer.h" />
+    <ClInclude Include="src\graphics\renderers\ShadowMapRenderer.h" />
     <ClInclude Include="src\graphics\renderpasses\BloomPass.h" />
     <ClInclude Include="src\graphics\renderpasses\RenderPass.h" />
     <ClInclude Include="src\graphics\renderpasses\ShadowLayer.h" />
@@ -326,7 +342,7 @@
     <ClInclude Include="src\core\features\Profiler.h" />
     <ClInclude Include="src\core\scene\Scene.h" />
     <ClInclude Include="src\core\components\ModelComponent.h" />
-    <ClInclude Include="src\graphics\renderer\SkyboxRenderer.h" />
+    <ClInclude Include="src\graphics\renderers\SkyboxRenderer.h" />
     <ClInclude Include="src\core\layers\AppLayer.h" />
     <ClInclude Include="src\core\layers\LayerManager.h" />
     <ClInclude Include="src\core\layers\EditorLayer.h" />
@@ -339,13 +355,13 @@
     <ClInclude Include="Headers\OpenGL\ParticleGeometry.h" />
     <ClInclude Include="Headers\PreCompile.h" />
     <ClInclude Include="src\core\features\Timer.h" />
-    <ClInclude Include="src\graphics\renderer\AtmosphereRenderer.h" />
-    <ClInclude Include="src\graphics\renderer\Renderer.h" />
+    <ClInclude Include="src\graphics\renderers\AtmosphereRenderer.h" />
+    <ClInclude Include="src\graphics\renderers\Renderer.h" />
     <ClInclude Include="src\core\components\headers\ModelComponent.h" />
-    <ClInclude Include="src\graphics\renderer\BloomRenderer.h" />
+    <ClInclude Include="src\graphics\renderers\BloomRenderer.h" />
     <ClInclude Include="Headers\OpenGL\BloomFBO.h" />
     <ClInclude Include="Headers\OpenGL\DepthCubeMap.h" />
-    <ClInclude Include="src\graphics\renderer\ImageBasedRenderer.h" />
+    <ClInclude Include="src\graphics\renderers\ImageBasedRenderer.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\GraphEditor.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\ImCurveEdit.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\ImGradient.h" />

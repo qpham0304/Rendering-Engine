@@ -10,7 +10,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-//#define APP_USE_UNLIMITED_FRAME_RATE
+#define APP_USE_UNLIMITED_FRAME_RATE
 #ifdef _DEBUG
 #define APP_USE_VULKAN_DEBUG_REPORT
 static VkDebugReportCallbackEXT g_DebugReport = VK_NULL_HANDLE;

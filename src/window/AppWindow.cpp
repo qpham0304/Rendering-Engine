@@ -6,43 +6,41 @@
 #include "../../src/core/scene/SceneManager.h"
 #include "../../src/window/Input.h"
 
-RenderPlatform AppWindow::platform = RenderPlatform::UNDEFINED;
 const std::set<RenderPlatform> AppWindow::supportRenderPlatform = { RenderPlatform::OPENGL, RenderPlatform::VULKAN };
 AppWindow* AppWindow::window = nullptr;
 
 
 AppWindow::AppWindow(std::string serviceName)
 	: Service(serviceName),
-	width(0),
-	height(0),
-	config(),
-	input(nullptr)
+	m_width(0),
+	m_height(0),
+	m_input(nullptr)
 {
 }
 
 const WindowConfig& AppWindow::getWindowConfig()
 {
-	return window->config;
+	return window->m_config;
 }
 
 bool AppWindow::isMousePressed(MouseCodes mouseCode) {
-	return window->input->isMousePressed(mouseCode);
+	return window->m_input->isMousePressed(mouseCode);
 }
 
 bool AppWindow::isKeyPressed(KeyCodes keyCode) {
-	return window->input->isKeyPressed(keyCode);
+	return window->m_input->isKeyPressed(keyCode);
 }
 
 int AppWindow::getMouseButton(MouseCodes mouseCode) {
-	return window->input->getMouseButton(mouseCode);
+	return window->m_input->getMouseButton(mouseCode);
 }
 
 void AppWindow::getCursorPos(double* x, double* y) {
-	return window->input->getCursorPos(x, y);
+	return window->m_input->getCursorPos(x, y);
 }
 
 int AppWindow::getKey(KeyCodes keyCode) {
-	return window->input->getKey(keyCode);
+	return window->m_input->getKey(keyCode);
 }
 
 double AppWindow::getTime()
@@ -52,12 +50,12 @@ double AppWindow::getTime()
 
 unsigned int AppWindow::getWidth()
 {
-	return window->width;
+	return window->m_width;
 }
 
 unsigned int AppWindow::getHeight()
 {
-	return window->height;
+	return window->m_height;
 }
 
 void* AppWindow::getWindowHandle()
@@ -68,4 +66,9 @@ void* AppWindow::getWindowHandle()
 void AppWindow::setContext(AppWindow* other)
 {
 	window = other;
+}
+
+void AppWindow::createWindowSurface(void* instance, void* surface)
+{
+	window->_createWindowSurface(instance, surface);
 }

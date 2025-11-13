@@ -12,7 +12,7 @@
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/events/EventManager.h"
 #include "../../src/core/layers/layerManager.h"
-#include "../../graphics/renderer/ShadowMapRenderer.h"
+#include "../../graphics/renderers/ShadowMapRenderer.h"
 #include "../../src/gui/GuiManager.h"   // need this to use imgui for now
 
 

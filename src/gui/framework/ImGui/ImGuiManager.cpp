@@ -28,6 +28,8 @@ ImGuiManager::ImGuiManager(bool darkTheme) : GuiManager()
 
 int ImGuiManager::init(WindowConfig config)
 {
+	Service::init(config);
+
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 
 	ImGui::GetStyle().ScaleAllSizes(1.5); // Scale up all sizes
@@ -51,13 +53,13 @@ int ImGuiManager::init(WindowConfig config)
 
 	// Setup ImGui GLFW and OpenGL bindings
 	void* appWindow = AppWindow::getWindowHandle();
-	if (config.windowPlatform == WindowPlatform::GLFW) {
-		if (config.renderPlatform == RenderPlatform::OPENGL) {
+	if (m_config.windowPlatform == WindowPlatform::GLFW) {
+		if (m_config.renderPlatform == RenderPlatform::OPENGL) {
 			ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(appWindow), true);
 			ImGui_ImplOpenGL3_Init("#version 330");
 		}
-		else if (config.renderPlatform == RenderPlatform::VULKAN) {
-			ImGui_ImplGlfw_InitForVulkan(static_cast<GLFWwindow*>(appWindow), true);
+		else if (m_config.renderPlatform == RenderPlatform::VULKAN) {
+			//ImGui_ImplGlfw_InitForVulkan(static_cast<GLFWwindow*>(appWindow), true);
 			//ImGuiContext context = Demo::GetContext();
 
 			//VkDescriptorPool imguiPool = createImguiDescriptorPool(device);
@@ -82,8 +84,8 @@ int ImGuiManager::init(WindowConfig config)
 			//ImGui_ImplVulkan_CreateFontsTexture(cmdBuf);
 			//endSingleUseCommandBuffer(device, commandPool, graphicsQueue, cmdBuf);
 			//ImGui_ImplVulkan_DestroyFontUploadObjects();
-			throw std::runtime_error("ImGuiManager: Vulkan ImGui initialization not implemented yet");
-
+			//throw std::runtime_error("ImGuiManager: Vulkan ImGui initialization not implemented yet");
+			printf("-----------init for vulkan-------------");
 		}
 		else {
 			throw std::runtime_error("ImGuiManager: Unsupported render platform for ImGui initialization with GLFW");
@@ -247,7 +249,7 @@ void ImGuiManager::end()
 
 int ImGuiManager::onClose()
 {
-	if (AppWindow::platform == RenderPlatform::OPENGL) {
+	if (m_config.renderPlatform == RenderPlatform::OPENGL) {
 		ImGui_ImplOpenGL3_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();

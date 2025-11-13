@@ -1,13 +1,29 @@
 #include "ServiceLocator.h"
 #include "../../logging/Logger.h"
 
-void ServiceLocator::ListServices()
+ServiceLocator* ServiceLocator::instance = nullptr;
+
+
+void ServiceLocator::supportingServices()
+{
+	instance->listServices();
+}
+
+
+void ServiceLocator::setContext(ServiceLocator* other)
+{
+	instance = other;
+}
+
+
+void ServiceLocator::listServices()
 {
 	Logger& logger = Get<Logger>("Engine_LoggerPSD");
 	for (const auto& [name, service] : services) {
-		logger.info("Service: {} at {}", name, (void*)service);
+		logger.info("Service: [{}, Adress: {}]", name, service);
 	}
 }
+
 
 bool ServiceLocator::hasService(std::string_view serviceName) const
 {

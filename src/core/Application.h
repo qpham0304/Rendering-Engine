@@ -15,6 +15,7 @@ public:
 	std::unique_ptr<LayerManager> layerManager;
 	std::unique_ptr<GuiManager> guiManager;
 	std::unique_ptr<AppWindow> appWindow;
+	std::unique_ptr<RenderDevice> renderDevice;
 	std::unique_ptr<Logger> engineLogger;
 	std::unique_ptr<Logger> clientLogger;
 	EditorLayer* editorLayer;

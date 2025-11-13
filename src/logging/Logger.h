@@ -78,7 +78,7 @@ protected:
     Logger(std::string name = "Logger") : Service(name) {};
 
     virtual void logMessage(LogLevel level, const std::string& message) = 0;
-    virtual int init(WindowConfig platform) override { return 0; };
+    virtual int init(WindowConfig config) override { return Service::init(config); };
     virtual int onClose() override { return 0; };
     virtual void onUpdate() override {};
 

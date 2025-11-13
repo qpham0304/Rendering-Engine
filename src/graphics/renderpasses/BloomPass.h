@@ -2,9 +2,9 @@
 
 #include "Shader.h"
 #include "../../src/core/layers/Layer.h"
-#include "../../src/graphics/renderer/BloomRenderer.h"
+#include "../../src/graphics/renderers/BloomRenderer.h"
 
-class BloomLayer : public Layer
+class BloomPass : public Layer
 {
 private:
 	unsigned int VAO, VBO;
@@ -16,8 +16,8 @@ private:
 	BloomRenderer bloomRenderer;
 
 public:
-	BloomLayer(const std::string& name);
-	~BloomLayer() = default;
+	BloomPass(const std::string& name);
+	~BloomPass() = default;
 
 	void onAttach(LayerManager* manager) override;
 	void onDetach() override;

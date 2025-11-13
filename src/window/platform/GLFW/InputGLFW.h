@@ -20,6 +20,6 @@ public:
 	virtual int getKey(KeyCodes keyCode) override;
 
 private:
-	GLFWwindow* m_WindowHandle{ nullptr };
+	GLFWwindow* m_windowHandle{ nullptr };
 };
 

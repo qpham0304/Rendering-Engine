@@ -8,7 +8,12 @@
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/events/EventManager.h"
 
-Demo* Demo::demoInstance = nullptr;
+//Demo* Demo::demoInstance = nullptr;
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+#include <imgui_impl_vulkan.h>
+
+bool show_demo_window = true;
 
 
 static const std::vector<Demo::Vertex> vertices = {
@@ -58,7 +63,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 }
 
 void Demo::run() {
-	demoInstance = this;
+	//demoInstance = this;
 
 	WindowConfig windowConfig{};
 	windowConfig.title = "Vulkan Demo Application";
@@ -75,8 +80,6 @@ void Demo::run() {
 	appWindow->init(windowConfig);
 	windowHandle = static_cast<GLFWwindow*>(AppWindow::getWindowHandle());
 
-	//guiManager->init(windowConfig);
-
 
 	camera.init(AppWindow::getWidth(), AppWindow::getHeight(),
 		glm::vec3(2.0f, 2.0f, 2.0f),
@@ -92,12 +95,23 @@ void Demo::run() {
 		camera.updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
 	});
 
+	EventManager::getInstance().subscribe(EventType::WindowClose, [this](Event& event) {
+		isRunning = false;
+	});
+
 	pushConstantData.color = glm::vec3(1.0f, 1.0f, 0.0f);
 	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
 	pushConstantData.data = 0.1f;
 
 	//initWindow();
 	initVulkan();
+
+
+	//guiManager->init(windowConfig);
+	//createImGuiDescriptorPool();
+	initGuiContext();
+
+
 	mainLoop();
 	printf("\n==========running==========\n\n");
 	cleanup();
@@ -129,9 +143,9 @@ void Demo::initVulkan() {
 
 void Demo::mainLoop() {
 	bool keyPressed = false;
-	isRunning = true;
 
-	while (!glfwWindowShouldClose(windowHandle)) {
+	while (isRunning) {
+
 		appWindow->onUpdate();
 
 		camera.onUpdate();
@@ -153,6 +167,15 @@ void Demo::mainLoop() {
 		}
 
 		drawFrame();
+
+		ImGuiIO& io = ImGui::GetIO(); (void)io;
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			GLFWwindow* backup = glfwGetCurrentContext();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+			glfwMakeContextCurrent(backup);
+		}
 	}
 	vkDeviceWaitIdle(device);
 }
@@ -166,6 +189,8 @@ void Demo::cleanup() {
 	}
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
+	destroyGuiDescriptorPool();
 
 	vkDestroyBuffer(device, vertexBuffer, nullptr);
 	vkFreeMemory(device, vertexBufferMemory, nullptr);
@@ -309,10 +334,9 @@ void Demo::createLogicalDevice() {
 	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
+//TODO: app does not know about glfw, abstract into an appwindow function
 void Demo::createSurface() {
-	if (glfwCreateWindowSurface(instance, windowHandle, nullptr, &surface) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create window surface!");
-	}
+	AppWindow::createWindowSurface(static_cast<void*>(instance), static_cast<void*>(&surface));
 }
 
 void Demo::createGraphicsPipeline() {
@@ -1139,6 +1163,9 @@ void Demo::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageInde
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 	//vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
+	renderGui(commandBuffer);
+
+
 	vkCmdEndRenderPass(commandBuffer);
 
 	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
@@ -1331,4 +1358,178 @@ void Demo::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 	vkQueueWaitIdle(graphicsQueue);
 
 	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+}
+
+void Demo::createGuiDescriptorPool()
+{
+	VkDescriptorPoolSize pool_sizes[] =
+	{
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+	};
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
+	pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
+	pool_info.pPoolSizes = pool_sizes;
+	vkCreateDescriptorPool(device, &pool_info, nullptr, &guiDescriptorPool);
+	//VkDescriptorPoolSize pool_sizes[] =
+	//{
+	//	{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE },
+	//};
+	//VkDescriptorPoolCreateInfo pool_info = {};
+	//pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	//pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	//pool_info.maxSets = 0;
+	//for (VkDescriptorPoolSize& pool_size : pool_sizes)
+	//	pool_info.maxSets += pool_size.descriptorCount;
+	//pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
+	//pool_info.pPoolSizes = pool_sizes;
+	//VkResult result = vkCreateDescriptorPool(device, &pool_info, nullptr, &imguiPool);
+	//if (result != VK_SUCCESS) {
+	//	throw std::runtime_error("failed to create descriptor pool for ImGui");
+	//}
+}
+
+void Demo::destroyGuiDescriptorPool()
+{
+	vkDestroyDescriptorPool(device, guiDescriptorPool, nullptr);
+}
+
+void Demo::initGuiContext()
+{
+	createGuiDescriptorPool();
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;		// Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;		// Enable Gamepad Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;			// Enable docking
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;		    // Enable Multi-Viewport / Platform Windows
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
+	ImGui::StyleColorsDark();
+
+	float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
+	ImGuiStyle& style = ImGui::GetStyle();
+	style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
+	style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
+	io.ConfigDpiScaleFonts = true;          // [Experimental] Automatically overwrite style.FontScaleDpi in Begin() when Monitor DPI changes. This will scale fonts but _NOT_ scale sizes/padding for now.
+	io.ConfigDpiScaleViewports = true;      // [Experimental] Scale Dear ImGui and Platform Windows when Monitor DPI changes.
+
+	// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		style.WindowRounding = 0.0f;
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}
+
+	auto queueIndices = findQueueFamilies(physicalDevice);
+	if (!queueIndices.graphicsFamily.has_value()) {
+		throw std::runtime_error("Graphics queue family not found");
+	}
+
+	ImGui_ImplGlfw_InitForVulkan(windowHandle, true);
+	ImGui_ImplVulkan_InitInfo init_info = {};
+	//init_info.ApiVersion = VK_API_VERSION_1_3;              // Pass in your value of VkApplicationInfo::apiVersion, otherwise will default to header version.
+	init_info.Instance = instance;
+	init_info.PhysicalDevice = physicalDevice;
+	init_info.Device = device;
+	init_info.QueueFamily = queueIndices.graphicsFamily.value();
+	init_info.Queue = graphicsQueue;
+	init_info.PipelineCache = VK_NULL_HANDLE;
+	init_info.DescriptorPool = guiDescriptorPool;
+	init_info.MinImageCount = Demo::MAX_FRAMES_IN_FLIGHT;
+	init_info.ImageCount = swapChainImages.size();;
+	init_info.Allocator = VK_NULL_HANDLE;
+	init_info.PipelineInfoMain.RenderPass = renderPass;
+	init_info.PipelineInfoMain.Subpass = 0;
+	init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	init_info.CheckVkResultFn = [](VkResult err) { if (err != VK_SUCCESS) abort(); };
+	ImGui_ImplVulkan_Init(&init_info);
+
+
+	//ImGui_ImplVulkan_InitInfo init_info = {};
+	//init_info.Instance = instance;
+	//init_info.PhysicalDevice = physicalDevice;
+	//init_info.Device = device;
+	//init_info.QueueFamily = queueIndices.graphicsFamily.value();
+	//init_info.Queue = graphicsQueue;
+	//init_info.PipelineCache = VK_NULL_HANDLE; // can be VK_NULL_HANDLE
+	//init_info.DescriptorPool = imguiPool;
+	////init_info.Subpass = 0; // the subpass of your renderpass
+	//init_info.MinImageCount = Demo::MAX_FRAMES_IN_FLIGHT; // swapchain image count
+	//init_info.ImageCount = swapChainImages.size();
+	////init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	//init_info.Allocator = nullptr;
+	//init_info.CheckVkResultFn = [](VkResult err) { if (err != VK_SUCCESS) abort(); };
+
+	//ImGui_ImplVulkan_Init(&init_info);
+	// Load Fonts
+	float fontSize = 16.0f;
+
+	static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+	ImFontConfig icons_config;
+	icons_config.MergeMode = true;
+	icons_config.PixelSnapH = true;
+	icons_config.GlyphMinAdvanceX = fontSize;
+	icons_config.GlyphOffset.y = -0.5f;
+	icons_config.GlyphOffset.x = -1.75f;
+
+	io.Fonts->AddFontFromFileTTF("src/gui/fonts/Roboto/Roboto-Regular.ttf", fontSize);
+	io.Fonts->AddFontFromFileTTF("src/gui/fonts/fa/" FONT_ICON_FILE_NAME_FAS, fontSize * 0.75, &icons_config, icons_ranges);
+
+}
+
+void Demo::renderGui(VkCommandBuffer commandBuffer)
+{
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
+	// --- Dockspace setup ---
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(viewport->WorkPos);
+	ImGui::SetNextWindowSize(viewport->WorkSize);
+	ImGui::SetNextWindowViewport(viewport->ID);
+
+	ImGuiWindowFlags host_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus |
+		ImGuiWindowFlags_NoNavFocus;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0)); // transparent
+
+	ImGui::Begin("MainDockSpace", nullptr, host_window_flags);
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar(3);
+
+	ImGuiID dockspace_id = ImGui::GetID("MainDockSpaceID");
+	ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
+	ImGui::End();
+	// --- End Dockspace setup ---
+
+	// Demo windows
+	if (show_demo_window)
+		ImGui::ShowDemoWindow(&show_demo_window);
+
+	ImGui::Begin("Demo");
+	ImGui::Text("Hello Vulkan!");
+	ImGui::End();
+
+	// Record ImGui commands (main viewport only)
+	ImGui::Render();
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 }

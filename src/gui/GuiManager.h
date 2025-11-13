@@ -26,11 +26,12 @@ protected:
 
 public:
 	virtual int init(WindowConfig config) override { return 0; };
+	virtual void onUpdate() override {};
+	virtual int onClose() override { return 0; };
+	
 	virtual void start() = 0;
 	virtual void render() = 0;
-	virtual void onUpdate() override {};
 	virtual void end() = 0;
-	virtual int onClose() override { return 0; };
 
 	virtual void setTheme(bool darkTheme) = 0;
 	virtual void useLightTheme() = 0;

@@ -2,6 +2,8 @@
 #include "../../src/window/platform/GLFW/AppWindowGLFW.h"
 #include "../../src/gui/framework/ImGui/ImGuiManager.h"
 #include "../../src/logging/framework/LoggerSpd.h"
+#include "../../src/graphics/framework/Vulkan/RenderDeviceVulkan.h"
+#include "../../src/graphics/framework/OpenGL/RenderDeviceOpenGL.h"
 
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)
@@ -14,6 +16,16 @@ PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     guiRegistry.Register(
         GuiPlatform::IMGUI,
         RegisterConstructor<GuiManager, ImGuiManager>("GuiManager")
+    );
+
+    renderDeviceRegistry.Register(
+        RenderPlatform::VULKAN,
+        RegisterConstructor<RenderDevice, RenderDeviceVulkan>("RenderDeviceVulkan")
+    );
+
+    renderDeviceRegistry.Register(
+        RenderPlatform::OPENGL,
+        RegisterConstructor<RenderDevice, RenderDeviceOpenGL>("RenderDeviceOpenGL")
     );
 
     loggerRegistry.Register(
@@ -40,4 +52,9 @@ std::unique_ptr<Renderer> PlatformFactory::createRenderer(RenderPlatform platfor
 std::unique_ptr<Logger> PlatformFactory::createLogger(LoggerPlatform platform, std::string_view name)
 {
     return loggerRegistry.Create(platform, name.data());
+}
+
+std::unique_ptr<RenderDevice> PlatformFactory::createRenderDevice(RenderPlatform platform)
+{
+    return renderDeviceRegistry.Create(platform);
 }

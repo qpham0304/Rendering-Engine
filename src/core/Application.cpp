@@ -7,9 +7,9 @@
 #include "../../src/window/platform/GLFW/AppWindowGLFW.h"
 
 Application::Application(WindowConfig windowConfig) 
-	: isRunning(false), windowConfig(windowConfig)
+	: isRunning(false), windowConfig(windowConfig), editorLayer(nullptr)
 {
-
+	ServiceLocator::setContext(&serviceLocator);
 }
 
 void Application::pushLayer(Layer* layer)
@@ -22,8 +22,10 @@ void Application::init()
 	//separate service modules
 	appWindow = platformFactory.createWindow(windowConfig.windowPlatform);
 	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
+	renderDevice = platformFactory.createRenderDevice(windowConfig.renderPlatform);
 	engineLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Engine");
 	clientLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Client");
+
 	//engine specific features
 	layerManager = std::make_unique<LayerManager>(serviceLocator);
 
@@ -37,18 +39,21 @@ void Application::init()
 
 	engineLogger->warn(appWindow->getServiceName());
 	engineLogger->warn(guiManager->getServiceName());
+	engineLogger->warn(renderDevice->getServiceName());
 	engineLogger->warn(engineLogger->getServiceName());
 	engineLogger->warn(clientLogger->getServiceName());
 
-	engineLogger->info("Welcome to spdlog!");
-	engineLogger->error("Some error message with arg: {}", 1);
+	ServiceLocator::supportingServices();
+	//engineLogger->info("Welcome to spdlog!");
+	//engineLogger->error("Some error message with arg: {}", 1);
 
-	engineLogger->warn("Easy padding in numbers like {:08d}", 12);
-	engineLogger->critical("Support for int: {0:d};  hex: {0:x};  oct: {0:o}; bin: {0:b}", 42);
-	engineLogger->info("Support for floats {:03.2f}", 1.23456);
-	clientLogger->info("Positional args are {1} {0}..", "too", "supported");
-	clientLogger->info("{:<30}", "left aligned");
+	//engineLogger->warn("Easy padding in numbers like {:08d}", 12);
+	//engineLogger->critical("Support for int: {0:d};  hex: {0:x};  oct: {0:o}; bin: {0:b}", 42);
+	//engineLogger->info("Support for floats {:03.2f}", 1.23456);
+	//clientLogger->info("Positional args are {1} {0}..", "too", "supported");
+	//clientLogger->info("{:<30}", "left aligned");
 
+	renderDevice->init(windowConfig);
 	clientLogger->setLevel(LogLevel::Debug); // Set *global* log level to debug
 	clientLogger->debug("This message should be displayed..");
 

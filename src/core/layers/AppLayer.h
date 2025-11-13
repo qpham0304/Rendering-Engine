@@ -4,7 +4,7 @@
 #include <memory>
 #include <Shader.h>
 #include "Layer.h"
-#include "../../src/graphics/renderer/SkyboxRenderer.h"
+#include "../../src/graphics/renderers/SkyboxRenderer.h"
 #include "../../src/logging/Logger.h"
 
 class AppLayer : public Layer

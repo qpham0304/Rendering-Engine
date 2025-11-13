@@ -168,16 +168,16 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\ParticleGeometry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\AtmosphereRenderer.cpp">
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\AtmosphereRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Renderer.cpp">
+    <ClCompile Include="src\graphics\renderers\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\ImageBasedRenderer.cpp">
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\ImageBasedRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\BloomRenderer.cpp">
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\BloomRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\OpenGL\core\BloomFBO.cpp">
@@ -189,10 +189,10 @@
     <ClCompile Include="src\window\AppWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\FrameBuffer.cpp">
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\FrameBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\SkyboxRenderer.cpp">
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\SkyboxRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\OpenGL\core\Animation.cpp">
@@ -270,13 +270,13 @@
     <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_vulkan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\renderer\RenderDevice.cpp">
+    <ClCompile Include="src\graphics\RenderDevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\Vulkan\renderer\RenderDeviceVulkan.cpp">
+    <ClCompile Include="src\graphics\framework\Vulkan\RenderDeviceVulkan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\renderer\RenderDeviceOpenGL.cpp">
+    <ClCompile Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\renderpasses\BloomLayer.cpp">
@@ -292,6 +292,30 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\renderpasses\SSRLayer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanDevice.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanFrameBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanPipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanSwapChain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanTexture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderers\Buffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -374,13 +398,13 @@
     <ClInclude Include="Headers\OpenGL\BloomFBO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\renderer\ImageBasedRenderer.h">
+    <ClInclude Include="src\graphics\renderers\ImageBasedRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\renderer\Renderer.h">
+    <ClInclude Include="src\graphics\renderers\Renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\renderer\AtmosphereRenderer.h">
+    <ClInclude Include="src\graphics\renderers\AtmosphereRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\OpenGL\ParticleGeometry.h">
@@ -419,7 +443,7 @@
     <ClInclude Include="src\core\components\ModelComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\renderer\SkyboxRenderer.h">
+    <ClInclude Include="src\graphics\renderers\SkyboxRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\core\components\headers\ModelComponent.h">
@@ -455,7 +479,7 @@
     <ClInclude Include="src\core\components\CameraComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\renderer\BloomRenderer.h">
+    <ClInclude Include="src\graphics\renderers\BloomRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Libraries\include\glad\glad.h">
@@ -596,13 +620,13 @@
     <ClInclude Include="src\apps\vulkan-demo\example_glfw_vulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\renderer\RenderDevice.h">
+    <ClInclude Include="src\graphics\RenderDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\framework\Vulkan\renderer\RenderDeviceVulkan.h">
+    <ClInclude Include="src\graphics\framework\Vulkan\RenderDeviceVulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\framework\OpenGL\renderer\RenderDeviceOpenGL.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\renderpasses\BloomPass.h">
@@ -620,7 +644,31 @@
     <ClInclude Include="src\graphics\renderpasses\SSRLayer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\renderer\ShadowMapRenderer.h">
+    <ClInclude Include="src\graphics\renderers\ShadowMapRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanDevice.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanFrameBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanPipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanSwapChain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanTexture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\renderers\Buffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

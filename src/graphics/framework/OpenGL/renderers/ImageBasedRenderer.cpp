@@ -1,4 +1,4 @@
-#include "../../src/graphics/renderer/ImageBasedRenderer.h"
+#include "../../src/graphics/renderers/ImageBasedRenderer.h"
 #include "../../src/graphics/utils/Utils.h"
 #include "../../src/core/features/Timer.h"
 #include <glad/glad.h>

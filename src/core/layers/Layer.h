@@ -11,16 +11,13 @@ public:
 	bool m_Enabled;
 
 public:
-
 	virtual void onAttach(LayerManager* manager);
 	virtual void onDetach() = 0;
 	virtual void onUpdate() = 0;
 	virtual void onGuiUpdate() = 0;
 	virtual void onEvent(Event& event) = 0;
 
-	const std::string& GetName() const { 
-		return m_LayerName; 
-	}
+	const std::string& getName() const;
 
 protected:
 	std::string m_LayerName;

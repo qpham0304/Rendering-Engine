@@ -1,11 +1,11 @@
-#include "BloomLayer.h"
+#include "BloomPass.h"
 #include "Imgui.h"  //TODO: remove when there's no ui dependency
 #include "camera.h"
 #include "../../src/core/layers/layerManager.h"
 #include "../../src/core/scene/SceneManager.h"// this should be gone once ECS is done setting up
 #include "../../src/window/appwindow.h"
 
-BloomLayer::BloomLayer(const std::string& name) : Layer(name), VAO(0), VBO(0)
+BloomPass::BloomPass(const std::string& name) : Layer(name), VAO(0), VBO(0)
 {
     int width = AppWindow::getWidth();
     int height = AppWindow::getHeight();
@@ -44,17 +44,17 @@ BloomLayer::BloomLayer(const std::string& name) : Layer(name), VAO(0), VBO(0)
     bloomShader->setInt("bloomBlur", 1);
 }
 
-void BloomLayer::onAttach(LayerManager* manager)
+void BloomPass::onAttach(LayerManager* manager)
 {
 
 }
 
-void BloomLayer::onDetach()
+void BloomPass::onDetach()
 {
 
 }
 
-void BloomLayer::onUpdate()
+void BloomPass::onUpdate()
 {
 	Shader lightShader("Shaders/light.vert", "Shaders/light.frag");
 	Shader bloomShader("Shaders/bloom/bloom.vert", "Shaders/bloom/bloom.frag");
@@ -109,7 +109,7 @@ void BloomLayer::onUpdate()
 	}
 }
 
-void BloomLayer::onGuiUpdate()
+void BloomPass::onGuiUpdate()
 {
     ImVec2 wsize = ImGui::GetWindowSize();
     ImGui::Image((ImTextureID)colorBuffers[0], wsize, ImVec2(0, 1), ImVec2(1, 0));
@@ -117,7 +117,7 @@ void BloomLayer::onGuiUpdate()
     ImGui::Image((ImTextureID)bloomRenderer.BloomTexture(), wsize, ImVec2(0, 1), ImVec2(1, 0));
 }
 
-void BloomLayer::onEvent(Event& event)
+void BloomPass::onEvent(Event& event)
 {
 
 }

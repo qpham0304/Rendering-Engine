@@ -75,7 +75,7 @@ int Model::getNumVertices()
 {
     int numVertices = 0;
     for (auto& mesh : meshes)
-        numVertices += mesh.getNumVertices();
+        numVertices += mesh.GetNumVertices();
     return numVertices;
 }
 

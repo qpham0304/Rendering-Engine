@@ -2,7 +2,7 @@
 
 #include "../../core/layers/AppLayer.h"
 #include "ParticleGeometry.h"
-#include "../../graphics/renderer/ShadowMapRenderer.h"
+#include "../../graphics/renderers/ShadowMapRenderer.h"
 
 class DeferredIBLDemo : public AppLayer
 {

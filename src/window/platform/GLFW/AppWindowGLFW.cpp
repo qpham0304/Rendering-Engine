@@ -1,35 +1,37 @@
 #include "AppWindowGLFW.h"
 #include <glad/glad.h>
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include "../../src/core/features/Timer.h"
 #include "../../src/core/events/eventManager.h"
 #include "InputGLFW.h"
 
 AppWindowGLFW::AppWindowGLFW() 
-	: AppWindow(), m_WindowHandle(nullptr), m_SharedWindowHandle(nullptr)
+	: AppWindow(), m_windowHandle(nullptr), m_sharedWindowHandle(nullptr)
 {
 	window = &*this;
-	input = std::make_unique<InputGLFW>();
+	m_input = std::make_unique<InputGLFW>();
 }
 
 
 AppWindowGLFW::~AppWindowGLFW()
 {
-	input.reset();
+	m_input.reset();
 }
 
 
-int AppWindowGLFW::init(WindowConfig newConfig) {
-	this->config = newConfig;
-	width = config.width;
-	height = config.height;
+int AppWindowGLFW::init(WindowConfig config) 
+{
+	Service::init(config);
 
-	platform = config.renderPlatform;
-	if (supportRenderPlatform.find(config.renderPlatform) == supportRenderPlatform.end()) {
+	m_width = m_config.width;
+	m_height = m_config.height;
+
+	if (supportRenderPlatform.find(m_config.renderPlatform) == supportRenderPlatform.end()) {
 		throw std::runtime_error("Platform unsupported");
 	}
 
-	switch (platform) {
+	switch (m_config.renderPlatform) {
 		case RenderPlatform::OPENGL: _initOpenGL(); break;
 		case RenderPlatform::VULKAN: _initVulkan(); break;
 		default: throw std::runtime_error("Render platform not supported"); break;
@@ -37,20 +39,20 @@ int AppWindowGLFW::init(WindowConfig newConfig) {
 
 	_setEventCallback();
 
-	InputGLFW* inputHandle = dynamic_cast<InputGLFW*>(input.get());
+	InputGLFW* inputHandle = dynamic_cast<InputGLFW*>(m_input.get());
 	if (!inputHandle) {
 		throw std::runtime_error("AppWindowGLFW: failed to cast Input to type InputGLFW");
 	}
-	inputHandle->m_WindowHandle = m_WindowHandle;
+	inputHandle->m_windowHandle = m_windowHandle;
 
-	glfwSwapInterval(config.vsync);
+	glfwSwapInterval(m_config.vsync);
 
 	return 0;
 }
 
 
 int AppWindowGLFW::onClose() {
-	switch (platform) {
+	switch (m_config.renderPlatform) {
 		case RenderPlatform::OPENGL: _onCloseOpenGL(); break;
 		case RenderPlatform::VULKAN: _onCloseVulkan(); break;
 		default: throw std::runtime_error("Platform not supported for onClose"); break;
@@ -61,26 +63,35 @@ int AppWindowGLFW::onClose() {
 
 void AppWindowGLFW::onUpdate()
 {
-	switch (platform) {
+	switch (m_config.renderPlatform) {
 		case RenderPlatform::OPENGL: _onUpdateOpenGL(); break;
 		case RenderPlatform::VULKAN: _onUpdateVulkan(); break;
 		default: throw std::runtime_error("Platform not supported for onUpdate"); break;
 	}
 }
 
+void AppWindowGLFW::_createWindowSurface(void* instance, void* surface)
+{
+	switch (m_config.renderPlatform) {
+	case RenderPlatform::OPENGL: throw std::runtime_error("No support for OpenGL"); break;
+	case RenderPlatform::VULKAN: _createSurfaceVulkan(instance, surface); break;
+
+	}
+}
+
 
 void* AppWindowGLFW::_getWindow()
 {
-	return m_WindowHandle;
+	return m_windowHandle;
 }
 
 
 void* AppWindowGLFW::_getSharedWindow()
 {
-	if(platform != RenderPlatform::OPENGL) {
+	if(m_config.renderPlatform != RenderPlatform::OPENGL) {
 		throw std::runtime_error("Shared window is only available for OpenGL platform");
 	}
-	return m_SharedWindowHandle;
+	return m_sharedWindowHandle;
 }
 
 
@@ -92,24 +103,23 @@ double AppWindowGLFW::_getTime() const
 
 void AppWindowGLFW::_setEventCallback()
 {
-	glfwSetCursorPosCallback(m_WindowHandle, [](GLFWwindow* window, double x, double y)
+	glfwSetCursorPosCallback(m_windowHandle, [](GLFWwindow* window, double x, double y)
 		{
 			Timer timer("cursor event", true);
 			MouseMoveEvent cursorMoveEvent(x, y);
 			EventManager::getInstance().publish(cursorMoveEvent);
 		});
 
-	glfwSetScrollCallback(m_WindowHandle, [](GLFWwindow* window, double x, double y)
+	glfwSetScrollCallback(m_windowHandle, [](GLFWwindow* window, double x, double y)
 		{
-			Timer timer("scroll event", false);
+			Timer timer("scroll event", true);
 			MouseScrollEvent scrollEvent(x, y);
 			EventManager::getInstance().publish(scrollEvent);
 			//EventManager::getInstance().publish("mouseScrollEvent", x, y);
 		});
 
-	glfwSetKeyCallback(m_WindowHandle, [](GLFWwindow* window, int key, int scancode, int action, int mods)
+	glfwSetKeyCallback(m_windowHandle, [](GLFWwindow* window, int key, int scancode, int action, int mods)
 		{
-			//Application* application = static_cast<Application*>(glfwGetWindowUserPointer(window));
 			switch (action) {
 				case GLFW_PRESS: {
 					if (key == KEY_ESCAPE) {
@@ -121,28 +131,22 @@ void AppWindowGLFW::_setEventCallback()
 						EventManager::getInstance().publish(keyPressEvent);
 					}
 				}
-				case GLFW_RELEASE: {
-					//Console::println("released");
-				}
-				case GLFW_REPEAT: {
-					//Console::println("key repeat");
-				}
 			}
 		});
 
-	glfwSetWindowSizeCallback(m_WindowHandle, [](GLFWwindow* window, int width, int height)
+	glfwSetWindowSizeCallback(m_windowHandle, [](GLFWwindow* window, int width, int height)
 		{
 			WindowResizeEvent resizeEvent(width, height);
 			EventManager::getInstance().publish(resizeEvent);
 		});
 
-	glfwSetWindowCloseCallback(m_WindowHandle, [](GLFWwindow* window)
+	glfwSetWindowCloseCallback(m_windowHandle, [](GLFWwindow* window)
 		{
 			WindowCloseEvent closeEvent;
 			EventManager::getInstance().publish(closeEvent);
 		});
 
-	//glfwSetFramebufferSizeCallback(m_WindowHandle, [](GLFWwindow* window)
+	//glfwSetFramebufferSizeCallback(m_windowHandle, [](GLFWwindow* window)
 	//	{
 	//		//WindowCloseEvent frmebufferResizeEvent;
 	//		//EventManager::getInstance().publish(frmebufferResizeEvent);
@@ -182,13 +186,13 @@ int AppWindowGLFW::_initOpenGL()
 	}
 
 	// force window to always proportional to what every user's screen has
-	width = mode->width * 2 / 3;
-	height = mode->height * 2 / 3;
+	m_width = mode->width * 2 / 3;
+	m_height = mode->height * 2 / 3;
 
 	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);	// Set Invisible for the second context
-	m_SharedWindowHandle = glfwCreateWindow(width, height, "", NULL, m_WindowHandle);
+	m_sharedWindowHandle = glfwCreateWindow(m_width, m_height, "", NULL, m_windowHandle);
 
-	if (m_SharedWindowHandle == NULL) {
+	if (m_sharedWindowHandle == NULL) {
 		throw std::runtime_error("Failed to create shared GLFW window");
 		glfwTerminate();
 		return -1;
@@ -197,18 +201,18 @@ int AppWindowGLFW::_initOpenGL()
 	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
 	//glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);	// disable title bar
 
-	m_WindowHandle = glfwCreateWindow(width, height, config.title.c_str(), NULL, NULL);
+	m_windowHandle = glfwCreateWindow(m_width, m_height, m_config.title.c_str(), NULL, NULL);
 
-	if (m_WindowHandle == NULL) {
+	if (m_windowHandle == NULL) {
 		throw std::runtime_error("Failed to create GLFW window");
 		glfwTerminate();
 		return -1;
 	}
-	glfwMakeContextCurrent(m_WindowHandle);
+	glfwMakeContextCurrent(m_windowHandle);
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 		throw std::runtime_error("Failed to initialize GLAD for main context");
-		glfwDestroyWindow(m_WindowHandle);
+		glfwDestroyWindow(m_windowHandle);
 		glfwTerminate();
 		return -1;
 	}
@@ -217,15 +221,15 @@ int AppWindowGLFW::_initOpenGL()
 void AppWindowGLFW::_onCloseOpenGL()
 {
 	glfwMakeContextCurrent(nullptr);
-	glfwDestroyWindow(m_WindowHandle);
-	glfwDestroyWindow(m_SharedWindowHandle);
+	glfwDestroyWindow(m_windowHandle);
+	glfwDestroyWindow(m_sharedWindowHandle);
 	glfwTerminate();
 }
 
 void AppWindowGLFW::_onUpdateOpenGL()
 {
 	glfwPollEvents();
-	glfwSwapBuffers(m_WindowHandle);
+	glfwSwapBuffers(m_windowHandle);
 	
 	// Clear background for dock space
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -243,15 +247,15 @@ int AppWindowGLFW::_initVulkan()
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-	m_WindowHandle = glfwCreateWindow(width, height, config.title.c_str(), nullptr, nullptr);
-	glfwSetWindowUserPointer(m_WindowHandle, this);
+	m_windowHandle = glfwCreateWindow(m_width, m_height, m_config.title.c_str(), nullptr, nullptr);
+	glfwSetWindowUserPointer(m_windowHandle, this);
 
 	return 0;
 }
 
 void AppWindowGLFW::_onCloseVulkan()
 {
-	glfwDestroyWindow(m_WindowHandle);
+	glfwDestroyWindow(m_windowHandle);
 	glfwTerminate();
 }
 
@@ -260,4 +264,14 @@ void AppWindowGLFW::_onUpdateVulkan()
 	glfwPollEvents();
 
 	//throw std::runtime_error("Vulkan onUpdate not yet implemented");
+}
+
+void AppWindowGLFW::_createSurfaceVulkan(void* instancePtr, void* surfacePtr)
+{
+	VkInstance instance = reinterpret_cast<VkInstance>(instancePtr);
+	VkSurfaceKHR* surface = reinterpret_cast<VkSurfaceKHR*>(surfacePtr);
+
+	if (glfwCreateWindowSurface(instance, m_windowHandle, nullptr, surface) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create window surface!");
+	}
 }

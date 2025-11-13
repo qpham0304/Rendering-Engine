@@ -29,3 +29,8 @@ void Layer::setLogScopeClient()
 {
 	m_Logger = &m_Manager->serviceLocator.Get<Logger>("Client_LoggerPSD");
 }
+
+const std::string& Layer::getName() const
+{
+	return m_LayerName;
+}

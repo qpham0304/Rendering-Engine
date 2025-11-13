@@ -7,17 +7,18 @@
 
 #include "../../src/gui/GuiManager.h"
 #include "../../src/window/AppWindow.h"
-#include "../../graphics/renderer/Renderer.h"
-#include "../../logging/Logger.h"
+#include "../../src/graphics/renderers/Renderer.h"
+#include "../../src/logging/Logger.h"
 #include "../../src/services/Service.h"
+#include "../../src/graphics/RenderDevice.h"
 #include "configs.h"
 #include "ServiceLocator.h"
 
-// one single file to create all subsystems
+// one single file to registery and create all subsystems and services
 // might separate into files per subsystem but good enough for now
-
 class PlatformFactory
 {
+	// generic constructor function for each service interface
 	template<typename Interface, typename PlatformEnum, typename... Args>
 	class ConstructorRegistry {
 	public:
@@ -46,6 +47,7 @@ public:
 	std::unique_ptr<AppWindow> createWindow(WindowPlatform config);
 	std::unique_ptr<GuiManager> createGuiManager(GuiPlatform config);
 	std::unique_ptr<Renderer> createRenderer(RenderPlatform platform);
+	std::unique_ptr<RenderDevice> createRenderDevice(RenderPlatform platform);
 	std::unique_ptr<Logger> createLogger(LoggerPlatform platform, std::string_view name);
 
 
@@ -67,5 +69,6 @@ private:
 	ConstructorRegistry<AppWindow, WindowPlatform> windowRegistry;
 	ConstructorRegistry<GuiManager, GuiPlatform> guiRegistry;
 	ConstructorRegistry<Renderer, RenderPlatform> rendererRegistry;
+	ConstructorRegistry<RenderDevice, RenderPlatform> renderDeviceRegistry;
 	ConstructorRegistry<Logger, LoggerPlatform, std::string> loggerRegistry;
 };

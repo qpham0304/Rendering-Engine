@@ -102,7 +102,7 @@ const int& LayerManager::size() const
 
 const std::string& LayerManager::CurrentLayer()
 {
-	return m_Layers[m_SelectedLayer]->GetName();
+	return m_Layers[m_SelectedLayer]->getName();
 }
 
 void LayerManager::onUpdate() 
@@ -125,7 +125,7 @@ void LayerManager::onGuiUpdate()
 	}
 	for (auto& layer : m_Layers) {
 		ImGui::Begin("Layers");
-		ImGui::Checkbox(layer->GetName().c_str(), &layer->m_Enabled);
+		ImGui::Checkbox(layer->getName().c_str(), &layer->m_Enabled);
 		ImGui::End();
 	}
 }

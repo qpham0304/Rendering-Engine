@@ -47,7 +47,7 @@ void Mesh::setup()
     glBindVertexArray(0);
 }
 
-int Mesh::getNumVertices()
+int Mesh::GetNumVertices()
 {
     !indices.empty()
         ? numVertices = static_cast<int>(indices.size() / 3)

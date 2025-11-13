@@ -7,8 +7,8 @@ class GLFWwindow;
 class AppWindowGLFW : public AppWindow
 {
 private:
-	GLFWwindow* m_WindowHandle;
-	GLFWwindow* m_SharedWindowHandle;
+	GLFWwindow* m_windowHandle;
+	GLFWwindow* m_sharedWindowHandle;
 
 public:
 	AppWindowGLFW();
@@ -24,6 +24,7 @@ protected:
 	void* _getSharedWindow() override;
 	virtual double _getTime() const override;
 	virtual void _setEventCallback() override;
+	virtual void _createWindowSurface(void* instance, void* surface) override;
 
 	//platform specific implementations
 	int _initOpenGL();
@@ -33,5 +34,7 @@ protected:
 	int _initVulkan();
 	void _onCloseVulkan();
 	void _onUpdateVulkan();
+
+	void _createSurfaceVulkan(void* instance, void* surface);
 };
 
