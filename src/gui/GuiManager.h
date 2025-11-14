@@ -29,9 +29,9 @@ public:
 	virtual void onUpdate() override {};
 	virtual int onClose() override { return 0; };
 	
-	virtual void start() = 0;
-	virtual void render() = 0;
-	virtual void end() = 0;
+	virtual void start(void* handle = nullptr) = 0;
+	virtual void render(void* handle = nullptr) = 0;
+	virtual void end(void* handle = nullptr) = 0;
 
 	virtual void setTheme(bool darkTheme) = 0;
 	virtual void useLightTheme() = 0;

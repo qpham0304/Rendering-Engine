@@ -4,17 +4,14 @@
 
 class VulkanDevice
 {
-public:
 
 public:
 	VulkanDevice();
 	~VulkanDevice();
 
-	void init();
-	void onClose();
+	void create();
+	void destroy();
 
-private:
-	VkInstance vkInstance;
 
 private:
 	VulkanDevice(const VulkanDevice&) = delete;
@@ -26,5 +23,16 @@ private:
 	void selectPhysicalDevice();
 	void createLogicalDevice();
 	void createSurface();
+
+public:
+	//TODO: for quick setup, these should be hidden once done
+	VkSurfaceKHR surface;
+	VkInstance instance;
+	VkPhysicalDevice physicalDevice;
+	VkDevice device;
+
+private:
+
+
 };
 

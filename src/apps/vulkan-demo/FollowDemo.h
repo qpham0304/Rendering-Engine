@@ -31,7 +31,6 @@
 class Demo
 {
 public:
-    //static Demo* demoInstance;
 
 public:
 
@@ -40,6 +39,7 @@ private:
     PlatformFactory platformFactory{ serviceLocator };
     std::unique_ptr<AppWindow> appWindow;
     std::unique_ptr<GuiManager> guiManager;
+    std::unique_ptr<RenderDevice> renderDevice;
     bool isRunning = true;
 
 public:

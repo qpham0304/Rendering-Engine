@@ -82,9 +82,6 @@ namespace Utils::uuid {
 }
 
 namespace Console {
-    //void print(const std::string& msg);
-    //void error(const std::string& msg);
-    //void println(const std::string& msg);
 #define DEBUG
 
 #ifdef DEBUG

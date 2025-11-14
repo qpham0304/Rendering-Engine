@@ -38,7 +38,7 @@ int ImGuiManager::init(WindowConfig config)
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;		// Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;		// Enable Gamepad Controls
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;			// Enable docking
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;		// Enable Multi-Viewport / Platform Windows
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;			// Enable Multi-Viewport / Platform Windows
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
 
 	float fontSize = 16.0f;
@@ -54,38 +54,14 @@ int ImGuiManager::init(WindowConfig config)
 	// Setup ImGui GLFW and OpenGL bindings
 	void* appWindow = AppWindow::getWindowHandle();
 	if (m_config.windowPlatform == WindowPlatform::GLFW) {
+		GLFWwindow* window = static_cast<GLFWwindow*>(appWindow);
+
 		if (m_config.renderPlatform == RenderPlatform::OPENGL) {
-			ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(appWindow), true);
+			ImGui_ImplGlfw_InitForOpenGL(window, true);
 			ImGui_ImplOpenGL3_Init("#version 330");
 		}
 		else if (m_config.renderPlatform == RenderPlatform::VULKAN) {
-			//ImGui_ImplGlfw_InitForVulkan(static_cast<GLFWwindow*>(appWindow), true);
-			//ImGuiContext context = Demo::GetContext();
-
-			//VkDescriptorPool imguiPool = createImguiDescriptorPool(device);
-
-			// Vulkan init info
-			//ImGui_ImplVulkan_InitInfo init_info = {};
-			//init_info.Instance = context.instance;
-			//init_info.PhysicalDevice = context.physicalDevice;
-			//init_info.Device = context.device;
-			//init_info.QueueFamily = context.graphicsQueueFamily;
-			//init_info.Queue = context.graphicsQueue;
-			//init_info.PipelineCache = VK_NULL_HANDLE;
-			//init_info.DescriptorPool = imguiPool;
-			//init_info.Allocator = nullptr;
-			//init_info.MinImageCount = context.minImageCount;
-			//init_info.ImageCount = context.swapchainImageCount;
-			//init_info.CheckVkResultFn = [](VkResult err) { if (err != VK_SUCCESS) abort(); };
-
-			//ImGui_ImplVulkan_Init(&init_info, renderPass);
-
-			//VkCommandBuffer cmdBuf = beginSingleUseCommandBuffer(device, commandPool);
-			//ImGui_ImplVulkan_CreateFontsTexture(cmdBuf);
-			//endSingleUseCommandBuffer(device, commandPool, graphicsQueue, cmdBuf);
-			//ImGui_ImplVulkan_DestroyFontUploadObjects();
-			//throw std::runtime_error("ImGuiManager: Vulkan ImGui initialization not implemented yet");
-			printf("-----------init for vulkan-------------");
+			printf("-----------init for vulkan-------------\n");
 		}
 		else {
 			throw std::runtime_error("ImGuiManager: Unsupported render platform for ImGui initialization with GLFW");
@@ -112,24 +88,33 @@ int ImGuiManager::init(WindowConfig config)
 
 	std::unique_ptr<ImGuiMenuWidget> menu = std::make_unique<ImGuiMenuWidget>();
 	widgets.push_back(std::move(menu));
+	useDarkTheme();
+}
+
+void ImGuiManager::onUpdate()
+{
+
 }
 
 ImGuiManager::~ImGuiManager() = default;
 
-void ImGuiManager::start()
+void ImGuiManager::start(void* handle)
 {
 	if (width == -1 && height == -1) {
 		throw std::logic_error("Object not fully initialized. Did you call init() function before start?");
 	}
 	
 	// Start the ImGui frame
-	ImGui_ImplOpenGL3_NewFrame();
+	switch (m_config.renderPlatform) {
+		case RenderPlatform::OPENGL: ImGui_ImplOpenGL3_NewFrame(); break;
+		case RenderPlatform::VULKAN: ImGui_ImplVulkan_NewFrame(); break;
+	}
+
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
 	// Create a dock space
-#define DOCK_SPACE_TRANSPARENT
-#ifdef DOCK_SPACE_TRANSPARENT
+	//ImGui::DockSpaceOverViewport(0); // old way to setup docking space
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
 
@@ -137,10 +122,12 @@ void ImGuiManager::start()
 	ImGui::SetNextWindowSize(viewport->WorkSize);
 	ImGui::SetNextWindowViewport(viewport->ID);
 
-	ImGuiWindowFlags host_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+	ImGuiWindowFlags host_window_flags = 
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
 		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus |
-		ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground;
+		ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoDecoration | 
+		ImGuiWindowFlags_NoBackground;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -154,75 +141,109 @@ void ImGuiManager::start()
 	// Create dockspace node that lets ImGui windows dock
 	ImGui::DockSpace(ImGui::GetID("MainDockSpaceID"), ImVec2(0, 0), dockspace_flags);
 	ImGui::End();
-#else
-	ImGui::DockSpaceOverViewport(0);
 
-#endif
 }
 
-void ImGuiManager::debugWindow(ImTextureID texture)
+//void ImGuiManager::debugWindow(ImTextureID texture)
+//{
+//	glm::vec3 camPos = SceneManager::cameraController->getPosition();
+//	std::string x = "x: " + std::to_string(camPos.x).substr(0, 4);
+//	std::string y = "y: " + std::to_string(camPos.y).substr(0, 4);
+//	std::string z = "z: " + std::to_string(camPos.z).substr(0, 4);
+//
+//	if (ImGui::Begin("Debug Window"))
+//	{
+//		//std::string countVertices = "Vertices: " + std::to_string(SceneManager::getNumVertices() * 3);
+//		//ImGui::Text(countVertices.c_str());
+//		//countVertices = "Triangles: " + std::to_string(SceneManager::getNumVertices());
+//		ImGui::SameLine();
+//		//ImGui::Text(countVertices.c_str());
+//		ImGui::Text("Camera positon");
+//		ImGui::SameLine();
+//		ImGui::Text(x.c_str());
+//		ImGui::SameLine();
+//		ImGui::Text(y.c_str());
+//		ImGui::SameLine();
+//		ImGui::Text(z.c_str());
+//		// Using a Child allow to fill all the space of the window.
+//		// It also alows customization
+//		ImGui::BeginChild("Debug shadow window");
+//		// Get the size of the child (i.e. the whole draw size of the windows).
+//		ImVec2 wsize = ImGui::GetWindowSize();
+//		ImGui::Image(texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
+//		ImGui::EndChild();
+//	}
+//	ImGui::End();
+//}
+
+//void ImGuiManager::applicationWindow()
+//{
+//	//start group
+//	ImGui::SetCursorPos(ImVec2(10.0f, 10.0f));
+//	ImGui::BeginGroup();
+//	ImGui::Button("A");
+//	ImGui::SameLine();
+//	ImGui::Button("B");
+//	ImGui::SameLine();
+//	ImGui::Button("C");
+//	ImGui::EndGroup();
+//
+//	ImGuiIO& io = ImGui::GetIO();
+//
+//	//center group
+//	ImVec4 buttonActiveColor = ImVec4{ 0.0f, (float)140 / 255, (float)184 / 255, 0.8 };
+//	ImVec2 buttonSize = ImVec2(36.0f, 36.0f);
+//	ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonActiveColor);
+//	ImGui::SetCursorPos(ImVec2(ImGui::GetWindowContentRegionMax().x / 2, 10.0f));
+//	ImGui::BeginGroup();
+//	ImGui::Button(ICON_FA_PAUSE, buttonSize);
+//	ImGui::SameLine();
+//	ImGui::Button(ICON_FA_PLAY, buttonSize);
+//	ImGui::SameLine();
+//	ImGui::Button(ICON_FA_STOP, buttonSize);
+//	ImGui::EndGroup();
+//	ImGui::PopStyleColor();
+//}
+
+void ImGuiManager::render(void* handle)
 {
-	glm::vec3 camPos = SceneManager::cameraController->getPosition();
-	std::string x = "x: " + std::to_string(camPos.x).substr(0, 4);
-	std::string y = "y: " + std::to_string(camPos.y).substr(0, 4);
-	std::string z = "z: " + std::to_string(camPos.z).substr(0, 4);
+	//ImGui_ImplVulkan_NewFrame();
+	//ImGui_ImplGlfw_NewFrame();
+	//ImGui::NewFrame();
 
-	if (ImGui::Begin("Debug Window"))
-	{
-		//std::string countVertices = "Vertices: " + std::to_string(SceneManager::getNumVertices() * 3);
-		//ImGui::Text(countVertices.c_str());
-		//countVertices = "Triangles: " + std::to_string(SceneManager::getNumVertices());
-		ImGui::SameLine();
-		//ImGui::Text(countVertices.c_str());
-		ImGui::Text("Camera positon");
-		ImGui::SameLine();
-		ImGui::Text(x.c_str());
-		ImGui::SameLine();
-		ImGui::Text(y.c_str());
-		ImGui::SameLine();
-		ImGui::Text(z.c_str());
-		// Using a Child allow to fill all the space of the window.
-		// It also alows customization
-		ImGui::BeginChild("Debug shadow window");
-		// Get the size of the child (i.e. the whole draw size of the windows).
-		ImVec2 wsize = ImGui::GetWindowSize();
-		ImGui::Image(texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-		ImGui::EndChild();
-	}
-	ImGui::End();
-}
+	//// --- Dockspace setup ---
+	//ImGuiViewport* viewport = ImGui::GetMainViewport();
+	//ImGui::SetNextWindowPos(viewport->WorkPos);
+	//ImGui::SetNextWindowSize(viewport->WorkSize);
+	//ImGui::SetNextWindowViewport(viewport->ID);
 
-void ImGuiManager::applicationWindow()
-{
-	//start group
-	ImGui::SetCursorPos(ImVec2(10.0f, 10.0f));
-	ImGui::BeginGroup();
-	ImGui::Button("A");
-	ImGui::SameLine();
-	ImGui::Button("B");
-	ImGui::SameLine();
-	ImGui::Button("C");
-	ImGui::EndGroup();
+	//ImGuiWindowFlags host_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+	//	ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+	//	ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus |
+	//	ImGuiWindowFlags_NoNavFocus;
 
-	ImGuiIO& io = ImGui::GetIO();
+	//ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	//ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	//ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+	//ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0)); // transparent
 
-	//center group
-	ImVec4 buttonActiveColor = ImVec4{ 0.0f, (float)140 / 255, (float)184 / 255, 0.8 };
-	ImVec2 buttonSize = ImVec2(36.0f, 36.0f);
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonActiveColor);
-	ImGui::SetCursorPos(ImVec2(ImGui::GetWindowContentRegionMax().x / 2, 10.0f));
-	ImGui::BeginGroup();
-	ImGui::Button(ICON_FA_PAUSE, buttonSize);
-	ImGui::SameLine();
-	ImGui::Button(ICON_FA_PLAY, buttonSize);
-	ImGui::SameLine();
-	ImGui::Button(ICON_FA_STOP, buttonSize);
-	ImGui::EndGroup();
-	ImGui::PopStyleColor();
-}
+	//ImGui::Begin("MainDockSpace", nullptr, host_window_flags);
+	//ImGui::PopStyleColor();
+	//ImGui::PopStyleVar(3);
 
-void ImGuiManager::render()
-{
+	//ImGuiID dockspace_id = ImGui::GetID("MainDockSpaceID");
+	//ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
+	//ImGui::End();
+	// --- End Dockspace setup ---
+
+	// Demo windows
+	//ImGui::ShowDemoWindow(&show_demo_window);
+
+	//ImGui::Begin("Demo");
+	//ImGui::Text("Hello Vulkan!");
+	//ImGui::End();
+
+
 	for (const auto& widget : widgets) {
 		widget->render();
 	}
@@ -230,16 +251,22 @@ void ImGuiManager::render()
 	leftSidebar.render();
 	rightSidebar.render();
 	console.render();
+
+	if (m_config.renderPlatform == RenderPlatform::OPENGL) {
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	}
+	else {
+		// Record ImGui commands (main viewport only)
+		ImGui::Render();
+		//ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+	}
 }
 
 //ImGui
-void ImGuiManager::end()
+void ImGuiManager::end(void* handle)
 {
-	ImGui::Render();
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
 		GLFWwindow* backup_current_context = glfwGetCurrentContext();
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
