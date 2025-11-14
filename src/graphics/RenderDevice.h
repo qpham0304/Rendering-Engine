@@ -40,6 +40,7 @@ public:
 	virtual void onUpdate() override = 0;
 	virtual void beginFrame() = 0;
 	virtual void endFrame() = 0;
+	virtual void render() = 0;
 
 	virtual void* getNativeInstance() = 0;
 	virtual void* getNativeDevice() = 0;

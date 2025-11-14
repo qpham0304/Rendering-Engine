@@ -16,6 +16,7 @@ public:
 	virtual void onUpdate();
 	virtual void beginFrame();
 	virtual void endFrame();
+	virtual void render() override;
 
 	virtual void* getNativeInstance() override { return nullptr; };
 	virtual void* getNativeDevice() override { return nullptr; };

@@ -27,6 +27,9 @@ protected:
 	virtual void _createWindowSurface(void* instance, void* surface) override;
 
 	//platform specific implementations
+	//Ideally want to have glu files each platform
+	//but no more than 3 graphics and 3 window api
+	//are supported so these are enough
 	int _initOpenGL();
 	void _onCloseOpenGL();
 	void _onUpdateOpenGL();

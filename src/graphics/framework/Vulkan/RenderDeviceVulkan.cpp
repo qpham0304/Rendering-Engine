@@ -3,7 +3,10 @@
 #include "../../src/Logging/Logger.h"
 
 RenderDeviceVulkan::RenderDeviceVulkan()
-	: RenderDevice("RenderDeviceVulkan")
+	: RenderDevice("RenderDeviceVulkan"),
+	swapchain(device),
+	VulkanFrameBuffer(),
+	pipeline(device)
 {
 
 }
@@ -36,6 +39,11 @@ void RenderDeviceVulkan::beginFrame()
 void RenderDeviceVulkan::endFrame()
 {
 	throw std::runtime_error("beginFrame not implemented");
+}
+
+void RenderDeviceVulkan::render()
+{
+
 }
 
 Logger& RenderDeviceVulkan::Log() const

@@ -21,22 +21,27 @@ int RenderDeviceOpenGL::init(WindowConfig config)
 
 int RenderDeviceOpenGL::onClose()
 {
-	throw std::runtime_error("beginFrame not implemented");
+	throw std::runtime_error("RenderDeviceOpenGL beginFrame not implemented");
 }
 
 void RenderDeviceOpenGL::onUpdate()
 {
-	throw std::runtime_error("beginFrame not implemented");
+	throw std::runtime_error("RenderDeviceOpenGL beginFrame not implemented");
 }
 
 void RenderDeviceOpenGL::beginFrame()
 {
-	throw std::runtime_error("beginFrame not implemented");
+	throw std::runtime_error("RenderDeviceOpenGL beginFrame not implemented");
 }
 
 void RenderDeviceOpenGL::endFrame()
 {
-	throw std::runtime_error("beginFrame not implemented");
+	throw std::runtime_error("RenderDeviceOpenGL beginFrame not implemented");
+}
+
+void RenderDeviceOpenGL::render()
+{
+	throw std::runtime_error("RenderDeviceOpenGL render not implemented");
 }
 
 Logger& RenderDeviceOpenGL::Log() const
