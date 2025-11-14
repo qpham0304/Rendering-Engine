@@ -26,6 +26,7 @@
 //TODO: remove once done
 #include "imgui.h"
 #include <imgui_impl_vulkan.h>
+#include "../../src/graphics/framework/Vulkan/RenderDeviceVulkan.h"	//TODO: remove conrete type access dependency
 
 
 class Demo
@@ -35,12 +36,13 @@ public:
 public:
 
 private:
+    bool isRunning = true;
     ServiceLocator serviceLocator;
     PlatformFactory platformFactory{ serviceLocator };
     std::unique_ptr<AppWindow> appWindow;
     std::unique_ptr<GuiManager> guiManager;
     std::unique_ptr<RenderDevice> renderDevice;
-    bool isRunning = true;
+    RenderDeviceVulkan* renderDeviceVulkan{ nullptr };  //TODO: should not be able to use concrete type object remove later
 
 public:
     Demo() = default;
@@ -111,32 +113,32 @@ private:
 
 
 
-    struct QueueFamilyIndices {
-        std::optional<uint32_t> graphicsFamily;
-        std::optional<uint32_t> presentFamily;
+    //struct QueueFamilyIndices {
+    //    std::optional<uint32_t> graphicsFamily;
+    //    std::optional<uint32_t> presentFamily;
 
-        bool isComplete() {
-            return graphicsFamily.has_value() && presentFamily.has_value();
-        }
-    };
+    //    bool isComplete() {
+    //        return graphicsFamily.has_value() && presentFamily.has_value();
+    //    }
+    //};
 
-    struct SwapChainSupportDetails {
-        VkSurfaceCapabilitiesKHR capabilities;
-        std::vector<VkSurfaceFormatKHR> formats;
-        std::vector<VkPresentModeKHR> presentModes;
-    };
+    //struct SwapChainSupportDetails {
+    //    VkSurfaceCapabilitiesKHR capabilities;
+    //    std::vector<VkSurfaceFormatKHR> formats;
+    //    std::vector<VkPresentModeKHR> presentModes;
+    //};
 
 
     GLFWwindow* windowHandle;
-    VkSurfaceKHR surface;
-    VkInstance instance;
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    //VkSurfaceKHR surface;
+    //VkInstance instance;
+    //VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
 
     VkDebugUtilsMessengerEXT debugMessenger;
 
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
+    //VkQueue graphicsQueue;
+    //VkQueue presentQueue;
 
     VkSwapchainKHR swapChain;
     std::vector<VkImage> swapChainImages;
@@ -184,16 +186,16 @@ private:
     void cleanup();
 
     //void initWindow();
-    void createInstance();
+    //void createInstance();
     void selectPhysicalDevice();
-    void createLogicalDevice();
-    void createSurface();
+    //void createLogicalDevice();
+    //void createSurface();
     void createRenderPass();
     void createGraphicsPipeline();
     void createSwapChain();
     void createImageViews();
     void createFramebuffers();
-    void setupDebugMessenger();
+    //void setupDebugMessenger();
     void createCommandPool();
     void createVertexBuffer();
     void createIndexBuffer();
@@ -210,10 +212,10 @@ private:
     void checkRequiredGlfwExtensions();
     bool checkValidationLayerSupport();
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-    bool isDeviceSuitable(VkPhysicalDevice device);
+    //bool isDeviceSuitable(VkPhysicalDevice device);
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+    //SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+    //QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
@@ -234,17 +236,6 @@ private:
     );
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        void* pUserData) {
-
-        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
-        return VK_FALSE;
-    }
 
     VkDescriptorPool guiDescriptorPool;
 

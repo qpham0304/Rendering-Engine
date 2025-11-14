@@ -44,22 +44,22 @@ static std::vector<char> readFile(const std::string& filename) {
 	return buffer;
 }
 
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-	}
-	else {
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-}
-
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		func(instance, debugMessenger, pAllocator);
-	}
-}
+//VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+//	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+//	if (func != nullptr) {
+//		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+//	}
+//	else {
+//		return VK_ERROR_EXTENSION_NOT_PRESENT;
+//	}
+//}
+//
+//void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+//	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+//	if (func != nullptr) {
+//		func(instance, debugMessenger, pAllocator);
+//	}
+//}
 
 void Demo::run() {
 	//demoInstance = this;
@@ -76,6 +76,8 @@ void Demo::run() {
 	appWindow = platformFactory.createWindow(windowConfig.windowPlatform);
 	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
 	renderDevice = platformFactory.createRenderDevice(windowConfig.renderPlatform);
+	renderDeviceVulkan = static_cast<RenderDeviceVulkan*>(renderDevice.get());
+
 
 	appWindow->init(windowConfig);
 	windowHandle = static_cast<GLFWwindow*>(AppWindow::getWindowHandle());
@@ -114,7 +116,6 @@ void Demo::run() {
 	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
 	pushConstantData.data = 0.1f;
 
-	//initWindow();
 	initVulkan();
 
 
@@ -131,26 +132,52 @@ void Demo::run() {
 
 
 void Demo::initVulkan() {
-	createInstance();
-	setupDebugMessenger();
-	createSurface();
-	selectPhysicalDevice();
-	createLogicalDevice();
+	//createInstance();
+	renderDeviceVulkan->device.createInstance();
+
+	//setupDebugMessenger();
+	renderDeviceVulkan->device.setupDebugMessenger();
+
+	//createSurface();
+	renderDeviceVulkan->device.createSurface();
+
+	//selectPhysicalDevice();
+	renderDeviceVulkan->device.selectPhysicalDevice();
+
+	//createLogicalDevice();
+	renderDeviceVulkan->device.createLogicalDevice();
+	device = renderDeviceVulkan->device.device;
+
 	createSwapChain();
+
 	createImageViews();
+
 	createRenderPass();
+
 	createDescriptorSetLayout();
+
 	createGraphicsPipeline();
+
 	createFramebuffers();
+
 	createCommandPool();
+
 	createVertexBuffer();
+
 	createIndexBuffer();
+
 	createUniformBuffers();
+
 	createCombinedBuffer();
+
 	createCommandBuffers();
+
 	createSyncObject();
+
 	createDescriptorPool();
+
 	createDescriptorSets();
+
 }
 
 void Demo::mainLoop() {
@@ -216,130 +243,124 @@ void Demo::cleanup() {
 
 	vkDestroyCommandPool(device, commandPool, nullptr);
 
-	vkDestroyDevice(device, nullptr);
-
-	if (enableValidationLayers) {
-		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-	}
-	vkDestroySurfaceKHR(instance, surface, nullptr);
-	vkDestroyInstance(instance, nullptr);
+	renderDeviceVulkan->device.destroy();
 	appWindow->onClose();
 }
 
 
-void Demo::createInstance() {
-	if (enableValidationLayers && !checkValidationLayerSupport()) {
-		throw std::runtime_error("validation layers requested, but not available!");
-	}
-
-	VkApplicationInfo appInfo{};
-	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Hello Triangle";
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.pEngineName = "No Engine";
-	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
-
-	VkInstanceCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	createInfo.pApplicationInfo = &appInfo;
-
-
-	auto extensions = getRequiredExtensions();
-	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-	createInfo.ppEnabledExtensionNames = extensions.data();
-
-	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-	if (enableValidationLayers) {
-		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-		createInfo.ppEnabledLayerNames = validationLayers.data();
-
-		populateDebugMessengerCreateInfo(debugCreateInfo);
-		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
-	}
-	else {
-		createInfo.enabledLayerCount = 0;
-
-		createInfo.pNext = nullptr;
-	}
-
-	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create instance!");
-	}
-}
+//void Demo::createInstance() {
+//	if (enableValidationLayers && !checkValidationLayerSupport()) {
+//		throw std::runtime_error("validation layers requested, but not available!");
+//	}
+//
+//	VkApplicationInfo appInfo{};
+//	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+//	appInfo.pApplicationName = "Hello Triangle";
+//	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+//	appInfo.pEngineName = "No Engine";
+//	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+//	appInfo.apiVersion = VK_API_VERSION_1_0;
+//
+//	VkInstanceCreateInfo createInfo{};
+//	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+//	createInfo.pApplicationInfo = &appInfo;
+//
+//
+//	auto extensions = getRequiredExtensions();
+//	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+//	createInfo.ppEnabledExtensionNames = extensions.data();
+//
+//	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+//	if (enableValidationLayers) {
+//		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+//		createInfo.ppEnabledLayerNames = validationLayers.data();
+//
+//		populateDebugMessengerCreateInfo(debugCreateInfo);
+//		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
+//	}
+//	else {
+//		createInfo.enabledLayerCount = 0;
+//
+//		createInfo.pNext = nullptr;
+//	}
+//
+//	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+//		throw std::runtime_error("failed to create instance!");
+//	}
+//}
 
 void Demo::selectPhysicalDevice() {
 	uint32_t deviceCount = 0;
-	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+	vkEnumeratePhysicalDevices(renderDeviceVulkan->device.instance, &deviceCount, nullptr);
 
 	if (deviceCount == 0) {
 		throw std::runtime_error("failed to find GPUs with Vulkan support!");
 	}
 
 	std::vector<VkPhysicalDevice> devices(deviceCount);
-	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+	vkEnumeratePhysicalDevices(renderDeviceVulkan->device.instance, &deviceCount, devices.data());
 
 	for (const auto& device : devices) {
-		if (isDeviceSuitable(device)) {
-			physicalDevice = device;
+		if (renderDeviceVulkan->device.isDeviceSuitable(device)) {
+			renderDeviceVulkan->device.physicalDevice = device;
 			break;
 		}
 	}
 
-	if (physicalDevice == VK_NULL_HANDLE) {
+	if (renderDeviceVulkan->device.physicalDevice == VK_NULL_HANDLE) {
 		throw std::runtime_error("failed to find a suitable GPU!");
 	}
 }
 
-void Demo::createLogicalDevice() {
-	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-
-	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-	std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
-
-	float queuePriority = 1.0f;
-	for (uint32_t queueFamily : uniqueQueueFamilies) {
-		VkDeviceQueueCreateInfo queueCreateInfo{};
-		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueCreateInfo.queueFamilyIndex = queueFamily;
-		queueCreateInfo.queueCount = 1;
-		queueCreateInfo.pQueuePriorities = &queuePriority;
-		queueCreateInfos.push_back(queueCreateInfo);
-	}
-
-	VkPhysicalDeviceFeatures deviceFeatures{};
-
-	VkDeviceCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-	createInfo.pQueueCreateInfos = queueCreateInfos.data();
-
-	createInfo.pEnabledFeatures = &deviceFeatures;
-
-	createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-	createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-
-	if (enableValidationLayers) {
-		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-		createInfo.ppEnabledLayerNames = validationLayers.data();
-	}
-	else {
-		createInfo.enabledLayerCount = 0;
-	}
-
-	if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create logical device!");
-	}
-
-	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
-}
+//void Demo::createLogicalDevice() {
+//	VulkanDevice::QueueFamilyIndices indices = renderDeviceVulkan->device.findQueueFamilies(renderDeviceVulkan->device.physicalDevice);
+//
+//	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+//	std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+//
+//	float queuePriority = 1.0f;
+//	for (uint32_t queueFamily : uniqueQueueFamilies) {
+//		VkDeviceQueueCreateInfo queueCreateInfo{};
+//		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+//		queueCreateInfo.queueFamilyIndex = queueFamily;
+//		queueCreateInfo.queueCount = 1;
+//		queueCreateInfo.pQueuePriorities = &queuePriority;
+//		queueCreateInfos.push_back(queueCreateInfo);
+//	}
+//
+//	VkPhysicalDeviceFeatures deviceFeatures{};
+//
+//	VkDeviceCreateInfo createInfo{};
+//	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+//
+//	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+//	createInfo.pQueueCreateInfos = queueCreateInfos.data();
+//
+//	createInfo.pEnabledFeatures = &deviceFeatures;
+//
+//	createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+//	createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+//
+//	if (enableValidationLayers) {
+//		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+//		createInfo.ppEnabledLayerNames = validationLayers.data();
+//	}
+//	else {
+//		createInfo.enabledLayerCount = 0;
+//	}
+//
+//	if (vkCreateDevice(renderDeviceVulkan->device.physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
+//		throw std::runtime_error("failed to create logical device!");
+//	}
+//
+//	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+//	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+//}
 
 //TODO: app does not know about glfw, abstract into an appwindow function
-void Demo::createSurface() {
-	AppWindow::createWindowSurface(static_cast<void*>(instance), static_cast<void*>(&surface));
-}
+//void Demo::createSurface() {
+//	AppWindow::createWindowSurface(static_cast<void*>(renderDeviceVulkan->device.instance), static_cast<void*>(&surface));
+//}
 
 void Demo::createGraphicsPipeline() {
 	std::string vertPath = "src/apps/vulkan-demo/shaders/default.vert.spv";
@@ -468,7 +489,7 @@ void Demo::createGraphicsPipeline() {
 
 
 void Demo::createCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+	VulkanDevice::QueueFamilyIndices queueFamilyIndices = renderDeviceVulkan->device.findQueueFamilies(renderDeviceVulkan->device.physicalDevice);
 
 	VkCommandPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -598,7 +619,7 @@ void Demo::createCommandBuffers() {
 }
 
 void Demo::createSwapChain() {
-	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+	VulkanDevice::SwapChainSupportDetails swapChainSupport = renderDeviceVulkan->device.querySwapChainSupport(renderDeviceVulkan->device.physicalDevice);
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
 	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -611,7 +632,7 @@ void Demo::createSwapChain() {
 
 	VkSwapchainCreateInfoKHR createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	createInfo.surface = surface;
+	createInfo.surface = renderDeviceVulkan->device.surface;
 
 	createInfo.minImageCount = imageCount;
 	createInfo.imageFormat = surfaceFormat.format;
@@ -620,7 +641,7 @@ void Demo::createSwapChain() {
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+	VulkanDevice::QueueFamilyIndices indices = renderDeviceVulkan->device.findQueueFamilies(renderDeviceVulkan->device.physicalDevice);
 	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
 	if (indices.graphicsFamily != indices.presentFamily) {
@@ -698,18 +719,18 @@ void Demo::createFramebuffers()
 	}
 }
 
-void Demo::setupDebugMessenger() {
-	if (!enableValidationLayers) {
-		return;
-	}
-
-	VkDebugUtilsMessengerCreateInfoEXT createInfo{};
-	populateDebugMessengerCreateInfo(createInfo);
-
-	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-		throw std::runtime_error("failed to set up debug messenger!");
-	}
-}
+//void Demo::setupDebugMessenger() {
+//	if (!enableValidationLayers) {
+//		return;
+//	}
+//
+//	VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+//	populateDebugMessengerCreateInfo(createInfo);
+//
+//	if (CreateDebugUtilsMessengerEXT(renderDeviceVulkan->device.instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
+//		throw std::runtime_error("failed to set up debug messenger!");
+//	}
+//}
 
 void Demo::createSyncObject() {
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -968,73 +989,73 @@ bool Demo::checkDeviceExtensionSupport(VkPhysicalDevice device) {
 	return requiredExtensions.empty();
 }
 
-Demo::SwapChainSupportDetails Demo::querySwapChainSupport(VkPhysicalDevice device) {
-	SwapChainSupportDetails details;
+//Demo::SwapChainSupportDetails Demo::querySwapChainSupport(VkPhysicalDevice device) {
+//	SwapChainSupportDetails details;
+//
+//	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, renderDeviceVulkan->device.surface, &details.capabilities);
+//
+//	uint32_t formatCount;
+//	vkGetPhysicalDeviceSurfaceFormatsKHR(device, renderDeviceVulkan->device.surface, &formatCount, nullptr);
+//
+//	if (formatCount != 0) {
+//		details.formats.resize(formatCount);
+//		vkGetPhysicalDeviceSurfaceFormatsKHR(device, renderDeviceVulkan->device.surface, &formatCount, details.formats.data());
+//	}
+//
+//	uint32_t presentModeCount;
+//	vkGetPhysicalDeviceSurfacePresentModesKHR(device, renderDeviceVulkan->device.surface, &presentModeCount, nullptr);
+//
+//	if (presentModeCount != 0) {
+//		details.presentModes.resize(presentModeCount);
+//		vkGetPhysicalDeviceSurfacePresentModesKHR(device, renderDeviceVulkan->device.surface, &presentModeCount, details.presentModes.data());
+//	}
+//
+//	return details;
+//}
 
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+//bool Demo::isDeviceSuitable(VkPhysicalDevice device) {
+//	QueueFamilyIndices indices = findQueueFamilies(device);
+//
+//	bool extensionsSupported = checkDeviceExtensionSupport(device);
+//	bool swapChainAdequate = false;
+//	if (extensionsSupported) {
+//		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+//		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+//	}
+//	return indices.isComplete() && extensionsSupported && swapChainAdequate;
+//}
 
-	uint32_t formatCount;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
-
-	if (formatCount != 0) {
-		details.formats.resize(formatCount);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
-	}
-
-	uint32_t presentModeCount;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
-
-	if (presentModeCount != 0) {
-		details.presentModes.resize(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
-	}
-
-	return details;
-}
-
-bool Demo::isDeviceSuitable(VkPhysicalDevice device) {
-	QueueFamilyIndices indices = findQueueFamilies(device);
-
-	bool extensionsSupported = checkDeviceExtensionSupport(device);
-	bool swapChainAdequate = false;
-	if (extensionsSupported) {
-		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-	}
-	return indices.isComplete() && extensionsSupported && swapChainAdequate;
-}
-
-Demo::QueueFamilyIndices Demo::findQueueFamilies(VkPhysicalDevice device) {
-	QueueFamilyIndices indices;
-
-	uint32_t queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-	int i = 0;
-	for (const auto& queueFamily : queueFamilies) {
-		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			indices.graphicsFamily = i;
-		}
-
-		VkBool32 presentSupport = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
-		if (presentSupport) {
-			indices.presentFamily = i;
-		}
-
-		if (indices.isComplete()) {
-			break;
-		}
-
-		i++;
-	}
-
-	return indices;
-}
+//Demo::QueueFamilyIndices Demo::findQueueFamilies(VkPhysicalDevice device) {
+//	QueueFamilyIndices indices;
+//
+//	uint32_t queueFamilyCount = 0;
+//	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+//
+//	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+//	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+//
+//	int i = 0;
+//	for (const auto& queueFamily : queueFamilies) {
+//		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+//			indices.graphicsFamily = i;
+//		}
+//
+//		VkBool32 presentSupport = false;
+//		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, renderDeviceVulkan->device.surface, &presentSupport);
+//
+//		if (presentSupport) {
+//			indices.presentFamily = i;
+//		}
+//
+//		if (indices.isComplete()) {
+//			break;
+//		}
+//
+//		i++;
+//	}
+//
+//	return indices;
+//}
 
 VkSurfaceFormatKHR Demo::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
@@ -1224,7 +1245,7 @@ void Demo::drawFrame()
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+	if (vkQueueSubmit(renderDeviceVulkan->device.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
 		throw std::runtime_error("failed to submit draw command buffer!");
 	}
 
@@ -1238,7 +1259,7 @@ void Demo::drawFrame()
 	presentInfo.pSwapchains = swapChains;
 	presentInfo.pImageIndices = &imageIndex;
 
-	result = vkQueuePresentKHR(presentQueue, &presentInfo);
+	result = vkQueuePresentKHR(renderDeviceVulkan->device.presentQueue, &presentInfo);
 
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
@@ -1287,7 +1308,7 @@ void Demo::cleanupSwapChain() {
 
 uint32_t Demo::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+	vkGetPhysicalDeviceMemoryProperties(renderDeviceVulkan->device.physicalDevice, &memProperties);
 
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
 		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
@@ -1359,8 +1380,8 @@ void Demo::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(graphicsQueue);
+	vkQueueSubmit(renderDeviceVulkan->device.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(renderDeviceVulkan->device.graphicsQueue);
 
 	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
@@ -1418,18 +1439,18 @@ void Demo::destroyGuiDescriptorPool()
 
 void Demo::initGuiContext()
 {
-	auto queueIndices = findQueueFamilies(physicalDevice);
+	auto queueIndices = renderDeviceVulkan->device.findQueueFamilies(renderDeviceVulkan->device.physicalDevice);
 	if (!queueIndices.graphicsFamily.has_value()) {
 		throw std::runtime_error("Graphics queue family not found");
 	}
 
 	ImGui_ImplVulkan_InitInfo init_info = {};
 	init_info.ApiVersion = VK_API_VERSION_1_4;	// VkApplicationInfo::apiVersion
-	init_info.Instance = instance;
-	init_info.PhysicalDevice = physicalDevice;
+	init_info.Instance = renderDeviceVulkan->device.instance;
+	init_info.PhysicalDevice = renderDeviceVulkan->device.physicalDevice;
 	init_info.Device = device;
 	init_info.QueueFamily = queueIndices.graphicsFamily.value();
-	init_info.Queue = graphicsQueue;
+	init_info.Queue = renderDeviceVulkan->device.graphicsQueue;
 	init_info.PipelineCache = VK_NULL_HANDLE;
 	init_info.DescriptorPool = guiDescriptorPool;
 	init_info.MinImageCount = Demo::MAX_FRAMES_IN_FLIGHT;

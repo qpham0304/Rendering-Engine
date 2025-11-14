@@ -3,11 +3,11 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 
-struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> presentModes;
-};
+//struct SwapChainSupportDetails {
+//    VkSurfaceCapabilitiesKHR capabilities;
+//    std::vector<VkSurfaceFormatKHR> formats;
+//    std::vector<VkPresentModeKHR> presentModes;
+//};
 
 class VulkanSwapChain
 {
@@ -28,7 +28,7 @@ private:
     VulkanSwapChain& operator=(const VulkanSwapChain&& other) = delete;
 
     void createSwapChain();
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+    //SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 
 private:
     std::vector<VkSemaphore> imageAvailableSemaphores;
