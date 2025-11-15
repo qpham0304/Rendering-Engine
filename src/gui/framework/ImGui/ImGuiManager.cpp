@@ -144,66 +144,66 @@ void ImGuiManager::start(void* handle)
 
 }
 
-//void ImGuiManager::debugWindow(ImTextureID texture)
-//{
-//	glm::vec3 camPos = SceneManager::cameraController->getPosition();
-//	std::string x = "x: " + std::to_string(camPos.x).substr(0, 4);
-//	std::string y = "y: " + std::to_string(camPos.y).substr(0, 4);
-//	std::string z = "z: " + std::to_string(camPos.z).substr(0, 4);
-//
-//	if (ImGui::Begin("Debug Window"))
-//	{
-//		//std::string countVertices = "Vertices: " + std::to_string(SceneManager::getNumVertices() * 3);
-//		//ImGui::Text(countVertices.c_str());
-//		//countVertices = "Triangles: " + std::to_string(SceneManager::getNumVertices());
-//		ImGui::SameLine();
-//		//ImGui::Text(countVertices.c_str());
-//		ImGui::Text("Camera positon");
-//		ImGui::SameLine();
-//		ImGui::Text(x.c_str());
-//		ImGui::SameLine();
-//		ImGui::Text(y.c_str());
-//		ImGui::SameLine();
-//		ImGui::Text(z.c_str());
-//		// Using a Child allow to fill all the space of the window.
-//		// It also alows customization
-//		ImGui::BeginChild("Debug shadow window");
-//		// Get the size of the child (i.e. the whole draw size of the windows).
-//		ImVec2 wsize = ImGui::GetWindowSize();
-//		ImGui::Image(texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-//		ImGui::EndChild();
-//	}
-//	ImGui::End();
-//}
+void ImGuiManager::debugWindow(ImTextureID texture)
+{
+	glm::vec3 camPos = SceneManager::cameraController->getPosition();
+	std::string x = "x: " + std::to_string(camPos.x).substr(0, 4);
+	std::string y = "y: " + std::to_string(camPos.y).substr(0, 4);
+	std::string z = "z: " + std::to_string(camPos.z).substr(0, 4);
 
-//void ImGuiManager::applicationWindow()
-//{
-//	//start group
-//	ImGui::SetCursorPos(ImVec2(10.0f, 10.0f));
-//	ImGui::BeginGroup();
-//	ImGui::Button("A");
-//	ImGui::SameLine();
-//	ImGui::Button("B");
-//	ImGui::SameLine();
-//	ImGui::Button("C");
-//	ImGui::EndGroup();
-//
-//	ImGuiIO& io = ImGui::GetIO();
-//
-//	//center group
-//	ImVec4 buttonActiveColor = ImVec4{ 0.0f, (float)140 / 255, (float)184 / 255, 0.8 };
-//	ImVec2 buttonSize = ImVec2(36.0f, 36.0f);
-//	ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonActiveColor);
-//	ImGui::SetCursorPos(ImVec2(ImGui::GetWindowContentRegionMax().x / 2, 10.0f));
-//	ImGui::BeginGroup();
-//	ImGui::Button(ICON_FA_PAUSE, buttonSize);
-//	ImGui::SameLine();
-//	ImGui::Button(ICON_FA_PLAY, buttonSize);
-//	ImGui::SameLine();
-//	ImGui::Button(ICON_FA_STOP, buttonSize);
-//	ImGui::EndGroup();
-//	ImGui::PopStyleColor();
-//}
+	if (ImGui::Begin("Debug Window"))
+	{
+		//std::string countVertices = "Vertices: " + std::to_string(SceneManager::getNumVertices() * 3);
+		//ImGui::Text(countVertices.c_str());
+		//countVertices = "Triangles: " + std::to_string(SceneManager::getNumVertices());
+		ImGui::SameLine();
+		//ImGui::Text(countVertices.c_str());
+		ImGui::Text("Camera positon");
+		ImGui::SameLine();
+		ImGui::Text(x.c_str());
+		ImGui::SameLine();
+		ImGui::Text(y.c_str());
+		ImGui::SameLine();
+		ImGui::Text(z.c_str());
+		// Using a Child allow to fill all the space of the window.
+		// It also alows customization
+		ImGui::BeginChild("Debug shadow window");
+		// Get the size of the child (i.e. the whole draw size of the windows).
+		ImVec2 wsize = ImGui::GetWindowSize();
+		ImGui::Image(texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
+		ImGui::EndChild();
+	}
+	ImGui::End();
+}
+
+void ImGuiManager::applicationWindow()
+{
+	//start group
+	ImGui::SetCursorPos(ImVec2(10.0f, 10.0f));
+	ImGui::BeginGroup();
+	ImGui::Button("A");
+	ImGui::SameLine();
+	ImGui::Button("B");
+	ImGui::SameLine();
+	ImGui::Button("C");
+	ImGui::EndGroup();
+
+	ImGuiIO& io = ImGui::GetIO();
+
+	//center group
+	ImVec4 buttonActiveColor = ImVec4{ 0.0f, (float)140 / 255, (float)184 / 255, 0.8 };
+	ImVec2 buttonSize = ImVec2(36.0f, 36.0f);
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonActiveColor);
+	ImGui::SetCursorPos(ImVec2(ImGui::GetWindowContentRegionMax().x / 2, 10.0f));
+	ImGui::BeginGroup();
+	ImGui::Button(ICON_FA_PAUSE, buttonSize);
+	ImGui::SameLine();
+	ImGui::Button(ICON_FA_PLAY, buttonSize);
+	ImGui::SameLine();
+	ImGui::Button(ICON_FA_STOP, buttonSize);
+	ImGui::EndGroup();
+	ImGui::PopStyleColor();
+}
 
 void ImGuiManager::render(void* handle)
 {
@@ -251,15 +251,20 @@ void ImGuiManager::render(void* handle)
 	leftSidebar.render();
 	rightSidebar.render();
 	console.render();
+	//debugWindow();
+	//applicationWindow();
 
-	if (m_config.renderPlatform == RenderPlatform::OPENGL) {
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	}
-	else {
-		// Record ImGui commands (main viewport only)
-		ImGui::Render();
-		//ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+	ImGui::Render();
+	switch (m_config.renderPlatform) {
+		case RenderPlatform::OPENGL:
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			break;
+		case RenderPlatform::VULKAN:
+			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), static_cast<VkCommandBuffer>(handle));
+			break;
+		default:
+			assert(false && "Unknown render platform");
+			break;
 	}
 }
 
@@ -267,20 +272,49 @@ void ImGuiManager::render(void* handle)
 void ImGuiManager::end(void* handle)
 {
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-		GLFWwindow* backup_current_context = glfwGetCurrentContext();
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
-		glfwMakeContextCurrent(backup_current_context);
+
+		switch (m_config.windowPlatform) {
+			case WindowPlatform::GLFW: {
+				GLFWwindow* currentContext = static_cast<GLFWwindow*>(AppWindow::getWindowHandle());
+				glfwMakeContextCurrent(currentContext);
+				break;
+			}
+			default:
+				assert(false && "Unknown render platform");
+				break;
+		}
 	}
+
+
 }
 
 int ImGuiManager::onClose()
 {
-	if (m_config.renderPlatform == RenderPlatform::OPENGL) {
-		ImGui_ImplOpenGL3_Shutdown();
-		ImGui_ImplGlfw_Shutdown();
-		ImGui::DestroyContext();
+	switch (m_config.renderPlatform) {
+		case RenderPlatform::OPENGL:
+			ImGui_ImplOpenGL3_Shutdown();
+			break;
+		case RenderPlatform::VULKAN:
+			ImGui_ImplVulkan_Shutdown();
+			break;
+		default:
+			assert(false && "Unknown render platform");
+			break;
 	}
+
+	switch (m_config.windowPlatform) {
+		case WindowPlatform::GLFW:
+			ImGui_ImplGlfw_Shutdown();
+			break;
+		default:
+			assert(false && "Unknown window platform");
+			break;
+	}
+	ImGui::DestroyContext();
+
+
 	return 0;
 }
 

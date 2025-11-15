@@ -20,7 +20,7 @@ void ServiceLocator::listServices()
 {
 	Logger& logger = Get<Logger>("Engine_LoggerPSD");
 	for (const auto& [name, service] : services) {
-		logger.info("Service: [{}, Adress: {}]", name, service);
+		logger.info("Service: [{}, Address: {}]", name, service);
 	}
 }
 

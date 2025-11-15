@@ -41,6 +41,9 @@ public:
 	void guizmoRotate() override;
 	void guizmoScale() override;
 
+	void debugWindow(ImTextureID texture);
+	void applicationWindow();
+
 
 	// TODO: add closable tab, ability to on/off open close tab
 	// then reopen them in navigation bar;

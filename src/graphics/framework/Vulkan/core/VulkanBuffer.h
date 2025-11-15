@@ -35,17 +35,20 @@ public:
         VkDeviceMemory& bufferMemory
     );
 
+    void createVertexBuffer(std::vector<VulkanDevice::Vertex> vertices, VkCommandPool commandPool);
+    void createIndexBuffer(std::vector<uint16_t> indices, VkCommandPool commandPool);
+    void createCombinedBuffer(std::vector<VulkanDevice::Vertex> vertices, std::vector<uint16_t> indices, VkCommandPool commandPool);
+    void createUniformBuffers();
+    void updateUniformBuffer(uint32_t currentImage, VulkanDevice::UniformBufferObject ubo);
+    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkCommandPool commandPool);
+
+
 private:
     VulkanBuffer(const VulkanBuffer& other) = delete;
     VulkanBuffer& operator=(const VulkanBuffer& other) = delete;
     VulkanBuffer(const VulkanBuffer&& other) = delete;
     VulkanBuffer& operator=(const VulkanBuffer&& other) = delete;
 
-    void createVertexBuffer(std::vector<VulkanDevice::Vertex> vertices, VkCommandPool commandPool);
-    void createIndexBuffer(std::vector<uint16_t> indices, VkCommandPool commandPool);
-    void createCombinedBuffer(std::vector<VulkanDevice::Vertex> vertices, std::vector<uint16_t> indices, VkCommandPool commandPool);
-    void createUniformBuffers();
-    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkCommandPool commandPool);
 
 private:
     VulkanDevice& device;

@@ -2,6 +2,7 @@
 #include "stdexcept"
 #include "../RenderDeviceVulkan.h"
 #include "VulkanSwapChain.h"
+#include <chrono>
 
 VulkanBuffer::VulkanBuffer(VulkanDevice& deviceRef)
 	: device(deviceRef)
@@ -10,7 +11,6 @@ VulkanBuffer::VulkanBuffer(VulkanDevice& deviceRef)
 
 VulkanBuffer::~VulkanBuffer()
 {
-	throw std::runtime_error("VulkanBuffer ~VulkanBuffer(): Unimplemented error");
 
 }
 
@@ -34,8 +34,17 @@ uint32_t VulkanBuffer::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags
 
 void VulkanBuffer::destroy()
 {
-	throw std::runtime_error("VulkanBuffer destroy(): Unimplemented error");
+	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
+		vkDestroyBuffer(device.device, uniformBuffers[i], nullptr);
+		vkFreeMemory(device.device, uniformBuffersMemory[i], nullptr);
+	}
 
+	vkDestroyBuffer(device.device, vertexBuffer, nullptr);
+	vkFreeMemory(device.device, vertexBufferMemory, nullptr);
+	vkDestroyBuffer(device.device, indexBuffer, nullptr);
+	vkFreeMemory(device.device, indexBufferMemory, nullptr);
+	vkDestroyBuffer(device.device, combinedBuffer, nullptr);
+	vkFreeMemory(device.device, combinedBufferMemory, nullptr);
 }
 
 void VulkanBuffer::createBuffer(
@@ -195,6 +204,12 @@ void VulkanBuffer::createUniformBuffers()
 
 		vkMapMemory(device.device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
 	}
+}
+
+
+void VulkanBuffer::updateUniformBuffer(uint32_t currentImage, VulkanDevice::UniformBufferObject ubo)
+{
+	memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));	// update every frame
 }
 
 void VulkanBuffer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkCommandPool commandPool)

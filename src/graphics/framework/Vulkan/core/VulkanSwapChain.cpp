@@ -22,14 +22,20 @@ void VulkanSwapChain::create()
 
 void VulkanSwapChain::destroy()
 {
-	for (auto framebuffer : swapChainFramebuffers) {
-		vkDestroyFramebuffer(device.device, framebuffer, nullptr);
+	cleanupSwapChain();
+
+
+	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
+		vkDestroyFence(device.device, inFlightFences[i], nullptr);
+		vkDestroySemaphore(device.device, imageAvailableSemaphores[i], nullptr);
 	}
 
-	for (auto& imageView : swapChainImageViews) {
-		vkDestroyImageView(device.device, imageView, nullptr);
+	for (size_t i = 0; i < swapChainImages.size(); i++) {
+		vkDestroySemaphore(device.device, renderFinishedSemaphores[i], nullptr);
 	}
-	vkDestroySwapchainKHR(device.device, swapChain, nullptr);
+
+
+	vkDestroyRenderPass(device.device, renderPass, nullptr);
 }
 
 
@@ -107,6 +113,31 @@ void VulkanSwapChain::createImageViews()
 
 		if (vkCreateImageView(device.device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create image views!");
+		}
+	}
+}
+
+void VulkanSwapChain::createSyncObject() {
+	imageAvailableSemaphores.resize(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT);
+	renderFinishedSemaphores.resize(swapChainImages.size());
+	inFlightFences.resize(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT);
+
+	VkSemaphoreCreateInfo semaphoreInfo{};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	for (int i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
+		if (vkCreateSemaphore(device.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateFence(device.device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create synchronization objects for a frame!");
+		}
+	}
+
+	for (int i = 0; i < swapChainImages.size(); i++) {
+		if (vkCreateSemaphore(device.device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 	}
 }
@@ -190,7 +221,7 @@ void VulkanSwapChain::recreateSwapchain()
 	}
 
 	vkDeviceWaitIdle(device.device);
-	destroy();
+	cleanupSwapChain();
 	createSwapChain();
 	createImageViews();
 	createFramebuffers();
@@ -206,7 +237,8 @@ void VulkanSwapChain::recreateSwapchain()
 VkSurfaceFormatKHR VulkanSwapChain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
 	for (const auto& availableFormat : availableFormats) {
-		if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+		if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM &&
+			availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 			return availableFormat;
 		}
 	}
@@ -244,4 +276,16 @@ VkExtent2D VulkanSwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& cap
 
 		return actualExtent;
 	}
+}
+
+void VulkanSwapChain::cleanupSwapChain()
+{
+	for (auto framebuffer : swapChainFramebuffers) {
+		vkDestroyFramebuffer(device.device, framebuffer, nullptr);
+	}
+
+	for (auto& imageView : swapChainImageViews) {
+		vkDestroyImageView(device.device, imageView, nullptr);
+	}
+	vkDestroySwapchainKHR(device.device, swapChain, nullptr);
 }

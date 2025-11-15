@@ -1,9 +1,7 @@
 #pragma once
 
 #include "../../src/graphics/RenderDevice.h"
-
 #include <memory>
-
 #include "core/VulkanDevice.h"
 #include "core/VulkanSwapChain.h"
 #include "core/VulkanFrameBuffer.h"
@@ -11,11 +9,9 @@
 #include "core/VulkanBuffer.h"
 #include "core/VulkanTexture.h"
 #include "core/VulkanShader.h"
+#include "core/VulkanCommandPool.h"
 
 class Logger;
-
-
-
 
 class RenderDeviceVulkan : public RenderDevice
 {
@@ -23,11 +19,20 @@ public:
 	//TODO: for quick setup, these should be hidden once done
 	VulkanDevice device;
 	VulkanSwapChain swapchain;
-	VulkanFrameBuffer VulkanFrameBuffer;
 	VulkanPipeline pipeline;
-	//VulkanBuffer VulkanBuffer;
+	VulkanBuffer vulkanBuffer;
+	VulkanCommandPool vulkanCommandPool;
 	//VulkanTexture VulkanTexture;
 	//VulkanShader VulkanShader;
+	//VulkanFrameBuffer VulkanFrameBuffer;
+
+	uint32_t currentFrame = 0;
+	uint32_t imageIndex = 0;
+
+
+	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorPool descriptorPool;
+	std::vector<VkDescriptorSet> descriptorSets;
 
 	struct PushConstantData {
 		alignas(16) glm::vec3 color;
@@ -37,18 +42,16 @@ public:
 	};
 
 
-
-
 public:
 	RenderDeviceVulkan();
-	~RenderDeviceVulkan() override = default;
+	~RenderDeviceVulkan();
 
 	virtual int init(WindowConfig platform) override;
 	virtual int onClose() override;
 	virtual void onUpdate() override;
 	virtual void beginFrame() override;
-	virtual void endFrame() override;
 	virtual void render() override;
+	virtual void endFrame() override;
 
 	virtual void* getNativeInstance() override { return nullptr; };
 	virtual void* getNativeDevice() override { return nullptr; };
@@ -58,12 +61,18 @@ public:
 	virtual DeviceInfo getDeviceInfo(int id) override { return DeviceInfo(); };
 	virtual PipelineInfo getPipelineInfo(int id) override { return PipelineInfo(); };
 
+	void createDescriptorSetLayout();
+	void createDescriptorPool();
+	void createDescriptorSets(const std::vector<VkBuffer>& uniformBuffers);
+
+	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
 protected:
 	Logger& Log() const;
 
 private:
 	Logger* m_logger;
 
-
+	void _cleanup();
 };
 

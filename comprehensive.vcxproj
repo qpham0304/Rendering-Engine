@@ -192,6 +192,7 @@
   <ItemGroup>
     <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.cpp" />
     <ClCompile Include="src\graphics\framework\Vulkan\RenderDeviceVulkan.cpp" />
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanBuffer.cpp" />
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanDevice.cpp" />
@@ -286,11 +287,11 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\VAO.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\VBO.cpp" />
     <ClCompile Include="src\core\systems\System.cpp" />
-    <ClCompile Include="src\apps\vulkan-demo\VulkanSetupDemo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Libraries\include\imgui\backends\imgui_impl_vulkan.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.h" />
     <ClInclude Include="src\graphics\framework\Vulkan\RenderDeviceVulkan.h" />
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanBuffer.h" />
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanDevice.h" />
@@ -405,7 +406,6 @@
     <ClInclude Include="src\gui\widgets\RightSidebarWidget.h" />
     <ClInclude Include="src\gui\widgets\SubViewWidget.h" />
     <ClInclude Include="src\gui\widgets\Widget.h" />
-    <ClInclude Include="src\apps\vulkan-demo\VulkanSetupDemo.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="comprehensive.rc" />

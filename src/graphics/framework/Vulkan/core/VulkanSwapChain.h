@@ -21,7 +21,7 @@ public:
     std::vector<VkImageView> swapChainImageViews;
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkRenderPass renderPass;
-
+    bool framebufferResized = false;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -36,6 +36,7 @@ public:
     void destroy();
 
     //SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+    void createSyncObject();
     void createFramebuffers();
     void recreateSwapchain();
 
@@ -51,7 +52,7 @@ private:
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-
+    void cleanupSwapChain();
 private:
     VulkanDevice& device;
 

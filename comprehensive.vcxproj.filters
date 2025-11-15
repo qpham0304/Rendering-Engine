@@ -264,9 +264,6 @@
     <ClCompile Include="src\apps\vulkan-demo\FollowDemo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\apps\vulkan-demo\VulkanSetupDemo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_vulkan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -316,6 +313,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\renderers\Buffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -611,9 +611,6 @@
     <ClInclude Include="src\apps\vulkan-demo\FollowDemo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\apps\vulkan-demo\VulkanSetupDemo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Libraries\include\imgui\backends\imgui_impl_vulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -669,6 +666,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\renderers\Buffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,4 +1,5 @@
-#include "../vulkan-demo/VulkanSetupDemo.h"
+#include "../vulkan-demo/FollowDemo.h"
+#include "../vulkan-demo/example_glfw_vulkan.h"
 #include "../../core/Application.h"
 #include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
 #include "../../src/apps/particle-demo/particleDemo.h"
@@ -29,7 +30,18 @@ int main()
 		app.run();
 		app.end();
 #else
-		VulkanSetupDemo::run();
+
+//#define RUN_GUI
+#ifdef RUN_GUI
+		EXAMPLE_GLFW_VULKAN example;
+		example.run();
+
+#else
+		Demo app;
+		app.run();
+
+#endif
+
 #endif
 	}
 	catch (const std::runtime_error& e) {
