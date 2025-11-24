@@ -1,5 +1,8 @@
 #include "VulkanCommandPool.h"
 #include "VulkanSwapChain.h"
+#include "../../src/logging/Logger.h"
+#include "../../src/core/features/ServiceLocator.h"
+#include "../RenderDeviceVulkan.h"
 
 VulkanCommandPool::VulkanCommandPool(VulkanDevice& deviceRef)
 	: device(deviceRef)
@@ -28,14 +31,50 @@ void VulkanCommandPool::destroy()
 		vkDestroyCommandPool(device.device, commandPool, nullptr);
 	}
 }
-void VulkanCommandPool::beginBuffer(size_t index, VkCommandBufferUsageFlags usageFlags)
+
+
+void VulkanCommandPool::beginBuffer(VkCommandBufferUsageFlags usageFlags)
 {
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = 0;					// Optional
+	beginInfo.pInheritanceInfo = nullptr;	// Optional
+
+	if (vkBeginCommandBuffer(currentBuffer(), &beginInfo) != VK_SUCCESS) {
+		throw std::runtime_error("failed to begin recording command buffer!");
+	}
 
 }
 
-void VulkanCommandPool::endBuffer(size_t index)
+void VulkanCommandPool::endBuffer()
 {
+	if (vkEndCommandBuffer(currentBuffer()) != VK_SUCCESS) {
+		throw std::runtime_error("failed to record command buffer!");
+	}
+}
 
+void VulkanCommandPool::draw(uint32_t verticesCount)
+{
+	vkCmdDraw(currentBuffer(), static_cast<uint32_t>(verticesCount), 1, 0, 0);
+}
+
+void VulkanCommandPool::drawIndexed(uint32_t indexCount)
+{
+	vkCmdDrawIndexed(currentBuffer(), static_cast<uint32_t>(indexCount), 1, 0, 0, 0);
+}
+
+void VulkanCommandPool::drawInstanced(uint32_t indexCount, uint32_t instanceCount)
+{
+	Logger& logger = ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+	logger.warn("Draw Instance is not supported yet");
+}
+
+VkCommandBuffer VulkanCommandPool::currentBuffer()
+{
+	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
+	RenderDeviceVulkan& renderDeviceVulkan = static_cast<RenderDeviceVulkan&>(device);
+
+	return commandBuffers[renderDeviceVulkan.getCurrentFrame()];
 }
 
 void VulkanCommandPool::createCommandPool() {
@@ -63,4 +102,38 @@ void VulkanCommandPool::createCommandBuffers() {
 	if (vkAllocateCommandBuffers(device.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate command buffers!");
 	}
+}
+
+VkCommandBuffer VulkanCommandPool::beginSingleTimeCommand()
+{
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = commandPool;
+	allocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	return commandBuffer;
+}
+
+void VulkanCommandPool::endSingleTimeCommand(VkCommandBuffer commandBuffer) {
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(device.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(device.graphicsQueue);
+
+	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }

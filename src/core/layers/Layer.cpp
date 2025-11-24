@@ -3,7 +3,7 @@
 #include "../../src/core/features/ServiceLocator.h"
 #include "../../src/logging/Logger.h"
 
-Layer::Layer(const std::string& name)
+Layer::Layer(const std::string& name = "Undefined")
 	:	m_LayerName(name),
 		m_Enabled(true),
 		m_Manager(nullptr)

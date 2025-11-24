@@ -32,6 +32,11 @@ VulkanDevice::VulkanDevice()
 
 }
 
+VulkanDevice::operator VkDevice() const noexcept
+{
+	return device;
+}
+
 VulkanDevice::~VulkanDevice()
 {
 
@@ -39,7 +44,11 @@ VulkanDevice::~VulkanDevice()
 
 void VulkanDevice::create()
 {
-
+	createInstance();
+	setupDebugMessenger();
+	createSurface();
+	selectPhysicalDevice();
+	createLogicalDevice();
 }
 
 void VulkanDevice::destroy()
@@ -152,6 +161,7 @@ void VulkanDevice::createLogicalDevice() {
 	}
 
 	VkPhysicalDeviceFeatures deviceFeatures{};
+	deviceFeatures.samplerAnisotropy = VK_TRUE;
 
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -189,10 +199,17 @@ bool VulkanDevice::isDeviceSuitable(VkPhysicalDevice device) {
 		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
 		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
 	}
-	return indices.isComplete() && extensionsSupported && swapChainAdequate;
+
+	VkPhysicalDeviceFeatures supportedFeatures;
+	vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+
+	return indices.isComplete() 
+		&& extensionsSupported 
+		&& swapChainAdequate 
+		&& supportedFeatures.samplerAnisotropy;
 }
 
-VulkanDevice::QueueFamilyIndices VulkanDevice::findQueueFamilies(VkPhysicalDevice device) {
+VulkanDevice::QueueFamilyIndices VulkanDevice::findQueueFamilies(VkPhysicalDevice device) const {
 	QueueFamilyIndices indices;
 
 	uint32_t queueFamilyCount = 0;

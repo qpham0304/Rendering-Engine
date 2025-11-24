@@ -17,12 +17,20 @@ public:
     void create();
     void destroy();
 
-    void beginBuffer(size_t index, VkCommandBufferUsageFlags usageFlags = 0);
-    void endBuffer(size_t index);
+    void beginBuffer(VkCommandBufferUsageFlags usageFlags = 0);
+    void endBuffer();
+
+    VkCommandBuffer beginSingleTimeCommand();
+    void endSingleTimeCommand(VkCommandBuffer commandBuffer);
+
+    void draw(uint32_t verticesCount);
+    void drawIndexed(uint32_t indexCount);
+    void drawInstanced(uint32_t indexCount, uint32_t instanceCount);
+    VkCommandBuffer currentBuffer();
 
 private:
     void createCommandPool();
     void createCommandBuffers();
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    //void recordCommandBuffer(uint32_t imageIndex);
 
 };

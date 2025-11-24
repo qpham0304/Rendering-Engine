@@ -30,19 +30,8 @@ public:
 	~Texture();
 
 	void Init(const char* path, const char* texType, bool flipUV);
-	void texUnit(Shader& shader, const char* uniform, unsigned int unit);
+	void TexUnit(Shader& shader, const char* uniform, unsigned int unit);
 	void Bind();
 	void Unbind();
 	void Delete();
-
-	static void BIND_ALBEDO();
-	static void BIND_NORMAL();
-	static void BIND_METALLIC();
-	static void BIND_ROUGHNESS();
-	static void BIND_AO();
-	static void BIND_IRRADIANCE();
-	static void BIND_PREFILTER();
-	static void BIND_BRDF_LUT_TEXTURE();
-	static void BIND_HEIGHT();
-	static void BIND_SHADOW();
 };

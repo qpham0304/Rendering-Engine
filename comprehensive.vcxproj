@@ -190,6 +190,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.cpp" />
+    <ClCompile Include="src\graphics\renderers\IndexBuffer.cpp" />
     <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.cpp" />
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.cpp" />
@@ -205,7 +207,7 @@
     <ClCompile Include="src\graphics\RenderDevice.cpp" />
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
     <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp" />
-    <ClCompile Include="src\apps\vulkan-demo\FollowDemo.cpp" />
+    <ClCompile Include="src\apps\vulkan-demo\VulkanApplication.cpp" />
     <ClCompile Include="src\core\features\PlatformFactory.cpp" />
     <ClCompile Include="src\core\features\ServiceLocator.cpp" />
     <ClCompile Include="src\core\layers\Layer.cpp" />
@@ -233,7 +235,6 @@
     <ClCompile Include="src\apps\sandbox\main.cpp" />
     <ClCompile Include="src\core\components\CubeMapComponent.cpp" />
     <ClCompile Include="src\core\components\CameraComponent.cpp" />
-    <ClCompile Include="src\core\components\MComponent.cpp" />
     <ClCompile Include="src\core\entities\Entity.cpp" />
     <ClCompile Include="src\window\Input.h" />
     <ClCompile Include="src\core\features\Profiler.cpp" />
@@ -282,13 +283,18 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\Mesh.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\Model.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\Shader.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\stb.cpp" />
+    <ClCompile Include="src\graphics\utils\stb.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\Texture.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\VAO.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\VBO.cpp" />
     <ClCompile Include="src\core\systems\System.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\renderpasses\VulkanRenderPass.cpp" />
+    <ClCompile Include="src\graphics\renderers\VertexBuffer.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.h" />
+    <ClInclude Include="src\graphics\renderers\IndexBuffer.h" />
     <ClInclude Include="Libraries\include\imgui\backends\imgui_impl_vulkan.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.h" />
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.h" />
@@ -305,7 +311,7 @@
     <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
     <ClInclude Include="src\apps\particle-demo\ParticleDemo.h" />
     <ClInclude Include="src\apps\vulkan-demo\example_glfw_vulkan.h" />
-    <ClInclude Include="src\apps\vulkan-demo\FollowDemo.h" />
+    <ClInclude Include="src\apps\vulkan-demo\VulkanApplication.h" />
     <ClInclude Include="src\core\features\Configs.h" />
     <ClInclude Include="src\core\features\PlatformFactory.h" />
     <ClInclude Include="src\core\features\ServiceLocator.h" />
@@ -406,6 +412,9 @@
     <ClInclude Include="src\gui\widgets\RightSidebarWidget.h" />
     <ClInclude Include="src\gui\widgets\SubViewWidget.h" />
     <ClInclude Include="src\gui\widgets\Widget.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\renderpasses\VulkanRenderPass.h" />
+    <ClInclude Include="src\graphics\renderers\VertexBuffer.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="comprehensive.rc" />

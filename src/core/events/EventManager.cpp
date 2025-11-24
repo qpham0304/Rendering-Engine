@@ -68,7 +68,7 @@ void EventManager::cleanUpThread()
 	}
 	if (!threads.empty() && counter == threads.size()) {
 		threads.clear();
-		Console::println("All threads cleaned up");
+		Console::println("All event threads are cleaned up");
 	}
 }
 
@@ -89,7 +89,7 @@ void EventManager::subscribe(const std::string& event, EventListener& listener) 
 }
 
 //TODO: use semaphore instead for running tasks instead of manual primitive
-//intead of joining threads per completed task, just keep them alive then clean all up on close
+//instead of joining threads per completed task, just keep them alive then clean all up on close
 //tldr: just use async instead
 void EventManager::onUpdate()
 {
@@ -114,4 +114,9 @@ void EventManager::onUpdate()
 	if (eventQueue.empty()) {
 		cleanUpThread();
 	}
+}
+
+void EventManager::onClose()
+{
+	cleanUpThread();
 }

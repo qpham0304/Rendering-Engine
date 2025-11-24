@@ -1,22 +1,23 @@
 #pragma once
 
 #include "../../../src/services/Service.h"
+#include <optional>
+#include <atomic>
 
 class RenderDevice : public Service
 {
 public:
+
 	struct CommandBufferHandle {
 		void* commandBuffer;
 	};
 
 	struct DeviceInfo {
-		uint32_t apiVersion;
-		uint32_t queueFamilyIndex;
-		void* queueHandle;
-		void* descriptorPool;
-		uint32_t descriptorPoolSize;
-		int minImageCount;
-		size_t imageCount;
+		std::optional<uint32_t> apiVersion; // Can be empty or not set
+		std::optional<uint32_t> queueFamilyIndex;
+		std::optional<void*> queueHandle;
+		std::optional<int> minImageCount;
+		std::optional<size_t> imageCount;
 	};
 
 	struct PipelineInfo {
@@ -41,22 +42,25 @@ public:
 	virtual void beginFrame() = 0;
 	virtual void endFrame() = 0;
 	virtual void render() = 0;
+	virtual void draw(uint32_t indicies = 0, uint32_t numInstances = 0) = 0;
 
 	virtual void* getNativeInstance() = 0;
 	virtual void* getNativeDevice() = 0;
 	virtual void* getPhysicalDevice() = 0;
 	virtual CommandBufferHandle* getCommandBuffer(int id) = 0;
 	virtual void* getNativeRenderPass(int id) = 0;
-	virtual DeviceInfo getDeviceInfo(int id) = 0;
-	virtual PipelineInfo getPipelineInfo(int id) = 0;
+	virtual DeviceInfo getDeviceInfo() const = 0;
+	virtual PipelineInfo getPipelineInfo() const = 0;
 
 
 protected:
 	RenderDevice(std::string name = "RenderDevice") : Service(name) {};
-	
+
+
+protected:
+	std::atomic<int> id{ 0 };
 
 private:
-
 
 };
 

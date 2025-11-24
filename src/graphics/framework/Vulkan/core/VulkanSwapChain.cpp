@@ -1,9 +1,10 @@
 #include "VulkanSwapChain.h"
 #include <GLFW/glfw3.h>
 #include "../../src/window/AppWindow.h"
+#include "../RenderDeviceVulkan.h"
 
-VulkanSwapChain::VulkanSwapChain(VulkanDevice& deviceRef)
-	: device(deviceRef)
+VulkanSwapChain::VulkanSwapChain(VulkanDevice& deviceRef, RenderDeviceVulkan& renderDeviceRef)
+	: device(deviceRef), renderDevice(renderDeviceRef)
 {
 
 }
@@ -18,6 +19,7 @@ void VulkanSwapChain::create()
 	createSwapChain();
 	createImageViews();
 	createRenderPass();
+	createSyncObject();
 }
 
 void VulkanSwapChain::destroy()
@@ -26,16 +28,16 @@ void VulkanSwapChain::destroy()
 
 
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
-		vkDestroyFence(device.device, inFlightFences[i], nullptr);
-		vkDestroySemaphore(device.device, imageAvailableSemaphores[i], nullptr);
+		vkDestroyFence(device, inFlightFences[i], nullptr);
+		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
 	}
 
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
-		vkDestroySemaphore(device.device, renderFinishedSemaphores[i], nullptr);
+		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
 	}
 
 
-	vkDestroyRenderPass(device.device, renderPass, nullptr);
+	vkDestroyRenderPass(device, renderPass, nullptr);
 }
 
 
@@ -79,13 +81,13 @@ void VulkanSwapChain::createSwapChain() {
 	createInfo.presentMode = presentMode;
 	createInfo.clipped = VK_TRUE;
 
-	if (vkCreateSwapchainKHR(device.device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
+	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create swap chain!");
 	}
 
-	vkGetSwapchainImagesKHR(device.device, swapChain, &imageCount, nullptr);
+	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
 	swapChainImages.resize(imageCount);
-	vkGetSwapchainImagesKHR(device.device, swapChain, &imageCount, swapChainImages.data());
+	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
 
 	swapChainImageFormat = surfaceFormat.format;
 	swapChainExtent = extent;
@@ -111,7 +113,7 @@ void VulkanSwapChain::createImageViews()
 		createInfo.subresourceRange.baseArrayLayer = 0;
 		createInfo.subresourceRange.layerCount = 1;
 
-		if (vkCreateImageView(device.device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
+		if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create image views!");
 		}
 	}
@@ -130,13 +132,13 @@ void VulkanSwapChain::createSyncObject() {
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	for (int i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
-		if (vkCreateSemaphore(device.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateFence(device.device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 	}
 
 	for (int i = 0; i < swapChainImages.size(); i++) {
-		if (vkCreateSemaphore(device.device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS) {
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 	}
@@ -147,20 +149,21 @@ void VulkanSwapChain::createFramebuffers()
 	swapChainFramebuffers.resize(swapChainImageViews.size());
 
 	for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-		VkImageView attachments[] = {
-			swapChainImageViews[i]
+		std::array<VkImageView, 2> attachments = {
+			swapChainImageViews[i],
+			renderDevice.depthImageView
 		};
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = renderPass;
-		framebufferInfo.attachmentCount = 1;
-		framebufferInfo.pAttachments = attachments;
+		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = swapChainExtent.width;
 		framebufferInfo.height = swapChainExtent.height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer(device.device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
+		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create framebuffer!");
 		}
 	}
@@ -182,29 +185,45 @@ void VulkanSwapChain::createRenderPass()
 	colorAttachmentRef.attachment = 0;
 	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentDescription depthAttachment{};
+	depthAttachment.format = renderDevice.findDepthFormat();
+	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthAttachmentRef{};
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
 	VkSubpassDescription subpass{};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttachmentRef;
+	subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
 	VkSubpassDependency dependency{};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.srcAccessMask = 0;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+	std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount = 1;
-	renderPassInfo.pAttachments = &colorAttachment;
+	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+	renderPassInfo.pAttachments = attachments.data();
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	if (vkCreateRenderPass(device.device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create render pass!");
 	}
 }
@@ -214,23 +233,24 @@ void VulkanSwapChain::recreateSwapchain()
 	int width = 0;
 	int height = 0;
 	GLFWwindow* windowHandle = static_cast<GLFWwindow*>(AppWindow::getWindowHandle());
-	glfwGetFramebufferSize(windowHandle, &width, &height);	//TODO: remove abstract to appwindow
+	getFrameBufferSize(width, height);	//TODO: remove abstract to appwindow
 	while (width == 0 || height == 0) {
-		glfwGetFramebufferSize(windowHandle, &width, &height);
+		getFrameBufferSize(width, height);
 		glfwWaitEvents();
 	}
 
-	vkDeviceWaitIdle(device.device);
 	cleanupSwapChain();
+
 	createSwapChain();
 	createImageViews();
+	renderDevice.createDepthResources();
 	createFramebuffers();
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		vkDestroySemaphore(device.device, imageAvailableSemaphores[i], nullptr);
+		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		vkCreateSemaphore(device.device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]);
+		vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]);
 	}
 }
 
@@ -264,7 +284,7 @@ VkExtent2D VulkanSwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& cap
 	}
 	else {
 		int width, height;
-		glfwGetFramebufferSize(static_cast<GLFWwindow*>(AppWindow::getWindowHandle()), &width, &height);	//TODO: remove abstract to appwindow
+		getFrameBufferSize(width, height);	//TODO: remove abstract to appwindow
 
 		VkExtent2D actualExtent = {
 			static_cast<uint32_t>(width),
@@ -280,12 +300,28 @@ VkExtent2D VulkanSwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& cap
 
 void VulkanSwapChain::cleanupSwapChain()
 {
+	vkDestroyImageView(device, renderDevice.depthImageView, nullptr);
+	vkDestroyImage(device, renderDevice.depthImage, nullptr);
+	vkFreeMemory(device, renderDevice.depthImageMemory, nullptr);
+
 	for (auto framebuffer : swapChainFramebuffers) {
-		vkDestroyFramebuffer(device.device, framebuffer, nullptr);
+		vkDestroyFramebuffer(device, framebuffer, nullptr);
 	}
 
 	for (auto& imageView : swapChainImageViews) {
-		vkDestroyImageView(device.device, imageView, nullptr);
+		vkDestroyImageView(device, imageView, nullptr);
 	}
-	vkDestroySwapchainKHR(device.device, swapChain, nullptr);
+	vkDestroySwapchainKHR(device, swapChain, nullptr);
+}
+
+void VulkanSwapChain::getFrameBufferSize(int& width, int& height)
+{
+	WindowConfig windowConfig = AppWindow::getWindowConfig();
+	switch (windowConfig.windowPlatform) {
+		case WindowPlatform::GLFW:
+			glfwGetFramebufferSize(static_cast<GLFWwindow*>(AppWindow::getWindowHandle()), &width, &height);	//TODO: remove abstract to appwindow
+		default:
+			throw std::runtime_error("swapchain: getFrameBufferSize: Undefined winow platform");
+	}
+
 }

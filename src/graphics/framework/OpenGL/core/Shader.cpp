@@ -33,14 +33,6 @@ Shader::Shader() : ID(0)
 	type = "";
 }
 
-//Shader::Shader(Shader&& other) noexcept
-//{
-//}
-//
-//Shader& Shader::operator=(Shader&& other) noexcept
-//{
-//}
-
 Shader::~Shader()
 {
 	Delete();
@@ -147,7 +139,6 @@ void Shader::compileErrors(unsigned int shader, const char* type)
 			glGetShaderInfoLog(shader, 1024, NULL, infoLog);
 			std::string msg = "SHADER_COMPILATION_ERROR for " + std::string(type) + ": " + infoLog;
 			throw std::runtime_error(msg.c_str());
-			//std::cout << "SHADER_COMPILATION_ERROR for:" << type << "\n" << infoLog << std::endl;
 		}
 	}
 	else
@@ -158,7 +149,6 @@ void Shader::compileErrors(unsigned int shader, const char* type)
 			glGetProgramInfoLog(shader, 1024, NULL, infoLog);
 			std::string msg = "SHADER_LINKING_ERROR for " + std::string(type) + ": " + infoLog;
 			throw std::runtime_error(msg.c_str());
-			//std::cout << "SHADER_LINKING_ERROR for:" << type << "\n" << infoLog << std::endl;
 		}
 	}
 #else
@@ -169,7 +159,7 @@ void Shader::compileErrors(unsigned int shader, const char* type)
 void Shader::reloadShader()
 {
 	try {
-		GLuint newID;
+		unsigned int newID;
 		if(!geomPath.empty())
 			newID = createShader(vertPath.c_str(), fragPath.c_str(), geomPath.c_str());
 		else
@@ -182,17 +172,17 @@ void Shader::reloadShader()
 	}
 }
 
-GLuint Shader::getUniformLocation(const std::string& name) const
+unsigned int Shader::getUniformLocation(const std::string& name) const
 {
 	if (cache.find(name) != cache.end())
 		return cache[name];
-	GLuint location = glGetUniformLocation(ID, name.c_str());
+	unsigned int location = glGetUniformLocation(ID, name.c_str());
 	cache[name] = location;
 	return location;
 
 }
 
-GLuint Shader::createShader(const char* vertexFile, const char* fragmentFile)
+unsigned int Shader::createShader(const char* vertexFile, const char* fragmentFile)
 {
 	//TODO properly validate format 
 	//if false, use a default shader or something to prevent crash maybe?
@@ -218,17 +208,17 @@ GLuint Shader::createShader(const char* vertexFile, const char* fragmentFile)
 	const char* vertexSource = vertexCode.c_str();
 	const char* fragmentSource = fragmentCode.c_str();
 
-	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertexShader, 1, &vertexSource, NULL);
 	glCompileShader(vertexShader);
 	compileErrors(vertexShader, "VERTEX");
 
-	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
 	glCompileShader(fragmentShader);
 	compileErrors(fragmentShader, "FRAGMENT");
 
-	GLuint id = glCreateProgram();
+	unsigned int id = glCreateProgram();
 	glAttachShader(id, vertexShader);
 	glAttachShader(id, fragmentShader);
 	glLinkProgram(id);
@@ -241,7 +231,7 @@ GLuint Shader::createShader(const char* vertexFile, const char* fragmentFile)
 	return id;
 }
 
-GLuint Shader::createShader(const char* vertexFile, const char* fragmentFile, const char* geometryFile)
+unsigned int Shader::createShader(const char* vertexFile, const char* fragmentFile, const char* geometryFile)
 {
 	//TODO properly validate format 
 	//if false, use a default shader or something to prevent crash maybe?
@@ -268,22 +258,22 @@ GLuint Shader::createShader(const char* vertexFile, const char* fragmentFile, co
 	const char* fragmentSource = fragmentCode.c_str();
 	const char* geometrySource = geometryCode.c_str();
 
-	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertexShader, 1, &vertexSource, NULL);
 	glCompileShader(vertexShader);
 	compileErrors(vertexShader, "VERTEX");
 
-	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
 	glCompileShader(fragmentShader);
 	compileErrors(fragmentShader, "FRAGMENT");
 
-	GLuint geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
+	unsigned int geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
 	glShaderSource(geometryShader, 1, &geometrySource, NULL);
 	glCompileShader(geometryShader);
 	compileErrors(geometryShader, "GEOMETRY");
 
-	GLuint id = glCreateProgram();
+	unsigned int id = glCreateProgram();
 	glAttachShader(id, vertexShader);
 	glAttachShader(id, fragmentShader);
 	glAttachShader(id, geometryShader);

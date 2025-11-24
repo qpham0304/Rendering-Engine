@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <memory>
 #include <glm/glm.hpp>
 #include "Texture.h"
 
@@ -28,18 +29,19 @@ public:
 	std::vector<Texture> textures;
 
 public:
-	int GetNumVertices();
 	Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
 	~Mesh();
+	
 	void Delete();
 	void Draw(Shader& shader);
+	int GetNumVertices();
+
+private:
+	void setup();
 
 private:
 	unsigned int VAO, VBO, EBO;
 	int numVertices = 0;
-
-private:
-	void setup();
 
 };
 

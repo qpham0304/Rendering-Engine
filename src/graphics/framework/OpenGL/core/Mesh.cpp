@@ -55,7 +55,7 @@ int Mesh::GetNumVertices()
     return numVertices;
 }
 
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, std::vector<Texture> textures)
+Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures)
 {
 	this->vertices = vertices;
 	this->indices = indices;
@@ -63,7 +63,10 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<GLuint> indices, std::vecto
 	setup();
 }
 
-Mesh::~Mesh() = default;
+
+Mesh::~Mesh() {
+
+};
 
 void Mesh::Delete()
 {
@@ -87,7 +90,7 @@ void Mesh::Draw(Shader& shader)
 
     if (!textures.empty()) {
         for (unsigned int i = 0; i < textures.size(); i++) {
-            textures[i].texUnit(shader, textures[i].type.c_str(), i);
+            textures[i].TexUnit(shader, textures[i].type.c_str(), i);
             textures[i].Bind();
         }
     }

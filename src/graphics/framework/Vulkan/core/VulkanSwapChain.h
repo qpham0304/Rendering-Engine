@@ -8,6 +8,7 @@
 //    std::vector<VkSurfaceFormatKHR> formats;
 //    std::vector<VkPresentModeKHR> presentModes;
 //};
+class RenderDeviceVulkan;
 
 class VulkanSwapChain
 {
@@ -29,7 +30,7 @@ public:
 
 public:
 
-    VulkanSwapChain(VulkanDevice& deviceRef);
+    VulkanSwapChain(VulkanDevice& deviceRef, RenderDeviceVulkan& renderDeviceRef);
     ~VulkanSwapChain();
 
     void create();
@@ -53,8 +54,10 @@ private:
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     void cleanupSwapChain();
+    void getFrameBufferSize(int& with, int& height);
+
 private:
     VulkanDevice& device;
-
+    RenderDeviceVulkan& renderDevice;
 };
 

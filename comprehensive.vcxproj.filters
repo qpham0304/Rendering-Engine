@@ -90,9 +90,6 @@
     <ClCompile Include="src\core\features\Profiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\components\MComponent.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\core\entities\Entity.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -225,7 +222,7 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\stb.cpp">
+    <ClCompile Include="src\graphics\utils\stb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\OpenGL\core\Texture.cpp">
@@ -261,7 +258,7 @@
     <ClCompile Include="src\core\layers\Layer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\apps\vulkan-demo\FollowDemo.cpp">
+    <ClCompile Include="src\apps\vulkan-demo\VulkanApplication.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_vulkan.cpp">
@@ -316,6 +313,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\renderpasses\VulkanRenderPass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderers\VertexBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderers\IndexBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -608,7 +620,7 @@
     <ClInclude Include="src\services\Service.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\apps\vulkan-demo\FollowDemo.h">
+    <ClInclude Include="src\apps\vulkan-demo\VulkanApplication.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Libraries\include\imgui\backends\imgui_impl_vulkan.h">
@@ -669,6 +681,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\renderpasses\VulkanRenderPass.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\renderers\VertexBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\renderers\IndexBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

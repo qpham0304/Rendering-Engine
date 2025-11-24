@@ -5,12 +5,9 @@
 #include "../../src/gui/framework/ImGui/theme/ImGuiThemes.h"
 #include "../../src/graphics/utils/Utils.h"
 #include "../../src/core/components/MComponent.h"
-#include "../../src/apps/Vulkan-demo/FollowDemo.h"
-#include <glad/glad.h>
+#include "../../src/core/features/ServiceLocator.h"
+#include "../../src/graphics//RenderDevice.h"
 #include <GLFW/glfw3.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-#include <imgui_impl_vulkan.h>
 #include "camera.h"
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
@@ -61,7 +58,7 @@ int ImGuiManager::init(WindowConfig config)
 			ImGui_ImplOpenGL3_Init("#version 330");
 		}
 		else if (m_config.renderPlatform == RenderPlatform::VULKAN) {
-			printf("-----------init for vulkan-------------\n");
+			_initVulkan();
 		}
 		else {
 			throw std::runtime_error("ImGuiManager: Unsupported render platform for ImGui initialization with GLFW");
@@ -294,10 +291,10 @@ int ImGuiManager::onClose()
 {
 	switch (m_config.renderPlatform) {
 		case RenderPlatform::OPENGL:
-			ImGui_ImplOpenGL3_Shutdown();
+			_onCloseOpenGL();
 			break;
 		case RenderPlatform::VULKAN:
-			ImGui_ImplVulkan_Shutdown();
+			_onCloseVulkan();
 			break;
 		default:
 			assert(false && "Unknown render platform");
@@ -434,3 +431,94 @@ void ImGuiManager::guizmoScale()
 {
 	GuizmoType = ImGuizmo::OPERATION::SCALE;
 };
+
+// OpenGL specific setup
+void ImGuiManager::_onCloseOpenGL()
+{
+	ImGui_ImplOpenGL3_Shutdown();
+}
+
+
+// vulkan specific setup
+int ImGuiManager::_initVulkan()
+{
+	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
+
+	RenderDevice::DeviceInfo deviceInfo = renderDevice.getDeviceInfo();
+	RenderDevice::PipelineInfo pipelineInfo = renderDevice.getPipelineInfo();
+	VkInstance instance = (VkInstance)renderDevice.getNativeInstance();
+	VkDevice device = (VkDevice)renderDevice.getNativeDevice();
+	VkPhysicalDevice physicalDevice = (VkPhysicalDevice)renderDevice.getPhysicalDevice();
+
+	VkDescriptorPoolSize pool_sizes[] =
+	{
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+	};
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
+	pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
+	pool_info.pPoolSizes = pool_sizes;
+
+	VkResult result = vkCreateDescriptorPool(device, &pool_info, nullptr, &guiDescriptorPool);
+	if (result != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor pool for ImGui");
+	}
+
+	ImGui_ImplVulkan_InitInfo init_info = {};
+	init_info.ApiVersion = VK_API_VERSION_1_4;	// VkApplicationInfo::apiVersion
+	init_info.Instance = instance;
+	init_info.PhysicalDevice = physicalDevice;
+	init_info.Device = device;
+	init_info.QueueFamily = deviceInfo.queueFamilyIndex.value();
+	init_info.Queue = (VkQueue)deviceInfo.queueHandle.value();
+	init_info.PipelineCache = VK_NULL_HANDLE;
+	init_info.DescriptorPool = guiDescriptorPool;
+	init_info.MinImageCount = deviceInfo.minImageCount.value();
+	init_info.ImageCount = deviceInfo.imageCount.value();
+	init_info.Allocator = VK_NULL_HANDLE;
+	init_info.PipelineInfoMain.RenderPass = (VkRenderPass)pipelineInfo.renderPass;
+	init_info.PipelineInfoMain.Subpass = pipelineInfo.subpass;
+	init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	init_info.CheckVkResultFn = [](VkResult err) { if (err != VK_SUCCESS) abort(); };
+
+
+	switch (m_config.windowPlatform) {
+	case WindowPlatform::GLFW: {
+			GLFWwindow* windowHandle = static_cast<GLFWwindow*>(AppWindow::getWindowHandle());
+			ImGui_ImplGlfw_InitForVulkan(windowHandle, true);
+			break;
+		}
+		default: {
+			assert(false && "Unknown window platform");
+			break;
+		}
+	}
+	ImGui_ImplVulkan_Init(&init_info);
+
+	return 0;
+}
+
+void ImGuiManager::_onCloseVulkan()
+{
+	ImGui_ImplVulkan_Shutdown();
+	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
+	VkDevice device = (VkDevice)renderDevice.getNativeDevice();
+	vkDestroyDescriptorPool(device, guiDescriptorPool, nullptr);
+}
+
+void ImGuiManager::_onUpdateVulkan()
+{
+
+}

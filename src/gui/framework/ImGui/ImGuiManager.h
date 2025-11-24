@@ -2,6 +2,7 @@
 
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_impl_vulkan.h>
 #include <ImGuizmo.h>
 
 #include "../../GuiManager.h"
@@ -57,6 +58,8 @@ private:
 	void _onUpdateVulkan();
 
 private:
+	VkDescriptorPool guiDescriptorPool;
+
 	ImGuizmo::OPERATION GuizmoType = ImGuizmo::OPERATION::TRANSLATE;
 	
 	ImGuiLeftSidebarWidget leftSidebar;

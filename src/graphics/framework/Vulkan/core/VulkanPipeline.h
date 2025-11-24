@@ -24,7 +24,7 @@ static std::vector<char> readFile(const std::string& filename) {
 struct PipelineConfigInfo {
 	VkViewport viewport;
 	VkRect2D scissor;
-	//VkPipelineViewportStateCreateInfo viewportInfo;
+	VkPipelineViewportStateCreateInfo viewportInfo;
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
 	VkPipelineRasterizationStateCreateInfo rasterizationInfo;
 	VkPipelineMultisampleStateCreateInfo multisampleInfo;
@@ -48,11 +48,12 @@ public:
 
 	void create();
 	void destroy();
+	void bind(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint);
 
 	void createGraphicsPipeline(
 		VkDescriptorSetLayout descriptorSetLayout,
 		VkRenderPass renderPass,
-		size_t pushConstantSize
+		size_t pushConstantSize = 0
 	);
 
 

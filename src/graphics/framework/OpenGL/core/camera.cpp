@@ -108,8 +108,8 @@ float Camera::getDeltaTime()
 	return deltaTime;
 }
 
-bool Camera::processKeyboard() {
-	
+bool Camera::processKeyboard() 
+{
 	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	bool isPressing = false;
 

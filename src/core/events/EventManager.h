@@ -21,7 +21,6 @@ public:
 	
 	static EventManager& getInstance();
 	
-	void subscribe(const std::string& event, EventListener& listener);
 
 	template<typename... Args>
 	void publish(const std::string& event, Args... args) {
@@ -35,19 +34,20 @@ public:
 			Console::error("Event not found\n");
 		}
 	}
-
+	void subscribe(const std::string& event, EventListener& listener);
 	uint32_t subscribe(EventType eventType, EventCallback callback);
 	void unsubscribe(EventType eventType, uint32_t cbID);
 	void publish(Event& event);
 	void queue(AsyncEvent event, AsyncCallback callback);
 	void onUpdate();
-	std::vector<std::pair<std::thread, bool*>> threads;
-
+	void onClose();
 
 private:
 	EventManager() = default;
 	void publishAsync(EventListener& eventListener);
 	void cleanUpThread();
+
+private:
 	int runningTasks = 0;
 
 	uint32_t callbackID;
@@ -57,4 +57,5 @@ private:
 	std::queue<std::pair<AsyncEvent, AsyncCallback>> eventQueue;
 	std::mutex queueMutex;
 	std::vector<std::future<void>> futures;
+	std::vector<std::pair<std::thread, bool*>> threads;
 };

@@ -10,15 +10,6 @@
 class Application
 {
 public:
-	SceneManager& sceneManager = SceneManager::getInstance();
-	EventManager& eventManager = EventManager::getInstance();
-	std::unique_ptr<LayerManager> layerManager;
-	std::unique_ptr<GuiManager> guiManager;
-	std::unique_ptr<AppWindow> appWindow;
-	std::unique_ptr<RenderDevice> renderDevice;
-	std::unique_ptr<Logger> engineLogger;
-	std::unique_ptr<Logger> clientLogger;
-	EditorLayer* editorLayer;
 
 public:
 	Application(WindowConfig windowConfig);
@@ -37,5 +28,15 @@ private:
 	WindowConfig windowConfig;
 	ServiceLocator serviceLocator;
 	PlatformFactory platformFactory{ serviceLocator };
+
+	SceneManager& sceneManager = SceneManager::getInstance();
+	EventManager& eventManager = EventManager::getInstance();
+	std::unique_ptr<LayerManager> layerManager;
+	std::unique_ptr<GuiManager> guiManager;
+	std::unique_ptr<AppWindow> appWindow;
+	std::unique_ptr<RenderDevice> renderDevice;
+	std::unique_ptr<Logger> engineLogger;
+	std::unique_ptr<Logger> clientLogger;
+	EditorLayer* editorLayer;
 };
 

@@ -28,7 +28,7 @@ int AppWindowGLFW::init(WindowConfig config)
 	m_height = m_config.height;
 
 	if (supportRenderPlatform.find(m_config.renderPlatform) == supportRenderPlatform.end()) {
-		throw std::runtime_error("Platform unsupported");
+		throw std::runtime_error("AppWindowGLFW init: Platform unsupported");
 	}
 
 	switch (m_config.renderPlatform) {
@@ -41,7 +41,7 @@ int AppWindowGLFW::init(WindowConfig config)
 
 	InputGLFW* inputHandle = dynamic_cast<InputGLFW*>(m_input.get());
 	if (!inputHandle) {
-		throw std::runtime_error("AppWindowGLFW: failed to cast Input to type InputGLFW");
+		throw std::runtime_error("AppWindowGLFW init: failed to cast Input to type InputGLFW");
 	}
 	inputHandle->m_windowHandle = m_windowHandle;
 

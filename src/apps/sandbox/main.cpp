@@ -1,4 +1,4 @@
-#include "../vulkan-demo/FollowDemo.h"
+#include "../vulkan-demo/VulkanApplication.h"
 #include "../vulkan-demo/example_glfw_vulkan.h"
 #include "../../core/Application.h"
 #include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
@@ -8,9 +8,9 @@
 int main()
 {
 	try {
-#ifdef RUN_STANDALONE
 		WindowConfig windowConfig{};
-		windowConfig.title = "Application Untitled";
+#ifdef RUN_STANDALONE
+		windowConfig.title = "Application Demo";
 		windowConfig.windowPlatform = WindowPlatform::GLFW;
 		windowConfig.renderPlatform = RenderPlatform::OPENGL;
 		windowConfig.guiPlatform = GuiPlatform::IMGUI;
@@ -30,17 +30,20 @@ int main()
 		app.run();
 		app.end();
 #else
+		windowConfig.title = "Vulkan Application";
+		windowConfig.windowPlatform = WindowPlatform::GLFW;
+		windowConfig.renderPlatform = RenderPlatform::VULKAN;
+		windowConfig.guiPlatform = GuiPlatform::IMGUI;
+		windowConfig.width = 1920;
+		windowConfig.height = 1080;
+		windowConfig.vsync = false;
 
-//#define RUN_GUI
-#ifdef RUN_GUI
-		EXAMPLE_GLFW_VULKAN example;
-		example.run();
-
-#else
-		Demo app;
+		VulkanApplication app;
+		app.init(windowConfig);
+		app.start();
 		app.run();
+		app.end();
 
-#endif
 
 #endif
 	}

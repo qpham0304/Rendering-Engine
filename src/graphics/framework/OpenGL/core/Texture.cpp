@@ -73,11 +73,10 @@ void Texture::Init(const char* path, const char* texType, bool flipUV)
 	loadTexture(path, flipUV);
 }
 
-void Texture::texUnit(Shader& shader, const char* uniform, GLuint unit)
+void Texture::TexUnit(Shader& shader, const char* uniform, unsigned int unit)
 {
 	this->unit = unit;
 	shader.Activate();
-	//std::cout << "unit: " << unit << " texture: " << uniform << std::endl;
 	shader.setInt(uniform, unit);
 }
 

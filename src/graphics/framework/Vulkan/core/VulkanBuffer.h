@@ -3,6 +3,7 @@
 #include "../../../renderers/Buffer.h"
 #include "./VulkanDevice.h"
 
+class RenderDeviceVulkan;
 class VulkanBuffer : public Buffer
 {
 public:
@@ -22,8 +23,9 @@ public:
     VulkanBuffer(VulkanDevice& deviceRef);
     ~VulkanBuffer();
 
-    virtual void create() override;
+    virtual void create(const void* data, size_t size) override;
     virtual void destroy() override;
+    virtual void bind() override;
 
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     
@@ -35,13 +37,14 @@ public:
         VkDeviceMemory& bufferMemory
     );
 
+    //renderer asks renderdevice which then ask vulkan buffer to generate a specific type
+    //return an id, or uuid, vulkan buffer either track of inchrage of the cleanup
     void createVertexBuffer(std::vector<VulkanDevice::Vertex> vertices, VkCommandPool commandPool);
     void createIndexBuffer(std::vector<uint16_t> indices, VkCommandPool commandPool);
     void createCombinedBuffer(std::vector<VulkanDevice::Vertex> vertices, std::vector<uint16_t> indices, VkCommandPool commandPool);
     void createUniformBuffers();
     void updateUniformBuffer(uint32_t currentImage, VulkanDevice::UniformBufferObject ubo);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkCommandPool commandPool);
-
 
 private:
     VulkanBuffer(const VulkanBuffer& other) = delete;
@@ -52,6 +55,6 @@ private:
 
 private:
     VulkanDevice& device;
-
+    RenderDeviceVulkan* renderDeviceVulkan;
 };
 

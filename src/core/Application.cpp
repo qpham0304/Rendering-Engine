@@ -6,6 +6,7 @@
 #include "../../src/core/features/Profiler.h"
 #include "../../src/window/platform/GLFW/AppWindowGLFW.h"
 
+
 Application::Application(WindowConfig windowConfig) 
 	: isRunning(false), windowConfig(windowConfig), editorLayer(nullptr)
 {
@@ -20,11 +21,11 @@ void Application::pushLayer(Layer* layer)
 void Application::init()
 {
 	//separate service modules
-	appWindow = platformFactory.createWindow(windowConfig.windowPlatform);
-	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
-	renderDevice = platformFactory.createRenderDevice(windowConfig.renderPlatform);
 	engineLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Engine");
 	clientLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Client");
+	appWindow = platformFactory.createWindow(windowConfig.windowPlatform);
+	renderDevice = platformFactory.createRenderDevice(windowConfig.renderPlatform);
+	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
 
 	//engine specific features
 	layerManager = std::make_unique<LayerManager>(serviceLocator);
@@ -36,30 +37,13 @@ void Application::init()
 	services.push_back(engineLogger.get());
 	services.push_back(clientLogger.get());
 
-
-	engineLogger->warn(appWindow->getServiceName());
-	engineLogger->warn(guiManager->getServiceName());
-	engineLogger->warn(renderDevice->getServiceName());
-	engineLogger->warn(engineLogger->getServiceName());
-	engineLogger->warn(clientLogger->getServiceName());
-
 	ServiceLocator::supportingServices();
-	//engineLogger->info("Welcome to spdlog!");
-	//engineLogger->error("Some error message with arg: {}", 1);
-
-	//engineLogger->warn("Easy padding in numbers like {:08d}", 12);
-	//engineLogger->critical("Support for int: {0:d};  hex: {0:x};  oct: {0:o}; bin: {0:b}", 42);
-	//engineLogger->info("Support for floats {:03.2f}", 1.23456);
-	//clientLogger->info("Positional args are {1} {0}..", "too", "supported");
-	//clientLogger->info("{:<30}", "left aligned");
 
 	renderDevice->init(windowConfig);
 	clientLogger->setLevel(LogLevel::Debug); // Set *global* log level to debug
-	clientLogger->debug("This message should be displayed..");
 
 	isRunning = true;
 
-	//std::bind(&Application::onClose, this, std::placeholders::_1);
 	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		onClose();
 	});
@@ -112,8 +96,6 @@ void Application::end()
 
 void Application::onClose()
 {
-	for (auto& [thread, status] : EventManager::getInstance().threads) {
-		thread.join();
-	}
+	EventManager::getInstance().onClose();
 	isRunning = false;
 }

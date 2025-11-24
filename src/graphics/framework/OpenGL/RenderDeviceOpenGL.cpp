@@ -44,6 +44,11 @@ void RenderDeviceOpenGL::render()
 	throw std::runtime_error("RenderDeviceOpenGL render not implemented");
 }
 
+void RenderDeviceOpenGL::draw(uint32_t indicies, uint32_t numInstances)
+{
+	throw std::runtime_error("RenderDeviceOpenGL draw not implemented");
+}
+
 Logger& RenderDeviceOpenGL::Log() const
 {
 	return *m_logger;
