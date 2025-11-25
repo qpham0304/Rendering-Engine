@@ -1,7 +1,7 @@
 #pragma once
 
-#include <BloomFBO.h>
 #include <Shader.h>
+#include "../core/BloomFBO.h"
 
 class BloomRenderer
 {

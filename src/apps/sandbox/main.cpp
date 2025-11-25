@@ -14,6 +14,7 @@ int main()
 		windowConfig.windowPlatform = WindowPlatform::GLFW;
 		windowConfig.renderPlatform = RenderPlatform::OPENGL;
 		windowConfig.guiPlatform = GuiPlatform::IMGUI;
+		windowConfig.os = OperatingSystem::WINDOW;
 		windowConfig.width = 1920;
 		windowConfig.height = 1080;
 		windowConfig.vsync = false;
@@ -34,6 +35,7 @@ int main()
 		windowConfig.windowPlatform = WindowPlatform::GLFW;
 		windowConfig.renderPlatform = RenderPlatform::VULKAN;
 		windowConfig.guiPlatform = GuiPlatform::IMGUI;
+		windowConfig.os = OperatingSystem::WINDOW;
 		windowConfig.width = 1920;
 		windowConfig.height = 1080;
 		windowConfig.vsync = false;

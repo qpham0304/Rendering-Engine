@@ -31,23 +31,28 @@ public:
 	static unsigned int getWidth();
 	static unsigned int getHeight();
 	static void* getWindowHandle();
-	static void setContext(AppWindow* other);
-	static void createWindowSurface(void* instance, void* surface);
+	static void* getNativeWindowHandle();
+	static void getFrameBufferSize(int* width, int* height);
+	static void waitEvents();
+	static void setContextCurrent();
 
 protected:
 	AppWindow(std::string serviceName = "AppWindow");
 	
 	virtual void* _getWindow() = 0;
 	virtual void* _getSharedWindow() = 0;
+	virtual void* _getNativeWindowHandle() = 0;
 	virtual void _setEventCallback() = 0;
 	virtual double _getTime() const = 0;
-	virtual void _createWindowSurface(void* instance, void* surface) = 0;
+	virtual void _getFrameBufferSize(int& width, int& height) = 0;
+	virtual void _waitEvents() = 0;
+	virtual void _setContextCurrent() = 0;
 
 protected:
 	static AppWindow* window;
 
+	std::unique_ptr<Input> m_input;
+	
 	unsigned int m_width;
 	unsigned int m_height;
-
-	std::unique_ptr<Input> m_input;
 };

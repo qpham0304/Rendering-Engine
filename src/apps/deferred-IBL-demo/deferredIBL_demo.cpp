@@ -3,17 +3,16 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/vector_angle.hpp>
-#include "ParticleGeometry.h"
-#include "camera.h"
-#include "../../core/scene/SceneManager.h"
-#include "../../core/components/MComponent.h"
-#include "../../core/components/CameraComponent.h"
-#include "../../core/components/CubeMapComponent.h"
-#include "../../src/window/AppWindow.h"
-#include "../../src/core/events/EventManager.h"
-#include "../../src/core/layers/layerManager.h"
-#include "../../graphics/renderers/ShadowMapRenderer.h"
-#include "../../src/gui/GuiManager.h"   // need this to use imgui for now
+#include "src/core/features/Camera.h"
+#include "src/core/scene/SceneManager.h"
+#include "src/core/components/MComponent.h"
+#include "src/core/components/CameraComponent.h"
+#include "src/core/components/CubeMapComponent.h"
+#include "src/window/AppWindow.h"
+#include "src/core/events/EventManager.h"
+#include "src/core/layers/layerManager.h"
+#include "src/graphics/renderers/ShadowMapRenderer.h"
+#include "src/gui/GuiManager.h"   // need this to use imgui for now
 
 
 static glm::vec3 lightPositions[] = {

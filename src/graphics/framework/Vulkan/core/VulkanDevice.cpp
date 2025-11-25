@@ -1,10 +1,11 @@
 #include "VulkanDevice.h"
 #include "../../src/core/features/ServiceLocator.h"
 #include "../../src/Logging/Logger.h"
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+//#define GLFW_INCLUDE_VULKAN
+//#include <GLFW/glfw3.h>
 #include "../../../../window/AppWindow.h"
-
+#include <windows.h>
+#include <vulkan/vulkan_win32.h>
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
 	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
@@ -118,7 +119,12 @@ void VulkanDevice::setupDebugMessenger() {
 }
 
 void VulkanDevice::createSurface() {
-	AppWindow::createWindowSurface(static_cast<void*>(instance), static_cast<void*>(&surface));
+	VkWin32SurfaceCreateInfoKHR surfaceInfo = {};
+	surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	surfaceInfo.hinstance = GetModuleHandle(nullptr);
+	surfaceInfo.hwnd = (HWND)AppWindow::getNativeWindowHandle();           // your Win32 window handle
+
+	vkCreateWin32SurfaceKHR(instance, &surfaceInfo, nullptr, &surface);
 }
 
 void VulkanDevice::selectPhysicalDevice() {
@@ -307,12 +313,36 @@ bool VulkanDevice::checkValidationLayerSupport()
 	return true;
 }
 
-std::vector<const char*> VulkanDevice::getRequiredExtensions() {
-	uint32_t glfwExtensionCount = 0;
-	const char** glfwExtensions;
-	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+//std::vector<const char*> VulkanDevice::getRequiredExtensions() {
+//	uint32_t glfwExtensionCount = 0;
+//	const char** glfwExtensions;
+//	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+//
+//	std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+//
+//	if (enableValidationLayers) {
+//		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+//	}
+//
+//	return extensions;
+//}
 
-	std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+std::vector<const char*> VulkanDevice::getRequiredExtensions() {
+	std::vector<const char*> extensions;
+
+	// Always need the core surface extension
+	extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+
+#if defined(_WIN32)
+	// Windows-specific surface extension
+	extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#elif defined(__linux__)
+	// You would choose Xlib, XCB, or Wayland here
+	extensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+	// or VK_KHR_XCB_SURFACE_EXTENSION_NAME, etc.
+#elif defined(__APPLE__)
+	extensions.push_back(VK_MVK_MACOS_SURFACE_EXTENSION_NAME);
+#endif
 
 	if (enableValidationLayers) {
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

@@ -1,5 +1,5 @@
 #include "AppWindow.h"
-#include "camera.h"
+#include "../../src/core/features/Camera.h"
 #include "../../src/core/features/Timer.h"
 #include "../../src/core/events/Event.h"
 #include "../../src/core/events/EventManager.h"
@@ -63,12 +63,22 @@ void* AppWindow::getWindowHandle()
 	return window->_getWindow();
 }
 
-void AppWindow::setContext(AppWindow* other)
+void* AppWindow::getNativeWindowHandle()
 {
-	window = other;
+	return window->_getNativeWindowHandle();
 }
 
-void AppWindow::createWindowSurface(void* instance, void* surface)
+void AppWindow::getFrameBufferSize(int* width, int* height)
 {
-	window->_createWindowSurface(instance, surface);
+	window->_getFrameBufferSize(*width, *height);
+}
+
+void AppWindow::waitEvents()
+{
+	window->_waitEvents();
+}
+
+void AppWindow::setContextCurrent()
+{
+	window->_setContextCurrent();
 }

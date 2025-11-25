@@ -5,7 +5,7 @@
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/events/EventManager.h"
 #include "../../src/core/layers/LayerManager.h"
-#include "camera.h"
+#include "../../src/core/features/Camera.h"
 
 ParticleDemo::ParticleDemo(const std::string& name) : AppLayer(name)
 {

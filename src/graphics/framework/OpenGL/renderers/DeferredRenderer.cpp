@@ -1,7 +1,7 @@
 #include "../../renderer/DeferredRenderer.h"
 #include "../../src/core/components/LightComponent.h"
 #include "../../src/core/components/MComponent.h"
-#include "Camera.h"
+#include "../../src/core/features/Camera.h"
 
 DeferredRenderer::DeferredRenderer(const int width, const int height)
 {

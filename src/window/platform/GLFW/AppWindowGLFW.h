@@ -22,9 +22,12 @@ public:
 protected:
 	void* _getWindow() override;
 	void* _getSharedWindow() override;
+	virtual void* _getNativeWindowHandle() override;
 	virtual double _getTime() const override;
 	virtual void _setEventCallback() override;
-	virtual void _createWindowSurface(void* instance, void* surface) override;
+	void _getFrameBufferSize(int& width, int& height) override;
+	void _waitEvents() override;
+	void _setContextCurrent() override;
 
 	//platform specific implementations
 	//Ideally want to have glu files each platform
@@ -38,6 +41,5 @@ protected:
 	void _onCloseVulkan();
 	void _onUpdateVulkan();
 
-	void _createSurfaceVulkan(void* instance, void* surface);
 };
 

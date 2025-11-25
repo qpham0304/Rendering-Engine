@@ -7,8 +7,7 @@
 #include "../../src/core/components/MComponent.h"
 #include "../../src/core/features/ServiceLocator.h"
 #include "../../src/graphics//RenderDevice.h"
-#include <GLFW/glfw3.h>
-#include "camera.h"
+#include "../../src/core/features/Camera.h"
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
@@ -86,6 +85,16 @@ int ImGuiManager::init(WindowConfig config)
 	std::unique_ptr<ImGuiMenuWidget> menu = std::make_unique<ImGuiMenuWidget>();
 	widgets.push_back(std::move(menu));
 	useDarkTheme();
+
+	// Gamma correct swapchain current use SRGB output
+	if (m_config.renderPlatform == RenderPlatform::VULKAN) {
+		for (int i = 0; i < ImGuiCol_COUNT; i++) {
+			ImVec4 c = style.Colors[i];
+			style.Colors[i].x = pow(c.x, 2.2f);
+			style.Colors[i].y = pow(c.y, 2.2f);
+			style.Colors[i].z = pow(c.z, 2.2f);
+		}
+	}
 }
 
 void ImGuiManager::onUpdate()
@@ -275,7 +284,7 @@ void ImGuiManager::end(void* handle)
 		switch (m_config.windowPlatform) {
 			case WindowPlatform::GLFW: {
 				GLFWwindow* currentContext = static_cast<GLFWwindow*>(AppWindow::getWindowHandle());
-				glfwMakeContextCurrent(currentContext);
+				AppWindow::setContextCurrent();
 				break;
 			}
 			default:
@@ -283,8 +292,6 @@ void ImGuiManager::end(void* handle)
 				break;
 		}
 	}
-
-
 }
 
 int ImGuiManager::onClose()

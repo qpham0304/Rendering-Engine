@@ -144,7 +144,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -171,7 +171,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -269,7 +269,7 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\Bone.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\DepthMap.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\skybox.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\camera.cpp" />
+    <ClCompile Include="src\core\features\camera.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\EBO.cpp" />
     <ClCompile Include="Libraries\include\glad\glad.c" />
     <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_glfw.cpp" />
@@ -310,7 +310,6 @@
     <ClInclude Include="src\graphics\RenderDevice.h" />
     <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
     <ClInclude Include="src\apps\particle-demo\ParticleDemo.h" />
-    <ClInclude Include="src\apps\vulkan-demo\example_glfw_vulkan.h" />
     <ClInclude Include="src\apps\vulkan-demo\VulkanApplication.h" />
     <ClInclude Include="src\core\features\Configs.h" />
     <ClInclude Include="src\core\features\PlatformFactory.h" />
@@ -359,15 +358,15 @@
     <ClInclude Include="src\core\events\EventManager.h" />
     <ClInclude Include="src\core\Application.h" />
     <ClInclude Include="src\core\events\Event.h" />
-    <ClInclude Include="Headers\OpenGL\ParticleGeometry.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\ParticleGeometry.h" />
     <ClInclude Include="Headers\PreCompile.h" />
     <ClInclude Include="src\core\features\Timer.h" />
     <ClInclude Include="src\graphics\renderers\AtmosphereRenderer.h" />
     <ClInclude Include="src\graphics\renderers\Renderer.h" />
     <ClInclude Include="src\core\components\headers\ModelComponent.h" />
-    <ClInclude Include="src\graphics\renderers\BloomRenderer.h" />
-    <ClInclude Include="Headers\OpenGL\BloomFBO.h" />
-    <ClInclude Include="Headers\OpenGL\DepthCubeMap.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\BloomRenderer.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\BloomFBO.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\DepthCubeMap.h" />
     <ClInclude Include="src\graphics\renderers\ImageBasedRenderer.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\GraphEditor.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\ImCurveEdit.h" />
@@ -380,25 +379,25 @@
     <ClInclude Include="src\graphics\utils\ltc_matrix.h" />
     <ClInclude Include="src\graphics\utils\Utils.h" />
     <ClInclude Include="src\window\AppWindow.h" />
-    <ClInclude Include="Headers\OpenGL\Axis.h" />
-    <ClInclude Include="Headers\OpenGL\FrameBuffer.h" />
-    <ClInclude Include="Headers\OpenGL\Animation.h" />
-    <ClInclude Include="Headers\OpenGL\Animator.h" />
-    <ClInclude Include="Headers\OpenGL\assimp_glm_helpers.h" />
-    <ClInclude Include="Headers\OpenGL\Bone.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\Axis.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\FrameBuffer.h" />
+    <ClInclude Include="Headers\Animation.h" />
+    <ClInclude Include="Headers\Animator.h" />
+    <ClInclude Include="Headers\assimp_glm_helpers.h" />
+    <ClInclude Include="Headers\Bone.h" />
     <ClInclude Include="src\core\components\headers\GridComponent.h" />
     <ClInclude Include="src\core\components\headers\Component.h" />
-    <ClInclude Include="Headers\OpenGL\camera.h" />
-    <ClInclude Include="Headers\OpenGL\DepthMap.h" />
-    <ClInclude Include="Headers\OpenGL\EBO.h" />
-    <ClInclude Include="Headers\OpenGL\Mesh.h" />
-    <ClInclude Include="Headers\OpenGL\model.h" />
-    <ClInclude Include="Headers\OpenGL\resource.h" />
-    <ClInclude Include="Headers\OpenGL\Shader.h" />
-    <ClInclude Include="Headers\OpenGL\Texture.h" />
-    <ClInclude Include="Headers\OpenGL\VAO.h" />
-    <ClInclude Include="Headers\OpenGL\VBO.h" />
-    <ClInclude Include="Headers\OpenGL\skybox.h" />
+    <ClInclude Include="src\core\features\camera.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\DepthMap.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\EBO.h" />
+    <ClInclude Include="Headers\Mesh.h" />
+    <ClInclude Include="Headers\model.h" />
+    <ClInclude Include="Headers\resource.h" />
+    <ClInclude Include="Headers\Shader.h" />
+    <ClInclude Include="Headers\Texture.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\VAO.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\VBO.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\skybox.h" />
     <ClInclude Include="src\core\components\headers\SkyboxComponent.h" />
     <ClInclude Include="src\core\systems\System.h" />
     <ClInclude Include="src\gui\GuiManager.h" />

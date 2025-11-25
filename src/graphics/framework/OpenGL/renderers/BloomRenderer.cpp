@@ -1,4 +1,4 @@
-#include "../../src/graphics/renderers/BloomRenderer.h"
+#include "../../src/graphics/framework/OpenGL/renderers/BloomRenderer.h"
 #include "../../src/graphics/utils/Utils.h"
 
 BloomRenderer::BloomRenderer() : mInit(false) {}

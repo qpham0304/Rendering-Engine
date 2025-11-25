@@ -35,6 +35,16 @@ public:
 	VkImage textureImage;
 	VkDeviceMemory textureImageMemory;
 
+
+	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorPool descriptorPool;
+	std::vector<VkDescriptorSet> descriptorSets;
+
+	VkDescriptorSetLayout imguiDescriptorSetLayout;
+	VkDescriptorPool imguiDescriptorPool;
+	VkDescriptorSet imguiTextureDescriptorSet; 
+
+
 public:
 	RenderDeviceVulkan();
 	~RenderDeviceVulkan();
@@ -69,6 +79,8 @@ public:
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	void createDepthResources();
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+	
+	void createTextureViewDescriptorSet();
 
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	VkFormat findDepthFormat();
@@ -79,9 +91,9 @@ public:
 	void setScissor();
 	void shaderSetUniform();	//TODO: move to shader, let shader control descriptor set binding
 	void waitIdle();
+	Logger& Log() const;
 
 protected:
-	Logger& Log() const;
 
 private:
 	Logger* m_logger{ nullptr };
@@ -92,9 +104,6 @@ private:
 
 
 
-	VkDescriptorSetLayout descriptorSetLayout;
-	VkDescriptorPool descriptorPool;
-	std::vector<VkDescriptorSet> descriptorSets;
 
 
 private:

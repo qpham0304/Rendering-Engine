@@ -10,7 +10,7 @@
 #include "../../src/core/Application.h"
 #include "../../src/core/layers/layerManager.h"
 #include "../../src/gui/GuiManager.h"
-#include "camera.h"
+#include "../../src/core/features/Camera.h"
 
 void EditorLayer::mockThreadTasks()
 {

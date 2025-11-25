@@ -2,7 +2,7 @@
 
 #include "Shader.h"
 #include "../../src/core/layers/Layer.h"
-#include "../../src/graphics/renderers/BloomRenderer.h"
+#include "../../src/graphics/framework/OpenGL/renderers/BloomRenderer.h"
 
 class BloomPass : public Layer
 {

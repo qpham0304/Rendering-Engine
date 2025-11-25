@@ -207,7 +207,7 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\skybox.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\camera.cpp">
+    <ClCompile Include="src\core\features\camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\OpenGL\core\EBO.cpp">
@@ -332,58 +332,58 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Headers\OpenGL\VAO.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\core\VAO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\VBO.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\core\VBO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\Shader.h">
+    <ClInclude Include="Headers\Shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\Texture.h">
+    <ClInclude Include="Headers\Texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\resource.h">
+    <ClInclude Include="Headers\resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\EBO.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\core\EBO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\camera.h">
+    <ClInclude Include="src\core\features\camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\Mesh.h">
+    <ClInclude Include="Headers\Mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\model.h">
+    <ClInclude Include="Headers\model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\skybox.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\core\skybox.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\DepthMap.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\core\DepthMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\gui\GuiManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\Animation.h">
+    <ClInclude Include="Headers\Animation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\Animator.h">
+    <ClInclude Include="Headers\Animator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\assimp_glm_helpers.h">
+    <ClInclude Include="Headers\assimp_glm_helpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\Bone.h">
+    <ClInclude Include="Headers\Bone.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\FrameBuffer.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\FrameBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\Axis.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\core\Axis.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Libraries\include\ImGuizmo\GraphEditor.h">
@@ -404,10 +404,10 @@
     <ClInclude Include="Libraries\include\ImGuizmo\ImZoomSlider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\DepthCubeMap.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\core\DepthCubeMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\BloomFBO.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\core\BloomFBO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\renderers\ImageBasedRenderer.h">
@@ -419,7 +419,7 @@
     <ClInclude Include="src\graphics\renderers\AtmosphereRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\OpenGL\ParticleGeometry.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\core\ParticleGeometry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Headers\PreCompile.h">
@@ -491,7 +491,7 @@
     <ClInclude Include="src\core\components\CameraComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\renderers\BloomRenderer.h">
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\BloomRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Libraries\include\glad\glad.h">
@@ -624,9 +624,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Libraries\include\imgui\backends\imgui_impl_vulkan.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\apps\vulkan-demo\example_glfw_vulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\RenderDevice.h">

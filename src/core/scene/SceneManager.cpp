@@ -2,7 +2,7 @@
 #include "../../graphics/utils/Utils.h"
 #include "Model.h"
 #include "Animation.h"
-#include "camera.h"
+#include "../../src/core/features/Camera.h"
 
 std::unordered_map<std::string, std::unique_ptr<Shader>> SceneManager::shaders = {};
 Camera* SceneManager::cameraController = nullptr;

@@ -1,6 +1,6 @@
 #include "BloomPass.h"
 #include "Imgui.h"  //TODO: remove when there's no ui dependency
-#include "camera.h"
+#include "../../src/core/features/Camera.h"
 #include "../../src/core/layers/layerManager.h"
 #include "../../src/core/scene/SceneManager.h"// this should be gone once ECS is done setting up
 #include "../../src/window/appwindow.h"

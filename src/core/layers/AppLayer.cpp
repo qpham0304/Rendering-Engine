@@ -3,7 +3,7 @@
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/events/EventManager.h"
 #include "Imgui.h"  //TODO: remove when there's no ui dependency
-#include "camera.h"
+#include "../../src/core/features/Camera.h"
 #include "../../src/core/layers/layerManager.h"
 #include "../../src/core/features/ServiceLocator.h"
 #include "../../src/logging/Logger.h"

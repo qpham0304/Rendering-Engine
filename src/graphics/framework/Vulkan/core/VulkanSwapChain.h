@@ -54,7 +54,6 @@ private:
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     void cleanupSwapChain();
-    void getFrameBufferSize(int& with, int& height);
 
 private:
     VulkanDevice& device;

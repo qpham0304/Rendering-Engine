@@ -49,11 +49,13 @@ public:
     std::string getDirectory();
     std::string getFileName();
     std::string getExtension();
+
+public:
     std::map<std::string, BoneInfo> m_BoneInfoMap;
     std::unordered_map<std::string, Texture> loaded_textures;
+    std::vector<Mesh> meshes;
 
 private:
-    std::vector<Mesh> meshes;
     int m_BoneCounter = 0;
     std::string path;
     std::string directory;

@@ -1,6 +1,6 @@
 #include "VulkanSwapChain.h"
-#include <GLFW/glfw3.h>
 #include "../../src/window/AppWindow.h"
+#include "../../src/Logging/Logger.h"
 #include "../RenderDeviceVulkan.h"
 
 VulkanSwapChain::VulkanSwapChain(VulkanDevice& deviceRef, RenderDeviceVulkan& renderDeviceRef)
@@ -232,12 +232,14 @@ void VulkanSwapChain::recreateSwapchain()
 {
 	int width = 0;
 	int height = 0;
-	GLFWwindow* windowHandle = static_cast<GLFWwindow*>(AppWindow::getWindowHandle());
-	getFrameBufferSize(width, height);	//TODO: remove abstract to appwindow
+
+	AppWindow::getFrameBufferSize(&width, &height);
 	while (width == 0 || height == 0) {
-		getFrameBufferSize(width, height);
-		glfwWaitEvents();
+		AppWindow::getFrameBufferSize(&width, &height);
+		AppWindow::waitEvents();
 	}
+
+	renderDevice.waitIdle();
 
 	cleanupSwapChain();
 
@@ -284,7 +286,7 @@ VkExtent2D VulkanSwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& cap
 	}
 	else {
 		int width, height;
-		getFrameBufferSize(width, height);	//TODO: remove abstract to appwindow
+		AppWindow::getFrameBufferSize(&width, &height);
 
 		VkExtent2D actualExtent = {
 			static_cast<uint32_t>(width),
@@ -312,16 +314,4 @@ void VulkanSwapChain::cleanupSwapChain()
 		vkDestroyImageView(device, imageView, nullptr);
 	}
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
-}
-
-void VulkanSwapChain::getFrameBufferSize(int& width, int& height)
-{
-	WindowConfig windowConfig = AppWindow::getWindowConfig();
-	switch (windowConfig.windowPlatform) {
-		case WindowPlatform::GLFW:
-			glfwGetFramebufferSize(static_cast<GLFWwindow*>(AppWindow::getWindowHandle()), &width, &height);	//TODO: remove abstract to appwindow
-		default:
-			throw std::runtime_error("swapchain: getFrameBufferSize: Undefined winow platform");
-	}
-
 }

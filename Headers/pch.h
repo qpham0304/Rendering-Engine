@@ -16,6 +16,7 @@
 #define PLATFORM_WINDOWS
 
 #ifdef PLATFORM_WINDOWS
-	//#include <windows.h>
-	#include "../src/core/Application.h"
+	#include <windows.h>
+	//#include "../src/core/Application.h"
+#elif PLATFORM_LINUX
 #endif

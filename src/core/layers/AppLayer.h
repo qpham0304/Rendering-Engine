@@ -1,11 +1,11 @@
 #pragma once
 
-#include <FrameBuffer.h>
 #include <memory>
 #include <Shader.h>
 #include "Layer.h"
 #include "../../src/graphics/renderers/SkyboxRenderer.h"
 #include "../../src/logging/Logger.h"
+#include "../../graphics/framework/OpenGL/renderers/FrameBuffer.h"
 
 class AppLayer : public Layer
 {

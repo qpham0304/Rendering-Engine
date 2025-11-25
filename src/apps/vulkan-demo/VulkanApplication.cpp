@@ -8,7 +8,9 @@
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/events/EventManager.h"
 #include "../../src/graphics/framework/Vulkan/RenderDeviceVulkan.h"	//TODO: remove conrete type access dependency
+#include "Model.h"
 
+Model* modelPtr = nullptr;
 
 const std::vector<VulkanDevice::Vertex> vertices = {
     {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
@@ -50,8 +52,6 @@ void VulkanApplication::init(WindowConfig config)
 void VulkanApplication::start()
 {
 	appWindow->init(windowConfig);
-	windowHandle = static_cast<GLFWwindow*>(AppWindow::getWindowHandle());
-
 
 	camera.init(AppWindow::getWidth(), AppWindow::getHeight(),
 		glm::vec3(2.0f, 2.0f, 2.0f),
@@ -99,7 +99,13 @@ void VulkanApplication::start()
 	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
 	pushConstantData.data = 0.1f;
 
-	initVulkan();
+
+	renderDeviceVulkan->setPushConstantRange(sizeof(PushConstantData));
+	renderDeviceVulkan->init(windowConfig);
+
+	renderDeviceVulkan->vulkanBuffer.createVertexBuffer(vertices, renderDeviceVulkan->commandPool.commandPool);
+	renderDeviceVulkan->vulkanBuffer.createIndexBuffer(indices, renderDeviceVulkan->commandPool.commandPool);
+	renderDeviceVulkan->vulkanBuffer.createCombinedBuffer(vertices, indices, renderDeviceVulkan->commandPool.commandPool);
 
 	guiManager->init(windowConfig);
 
@@ -107,6 +113,11 @@ void VulkanApplication::start()
 
 	editorLayer = new EditorLayer();
 	//editorLayer->init(guiManager.get());
+
+	//Model model("Models/aru/aru.gltf");
+	//modelPtr = new Model("Models/aru/aru.gltf");
+
+	//auto meshes = modelPtr->meshes;
 }
 
 
@@ -140,15 +151,6 @@ void VulkanApplication::end()
 	guiManager->onClose();
 	renderDeviceVulkan->onClose();
 	appWindow->onClose();
-}
-
-void VulkanApplication::initVulkan() {
-	renderDeviceVulkan->setPushConstantRange(sizeof(PushConstantData));
-	renderDeviceVulkan->init(windowConfig);
-
-	renderDeviceVulkan->vulkanBuffer.createVertexBuffer(vertices, renderDeviceVulkan->commandPool.commandPool);
-	renderDeviceVulkan->vulkanBuffer.createIndexBuffer(indices, renderDeviceVulkan->commandPool.commandPool);
-	renderDeviceVulkan->vulkanBuffer.createCombinedBuffer(vertices, indices, renderDeviceVulkan->commandPool.commandPool);
 }
 
 void VulkanApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -197,7 +199,11 @@ void VulkanApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint3
 
 	if (showGui) {
 		guiManager->start();
+		ImGui::BeginChild("Image View");
+		ImGui::Image((ImTextureID)renderDeviceVulkan->imguiTextureDescriptorSet, ImVec2(500, 500));
+		ImGui::EndChild();
 		guiManager->render(commandBuffer);
+
 	}
 
 	vkCmdEndRenderPass(commandBuffer);

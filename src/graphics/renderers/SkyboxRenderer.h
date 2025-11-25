@@ -2,8 +2,8 @@
 
 #include <Shader.h>
 #include <Texture.h>
-#include <skybox.h>
 #include <algorithm>
+#include "../framework/OpenGL/core/skybox.h"
 
 class Camera;
 

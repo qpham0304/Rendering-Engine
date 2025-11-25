@@ -1,8 +1,9 @@
 #pragma once
 
 #include "../../core/layers/AppLayer.h"
-#include "ParticleGeometry.h"
 #include "../../graphics/renderers/ShadowMapRenderer.h"
+#include "../../graphics/framework/OpenGL/core/ParticleGeometry.h"
+#include "../../graphics/framework/OpenGL/core/DepthMap.h"
 
 class DeferredIBLDemo : public AppLayer
 {

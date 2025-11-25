@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../core/layers/AppLayer.h"
-#include "ParticleGeometry.h"
+#include "../../graphics/framework/OpenGL/core/ParticleGeometry.h"
 #include <memory>
 
 class ParticleDemo : public AppLayer

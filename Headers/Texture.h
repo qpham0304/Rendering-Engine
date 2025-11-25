@@ -1,7 +1,8 @@
 #pragma once
 
-#include<stb/stb_image.h>
-#include"Shader.h"
+#include <stb/stb_image.h>
+#include "Shader.h"
+#include <string>
 
 class Texture
 {
@@ -18,13 +19,9 @@ public:
 	Texture(const char* path, const char* texType);
 	Texture(const char* fileName, const char* texType, const std::string& directory);
 
-	//// Copy constructor
 	//Texture(const Texture& other);
-	//// Copy assignment operator
 	//Texture& operator=(const Texture& other);
-
 	//Texture(Texture&& other) noexcept;
-
 	//Texture& operator=(Texture&& other) noexcept;
 
 	~Texture();

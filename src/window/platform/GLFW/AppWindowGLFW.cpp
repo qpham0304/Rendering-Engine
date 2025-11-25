@@ -1,10 +1,14 @@
 #include "AppWindowGLFW.h"
 #include <glad/glad.h>
 #define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 #include "../../src/core/features/Timer.h"
 #include "../../src/core/events/eventManager.h"
 #include "InputGLFW.h"
+#include <GLFW/glfw3.h>
+#if defined _WIN32
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#endif
 
 AppWindowGLFW::AppWindowGLFW() 
 	: AppWindow(), m_windowHandle(nullptr), m_sharedWindowHandle(nullptr)
@@ -69,14 +73,19 @@ void AppWindowGLFW::onUpdate()
 		default: throw std::runtime_error("Platform not supported for onUpdate"); break;
 	}
 }
-
-void AppWindowGLFW::_createWindowSurface(void* instance, void* surface)
+void AppWindowGLFW::_getFrameBufferSize(int& width, int& height)
 {
-	switch (m_config.renderPlatform) {
-	case RenderPlatform::OPENGL: throw std::runtime_error("No support for OpenGL"); break;
-	case RenderPlatform::VULKAN: _createSurfaceVulkan(instance, surface); break;
+	glfwGetFramebufferSize(m_windowHandle, &width, &height);	//TODO: remove abstract to appwindow
+}
 
-	}
+void AppWindowGLFW::_waitEvents()
+{
+	glfwWaitEvents();
+}
+
+void AppWindowGLFW::_setContextCurrent()
+{
+	glfwMakeContextCurrent(m_windowHandle);
 }
 
 
@@ -92,6 +101,25 @@ void* AppWindowGLFW::_getSharedWindow()
 		throw std::runtime_error("Shared window is only available for OpenGL platform");
 	}
 	return m_sharedWindowHandle;
+}
+
+void* AppWindowGLFW::_getNativeWindowHandle()
+{
+	void* handle;
+#if defined(_WIN32)
+	handle = glfwGetWin32Window(m_windowHandle);
+//	h.platform = PlatformType::Win32;
+//	h.window = glfwGetWin32Window(m_window);
+//	h.display = nullptr;  // not needed on Windows
+#elif defined(__linux__)
+//	h.platform = PlatformType::X11;
+//	h.window = (void*)glfwGetX11Window(m_window);
+//	h.display = (void*)glfwGetX11Display();
+#elif defined(__APPLE__)
+//	h.platform = PlatformType::Cocoa;
+//	h.window = glfwGetCocoaWindow(m_window);
+#endif
+	return handle;
 }
 
 
@@ -264,14 +292,4 @@ void AppWindowGLFW::_onUpdateVulkan()
 	glfwPollEvents();
 
 	//throw std::runtime_error("Vulkan onUpdate not yet implemented");
-}
-
-void AppWindowGLFW::_createSurfaceVulkan(void* instancePtr, void* surfacePtr)
-{
-	VkInstance instance = reinterpret_cast<VkInstance>(instancePtr);
-	VkSurfaceKHR* surface = reinterpret_cast<VkSurfaceKHR*>(surfacePtr);
-
-	if (glfwCreateWindowSurface(instance, m_windowHandle, nullptr, surface) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create window surface!");
-	}
 }

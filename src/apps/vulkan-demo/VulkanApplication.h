@@ -1,8 +1,6 @@
 #pragma once
 
-#define GLFW_INCLUDE_NONE
 #include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
 
 #include <iostream>
 #include <fstream>
@@ -18,17 +16,13 @@
 #include <glm/glm.hpp>
 #include <array>
 #include <memory>
-#include "Camera.h"
+#include "../../src/core/features/Camera.h"
 //#include "OrbitCamera.h"
 #include "../../src/core/features/ServiceLocator.h"
 #include "../../src/core/features/PlatformFactory.h"
 #include "../../src/core/layers/EditorLayer.h"
 #include "../../src/core/layers/LayerManager.h"
 #include "../../src/core/scene/SceneManager.h"
-
-//TODO: remove once done
-#include "imgui.h"
-#include <imgui_impl_vulkan.h>
 
 
 class RenderDeviceVulkan;
@@ -72,12 +66,9 @@ private:
 
 
 private:
-    GLFWwindow* windowHandle;
-
     Camera camera;
     PushConstantData pushConstantData;
 
-    void initVulkan();
     void render();
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 };
