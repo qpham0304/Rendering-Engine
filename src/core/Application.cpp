@@ -8,18 +8,10 @@
 
 
 Application::Application(WindowConfig windowConfig) 
-	: isRunning(false), windowConfig(windowConfig), editorLayer(nullptr)
+	: isRunning(false), windowConfig(windowConfig)
 {
 	ServiceLocator::setContext(&serviceLocator);
-}
 
-void Application::pushLayer(Layer* layer)
-{
-	layerManager->addLayer(layer);
-}
-
-void Application::init()
-{
 	//separate service modules
 	engineLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Engine");
 	clientLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Client");
@@ -30,7 +22,6 @@ void Application::init()
 	//engine specific features
 	layerManager = std::make_unique<LayerManager>(serviceLocator);
 
-	editorLayer = new EditorLayer("EditorLayer");
 
 	services.push_back(appWindow.get());
 	services.push_back(guiManager.get());
@@ -42,18 +33,29 @@ void Application::init()
 	renderDevice->init(windowConfig);
 	clientLogger->setLevel(LogLevel::Debug); // Set *global* log level to debug
 
+	editorLayer = new EditorLayer("EditorLayer", *guiManager);
+}
+
+void Application::pushLayer(Layer* layer) {
+	layerManager->addLayer(layer);
+}
+
+void Application::init()
+{
+	appWindow->init(windowConfig);
+	guiManager->init(windowConfig);
+	layerManager->init();
+	editorLayer->init();
+}
+
+void Application::start()
+{
+	pushLayer(editorLayer);
 	isRunning = true;
 
 	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		onClose();
 	});
-}
-
-void Application::start()
-{
-	appWindow->init(windowConfig);
-	guiManager->init(windowConfig);
-	editorLayer->init(guiManager.get());
 
 	//TODO: experimenting with file watcher for now
 	std::unique_ptr<filewatch::FileWatch<std::string>> fileWatcher;
@@ -65,9 +67,7 @@ void Application::start()
 	));
 }
 
-void Application::run() {
-	pushLayer(editorLayer);	// must be the last to be added to layer stack
-
+void Application::run() {	// must be the last to be added to layer stack
 	while (isRunning) {
 		// Application
 		appWindow->onUpdate();

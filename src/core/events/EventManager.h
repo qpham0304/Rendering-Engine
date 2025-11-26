@@ -8,6 +8,7 @@
 #include <future>
 #include <thread>
 #include "Event.h"
+#include <atomic>
 #include "EventListener.h"
 #include "../../src/core/features/Timer.h"
 
@@ -48,9 +49,9 @@ private:
 	void cleanUpThread();
 
 private:
-	int runningTasks = 0;
+	std::atomic<int> runningTasks{ 0 };
 
-	uint32_t callbackID;
+	std::atomic<uint32_t> callbackID{ 0 };
 	std::unordered_map<std::string, std::vector<EventListener>> listeners;
 	std::unordered_map<EventType, std::vector<std::pair<uint32_t, EventCallback>>> callbacks;
 

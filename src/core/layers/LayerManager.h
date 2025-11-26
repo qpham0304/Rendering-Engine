@@ -39,7 +39,9 @@ public:
 	const int& size() const;
 	const std::string& CurrentLayer();
 
+	int init();
 	void onUpdate();
+	void onClose();
 	void onGuiUpdate();
 
 	//std::vector<Layer*>::iterator begin();

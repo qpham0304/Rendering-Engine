@@ -111,7 +111,7 @@ void VulkanApplication::start()
 
 	layerManager = std::make_unique<LayerManager>(serviceLocator);
 
-	editorLayer = new EditorLayer();
+	editorLayer = new EditorLayer("EditorLayer", *guiManager);
 	//editorLayer->init(guiManager.get());
 
 	//Model model("Models/aru/aru.gltf");

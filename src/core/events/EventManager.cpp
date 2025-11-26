@@ -8,15 +8,11 @@ EventManager& EventManager::getInstance()
 
 uint32_t EventManager::subscribe(EventType eventType, EventCallback callback)
 {
-	if (callbacks.find(eventType) != callbacks.end()) {
-		callbacks[eventType].emplace_back(std::make_pair(callbackID, std::move(callback)));
-	}
+	uint32_t id = callbackID.fetch_add(1, std::memory_order_relaxed);
+	auto& callbackList = callbacks[eventType];
 
-	else {
-		callbacks[eventType] = { std::make_pair(callbackID, std::move(callback)) };
-	}
-
-	return callbackID++;
+	callbackList.emplace_back(id, std::move(callback));
+	return id;
 }
 
 //TODO: check what happen if an event is removed mid iteration? 
@@ -76,7 +72,7 @@ void EventManager::queue(AsyncEvent event, AsyncCallback callback)
 {
 	std::scoped_lock<std::mutex> lock(queueMutex);
 	eventQueue.push(std::make_pair(std::move(event), std::move(callback)));
-	runningTasks++;
+	runningTasks.fetch_add(1, std::memory_order_relaxed);
 }
 
 void EventManager::subscribe(const std::string& event, EventListener& listener) {
@@ -104,7 +100,7 @@ void EventManager::onUpdate()
 			std::thread thread = std::thread([this, &event, callback, mutableEvent]() mutable {
 				callback(mutableEvent);
 				event.isCompleted = true;
-				runningTasks--;
+				runningTasks.fetch_sub(1, std::memory_order_relaxed);
 			});
 			threads.push_back(std::make_pair(std::move(thread), &event.isCompleted));
 			eventQueue.pop();

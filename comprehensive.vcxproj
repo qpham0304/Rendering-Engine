@@ -294,6 +294,7 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\TextureOpenGL.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Headers\Texture.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.h" />
     <ClInclude Include="src\graphics\renderers\IndexBuffer.h" />
     <ClInclude Include="Libraries\include\imgui\backends\imgui_impl_vulkan.h" />
@@ -364,7 +365,6 @@
     <ClInclude Include="src\core\features\Timer.h" />
     <ClInclude Include="src\graphics\renderers\AtmosphereRenderer.h" />
     <ClInclude Include="src\graphics\renderers\Renderer.h" />
-    <ClInclude Include="src\core\components\headers\ModelComponent.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\renderers\BloomRenderer.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\BloomFBO.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\DepthCubeMap.h" />
@@ -376,7 +376,6 @@
     <ClInclude Include="Libraries\include\ImGuizmo\ImSequencer.h" />
     <ClInclude Include="Libraries\include\ImGuizmo\ImZoomSlider.h" />
     <ClInclude Include="src\gui\framework\ImGui\ImGuiManager.h" />
-    <ClInclude Include="src\core\components\headers\LightComponent.h" />
     <ClInclude Include="src\graphics\utils\ltc_matrix.h" />
     <ClInclude Include="src\graphics\utils\Utils.h" />
     <ClInclude Include="src\window\AppWindow.h" />
@@ -386,8 +385,6 @@
     <ClInclude Include="src\animation\Animator.h" />
     <ClInclude Include="Headers\assimp_glm_helpers.h" />
     <ClInclude Include="src\animation\Bone.h" />
-    <ClInclude Include="src\core\components\headers\GridComponent.h" />
-    <ClInclude Include="src\core\components\headers\Component.h" />
     <ClInclude Include="src\core\features\camera.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\DepthMap.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\EBO.h" />
@@ -395,11 +392,9 @@
     <ClInclude Include="src\graphics\framework\OpenGL\core\ModelOpenGL.h" />
     <ClInclude Include="Headers\resource.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\ShaderOpenGL.h" />
-    <ClInclude Include="Headers\Texture.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\VAO.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\VBO.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\skybox.h" />
-    <ClInclude Include="src\core\components\headers\SkyboxComponent.h" />
     <ClInclude Include="src\core\systems\System.h" />
     <ClInclude Include="src\gui\GuiManager.h" />
     <ClInclude Include="src\gui\Themes\Themes.h" />

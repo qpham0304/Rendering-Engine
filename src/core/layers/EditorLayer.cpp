@@ -12,6 +12,8 @@
 #include "../../src/gui/GuiManager.h"
 #include "../../src/core/features/Camera.h"
 
+#include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
+#include "../../src/apps/particle-demo/particleDemo.h"
 void EditorLayer::mockThreadTasks()
 {
 	AsyncEvent addComponentEvent;
@@ -43,27 +45,31 @@ void EditorLayer::renderGuizmo()
 
 	if (!selectedEntities.empty()) {
 		auto& transformComponent = selectedEntities[0].getComponent<TransformComponent>();
-		guiController->renderGuizmo(transformComponent);
+		guiController.renderGuizmo(transformComponent);
 	}
 }
 
-EditorLayer::EditorLayer(const std::string& name) 
-	: Layer (name)
+EditorLayer::EditorLayer(const std::string& name, GuiManager& controller)
+	: Layer (name), guiController(controller)
 {
 
 }
 
-void EditorLayer::init(GuiManager* controller)
+int EditorLayer::init()
 {
-	guiController = controller;
-	guiController->useDarkTheme();
+	guiController.useDarkTheme();
 	sceneManager.addScene("default");
 	modelShader.Init("Shaders/model.vert", "Shaders/model.frag");
+
+	return 0;
 }
 
 void EditorLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);
+
+	//manager->addLayer(new DeferredIBLDemo("demo"));
+	//app.pushLayer(new ParticleDemo("particle demo"));
 
 	if (!SceneManager::cameraController) {
 		editorCamera = new Camera();
@@ -195,7 +201,7 @@ void EditorLayer::onUpdate()
 
 void EditorLayer::onGuiUpdate()
 {
-	guiController->render();
+	guiController.render();
 	//if(ImGui::Button("addmock data")){
 	//	mockThreadTasks();
 	//}
@@ -240,13 +246,13 @@ void EditorLayer::onEvent(Event& event)
 void EditorLayer::handleKeyPressed(int keycode)
 {
 	if (keycode == KEY_T) {
-		guiController->guizmoTranslate();
+		guiController.guizmoTranslate();
 	}
 	if (keycode == KEY_R) {
-		guiController->guizmoRotate();
+		guiController.guizmoRotate();
 	}
 	if (keycode == KEY_Z) {
-		guiController->guizmoScale();
+		guiController.guizmoScale();
 	}
 	if (keycode == KEY_DELETE) {
 		Scene* scene = SceneManager::getInstance().getActiveScene();

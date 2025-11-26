@@ -105,6 +105,14 @@ const std::string& LayerManager::CurrentLayer()
 	return m_Layers[m_SelectedLayer]->getName();
 }
 
+int LayerManager::init() {
+	for (auto& layer : m_Layers) {
+		layer->init();
+	}
+	return 0;
+}
+
+
 void LayerManager::onUpdate() 
 {
 	for (const auto& layer : m_Layers) {

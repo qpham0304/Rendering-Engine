@@ -4,13 +4,13 @@
 #include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
 #include "../../src/apps/particle-demo/particleDemo.h"
 
-#define RUN_STANDALONE
+//#define RUN_EDITOR
 int main()
 {
 	try {
 		WindowConfig windowConfig{};
-#ifdef RUN_STANDALONE
-		windowConfig.title = "Application Demo";
+#ifdef RUN_EDITOR
+		windowConfig.title = "Engine Editor";
 		windowConfig.windowPlatform = WindowPlatform::GLFW;
 		windowConfig.renderPlatform = RenderPlatform::OPENGL;
 		windowConfig.guiPlatform = GuiPlatform::IMGUI;
@@ -21,12 +21,11 @@ int main()
 
 		Application app(windowConfig);
 		app.init();
-		app.start();
 
-		//TODO: problem: app layer can only be added after
-		// everything is started so check that before allow adding layer
 		app.pushLayer(new DeferredIBLDemo("demo"));
 		//app.pushLayer(new ParticleDemo("particle demo"));
+
+		app.start();
 
 		app.run();
 		app.end();
@@ -45,8 +44,6 @@ int main()
 		app.start();
 		app.run();
 		app.end();
-
-
 #endif
 	}
 	catch (const std::runtime_error& e) {

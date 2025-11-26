@@ -230,7 +230,7 @@ MeshOpenGL ModelOpenGL::processMesh(aiMesh* mesh, const aiScene* scene)
             textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
         }
 
-        // try to set up as much materials as possible (might looks wrong in PBR shading)
+        // try to set up as much materials as possible (might look wrong in PBR shading)
         else {
             albedoMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "albedoMap");
             textures.insert(textures.end(), albedoMaps.begin(), albedoMaps.end());

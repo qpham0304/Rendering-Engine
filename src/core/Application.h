@@ -10,12 +10,14 @@
 class Application
 {
 public:
+	std::unique_ptr<GuiManager> guiManager;
 
 public:
 	Application(WindowConfig windowConfig);
 	~Application() = default;
 
 	void pushLayer(Layer* layer);
+
 	void init();
 	void start();
 	void run();
@@ -32,7 +34,6 @@ private:
 	SceneManager& sceneManager = SceneManager::getInstance();
 	EventManager& eventManager = EventManager::getInstance();
 	std::unique_ptr<LayerManager> layerManager;
-	std::unique_ptr<GuiManager> guiManager;
 	std::unique_ptr<AppWindow> appWindow;
 	std::unique_ptr<RenderDevice> renderDevice;
 	std::unique_ptr<Logger> engineLogger;

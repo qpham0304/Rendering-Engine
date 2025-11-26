@@ -55,6 +55,11 @@ AppLayer::~AppLayer()
 	onDetach();
 }
 
+int AppLayer::init()
+{
+	return 0;
+}
+
 void AppLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);

@@ -11,6 +11,7 @@ public:
 	bool m_Enabled;
 
 public:
+	virtual int init() = 0;
 	virtual void onAttach(LayerManager* manager);
 	virtual void onDetach() = 0;
 	virtual void onUpdate() = 0;
