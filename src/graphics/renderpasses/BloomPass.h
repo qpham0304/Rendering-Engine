@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Shader.h"
+#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+
 #include "../../src/core/layers/Layer.h"
 #include "../../src/graphics/framework/OpenGL/renderers/BloomRenderer.h"
 
@@ -12,7 +13,7 @@ private:
 	unsigned int colorBuffers[2];
 	unsigned int rboDepth;
 	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	std::unique_ptr<Shader> bloomShader;
+	std::unique_ptr<ShaderOpenGL> bloomShader;
 	BloomRenderer bloomRenderer;
 
 public:

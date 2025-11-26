@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Shader.h"
+#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+
 
 #include <memory>
 
@@ -65,6 +66,6 @@ public:
 	void init(const ParticleControl& control);
 	void clear();
 	void reset();
-	void render(Shader& shader, Camera* camera, int& numRender, float& speed, bool& pause);
+	void render(ShaderOpenGL& shader, Camera* camera, int& numRender, float& speed, bool& pause);
 };
 

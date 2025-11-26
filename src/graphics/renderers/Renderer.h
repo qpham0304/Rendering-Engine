@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <Shader.h>
 
 class Renderer
 {

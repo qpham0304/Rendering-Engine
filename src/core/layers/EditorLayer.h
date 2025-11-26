@@ -20,7 +20,7 @@ private:
 	bool editorActive = true;
 	bool flipUV = true;
 	bool faceCamera = false;
-	Shader modelShader;
+	ShaderOpenGL modelShader;
 	uint32_t keyEventID;
 
 	void mockThreadTasks();

@@ -1,34 +1,32 @@
 #pragma once
 
-#include <stb/stb_image.h>
-#include "Shader.h"
 #include <string>
+
+class ShaderOpenGL;
 
 class Texture
 {
-
-private:
-	void loadTexture(const char* path, bool flip);
 public:
 	unsigned int ID;
 	std::string type;
-	unsigned int unit = 0;
 	std::string path;
 
+public:
+	virtual ~Texture() = default;
+
+	virtual void Init(const char* path, const char* texType, bool flipUV) = 0;
+	virtual void TexUnit(ShaderOpenGL& shader, const char* uniform, unsigned int unit) = 0;
+	virtual void Bind() = 0;
+	virtual void Unbind() = 0;
+	virtual void Delete() = 0;
+
+protected:
 	Texture() = default;
-	Texture(const char* path, const char* texType);
-	Texture(const char* fileName, const char* texType, const std::string& directory);
 
-	//Texture(const Texture& other);
-	//Texture& operator=(const Texture& other);
-	//Texture(Texture&& other) noexcept;
-	//Texture& operator=(Texture&& other) noexcept;
+	virtual void loadTexture(const char* path, bool flip) = 0;
 
-	~Texture();
 
-	void Init(const char* path, const char* texType, bool flipUV);
-	void TexUnit(Shader& shader, const char* uniform, unsigned int unit);
-	void Bind();
-	void Unbind();
-	void Delete();
+protected:
+	unsigned int unit = 0;
+
 };

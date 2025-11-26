@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <Shader.h>
+#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
 #include "Layer.h"
 #include "../../src/graphics/renderers/SkyboxRenderer.h"
 #include "../../src/logging/Logger.h"

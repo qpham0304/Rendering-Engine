@@ -44,14 +44,14 @@ private:
 	);
 	ParticleGeometry particleRenderer;
 	
-	Shader particleShader;
+	ShaderOpenGL particleShader;
 
 	FrameBuffer lightPassFBO;
 
 	unsigned int gBuffer;
 	unsigned int gDepth, gNormal, gAlbedo, gMetalRoughness, gEmissive, gDUV, gPosition;
 
-	Shader pbrShader;
+	ShaderOpenGL pbrShader;
 
 	std::default_random_engine generator;
 	std::vector<glm::vec3> ssaoKernel;

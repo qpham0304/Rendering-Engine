@@ -4,9 +4,9 @@
 #include <map>
 #include <glm/glm.hpp>
 #include <assimp/scene.h>
-#include <bone.h>
 #include <functional>
-#include <model.h>
+#include "Bone.h"
+#include "src/graphics/framework/OpenGL/core/ModelOpenGL.h"
 
 struct AssimpNodeData
 {
@@ -20,7 +20,7 @@ class Animation
 {
 public:
 	Animation();
-	Animation(const std::string& animationPath, Model* model);
+	Animation(const std::string& animationPath, ModelOpenGL* model);
 	~Animation();
 	
 	Bone* FindBone(const std::string& name);
@@ -43,7 +43,7 @@ public:
 
 
 private:
-	void ReadMissingBones(const aiAnimation* animation, Model& model);
+	void ReadMissingBones(const aiAnimation* animation, ModelOpenGL& model);
 
 	void ReadHierarchyData(AssimpNodeData& dest, const aiNode* src);
 	double m_Duration = 0.0f;

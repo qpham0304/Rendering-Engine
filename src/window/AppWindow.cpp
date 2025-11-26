@@ -1,10 +1,10 @@
 #include "AppWindow.h"
-#include "../../src/core/features/Camera.h"
-#include "../../src/core/features/Timer.h"
-#include "../../src/core/events/Event.h"
-#include "../../src/core/events/EventManager.h"
-#include "../../src/core/scene/SceneManager.h"
-#include "../../src/window/Input.h"
+#include "src/core/features/Camera.h"
+#include "src/core/features/Timer.h"
+#include "src/core/events/Event.h"
+#include "src/core/events/EventManager.h"
+#include "src/core/scene/SceneManager.h"
+#include "src/window/Input.h"
 
 const std::set<RenderPlatform> AppWindow::supportRenderPlatform = { RenderPlatform::OPENGL, RenderPlatform::VULKAN };
 AppWindow* AppWindow::window = nullptr;

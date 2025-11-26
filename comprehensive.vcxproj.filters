@@ -338,9 +338,6 @@
     <ClInclude Include="src\graphics\framework\OpenGL\core\VBO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Shader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Headers\Texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -353,12 +350,6 @@
     <ClInclude Include="src\core\features\camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Mesh.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Headers\model.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\graphics\framework\OpenGL\core\skybox.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -368,16 +359,7 @@
     <ClInclude Include="src\gui\GuiManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Headers\Animation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Headers\Animator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Headers\assimp_glm_helpers.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Headers\Bone.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\framework\OpenGL\renderers\FrameBuffer.h">
@@ -458,25 +440,10 @@
     <ClInclude Include="src\graphics\renderers\SkyboxRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\components\headers\ModelComponent.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\components\headers\LightComponent.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\graphics\utils\ltc_matrix.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\utils\Utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\components\headers\GridComponent.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\components\headers\Component.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\components\headers\SkyboxComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\core\features\Profiler.h">

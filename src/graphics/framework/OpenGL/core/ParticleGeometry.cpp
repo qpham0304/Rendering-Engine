@@ -122,7 +122,7 @@ void ParticleGeometry::reset() {
     std::fill(flyDirections.begin(), flyDirections.end(), glm::vec3(0.0));
 }
 
-void ParticleGeometry::render(Shader& shader, Camera* camera, int& numRender, float& speed, bool& pause) {
+void ParticleGeometry::render(ShaderOpenGL& shader, Camera* camera, int& numRender, float& speed, bool& pause) {
     shader.Activate();
     shader.setMat4("mvp", camera->getMVP());
     shader.setVec3("lightColor", glm::vec3(0.7, 0.8, 1.0));

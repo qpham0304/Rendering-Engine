@@ -15,7 +15,7 @@ struct UniformData {
 	std::string name;
 };
 
-class Shader
+class ShaderOpenGL
 {
 public:
 	// Reference ID of the Shader Program
@@ -23,14 +23,14 @@ public:
 	std::string type;
 
 public:
-	Shader();
-	Shader(const char* vertexFile, const char* fragmentFile);
-	Shader(const char* vertexFile, const char* fragmentFile, const char* geometryFile);
+	ShaderOpenGL();
+	ShaderOpenGL(const char* vertexFile, const char* fragmentFile);
+	ShaderOpenGL(const char* vertexFile, const char* fragmentFile, const char* geometryFile);
 	//Shader(const Shader& other);
 	//Shader& operator=(const Shader& other);
 	//Shader(Shader&& other) noexcept;
 	//Shader& operator=(Shader&& other) noexcept;
-	~Shader();
+	~ShaderOpenGL();
 
 	void Init(const char* vertexFile, const char* fragmentFile);
 	void Init(const char* vertexFile, const char* fragmentFile, const char* geometryFile);

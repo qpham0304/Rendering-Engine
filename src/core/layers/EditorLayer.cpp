@@ -164,7 +164,7 @@ void EditorLayer::onUpdate()
 				TransformComponent& transform = entity.getComponent<TransformComponent>();
 				glm::mat4 viewMatrix = SceneManager::cameraController->getViewMatrix();
 				const glm::mat4& modelMatrix = transform.getModelMatrix();
-				std::shared_ptr<Model> model = modelComponent.model.lock();
+				std::shared_ptr<ModelOpenGL> model = modelComponent.model.lock();
 
 				if (model != nullptr) {
 					if (SceneManager::cameraController) {

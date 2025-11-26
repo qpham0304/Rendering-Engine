@@ -3,7 +3,7 @@
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
-#include "Texture.h"
+#include "src/graphics/framework/OpenGL/core/TextureOpenGL.h"
 
 #define MAX_BONE_INFLUENCE 4
 
@@ -19,21 +19,21 @@ struct Vertex {
 	float m_Weights[MAX_BONE_INFLUENCE];	//weights from each bone
 };
 
-class Shader;
+class ShaderOpenGL;
 
-class Mesh
+class MeshOpenGL
 {
 public:
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
-	std::vector<Texture> textures;
+	std::vector<TextureOpenGL> textures;
 
 public:
-	Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);
-	~Mesh();
+	MeshOpenGL(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<TextureOpenGL> textures);
+	~MeshOpenGL();
 	
 	void Delete();
-	void Draw(Shader& shader);
+	void Draw(ShaderOpenGL& shader);
 	int GetNumVertices();
 
 private:

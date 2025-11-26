@@ -8,9 +8,10 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp_glm_helpers.h>
-#include "mesh.h"
-#include "shader.h"
-#include "texture.h"
+#include "MeshOpenGL.h"
+#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+
+#include "src/graphics/framework/OpenGL/core/TextureOpenGL.h"
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -30,17 +31,17 @@ struct BoneInfo
 
 };
 
-class Model
+class ModelOpenGL
 {
 public:
-    Model(const char* path);
-    Model(const Model& other);
-    Model(std::vector<Mesh> meshes, std::string path = "untitled");
-    Model& operator=(const Model& other);
-    ~Model();
+    ModelOpenGL(const char* path);
+    ModelOpenGL(const ModelOpenGL& other);
+    ModelOpenGL(std::vector<MeshOpenGL> meshes, std::string path = "untitled");
+    ModelOpenGL& operator=(const ModelOpenGL& other);
+    ~ModelOpenGL();
 
-    void Draw(Shader& shader);
-    void Draw(Shader& shader, unsigned int numInstances);
+    void Draw(ShaderOpenGL& shader);
+    void Draw(ShaderOpenGL& shader, unsigned int numInstances);
 
     std::map<std::string, BoneInfo> GetBoneInfoMap();
     int& GetBoneCount();
@@ -52,8 +53,8 @@ public:
 
 public:
     std::map<std::string, BoneInfo> m_BoneInfoMap;
-    std::unordered_map<std::string, Texture> loaded_textures;
-    std::vector<Mesh> meshes;
+    std::unordered_map<std::string, TextureOpenGL> loaded_textures;
+    std::vector<MeshOpenGL> meshes;
 
 private:
     int m_BoneCounter = 0;
@@ -65,8 +66,8 @@ private:
     void loadDefaultTexture(const std::string& path, const std::string& type);
     void loadModel(std::string path);
     void processNode(aiNode* node, const aiScene* scene);
-    Mesh processMesh(aiMesh* mesh, const aiScene* scene);
-    std::vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName);
+    MeshOpenGL processMesh(aiMesh* mesh, const aiScene* scene);
+    std::vector<TextureOpenGL> loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName);
 
 
     void SetVertexBoneDataToDefault(Vertex& vertex);

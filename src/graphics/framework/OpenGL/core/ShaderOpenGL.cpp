@@ -1,4 +1,5 @@
-#include "Shader.h"
+#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+
 #include <glad/glad.h>
 
 static bool validateFormat(const char* str) {
@@ -8,7 +9,7 @@ static bool validateFormat(const char* str) {
 	return false;
 }
 
-Shader::Shader(const char* vertexFile, const char* fragmentFile) : ID(0)
+ShaderOpenGL::ShaderOpenGL(const char* vertexFile, const char* fragmentFile) : ID(0)
 {
 	try {
 		ID = createShader(vertexFile, fragmentFile);
@@ -18,7 +19,7 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile) : ID(0)
 	}
 }
 
-Shader::Shader(const char* vertexFile, const char* fragmentFile, const char* geometryFile)  : ID(0)
+ShaderOpenGL::ShaderOpenGL(const char* vertexFile, const char* fragmentFile, const char* geometryFile)  : ID(0)
 {
 	try {
 		ID = createShader(vertexFile, fragmentFile, geometryFile);
@@ -28,17 +29,17 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile, const char* geo
 	}
 }
 
-Shader::Shader() : ID(0)
+ShaderOpenGL::ShaderOpenGL() : ID(0)
 {
 	type = "";
 }
 
-Shader::~Shader()
+ShaderOpenGL::~ShaderOpenGL()
 {
 	Delete();
 }
 
-void Shader::Init(const char* vertexFile, const char* fragmentFile)
+void ShaderOpenGL::Init(const char* vertexFile, const char* fragmentFile)
 {
 	try {
 		ID = createShader(vertexFile, fragmentFile);
@@ -48,7 +49,7 @@ void Shader::Init(const char* vertexFile, const char* fragmentFile)
 	}
 }
 
-void Shader::Init(const char* vertexFile, const char* fragmentFile, const char* geometryFile)
+void ShaderOpenGL::Init(const char* vertexFile, const char* fragmentFile, const char* geometryFile)
 {
 	try {
 		ID = createShader(vertexFile, fragmentFile, geometryFile);
@@ -59,18 +60,18 @@ void Shader::Init(const char* vertexFile, const char* fragmentFile, const char* 
 }
 
 // Activates the Shader Program
-void Shader::Activate()
+void ShaderOpenGL::Activate()
 {
 	glUseProgram(ID);
 }
 
 // Deletes the Shader Program
-void Shader::Delete()
+void ShaderOpenGL::Delete()
 {
 	glDeleteProgram(ID);
 }
 
-std::vector<std::string> Shader::split(const std::string& str) {
+std::vector<std::string> ShaderOpenGL::split(const std::string& str) {
 	std::istringstream iss(str);
 	std::vector<std::string> tokens;
 	std::string token;
@@ -81,7 +82,7 @@ std::vector<std::string> Shader::split(const std::string& str) {
 	return tokens;
 }
 
-std::vector<UniformData> Shader::parseShaderUniforms(const std::string& content) {
+std::vector<UniformData> ShaderOpenGL::parseShaderUniforms(const std::string& content) {
 	std::vector<std::string> tokens = split(content);
 	std::vector<UniformData> uniforms;
 
@@ -106,7 +107,7 @@ std::vector<UniformData> Shader::parseShaderUniforms(const std::string& content)
 }
 
 // Reads a text file and outputs a string with everything in the text file
-std::string Shader::get_file_contents(const char* filepath)
+std::string ShaderOpenGL::get_file_contents(const char* filepath)
 {
 	std::ifstream file(filepath);
 	if (!file.is_open()) {
@@ -123,7 +124,7 @@ std::string Shader::get_file_contents(const char* filepath)
 }
 
 // Checks if the different Shaders have compiled properly
-void Shader::compileErrors(unsigned int shader, const char* type)
+void ShaderOpenGL::compileErrors(unsigned int shader, const char* type)
 {
 #define DEBUG
 #ifdef DEBUG
@@ -156,7 +157,7 @@ void Shader::compileErrors(unsigned int shader, const char* type)
 #endif
 }
 
-void Shader::reloadShader()
+void ShaderOpenGL::reloadShader()
 {
 	try {
 		unsigned int newID;
@@ -172,7 +173,7 @@ void Shader::reloadShader()
 	}
 }
 
-unsigned int Shader::getUniformLocation(const std::string& name) const
+unsigned int ShaderOpenGL::getUniformLocation(const std::string& name) const
 {
 	if (cache.find(name) != cache.end())
 		return cache[name];
@@ -182,7 +183,7 @@ unsigned int Shader::getUniformLocation(const std::string& name) const
 
 }
 
-unsigned int Shader::createShader(const char* vertexFile, const char* fragmentFile)
+unsigned int ShaderOpenGL::createShader(const char* vertexFile, const char* fragmentFile)
 {
 	//TODO properly validate format 
 	//if false, use a default shader or something to prevent crash maybe?
@@ -231,7 +232,7 @@ unsigned int Shader::createShader(const char* vertexFile, const char* fragmentFi
 	return id;
 }
 
-unsigned int Shader::createShader(const char* vertexFile, const char* fragmentFile, const char* geometryFile)
+unsigned int ShaderOpenGL::createShader(const char* vertexFile, const char* fragmentFile, const char* geometryFile)
 {
 	//TODO properly validate format 
 	//if false, use a default shader or something to prevent crash maybe?
@@ -286,59 +287,59 @@ unsigned int Shader::createShader(const char* vertexFile, const char* fragmentFi
 	return id;
 }
 
-void Shader::setBool(const std::string& name, bool value)
+void ShaderOpenGL::setBool(const std::string& name, bool value)
 {
 	glUniform1i(getUniformLocation(name), (int)value);
 }
 
-void Shader::setInt(const std::string& name, int value)
+void ShaderOpenGL::setInt(const std::string& name, int value)
 {
 	glUniform1i(getUniformLocation(name), value);
 }
 
-void Shader::setFloat(const std::string& name, float value)
+void ShaderOpenGL::setFloat(const std::string& name, float value)
 {
 	glUniform1f(getUniformLocation(name), value);
 }
 
-void Shader::setVec2(const std::string& name, const glm::vec2& value)
+void ShaderOpenGL::setVec2(const std::string& name, const glm::vec2& value)
 {
 	glUniform2fv(getUniformLocation(name), 1, &value[0]);
 }
-void Shader::setVec2(const std::string& name, float x, float y)
+void ShaderOpenGL::setVec2(const std::string& name, float x, float y)
 {
 	glUniform2f(getUniformLocation(name), x, y);
 }
 
-void Shader::setVec3(const std::string& name, const glm::vec3& value)
+void ShaderOpenGL::setVec3(const std::string& name, const glm::vec3& value)
 {
 	glUniform3fv(getUniformLocation(name), 1, &value[0]);
 }
-void Shader::setVec3(const std::string& name, float x, float y, float z)
+void ShaderOpenGL::setVec3(const std::string& name, float x, float y, float z)
 {
 	glUniform3f(getUniformLocation(name), x, y, z);
 }
 
-void Shader::setVec4(const std::string& name, const glm::vec4& value)
+void ShaderOpenGL::setVec4(const std::string& name, const glm::vec4& value)
 {
 	glUniform4fv(getUniformLocation(name), 1, &value[0]);
 }
-void Shader::setVec4(const std::string& name, float x, float y, float z, float w)
+void ShaderOpenGL::setVec4(const std::string& name, float x, float y, float z, float w)
 {
 	glUniform4f(getUniformLocation(name), x, y, z, w);
 }
 
-void Shader::setMat2(const std::string& name, const glm::mat2& mat)
+void ShaderOpenGL::setMat2(const std::string& name, const glm::mat2& mat)
 {
 	glUniformMatrix2fv(getUniformLocation(name), 1, GL_FALSE, &mat[0][0]);
 }
 
-void Shader::setMat3(const std::string& name, const glm::mat3& mat)
+void ShaderOpenGL::setMat3(const std::string& name, const glm::mat3& mat)
 {
 	glUniformMatrix3fv(getUniformLocation(name), 1, GL_FALSE, &mat[0][0]);
 }
 
-void Shader::setMat4(const std::string& name, const glm::mat4& mat)
+void ShaderOpenGL::setMat4(const std::string& name, const glm::mat4& mat)
 {
 	glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE, &mat[0][0]);
 }

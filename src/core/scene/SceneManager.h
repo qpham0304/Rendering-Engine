@@ -10,13 +10,14 @@
 #include <mutex>
 #include <thread>
 #include "Scene.h"
-#include "Animator.h"	//animation dependency
+#include "src/animation/Animator.h"	//animation dependency
+#include "src/graphics/framework/OpenGL/core/TextureOpenGL.h"
 
 class Camera;
 
 class SceneManager {
 private:
-	static std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
+	static std::unordered_map<std::string, std::unique_ptr<ShaderOpenGL>> shaders;
 	static std::string selectedID;
 	std::mutex animationsLock;
 	std::mutex animatorsLock;
@@ -30,14 +31,14 @@ private:
 
 public:
 	static std::mutex mtx;
-	std::unordered_map<std::string, std::shared_ptr<Model>> models;
+	std::unordered_map<std::string, std::shared_ptr<ModelOpenGL>> models;
 	std::unordered_map<std::string, std::shared_ptr<Animation>> animations;
 
-	Texture defaultAlbedo;
-	Texture defaultNormal;
-	Texture defaultMetallic;
-	Texture defaultRoughness;
-	Texture defaultAO;
+	TextureOpenGL defaultAlbedo;
+	TextureOpenGL defaultNormal;
+	TextureOpenGL defaultMetallic;
+	TextureOpenGL defaultRoughness;
+	TextureOpenGL defaultAO;
 
 	~SceneManager();
 
@@ -53,9 +54,9 @@ public:
 	void onUpdate(const float deltaTime);
 	void onGuiUpdate(const float deltaTime);
 	std::string addModel(const std::string& path);
-	std::string addModelFromMeshes(std::vector<Mesh>& meshes);
+	std::string addModelFromMeshes(std::vector<MeshOpenGL>& meshes);
 	bool removeModel(const std::string& path);
-	std::string addAnimation(const std::string& path, Model* model);
+	std::string addAnimation(const std::string& path, ModelOpenGL* model);
 	bool removeAnimation(const std::string& path);
 };
 

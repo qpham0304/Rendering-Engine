@@ -264,9 +264,9 @@
     <ClCompile Include="src\gui\framework\ImGui\ImGuiManager.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\FrameBuffer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\SkyboxRenderer.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Animation.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Animator.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Bone.cpp" />
+    <ClCompile Include="src\animation\Animation.cpp" />
+    <ClCompile Include="src\animation\Animator.cpp" />
+    <ClCompile Include="src\animation\Bone.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\DepthMap.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\skybox.cpp" />
     <ClCompile Include="src\core\features\camera.cpp" />
@@ -280,9 +280,9 @@
     <ClCompile Include="Libraries\include\imgui\imgui_draw.cpp" />
     <ClCompile Include="Libraries\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="Libraries\include\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Mesh.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Model.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Shader.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\MeshOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\ModelOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\ShaderOpenGL.cpp" />
     <ClCompile Include="src\graphics\utils\stb.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\Texture.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\VAO.cpp" />
@@ -291,6 +291,7 @@
     <ClCompile Include="src\graphics\framework\Vulkan\renderpasses\VulkanRenderPass.cpp" />
     <ClCompile Include="src\graphics\renderers\VertexBuffer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\TextureOpenGL.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.h" />
@@ -381,19 +382,19 @@
     <ClInclude Include="src\window\AppWindow.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\Axis.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\renderers\FrameBuffer.h" />
-    <ClInclude Include="Headers\Animation.h" />
-    <ClInclude Include="Headers\Animator.h" />
+    <ClInclude Include="src\animation\Animation.h" />
+    <ClInclude Include="src\animation\Animator.h" />
     <ClInclude Include="Headers\assimp_glm_helpers.h" />
-    <ClInclude Include="Headers\Bone.h" />
+    <ClInclude Include="src\animation\Bone.h" />
     <ClInclude Include="src\core\components\headers\GridComponent.h" />
     <ClInclude Include="src\core\components\headers\Component.h" />
     <ClInclude Include="src\core\features\camera.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\DepthMap.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\EBO.h" />
-    <ClInclude Include="Headers\Mesh.h" />
-    <ClInclude Include="Headers\model.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\MeshOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\ModelOpenGL.h" />
     <ClInclude Include="Headers\resource.h" />
-    <ClInclude Include="Headers\Shader.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\ShaderOpenGL.h" />
     <ClInclude Include="Headers\Texture.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\VAO.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\VBO.h" />
@@ -414,6 +415,7 @@
     <ClInclude Include="src\graphics\framework\Vulkan\renderpasses\VulkanRenderPass.h" />
     <ClInclude Include="src\graphics\renderers\VertexBuffer.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\TextureOpenGL.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="comprehensive.rc" />

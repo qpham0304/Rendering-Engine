@@ -1,6 +1,7 @@
 #include "Entity.h"
 #include "../scene/SceneManager.h"
 #include "../components/MComponent.h"
+#include "src/graphics/framework/OpenGL/core/TextureOpenGL.h"   //TOO remove this dependency on camera creation
 
 std::string ACTIVE_SCENE = "default";
 
@@ -30,7 +31,7 @@ void Entity::onCameraComponentAdded()
         Scene& scene = *SceneManager::getInstance().getActiveScene();
         auto& modelComponent = this->addComponent<ModelComponent>();
 
-        std::vector<Mesh> meshes;
+        std::vector<MeshOpenGL> meshes;
         std::vector<Vertex> vertices;
         std::vector<GLuint> indices;
         std::vector<Texture>textures;
@@ -48,14 +49,14 @@ void Entity::onCameraComponentAdded()
             2, 3, 0
         };
 
-        Texture albedo("Textures/mobi-padoru.png", "albedo");
-        Texture normal("Textures/default/32x32/normal.png", "normalMap");
-        Texture metallic("Textures/default/32x32/metallic.png", "metallicMap");
-        Texture roughness("Textures/default/32x32/roughness.png", "roughnessMap");
-        Texture ao("Textures/default/32x32/ao.png", "aoMap");
-        Texture emissive("Textures/default/32x32/emissive.png", "emissiveMap");
+        TextureOpenGL albedo("Textures/mobi-padoru.png", "albedo");
+        TextureOpenGL normal("Textures/default/32x32/normal.png", "normalMap");
+        TextureOpenGL metallic("Textures/default/32x32/metallic.png", "metallicMap");
+        TextureOpenGL roughness("Textures/default/32x32/roughness.png", "roughnessMap");
+        TextureOpenGL ao("Textures/default/32x32/ao.png", "aoMap");
+        TextureOpenGL emissive("Textures/default/32x32/emissive.png", "emissiveMap");
 
-        Mesh quadMesh(quadMeshVertices, quadMeshIndices, { albedo, normal, metallic, roughness, ao, emissive });
+        MeshOpenGL quadMesh(quadMeshVertices, quadMeshIndices, { albedo, normal, metallic, roughness, ao, emissive });
         meshes.push_back(quadMesh);
         std::string uuid = SceneManager::getInstance().addModelFromMeshes(meshes);
         if (!uuid.empty()) {

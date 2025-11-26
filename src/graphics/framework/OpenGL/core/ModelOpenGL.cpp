@@ -1,6 +1,6 @@
-#include "model.h"
+#include "ModelOpenGL.h"
 
-Model::Model(const char* path)
+ModelOpenGL::ModelOpenGL(const char* path)
 {
     this->path = path;
     size_t dotPosition = this->path.find_last_of('.');
@@ -9,7 +9,7 @@ Model::Model(const char* path)
     loadModel(path);
 }
 
-Model::Model(const Model& other)
+ModelOpenGL::ModelOpenGL(const ModelOpenGL& other)
 {
     int m_BoneCounter = 0;
     std::string path = other.path;
@@ -23,7 +23,7 @@ Model::Model(const Model& other)
 
 }
 
-Model::Model(std::vector<Mesh> meshes, std::string path)
+ModelOpenGL::ModelOpenGL(std::vector<MeshOpenGL> meshes, std::string path)
 {
     this->meshes = std::move(meshes);
 
@@ -34,7 +34,7 @@ Model::Model(std::vector<Mesh> meshes, std::string path)
     }
 }
 
-Model& Model::operator=(const Model& other)
+ModelOpenGL& ModelOpenGL::operator=(const ModelOpenGL& other)
 {
     int m_BoneCounter = other.m_BoneCounter;
     std::string path = other.path;
@@ -48,7 +48,7 @@ Model& Model::operator=(const Model& other)
     return *this;
 }
 
-Model::~Model() {
+ModelOpenGL::~ModelOpenGL() {
     for (auto& mesh : meshes) {
         mesh.Delete();
     }
@@ -57,21 +57,21 @@ Model::~Model() {
     }
 }
 
-void Model::Draw(Shader& shader)
+void ModelOpenGL::Draw(ShaderOpenGL& shader)
 {
     for (unsigned int i = 0; i < meshes.size(); i++) {
         meshes[i].Draw(shader);
     }
 }
 
-void Model::Draw(Shader& shader, unsigned int numInstances)
+void ModelOpenGL::Draw(ShaderOpenGL& shader, unsigned int numInstances)
 {
     for (unsigned int i = 0; i < meshes.size(); i++) {
         meshes[i].Draw(shader);
     }
 }
 
-int Model::getNumVertices()
+int ModelOpenGL::getNumVertices()
 {
     int numVertices = 0;
     for (auto& mesh : meshes)
@@ -79,35 +79,35 @@ int Model::getNumVertices()
     return numVertices;
 }
 
-std::string Model::getPath()
+std::string ModelOpenGL::getPath()
 {
     return path;
 }
 
-std::string Model::getDirectory()
+std::string ModelOpenGL::getDirectory()
 {
     return directory;
 }
 
-std::string Model::getFileName()
+std::string ModelOpenGL::getFileName()
 {
     return fileName;
 }
 
-std::string Model::getExtension()
+std::string ModelOpenGL::getExtension()
 {
     return extension;
 }
 
 
-void Model::loadDefaultTexture(const std::string& path, const std::string& type)
+void ModelOpenGL::loadDefaultTexture(const std::string& path, const std::string& type)
 {
     if (loaded_textures.find(path) == loaded_textures.end()) {
-        loaded_textures[path] = Texture(path.c_str(), type.c_str());
+        loaded_textures[path] = TextureOpenGL(path.c_str(), type.c_str());
     }
 }
 
-void Model::loadModel(std::string path)
+void ModelOpenGL::loadModel(std::string path)
 {
     auto start = std::chrono::high_resolution_clock::now();
     Assimp::Importer import;
@@ -137,7 +137,7 @@ void Model::loadModel(std::string path)
     std::cout << "Model loading success: " << path << ", time taken: " << duration.count() << '\n';
 }
 
-void Model::processNode(aiNode* node, const aiScene* scene)
+void ModelOpenGL::processNode(aiNode* node, const aiScene* scene)
 {
     // process all the node's meshes (if any)
     for (unsigned int i = 0; i < node->mNumMeshes; i++)
@@ -152,11 +152,11 @@ void Model::processNode(aiNode* node, const aiScene* scene)
     }
 }
 
-Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
+MeshOpenGL ModelOpenGL::processMesh(aiMesh* mesh, const aiScene* scene)
 {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
-    std::vector<Texture> textures;
+    std::vector<TextureOpenGL> textures;
 
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
@@ -202,12 +202,12 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     if (mesh->mMaterialIndex >= 0)
     {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-        std::vector<Texture> albedoMaps;
-        std::vector<Texture> normalMaps;
-        std::vector<Texture> metalnessMaps;
-        std::vector<Texture> roughnessMaps;
-        std::vector<Texture> aoMaps;
-        std::vector<Texture> emissiveMaps;
+        std::vector<TextureOpenGL> albedoMaps;
+        std::vector<TextureOpenGL> normalMaps;
+        std::vector<TextureOpenGL> metalnessMaps;
+        std::vector<TextureOpenGL> roughnessMaps;
+        std::vector<TextureOpenGL> aoMaps;
+        std::vector<TextureOpenGL> emissiveMaps;
 
         // support gltf for pbr materials
         if (this->extension == ".gltf") {
@@ -257,13 +257,13 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 
 
 
-    return Mesh(vertices, indices, textures);
+    return MeshOpenGL(vertices, indices, textures);
 }
 
 
-std::vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName)
+std::vector<TextureOpenGL> ModelOpenGL::loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName)
 {
-    std::vector<Texture> textures = {};
+    std::vector<TextureOpenGL> textures = {};
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
     {
         aiString str;
@@ -282,7 +282,7 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType 
             break;
         }
 
-        Texture texture(path.c_str(), typeName.c_str());
+        TextureOpenGL texture(path.c_str(), typeName.c_str());
         textures.push_back(texture);
         loaded_textures[path.data()] = texture;
     }
@@ -322,15 +322,15 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType 
 }
 
 
-std::map<std::string, BoneInfo> Model::GetBoneInfoMap() {
+std::map<std::string, BoneInfo> ModelOpenGL::GetBoneInfoMap() {
     return m_BoneInfoMap;
 }
 
-int& Model::GetBoneCount() {
+int& ModelOpenGL::GetBoneCount() {
     return m_BoneCounter;
 }
 
-void Model::SetVertexBoneDataToDefault(Vertex& vertex)
+void ModelOpenGL::SetVertexBoneDataToDefault(Vertex& vertex)
 {
     for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
         vertex.m_BoneIDs[i] = -1;
@@ -338,7 +338,7 @@ void Model::SetVertexBoneDataToDefault(Vertex& vertex)
     }
 }
 
-void Model::SetVertexBoneData(Vertex& vertex, int boneID, float weight)
+void ModelOpenGL::SetVertexBoneData(Vertex& vertex, int boneID, float weight)
 {
     for (int i = 0; i < MAX_BONE_INFLUENCE; ++i) {
         if (vertex.m_BoneIDs[i] < 0) {
@@ -350,7 +350,7 @@ void Model::SetVertexBoneData(Vertex& vertex, int boneID, float weight)
 }
 
 
-void Model::ExtractBoneWeightForVertices(std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene)
+void ModelOpenGL::ExtractBoneWeightForVertices(std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene)
 {
     auto& boneInfoMap = m_BoneInfoMap;
     int& boneCount = m_BoneCounter;

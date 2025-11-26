@@ -8,9 +8,9 @@
 #include "../../src/window/AppWindow.h"
 #include "../../src/core/events/EventManager.h"
 #include "../../src/graphics/framework/Vulkan/RenderDeviceVulkan.h"	//TODO: remove conrete type access dependency
-#include "Model.h"
+#include "src/graphics/framework/OpenGL/core/ModelOpenGL.h"
 
-Model* modelPtr = nullptr;
+ModelOpenGL* modelPtr = nullptr;
 
 const std::vector<VulkanDevice::Vertex> vertices = {
     {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},

@@ -1,7 +1,6 @@
 #pragma once
 
-#include <Shader.h>
-#include <Texture.h>
+#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
 #include <algorithm>
 #include "../framework/OpenGL/core/skybox.h"
 
@@ -21,7 +20,7 @@ private:
 	};
 
 	Skybox skybox;
-	Shader shaderProgram;
+	ShaderOpenGL shaderProgram;
 
 public:
 	GLuint VAO;

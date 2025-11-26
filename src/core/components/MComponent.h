@@ -3,9 +3,9 @@
 #include <glm/glm.hpp>
 #include <string>
 #include "../../graphics/utils/Utils.h"
-#include "model.h"
-#include "Animation.h"
-#include "Animator.h"
+#include "src/animation/Animation.h"
+#include "src/animation/Animator.h"
+#include "src/graphics/framework/OpenGL/core/ModelOpenGL.h"
 
 class Component {
 public:
@@ -27,9 +27,6 @@ public:
 	};
 
 	void updateTransform() {
-		//glm::mat4 rotationMat = glm::rotate(glm::mat4(1.0f), rotateVec.x, glm::vec3(1.0, 0.0, 0.0))
-		//						* glm::rotate(glm::mat4(1.0f), rotateVec.y, glm::vec3(0.0, 1.0, 0.0))
-		//						* glm::rotate(glm::mat4(1.0f), rotateVec.z, glm::vec3(0.0, 0.0, 1.0));
 		glm::mat4 rotationMat = glm::toMat4(glm::quat(rotateVec));
 		glm::mat4 translateMat = glm::translate(glm::mat4(1.0), translateVec);
 		glm::mat4 scaleMat = glm::scale(glm::mat4(1.0), scaleVec);
@@ -92,10 +89,10 @@ public:
 struct ModelComponent {
 public:
 	std::string path = "None";
-	std::weak_ptr<Model> model;
+	std::weak_ptr<ModelOpenGL> model;
 
 	ModelComponent() = default;
-	ModelComponent(std::string&& path, std::shared_ptr<Model> model) : path(path), model(model) {};
+	ModelComponent(std::string&& path, std::shared_ptr<ModelOpenGL> model) : path(path), model(model) {};
 	ModelComponent(std::string&& path) : path(path) {};
 
 	void reset() {
@@ -131,6 +128,7 @@ public:
 //	AnimatorComponent() = default;
 //	AnimatorComponent(std::string&& path) : path(path) {};
 //};
+
 enum LightType { POINT_LIGHT, DIRECTION_LIGHT, SPOT_LIGHT, AREA_LIGHT };
 
 struct MLightComponent {

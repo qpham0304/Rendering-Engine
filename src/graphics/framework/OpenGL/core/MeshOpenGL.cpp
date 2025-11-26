@@ -1,7 +1,9 @@
-#include "Mesh.h"
+#include "MeshOpenGL.h"
 #include<glad/glad.h>
+#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
 
-void Mesh::setup()
+
+void MeshOpenGL::setup()
 {
     // create buffers/arrays
     glGenVertexArrays(1, &VAO);
@@ -47,7 +49,7 @@ void Mesh::setup()
     glBindVertexArray(0);
 }
 
-int Mesh::GetNumVertices()
+int MeshOpenGL::GetNumVertices()
 {
     !indices.empty()
         ? numVertices = static_cast<int>(indices.size() / 3)
@@ -55,7 +57,7 @@ int Mesh::GetNumVertices()
     return numVertices;
 }
 
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures)
+MeshOpenGL::MeshOpenGL(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<TextureOpenGL> textures)
 {
 	this->vertices = vertices;
 	this->indices = indices;
@@ -64,21 +66,22 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std:
 }
 
 
-Mesh::~Mesh() {
+MeshOpenGL::~MeshOpenGL() {
 
 };
 
-void Mesh::Delete()
+void MeshOpenGL::Delete()
 {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
+
     for (Texture& texture : textures) {
         texture.Delete();
     }
 }
 
-void Mesh::Draw(Shader& shader)
+void MeshOpenGL::Draw(ShaderOpenGL& shader)
 {
     shader.Activate();
 

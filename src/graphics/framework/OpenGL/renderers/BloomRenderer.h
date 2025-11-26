@@ -1,7 +1,8 @@
 #pragma once
 
-#include <Shader.h>
 #include "../core/BloomFBO.h"
+
+class ShaderOpenGL;
 
 class BloomRenderer
 {
@@ -22,8 +23,8 @@ private:
 	bloomFBO mFBO;
 	glm::ivec2 mSrcViewportSize;
 	glm::vec2 mSrcViewportSizeFloat;
-	Shader* mDownsampleShader;
-	Shader* mUpsampleShader;
+	ShaderOpenGL* mDownsampleShader;
+	ShaderOpenGL* mUpsampleShader;
 
 	bool mKarisAverageOnDownsample = true;
 };

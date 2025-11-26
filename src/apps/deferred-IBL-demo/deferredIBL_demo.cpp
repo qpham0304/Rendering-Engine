@@ -222,7 +222,7 @@ void DeferredIBLDemo::setupSkyView()
     transmittanceLUT.Bind();
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    Shader transmittanceShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/transmittanceLUT.frag");
+    ShaderOpenGL transmittanceShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/transmittanceLUT.frag");
     transmittanceShader.Activate();
     Utils::OpenGL::Draw::drawQuad();
     transmittanceLUT.Unbind();
@@ -230,7 +230,7 @@ void DeferredIBLDemo::setupSkyView()
     multipleScatteredLUT.Bind();
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    Shader multipleScatteredShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/multipleScatteredLUT.frag");
+    ShaderOpenGL multipleScatteredShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/multipleScatteredLUT.frag");
     multipleScatteredShader.Activate();
     multipleScatteredShader.setInt("iChannel0", 0);
     multipleScatteredShader.setVec2("iChannelResolution", glm::vec2(width, height));
@@ -252,7 +252,7 @@ void DeferredIBLDemo::renderSkyView()
     skyViewLUT.Bind();
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    Shader skyViewShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/skyViewLUT.frag");
+    ShaderOpenGL skyViewShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/skyViewLUT.frag");
     skyViewShader.Activate();
     skyViewShader.setInt("transmittanceLUT", 0);
     skyViewShader.setInt("multipleScatteredLUT", 1);
@@ -274,7 +274,7 @@ void DeferredIBLDemo::renderSkyView()
     atmosphereScene.Bind();
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    Shader atmosphereShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/atmosphere.frag");
+    ShaderOpenGL atmosphereShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/atmosphere.frag");
     atmosphereShader.Activate();
     atmosphereShader.setInt("skyLUT", 0);
     atmosphereShader.setInt("transmittanceLUT", 1);
@@ -366,13 +366,13 @@ void DeferredIBLDemo::setupSSAO()
 void DeferredIBLDemo::renderSSAO()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
-    Shader ssaoShader("Shaders/ssao/ssao.vert", "Shaders/ssao/ssao_depth.frag");
+    ShaderOpenGL ssaoShader("Shaders/ssao/ssao.vert", "Shaders/ssao/ssao_depth.frag");
     ssaoShader.Activate();
     ssaoShader.setInt("gDepth", 0);
     ssaoShader.setInt("gNormal", 1);
     ssaoShader.setInt("texNoise", 2);
     ssaoShader.setVec2(
-        "noiseScale", 
+        "noiseScale",
         glm::vec2(AppWindow::getWidth() / 4.0f, AppWindow::getHeight() / 4.0f)
     );     // tile noise texture over screen based
 
@@ -384,7 +384,7 @@ void DeferredIBLDemo::renderSSAO()
     ssaoShader.setMat4("invView", camera->getInViewMatrix());
     ssaoShader.setMat4("projection", camera->getProjectionMatrix());
     ssaoShader.setMat4("view", camera->getViewMatrix());
-    
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, gDepth);
@@ -398,7 +398,7 @@ void DeferredIBLDemo::renderSSAO()
 
 
     glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
-    Shader blurShader("Shaders/ssao/ssao.vert", "Shaders/ssao/blur.frag"); 
+    ShaderOpenGL blurShader("Shaders/ssao/ssao.vert", "Shaders/ssao/blur.frag");
     blurShader.Activate();
     blurShader.setInt("ssaoInput", 0);
 
@@ -417,7 +417,7 @@ void DeferredIBLDemo::setupSSR()
 
 void DeferredIBLDemo::renderSSR()
 {
-    Shader SSRShader("Shaders/SSR/SSR.vert", "Shaders/SSR/SSR_PBR.frag");
+    ShaderOpenGL SSRShader("Shaders/SSR/SSR.vert", "Shaders/SSR/SSR_PBR.frag");
     ssrSceneFBO.Bind();
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -468,11 +468,11 @@ void DeferredIBLDemo::renderShadow()
 
     glm::mat4 lightOrtho = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
     glm::mat4 lightPerspective = glm::perspective(glm::radians(90.0f), (float)AppWindow::getWidth() / AppWindow::getHeight(), 0.1f, 100.0f);
-    
+
     glm::mat4 lightView = glm::lookAt(light.position, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0, 1.0, 0.0));
     glm::mat4 lightMVP = lightOrtho * lightView;
 
-    Shader shadowShader("Shaders/shadowMap.vert", "Shaders/shadowMap.frag");
+    ShaderOpenGL shadowShader("Shaders/shadowMap.vert", "Shaders/shadowMap.frag");
 
     depthMap.Bind();
     glViewport(0, 0, AppWindow::getWidth(), AppWindow::getHeight());
@@ -489,7 +489,7 @@ void DeferredIBLDemo::renderShadow()
         TransformComponent& transform = entity.getComponent<TransformComponent>();
         
         const glm::mat4& normalMatrix = transform.getModelMatrix();
-        std::shared_ptr<Model> model = modelComponent.model.lock();
+        std::shared_ptr<ModelOpenGL> model = modelComponent.model.lock();
 
         bool hasAnimation = entity.hasComponent<AnimationComponent>();
 
@@ -566,7 +566,7 @@ void DeferredIBLDemo::renderForwardPass()
         ModelComponent& modelComponent = models.get<ModelComponent>(entity);
         TransformComponent& transform = models.get<TransformComponent>(entity);
         const glm::mat4& normalMatrix = transform.getModelMatrix();
-        std::shared_ptr<Model> model = modelComponent.model.lock();
+        std::shared_ptr<ModelOpenGL> model = modelComponent.model.lock();
 
         if (scene.hasComponent<CameraComponent>(entity) || scene.hasComponent<AnimationComponent>(entity)) {
             continue;
@@ -590,7 +590,7 @@ void DeferredIBLDemo::renderForwardPass()
         ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
         TransformComponent& transform = entity.getComponent<TransformComponent>();
         const glm::mat4& normalMatrix = transform.getModelMatrix();
-        std::shared_ptr<Model> model = modelComponent.model.lock();
+        std::shared_ptr<ModelOpenGL> model = modelComponent.model.lock();
 
         pbrShader.setBool("hasAnimation", true);
         pbrShader.setBool("hasEmission", false);

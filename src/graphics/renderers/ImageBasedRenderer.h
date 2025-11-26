@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <Shader.h>
+#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
 #include <memory>
 
 class ImageBasedRenderer
@@ -11,11 +11,11 @@ private:
 	unsigned int cubeVBO = 0;
 	unsigned int captureFBO, captureRBO;
 
-	Shader equirectToCubeMapShader;
-	Shader irradianceShader;
-	Shader backgroundShader;
-	Shader prefilterShader;
-	Shader brdfShader;
+	ShaderOpenGL equirectToCubeMapShader;
+	ShaderOpenGL irradianceShader;
+	ShaderOpenGL backgroundShader;
+	ShaderOpenGL prefilterShader;
+	ShaderOpenGL brdfShader;
 
 	void setupCubeMap();
 	void renderCubeMap();

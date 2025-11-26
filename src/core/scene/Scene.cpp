@@ -65,10 +65,10 @@ const std::vector<Entity>& Scene::getSelectedEntities()
 	return selectedEntities;
 }
 
-bool Scene::addShader(const std::string& name, Shader& shader)
+bool Scene::addShader(const std::string& name, ShaderOpenGL& shader)
 {
 	if (shaders.find(name) == shaders.end()) {
-		shaders[name] = std::make_shared<Shader>(std::move(shader));
+		shaders[name] = std::make_shared<ShaderOpenGL>(std::move(shader));
 		return true;
 	}
 	return false;
@@ -77,13 +77,13 @@ bool Scene::addShader(const std::string& name, Shader& shader)
 bool Scene::addShader(const std::string& name, const std::string& vertPath, const std::string& fragPath)
 {
 	//if (shaders.find(name) == shaders.end()) {
-		shaders[name] = std::make_shared<Shader>(vertPath.c_str(), fragPath.c_str());
+		shaders[name] = std::make_shared<ShaderOpenGL>(vertPath.c_str(), fragPath.c_str());
 		return true;
 	//}
 	//return false;
 }
 
-std::shared_ptr<Shader> Scene::getShader(const std::string& name)
+std::shared_ptr<ShaderOpenGL> Scene::getShader(const std::string& name)
 {
 	if (shaders.find(name) != shaders.end()) {
 		return shaders[name];

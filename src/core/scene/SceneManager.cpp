@@ -1,10 +1,10 @@
 #include "SceneManager.h"
-#include "../../graphics/utils/Utils.h"
-#include "Model.h"
-#include "Animation.h"
-#include "../../src/core/features/Camera.h"
+#include "src/graphics/utils/Utils.h"
+#include "src/animation/Animation.h"
+#include "src/core/features/Camera.h"
+#include "src/graphics/framework/OpenGL/core/ModelOpenGL.h"
 
-std::unordered_map<std::string, std::unique_ptr<Shader>> SceneManager::shaders = {};
+std::unordered_map<std::string, std::unique_ptr<ShaderOpenGL>> SceneManager::shaders = {};
 Camera* SceneManager::cameraController = nullptr;
 std::string SceneManager::selectedID = "";
 std::mutex SceneManager::mtx;
@@ -98,7 +98,7 @@ std::string SceneManager::addModel(const std::string& path)
 		std::string uuid = Utils::uuid::get_uuid();
 		std::scoped_lock<std::mutex> lock(modelsLock);
 		if (models.find(uuid) == models.end()) {
-			models[uuid] = std::make_shared<Model>(path.c_str());
+			models[uuid] = std::make_shared<ModelOpenGL>(path.c_str());
 		}
 		//TODO: might want to manual increase reference counter for instanced drawing
 		return uuid;
@@ -108,13 +108,13 @@ std::string SceneManager::addModel(const std::string& path)
 	}
 }
 
-std::string SceneManager::addModelFromMeshes(std::vector<Mesh>& meshes)
+std::string SceneManager::addModelFromMeshes(std::vector<MeshOpenGL>& meshes)
 {
 	try {
 		std::string uuid = Utils::uuid::get_uuid();
 		std::scoped_lock<std::mutex> lock(modelsLock);
 		if (models.find(uuid) == models.end()) {
-			models[uuid] = std::make_shared<Model>(meshes, uuid);
+			models[uuid] = std::make_shared<ModelOpenGL>(meshes, uuid);
 		}
 		//TODO: might want to manual increase reference counter for instanced drawing
 		return uuid;
@@ -134,7 +134,7 @@ bool SceneManager::removeModel(const std::string& path)
 	return false;
 }
 
-std::string SceneManager::addAnimation(const std::string& path, Model* model)
+std::string SceneManager::addAnimation(const std::string& path, ModelOpenGL* model)
 {
 	try {
 		std::string uuid = Utils::uuid::get_uuid();

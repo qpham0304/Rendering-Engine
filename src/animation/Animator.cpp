@@ -1,4 +1,4 @@
-#include <Animator.h>
+#include "Animator.h"
 
 Animator::Animator(Animation* animation)
 {

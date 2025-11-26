@@ -1,5 +1,7 @@
 #include "../../src/graphics/framework/OpenGL/renderers/BloomRenderer.h"
 #include "../../src/graphics/utils/Utils.h"
+#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+
 
 BloomRenderer::BloomRenderer() : mInit(false) {}
 BloomRenderer::~BloomRenderer() {}
@@ -19,8 +21,8 @@ bool BloomRenderer::Init(unsigned int windowWidth, unsigned int windowHeight)
 	}
 
 	// Shaders
-	mDownsampleShader = new Shader("Shaders/bloom/downSampler.vert", "Shaders/bloom/downSampler.frag");
-	mUpsampleShader = new Shader("Shaders/bloom/upSampler.vert", "Shaders/bloom/upSampler.frag");
+	mDownsampleShader = new ShaderOpenGL("Shaders/bloom/downSampler.vert", "Shaders/bloom/downSampler.frag");
+	mUpsampleShader = new ShaderOpenGL("Shaders/bloom/upSampler.vert", "Shaders/bloom/upSampler.frag");
 
 	// Downsample
 	mDownsampleShader->Activate();

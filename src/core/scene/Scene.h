@@ -1,9 +1,9 @@
 #pragma once
 
-#include<glm/glm.hpp>
+#include <glm/glm.hpp>
 #include "entt.hpp"
 #include "../entities/Entity.h"
-#include "Shader.h"
+#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
 
 class Scene
 {
@@ -45,9 +45,9 @@ public:
 	}
 
 	const std::vector<Entity>& getSelectedEntities();
-	bool addShader(const std::string& name, Shader& shader);
+	bool addShader(const std::string& name, ShaderOpenGL& shader);
 	bool addShader(const std::string& name, const std::string& vertPath, const std::string& fragPath);
-	std::shared_ptr<Shader> getShader(const std::string& name);
+	std::shared_ptr<ShaderOpenGL> getShader(const std::string& name);
 	bool removeShader(const std::string& name);
 
 	void onStart();
@@ -60,6 +60,6 @@ private:
 	std::string sceneName;
 	entt::registry registry;
 	std::vector<Entity> selectedEntities;
-	std::unordered_map <std::string, std::shared_ptr<Shader>> shaders;
+	std::unordered_map <std::string, std::shared_ptr<ShaderOpenGL>> shaders;
 };
 

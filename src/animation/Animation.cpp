@@ -1,8 +1,8 @@
-#include <Animation.h>
+#include "Animation.h"
 
 Animation::Animation() = default;
 
-Animation::Animation(const std::string& animationPath, Model* model)
+Animation::Animation(const std::string& animationPath, ModelOpenGL* model)
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(animationPath, aiProcess_Triangulate);
@@ -50,7 +50,7 @@ Bone* Animation::FindBone(const std::string& name)
 }
 
 
-void Animation::ReadMissingBones(const aiAnimation* animation, Model& model)
+void Animation::ReadMissingBones(const aiAnimation* animation, ModelOpenGL& model)
 {
     int size = animation->mNumChannels;
 

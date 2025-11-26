@@ -5,8 +5,7 @@
 #include <vector>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
-#include <animation.h>
-#include <bone.h>
+#include "Animation.h"
 
 class Animator
 {
