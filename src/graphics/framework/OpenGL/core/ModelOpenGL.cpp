@@ -29,7 +29,7 @@ ModelOpenGL::ModelOpenGL(std::vector<MeshOpenGL> meshes, std::string path)
 
     for (auto& mesh : this->meshes) {
         for (auto& texture : mesh.textures) {
-            loaded_textures[texture.path] = texture;
+            loaded_textures[texture.path()] = texture;
         }
     }
 }
@@ -277,7 +277,7 @@ std::vector<TextureOpenGL> ModelOpenGL::loadMaterialTextures(aiMaterial* mat, ai
             if (typeName == "roughnessMap") {
                 // since cache map only stores one path
                 // gltf's roughnessMap with two components metallic and roughness will cause wrong type on insertion
-                textures[textures.size() - 1].type = "roughnesMap";
+                textures[textures.size() - 1].type() = "roughnesMap";
             }
             break;
         }
@@ -305,7 +305,7 @@ std::vector<TextureOpenGL> ModelOpenGL::loadMaterialTextures(aiMaterial* mat, ai
         else if (typeName == "roughnessMap") {
             loadDefaultTexture("Textures/default/32x32/roughness.png", "roughnessMap");
             textures.push_back(loaded_textures["Textures/default/32x32/roughness.png"]);
-            textures[textures.size() - 1].type = "roughnesMap";
+            textures[textures.size() - 1].type() = "roughnesMap";
         }
 
         else if (typeName == "aoMap") {

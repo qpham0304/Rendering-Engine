@@ -13,16 +13,13 @@ public:
 		size_t stride;
 	};
 
-
 	virtual ~VertexBuffer() = default;
 
-	virtual void create(const void* data, size_t size) = 0;
-	virtual void destroy() = 0;
-	virtual void bind() = 0;
+	virtual void bind() override = 0;
 	virtual void setAttribute(VertexAttribute attribute) = 0;
 
 protected:
-	VertexBuffer() = default;
+	VertexBuffer(uint32_t id) : Buffer(id) {};
 
 };
 

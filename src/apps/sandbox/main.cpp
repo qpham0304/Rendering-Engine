@@ -1,6 +1,6 @@
 #include "../vulkan-demo/VulkanApplication.h"
 #include "../vulkan-demo/example_glfw_vulkan.h"
-#include "../../core/Application.h"
+#include "../../core/Engine.h"
 #include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
 #include "../../src/apps/particle-demo/particleDemo.h"
 
@@ -19,7 +19,7 @@ int main()
 		windowConfig.height = 1080;
 		windowConfig.vsync = false;
 
-		Application app(windowConfig);
+		Engine app(windowConfig);
 		app.init();
 
 		app.pushLayer(new DeferredIBLDemo("demo"));

@@ -8,7 +8,6 @@ public:
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
     uint32_t queueFamily;
-    size_t bufferCount;
 
 public:
     VulkanCommandPool(VulkanDevice& deviceRef);

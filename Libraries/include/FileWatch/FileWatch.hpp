@@ -151,14 +151,14 @@ namespace filewatch {
 
       template<typename StringType>
       static typename std::enable_if<std::is_same<typename StringType::value_type, wchar_t>::value, bool>::type 
-      isParentOrSelfDirectory(const StringType& path) {
-            return path == L"." || path == L"..";
+      isParentOrSelfDirectory(const StringType& m_path) {
+            return m_path == L"." || m_path == L"..";
       }
 
       template<typename StringType>
       static typename std::enable_if<std::is_same<typename StringType::value_type, char>::value, bool>::type 
-      isParentOrSelfDirectory(const StringType& path) {
-            return path == "." || path == "..";
+      isParentOrSelfDirectory(const StringType& m_path) {
+            return m_path == "." || m_path == "..";
       }
 
 	/**
@@ -178,17 +178,17 @@ namespace filewatch {
 
 	public:
 
-		FileWatch(StringType path, UnderpinningRegex pattern, std::function<void(const StringType& file, const Event event_type)> callback) :
-			_path(absolute_path_of(path)),
+		FileWatch(StringType m_path, UnderpinningRegex pattern, std::function<void(const StringType& file, const Event event_type)> callback) :
+			_path(absolute_path_of(m_path)),
 			_pattern(pattern),
 			_callback(callback),
-                  _directory(get_directory(path))
+                  _directory(get_directory(m_path))
 		{
 			init();
 		}
 
-		FileWatch(StringType path, std::function<void(const StringType& file, const Event event_type)> callback) :
-			FileWatch<StringType>(path, UnderpinningRegex(_regex_all), callback) {}
+		FileWatch(StringType m_path, std::function<void(const StringType& file, const Event event_type)> callback) :
+			FileWatch<StringType>(m_path, UnderpinningRegex(_regex_all), callback) {}
 
 		~FileWatch() {
 			destroy();
@@ -390,7 +390,7 @@ namespace filewatch {
 #endif // FILEWATCH_PLATFORM_MAC
 		}
 
-		const PathParts split_directory_and_file(const StringType& path) const 
+		const PathParts split_directory_and_file(const StringType& m_path) const 
 		{
 			const auto predict = [](C character) {
 #ifdef _WIN32
@@ -400,7 +400,7 @@ namespace filewatch {
 #endif // __unix__
 			};
 
-			UnderpinningString path_string = path;
+			UnderpinningString path_string = m_path;
 			const auto pivot = std::find_if(path_string.rbegin(), path_string.rend(), predict).base();
 			//if the path is something like "test.txt" there will be no directory part, however we still need one, so insert './'
 			const StringType directory = [&]() {
@@ -436,9 +436,9 @@ namespace filewatch {
 			return CreateFileW(lpFileName, args...);
 		}
 
-		HANDLE get_directory(const StringType& path) 
+		HANDLE get_directory(const StringType& m_path) 
 		{
-			auto file_info = GetFileAttributesX(path.c_str());
+			auto file_info = GetFileAttributesX(m_path.c_str());
 
 			if (file_info == INVALID_FILE_ATTRIBUTES)
 			{
@@ -446,16 +446,16 @@ namespace filewatch {
 			}
 			_watching_single_file = (file_info & FILE_ATTRIBUTE_DIRECTORY) == false;
 
-			const StringType watch_path = [this, &path]() {
+			const StringType watch_path = [this, &m_path]() {
 				if (_watching_single_file)
 				{
-					const auto parsed_path = split_directory_and_file(path);
+					const auto parsed_path = split_directory_and_file(m_path);
 					_filename = parsed_path.filename;
 					return parsed_path.directory;
 				}
 				else 
 				{
-					return path;
+					return m_path;
 				}
 			}();
 
@@ -725,16 +725,16 @@ namespace filewatch {
                   return StringType {buf};
             }
 #elif _WIN32
-            static StringType absolute_path_of(const StringType& path) {
+            static StringType absolute_path_of(const StringType& m_path) {
                   constexpr size_t size = IsWChar<C>::value? MAX_PATH : 32767 * sizeof(wchar_t);
                   char buf[size];
 
                   DWORD length = IsWChar<C>::value? 
-                        GetFullPathNameW((LPCWSTR)path.c_str(), 
+                        GetFullPathNameW((LPCWSTR)m_path.c_str(), 
                               size / sizeof(TCHAR),
                               (LPWSTR)buf,
                               nullptr) : 
-                        GetFullPathNameA((LPCSTR)path.c_str(), 
+                        GetFullPathNameA((LPCSTR)m_path.c_str(), 
                               size / sizeof(TCHAR),
                               buf,
                               nullptr);

@@ -2,8 +2,8 @@
 #include <glm/gtc/epsilon.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glad/glad.h>
-#include <iostream>
 #include <GLFW/glfw3.h>
+#include <iostream>
 
 namespace Utils::Math {
 

@@ -2,31 +2,32 @@
 
 #include <string>
 
-class ShaderOpenGL;
-
 class Texture
 {
 public:
-	unsigned int ID;
-	std::string type;
-	std::string path;
 
 public:
 	virtual ~Texture() = default;
 
-	virtual void Init(const char* path, const char* texType, bool flipUV) = 0;
-	virtual void TexUnit(ShaderOpenGL& shader, const char* uniform, unsigned int unit) = 0;
 	virtual void Bind() = 0;
 	virtual void Unbind() = 0;
 	virtual void Delete() = 0;
 
+	uint32_t id() { return m_id; }
+	std::string path() { return m_path; }
+	std::string type() { return m_type; }
+
 protected:
 	Texture() = default;
+	Texture(uint32_t id) : m_id(id) {};
 
-	virtual void loadTexture(const char* path, bool flip) = 0;
+	virtual void loadTexture(const char* m_path, bool flip) = 0;
 
 
 protected:
 	unsigned int unit = 0;
+	unsigned int m_id{ 0 };
 
+	std::string m_type{ "undefined" };
+	std::string m_path{ "n/a" };
 };

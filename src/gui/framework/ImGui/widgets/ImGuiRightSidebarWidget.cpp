@@ -75,11 +75,11 @@ void ImGuiRightSidebarWidget::textureView()
                 for (auto [path, texture] : modelPtr->loaded_textures) {
                     ImGui::PushID(path.c_str());
                     ImGui::Separator();
-                    ImGui::Image((ImTextureID)texture.ID, wsize, ImVec2(0, 1), ImVec2(1, 0));
+                    ImGui::Image((ImTextureID)texture.id(), wsize, ImVec2(0, 1), ImVec2(1, 0));
                     ImGui::PopID();
 
                     if (ImGui::IsItemClicked()) {
-                        selectedTexture = texture.ID;
+                        selectedTexture = texture.id();
                         ImGui::OpenPopup("Image View");
                         popupOpen = true;
                     }

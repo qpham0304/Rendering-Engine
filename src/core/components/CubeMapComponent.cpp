@@ -3,9 +3,9 @@
 #include <imgui.h>
 #include "../../src/core/features/Camera.h"
 
-CubeMapComponent::CubeMapComponent(const std::string& path)
+CubeMapComponent::CubeMapComponent(const std::string& m_path)
 {
-	imagebasedRenderer.init(path);
+	imagebasedRenderer.init(m_path);
     skyboxRenderer.updateTexture(imagebasedRenderer.envCubemapTexture);
 }
 
@@ -29,9 +29,9 @@ void CubeMapComponent::bindIBL()
     imagebasedRenderer.bindLUT();
 }
 
-void CubeMapComponent::reloadTexture(const std::string& path)
+void CubeMapComponent::reloadTexture(const std::string& m_path)
 {
-    imagebasedRenderer.onTextureReload(path);
+    imagebasedRenderer.onTextureReload(m_path);
     skyboxRenderer.updateTexture(imagebasedRenderer.envCubemapTexture);
 }
 

@@ -132,7 +132,9 @@ void VulkanSwapChain::createSyncObject() {
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	for (int i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
-		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
+		VkResult res1 = vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]);
+		VkResult res2 = vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]);
+		if (res1 != VK_SUCCESS || res2 != VK_SUCCESS) {
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 	}
@@ -256,21 +258,21 @@ void VulkanSwapChain::recreateSwapchain()
 	}
 }
 
-VkSurfaceFormatKHR VulkanSwapChain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+VkSurfaceFormatKHR VulkanSwapChain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availFormat)
 {
-	for (const auto& availableFormat : availableFormats) {
+	for (const auto& availableFormat : availFormat) {
 		if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM &&
 			availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 			return availableFormat;
 		}
 	}
 
-	return availableFormats[0];
+	return availFormat[0];
 }
 
-VkPresentModeKHR VulkanSwapChain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+VkPresentModeKHR VulkanSwapChain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availMode)
 {
-	for (const auto& availablePresentMode : availablePresentModes) {
+	for (const auto& availablePresentMode : availMode) {
 		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
 			return availablePresentMode;
 		}
@@ -293,8 +295,12 @@ VkExtent2D VulkanSwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& cap
 			static_cast<uint32_t>(height)
 		};
 
-		actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-		actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+		actualExtent.width = std::clamp(
+			actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width
+		);
+		actualExtent.height = std::clamp(
+			actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height
+		);
 
 		return actualExtent;
 	}
@@ -314,4 +320,74 @@ void VulkanSwapChain::cleanupSwapChain()
 		vkDestroyImageView(device, imageView, nullptr);
 	}
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
+}
+
+void VulkanSwapChain::accquireNextImage(const uint32_t& currentFrame)
+{
+	imageIndex = 0;
+
+	VkResult result = vkAcquireNextImageKHR(
+		device.device,
+		swapChain,
+		UINT64_MAX,
+		imageAvailableSemaphores[currentFrame],
+		VK_NULL_HANDLE,
+		&imageIndex
+	);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+		framebufferResized = false;
+		recreateSwapchain();
+		return;
+	}
+	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+		throw std::runtime_error("failed to acquire swap chain image!");
+	}
+}
+
+void VulkanSwapChain::submitAndPresent(const uint32_t& currentFrame, const VkCommandBuffer& commandBuffer)
+{
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages;
+
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[imageIndex] };
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	if (vkQueueSubmit(device.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+		throw std::runtime_error("failed to submit draw command buffer!");
+	}
+
+	VkPresentInfoKHR presentInfo{};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = signalSemaphores;
+
+	VkSwapchainKHR swapChains[] = { swapChain };
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+	presentInfo.pImageIndices = &imageIndex;
+
+	VkResult result = vkQueuePresentKHR(device.presentQueue, &presentInfo);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		recreateSwapchain();
+	}
+	else if (result != VK_SUCCESS) {
+		throw std::runtime_error("failed to present swap chain image!");
+	}
+}
+
+const uint32_t& VulkanSwapChain::getImageIndex() const
+{
+	return imageIndex;
 }

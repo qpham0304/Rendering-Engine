@@ -23,9 +23,12 @@
 #include "../../src/core/layers/EditorLayer.h"
 #include "../../src/core/layers/LayerManager.h"
 #include "../../src/core/scene/SceneManager.h"
-
+#include "src/graphics/framework/Vulkan/Renderers/RendererVulkan.h" //TODO: use generic interface ptr instead
+#include "src/core/resources/managers/TextureManager.h"
 
 class RenderDeviceVulkan;
+class RendererVulkan;
+//class TextureManager;
 
 class VulkanApplication
 {
@@ -62,13 +65,18 @@ private:
     std::unique_ptr<Logger> engineLogger;
     std::unique_ptr<Logger> clientLogger;
     RenderDeviceVulkan* renderDeviceVulkan{ nullptr };  //TODO: should not be able to use concrete type object remove later
+    RendererVulkan vulkanRenderer;
     EditorLayer* editorLayer;
-
+    uint32_t indexBufferID = 0;
+    uint32_t vertexBufferID = 0;
+    std::unique_ptr<TextureManager> textureManager;
+    //TextureManager* textureManager;
 
 private:
     Camera camera;
     PushConstantData pushConstantData;
 
     void render();
+    void renderGui(void* commandBuffer);
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 };

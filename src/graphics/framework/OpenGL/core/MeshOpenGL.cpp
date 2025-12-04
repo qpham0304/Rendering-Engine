@@ -93,7 +93,7 @@ void MeshOpenGL::Draw(ShaderOpenGL& shader)
 
     if (!textures.empty()) {
         for (unsigned int i = 0; i < textures.size(); i++) {
-            textures[i].TexUnit(shader, textures[i].type.c_str(), i);
+            textures[i].TexUnit(shader, textures[i].type().c_str(), i);
             textures[i].Bind();
         }
     }

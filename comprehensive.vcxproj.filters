@@ -75,7 +75,7 @@
     <ClCompile Include="src\core\features\Timer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\Application.cpp">
+    <ClCompile Include="src\core\Engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\scene\SceneManager.cpp">
@@ -168,9 +168,6 @@
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\AtmosphereRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\renderers\Renderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\ImageBasedRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -192,15 +189,6 @@
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\SkyboxRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Animation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Animator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Bone.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\graphics\framework\OpenGL\core\DepthMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -213,19 +201,7 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\EBO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Mesh.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Model.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Shader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\graphics\utils\stb.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\OpenGL\core\VAO.cpp">
@@ -288,28 +264,25 @@
     <ClCompile Include="src\graphics\renderpasses\SSRLayer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanBuffer.cpp">
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanBufferManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanDevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanFrameBuffer.cpp">
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\FrameBufferVulkan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanPipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanShader.cpp">
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\shaders\VulkanShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanSwapChain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanTexture.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\renderers\Buffer.cpp">
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\textures\TextureVulkan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.cpp">
@@ -318,16 +291,64 @@
     <ClCompile Include="src\graphics\framework\Vulkan\renderpasses\VulkanRenderPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\renderers\VertexBuffer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\renderers\IndexBuffer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\animation\Animation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\animation\Animator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\animation\Bone.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\OpenGL\core\MeshOpenGL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\OpenGL\core\ModelOpenGL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\OpenGL\core\ShaderOpenGL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\OpenGL\core\TextureOpenGL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\resources\managers\MeshesManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\resources\managers\ModelsManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\materials\Materials.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanDescriptorManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\IndexBufferVulkan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\VertexBufferVulkan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\UniformBufferVulkan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\BufferVulkan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\renderers\RendererVulkan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\textures\TextureManagerVulkan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -410,7 +431,7 @@
     <ClInclude Include="src\core\features\Timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\Application.h">
+    <ClInclude Include="src\core\Engine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\core\layers\Layer.h">
@@ -620,25 +641,25 @@
     <ClInclude Include="src\graphics\renderers\ShadowMapRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanBuffer.h">
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanBufferManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanFrameBuffer.h">
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\FrameBufferVulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanPipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanShader.h">
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\shaders\VulkanShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanSwapChain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanTexture.h">
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\textures\TextureVulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\renderers\Buffer.h">
@@ -660,6 +681,72 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\animation\Animation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\animation\Animator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\animation\Bone.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\OpenGL\core\MeshOpenGL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\OpenGL\core\ModelOpenGL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\OpenGL\core\ShaderOpenGL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\OpenGL\core\TextureOpenGL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\resources\managers\TextureManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\resources\managers\MeshesManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\resources\managers\ModelsManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\materials\Materials.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanDescriptorManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\IndexBufferVulkan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\VertexBufferVulkan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\UniformBufferVulkan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\renderers\UniformBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\BufferVulkan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\WrapperStructs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\resources\managers\Manager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\renderers\RendererVulkan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\textures\TextureManagerVulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

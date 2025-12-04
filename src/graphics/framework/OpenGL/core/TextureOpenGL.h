@@ -1,6 +1,7 @@
 #pragma once
 #include "Texture.h"
 
+class ShaderOpenGL;
 class TextureOpenGL : public Texture
 {
 public:
@@ -15,8 +16,8 @@ public:
 	
 	virtual ~TextureOpenGL() override;
 
-	virtual void Init(const char* path, const char* texType, bool flipUV) override;
-	virtual void TexUnit(ShaderOpenGL& shader, const char* uniform, unsigned int unit) override;
+	void Init(const char* path, const char* texType, bool flipUV);
+	void TexUnit(ShaderOpenGL& shader, const char* uniform, unsigned int unit);
 	virtual void Bind() override;
 	virtual void Unbind() override;
 	virtual void Delete() override;

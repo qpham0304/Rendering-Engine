@@ -1,19 +1,17 @@
 #include "EditorLayer.h"
+#include "src/window/appwindow.h"
+#include "src/core/features/Timer.h"
+#include "src/core/events/EventManager.h"
+#include "src/core/layers/AppLayer.h"
+#include "src/core/components/MComponent.h"
+#include "src/core/components/cameracomponent.h"
+#include "src/window/Input.h"
+#include "src/core/layers/layerManager.h"
+#include "src/gui/GuiManager.h"
+#include "src/core/features/Camera.h"
+#include "src/apps/deferred-IBL-demo/deferredIBL_demo.h"
+#include "src/apps/particle-demo/particleDemo.h"
 
-#include "../../src/window/appwindow.h"
-#include "../../src/core/features/Timer.h"
-#include "../../src/core/events/EventManager.h"
-#include "../../src/core/layers/AppLayer.h"
-#include "../../src/core/components/MComponent.h"
-#include "../../src/core/components/cameracomponent.h"
-#include "../../src/window/Input.h"
-#include "../../src/core/Application.h"
-#include "../../src/core/layers/layerManager.h"
-#include "../../src/gui/GuiManager.h"
-#include "../../src/core/features/Camera.h"
-
-#include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
-#include "../../src/apps/particle-demo/particleDemo.h"
 void EditorLayer::mockThreadTasks()
 {
 	AsyncEvent addComponentEvent;

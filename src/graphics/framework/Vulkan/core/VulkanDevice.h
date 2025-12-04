@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <glm/glm.hpp>
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -12,9 +13,9 @@
 #include <limits>
 #include <optional>
 #include <set>
-#include <glm/glm.hpp>
 #include <array>
 #include <memory>
+#include <unordered_map>
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

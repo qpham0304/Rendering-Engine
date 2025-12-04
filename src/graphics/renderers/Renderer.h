@@ -1,18 +1,23 @@
 #pragma once
 
 #include <memory>
+#include "../RenderDevice.h"
 
 class Renderer
 {
-private:
-	
 
 public:
-	Renderer() = default;
-	~Renderer() = default;
+	virtual ~Renderer() = default;
 
-	//void registerShader();
-	virtual void render() = 0;
 	virtual void init() = 0;
+	virtual void beginFrame() = 0;
+	virtual void endFrame() = 0;
+	virtual void render() = 0;
+	virtual void shutdown() = 0;
+
+protected:
+	Renderer() = default;
+
+	std::unique_ptr<RenderDevice> renderDevice;
 };
 

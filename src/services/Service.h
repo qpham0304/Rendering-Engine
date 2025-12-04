@@ -11,8 +11,8 @@ public:
 	const std::string& getServiceName() const;
 
 	virtual int init(WindowConfig config);
-	virtual int onClose() = 0;
-	virtual void onUpdate() = 0;
+	virtual int onClose() { return 0; }
+	virtual void onUpdate() {}
 
 protected:
 	Service() = default;

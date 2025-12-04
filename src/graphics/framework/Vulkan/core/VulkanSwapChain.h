@@ -41,6 +41,10 @@ public:
     void createFramebuffers();
     void recreateSwapchain();
 
+    void accquireNextImage(const uint32_t& currentFrame);
+    void submitAndPresent(const uint32_t& currentFrame, const VkCommandBuffer& commandBuffer);
+    virtual const uint32_t& getImageIndex() const;
+
 private:
     VulkanSwapChain(const VulkanSwapChain& other) = delete;
     VulkanSwapChain& operator=(const VulkanSwapChain& other) = delete;
@@ -58,5 +62,6 @@ private:
 private:
     VulkanDevice& device;
     RenderDeviceVulkan& renderDevice;
+    uint32_t imageIndex = 0;
 };
 

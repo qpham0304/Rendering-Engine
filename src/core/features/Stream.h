@@ -7,10 +7,10 @@ using json = nlohmann::json;
 class Stream
 {
 public:
-	Stream(std::string_view path);
+	Stream(std::string_view m_path);
 	~Stream() = default;
 
-	bool contains(std::string_view path);
+	bool contains(std::string_view m_path);
 	//void pushNode(std::string_view key);
 	//void pushNode(std::string_view key);
 

@@ -3,12 +3,13 @@
 #include "../../src/graphics/RenderDevice.h"
 #include "core/VulkanDevice.h"
 #include "core/VulkanSwapChain.h"
-#include "core/VulkanFrameBuffer.h"
 #include "core/VulkanPipeline.h"
-#include "core/VulkanBuffer.h"
-#include "core/VulkanTexture.h"
-#include "core/VulkanShader.h"
+#include "core/VulkanBufferManager.h"
+#include "core/VulkanDescriptorManager.h"
 #include "core/VulkanCommandPool.h"
+#include "resources/Textures/TextureVulkan.h"
+#include "resources/Shaders/VulkanShader.h"
+#include "resources/buffers/FrameBufferVulkan.h"
 
 class Logger;
 class PushConstantData;	// move this to client defined
@@ -16,24 +17,22 @@ class PushConstantData;	// move this to client defined
 class RenderDeviceVulkan : public RenderDevice
 {
 public:	
-	//TODO: for quick setup, these should be hidden once done
+	//TODO: for quick setup, some of these should be hidden once done
 	VulkanDevice device;
 	VulkanSwapChain swapchain;
 	VulkanPipeline pipeline;
-	VulkanBuffer vulkanBuffer;
+	VulkanBufferManager vulkanBuffer;
 	VulkanCommandPool commandPool;
 	//VulkanTexture VulkanTexture;
 	//VulkanShader VulkanShader;
 	//VulkanFrameBuffer VulkanFrameBuffer;
-	VkBuffer stagingBuffer;
-	VkImageView textureImageView;
-	VkSampler textureSampler;
+	
+	TextureVulkan* texture{ nullptr };
+
+	TextureVulkan* depthTexture{ nullptr };
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
-
-	VkImage textureImage;
-	VkDeviceMemory textureImageMemory;
 
 
 	VkDescriptorSetLayout descriptorSetLayout;
@@ -70,13 +69,15 @@ public:
 
 	void createDescriptorSetLayout();
 	void createDescriptorPool();
-	void createDescriptorSets(const std::vector<VkBuffer>& uniformBuffers);
-	void createTextureImage();
-	void createTextureImageView();
+	void createDescriptorSets();
+
+	//void createTextureImage();
+	//void createTextureImageView();
+	//void createTextureSampler();
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
-	void createTextureSampler();
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	
 	void createDepthResources();
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 	
@@ -89,25 +90,17 @@ public:
 	void setPushConstantRange(uint32_t range);
 	void setViewport();
 	void setScissor();
-	void shaderSetUniform();	//TODO: move to shader, let shader control descriptor set binding
 	void waitIdle();
 	Logger& Log() const;
-
-protected:
 
 private:
 	Logger* m_logger{ nullptr };
 	uint32_t pushConstantRange = 0;
 
 	uint32_t currentFrame = 0;
-	uint32_t imageIndex = 0;
-
-
-
 
 
 private:
-
 	void _cleanup();
 };
 

@@ -6,7 +6,7 @@
 
 void TextureOpenGL::loadTexture(const char* path, bool flip)
 {
-	glGenTextures(1, &ID);
+	glGenTextures(1, &m_id);
 
 	int width, height, nrComponents;
 	stbi_set_flip_vertically_on_load(flip);
@@ -32,7 +32,7 @@ void TextureOpenGL::loadTexture(const char* path, bool flip)
 		}
 
 		if (format != 0) {
-			glBindTexture(GL_TEXTURE_2D, ID);
+			glBindTexture(GL_TEXTURE_2D, m_id);
 			glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 			glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -50,8 +50,8 @@ void TextureOpenGL::loadTexture(const char* path, bool flip)
 
 TextureOpenGL::TextureOpenGL(const char* path, const char* texType)
 {
-	this->type = texType;
-	this->path = path;
+	this->m_type = texType;
+	this->m_path = path;
 
 	loadTexture(path, false);
 }
@@ -60,8 +60,8 @@ TextureOpenGL::TextureOpenGL(const char* fileName, const char* texType, const st
 {
 	std::string finalPath = std::string(fileName);
 	finalPath = directory + '/' + finalPath;
-	this->type = texType;
-	this->path = fileName;
+	this->m_type = texType;
+	this->m_path = fileName;
 
 	loadTexture(finalPath.c_str(), false);
 }
@@ -73,8 +73,8 @@ TextureOpenGL::~TextureOpenGL() {
 
 void TextureOpenGL::Init(const char* path, const char* texType, bool flipUV)
 {
-	this->type = texType;
-	this->path = path;
+	this->m_type = texType;
+	this->m_path = path;
 
 	loadTexture(path, flipUV);
 }
@@ -89,7 +89,7 @@ void TextureOpenGL::TexUnit(ShaderOpenGL& shader, const char* uniform, unsigned 
 void TextureOpenGL::Bind()
 {
 	glActiveTexture(GL_TEXTURE0 + unit);
-	glBindTexture(GL_TEXTURE_2D, ID);
+	glBindTexture(GL_TEXTURE_2D, m_id);
 }
 
 void TextureOpenGL::Unbind()
@@ -99,5 +99,5 @@ void TextureOpenGL::Unbind()
 
 void TextureOpenGL::Delete()
 {
-	glDeleteTextures(1, &ID);
+	glDeleteTextures(1, &m_id);
 }

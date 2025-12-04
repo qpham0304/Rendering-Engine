@@ -4,11 +4,14 @@
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
-#include "../../src/window/platform/GLFW/AppWindowGLFW.h"
-#include "../../src/window/AppWindow.h"
-#include "../../src/core/events/EventManager.h"
-#include "../../src/graphics/framework/Vulkan/RenderDeviceVulkan.h"	//TODO: remove conrete type access dependency
-#include "src/graphics/framework/OpenGL/core/ModelOpenGL.h"
+#include "src/window/platform/GLFW/AppWindowGLFW.h"
+#include "src/window/AppWindow.h"
+#include "src/core/events/EventManager.h"
+
+//TODO: remove from application, only renderer can see these concrete implementation
+#include "src/graphics/framework/Vulkan/RenderDeviceVulkan.h"	
+#include "src/graphics/framework/Vulkan/Renderers/RendererVulkan.h"
+#include "src/graphics/framework/vulkan/resources/textures/TextureManagerVulkan.h"
 
 ModelOpenGL* modelPtr = nullptr;
 
@@ -45,6 +48,7 @@ void VulkanApplication::init(WindowConfig config)
 	renderDevice = platformFactory.createRenderDevice(windowConfig.renderPlatform);
 	renderDeviceVulkan = static_cast<RenderDeviceVulkan*>(renderDevice.get());
 	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
+	textureManager = std::make_unique<TextureManagerVulkan>();
 
 	ServiceLocator::supportingServices();
 }
@@ -52,6 +56,9 @@ void VulkanApplication::init(WindowConfig config)
 void VulkanApplication::start()
 {
 	appWindow->init(windowConfig);
+
+	vulkanRenderer.init();
+	textureManager->init();
 
 	camera.init(AppWindow::getWidth(), AppWindow::getHeight(),
 		glm::vec3(2.0f, 2.0f, 2.0f),
@@ -103,9 +110,24 @@ void VulkanApplication::start()
 	renderDeviceVulkan->setPushConstantRange(sizeof(PushConstantData));
 	renderDeviceVulkan->init(windowConfig);
 
-	renderDeviceVulkan->vulkanBuffer.createVertexBuffer(vertices, renderDeviceVulkan->commandPool.commandPool);
-	renderDeviceVulkan->vulkanBuffer.createIndexBuffer(indices, renderDeviceVulkan->commandPool.commandPool);
-	renderDeviceVulkan->vulkanBuffer.createCombinedBuffer(vertices, indices, renderDeviceVulkan->commandPool.commandPool);
+	uint32_t id = textureManager->loadTexture("Textures/mobi-padoru.png");
+	renderDeviceVulkan->texture = dynamic_cast<TextureVulkan*>(textureManager->getTexture(id));
+
+	renderDeviceVulkan->createDepthResources();
+
+
+	renderDeviceVulkan->createDescriptorSetLayout();
+	renderDeviceVulkan->createDescriptorPool();
+	renderDeviceVulkan->createDescriptorSets();
+	renderDeviceVulkan->createTextureViewDescriptorSet();
+
+	renderDeviceVulkan->pipeline.create();
+	renderDeviceVulkan->swapchain.createFramebuffers();
+	renderDeviceVulkan->pipeline.createGraphicsPipeline(renderDeviceVulkan->descriptorSetLayout, renderDeviceVulkan->swapchain.renderPass, sizeof(PushConstantData));
+
+
+	vertexBufferID = renderDeviceVulkan->vulkanBuffer.createVertexBuffer(vertices, renderDeviceVulkan->commandPool.commandPool);
+	indexBufferID = renderDeviceVulkan->vulkanBuffer.createIndexBuffer(indices, renderDeviceVulkan->commandPool.commandPool);
 
 	guiManager->init(windowConfig);
 
@@ -113,11 +135,6 @@ void VulkanApplication::start()
 
 	editorLayer = new EditorLayer("EditorLayer", *guiManager);
 	//editorLayer->init(guiManager.get());
-
-	//Model model("Models/aru/aru.gltf");
-	//modelPtr = new Model("Models/aru/aru.gltf");
-
-	//auto meshes = modelPtr->meshes;
 }
 
 
@@ -149,66 +166,32 @@ void VulkanApplication::end()
 {
 	renderDeviceVulkan->waitIdle();
 	guiManager->onClose();
+	textureManager->shutdown();
 	renderDeviceVulkan->onClose();
 	appWindow->onClose();
 }
 
 void VulkanApplication::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
-	renderDeviceVulkan->commandPool.beginBuffer();
-	assert(imageIndex < renderDeviceVulkan->swapchain.swapChainFramebuffers.size() && "imageIndex out of range of framebuffers");
+	vulkanRenderer.beginRecording(commandBuffer);
 
-	VkRenderPassBeginInfo renderPassInfo{};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = renderDeviceVulkan->swapchain.renderPass;
-	renderPassInfo.framebuffer = renderDeviceVulkan->swapchain.swapChainFramebuffers[imageIndex];
-	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = renderDeviceVulkan->swapchain.swapChainExtent;
-
-	
-	//VkClearValue clearColor = 
-	std::array<VkClearValue, 2> clearValues{};
-	clearValues[0].color = { 0.15f, 0.15f, 0.15f, 1.0f };
-	clearValues[1].depthStencil = { 1.0f, 0 };
-
-	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-	renderPassInfo.pClearValues = clearValues.data();
-
-	//basic draw commands
-	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	renderDeviceVulkan->pipeline.bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
-
-	renderDeviceVulkan->setViewport();
-	renderDeviceVulkan->setScissor();
-	
-	renderDeviceVulkan->shaderSetUniform();
 	vkCmdPushConstants(
 		renderDeviceVulkan->commandPool.commandBuffers[renderDeviceVulkan->getCurrentFrame()],
 		renderDeviceVulkan->pipeline.pipelineLayout,
 		VK_SHADER_STAGE_FRAGMENT_BIT,
 		0, // offset
-		sizeof(pushConstantData),
+		sizeof(PushConstantData),
 		&pushConstantData
 	);
 
 	// issue draw
-	renderDeviceVulkan->vulkanBuffer.bind();
+	renderDeviceVulkan->vulkanBuffer.bind(vertexBufferID);
+	renderDeviceVulkan->vulkanBuffer.bind(indexBufferID);
 	renderDeviceVulkan->draw(static_cast<uint32_t>(indices.size()), 1);
 
+	renderGui(commandBuffer);
 
-	if (showGui) {
-		guiManager->start();
-		ImGui::BeginChild("Image View");
-		ImGui::Image((ImTextureID)renderDeviceVulkan->imguiTextureDescriptorSet, ImVec2(500, 500));
-		ImGui::EndChild();
-		guiManager->render(commandBuffer);
-
-	}
-
-	vkCmdEndRenderPass(commandBuffer);
-
-	renderDeviceVulkan->commandPool.endBuffer();
+	vulkanRenderer.endRecording(commandBuffer);
 }
 
 void VulkanApplication::render()
@@ -223,16 +206,26 @@ void VulkanApplication::render()
 	ubo.view = camera.getViewMatrix();
 	ubo.proj = camera.getProjectionMatrix();
 	ubo.proj[1][1] *= -1;
-
-	renderDeviceVulkan->beginFrame();
-
 	renderDeviceVulkan->vulkanBuffer.updateUniformBuffer(renderDeviceVulkan->getCurrentFrame(), ubo);
 
-	renderDeviceVulkan->render();
+	vulkanRenderer.beginFrame();
+
+	vulkanRenderer.render();
 	recordCommandBuffer(
 		renderDeviceVulkan->commandPool.commandBuffers[renderDeviceVulkan->getCurrentFrame()],
 		renderDeviceVulkan->getImageIndex()
 	);
 
-	renderDeviceVulkan->endFrame();
+	vulkanRenderer.endFrame();
+}
+
+void VulkanApplication::renderGui(void* commandBuffer)
+{
+	if (showGui) {
+		guiManager->start();
+		ImGui::BeginChild("Image View");
+		ImGui::Image((ImTextureID)renderDeviceVulkan->imguiTextureDescriptorSet, ImVec2(500, 500));
+		ImGui::EndChild();
+		guiManager->render(commandBuffer);
+	}
 }

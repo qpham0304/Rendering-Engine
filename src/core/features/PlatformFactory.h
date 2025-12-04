@@ -14,7 +14,7 @@
 #include "configs.h"
 #include "ServiceLocator.h"
 
-// one single file to registery and create all subsystems and services
+// one single file to register and create all subsystems and services
 // might separate into files per subsystem but good enough for now
 class PlatformFactory
 {

@@ -1,0 +1,506 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{4180436d-b904-423f-8d98-3fea60dec034}</ProjectGuid>
+    <RootNamespace>comprehensive</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Graphics Renderer Engine</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)Libraries/lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Configuration)-$(Platform)</OutDir>
+    <IntDir>$(SolutionDir)bin\$(ProjectName)\Intermediates\$(Configuration)-$(Platform)</IntDir>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyLocalProjectReference>true</CopyLocalProjectReference>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(SolutionDir)Libraries/include\glfw\include;$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(SolutionDir)Libraries\include\spdlog\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)Libraries/lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Configuration)-$(Platform)</OutDir>
+    <IntDir>$(SolutionDir)bin\$(ProjectName)\Intermediates\$(Configuration)-$(Platform)</IntDir>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyLocalProjectReference>true</CopyLocalProjectReference>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)Libraries/lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Configuration)-$(Platform)</OutDir>
+    <IntDir>$(SolutionDir)bin\$(ProjectName)\Intermediates\$(Configuration)-$(Platform)</IntDir>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyLocalProjectReference>true</CopyLocalProjectReference>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(SolutionDir)Libraries/include\glfw\include;$(SolutionDir)Libraries/include/imgui;$(SolutionDir)Libraries/include/imgui/backends;$(SolutionDir)Libraries/include/ImGuizmo;$(SolutionDir)Libraries/include;$(SolutionDir)Headers/OpenGL;$(SolutionDir)Headers;$(SolutionDir)Libraries\include\entt;$(SolutionDir)Libraries\include\FileWatch;$(SolutionDir)Libraries\include\external\json\include;$(SolutionDir)Libraries\include\spdlog\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)Libraries/lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)bin\$(ProjectName)\$(Configuration)-$(Platform)</OutDir>
+    <IntDir>$(SolutionDir)bin\$(ProjectName)\Intermediates\$(Configuration)-$(Platform)</IntDir>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyLocalProjectReference>true</CopyLocalProjectReference>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <NoEntryPoint>false</NoEntryPoint>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;vulkan-1.lib;spdlog.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <NoEntryPoint>false</NoEntryPoint>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy "$(projectDir)dll\*.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;vulkan-1.lib;spdlog.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(VULKAN_SDK)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy "$(projectDir)dll\*.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\graphics\framework\Vulkan\renderers\RendererVulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\BufferVulkan.cpp" />
+    <ClCompile Include="src\core\materials\Materials.cpp" />
+    <ClCompile Include="src\core\resources\managers\MeshesManager.cpp" />
+    <ClCompile Include="src\core\resources\managers\ModelsManager.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\IndexBufferVulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\VertexBufferVulkan.cpp" />
+    <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\RenderDeviceVulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanBufferManager.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanDevice.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\FrameBufferVulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanPipeline.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\shaders\VulkanShader.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanSwapChain.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\textures\TextureVulkan.cpp" />
+    <ClCompile Include="src\graphics\RenderDevice.cpp" />
+    <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
+    <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp" />
+    <ClCompile Include="src\apps\vulkan-demo\VulkanApplication.cpp" />
+    <ClCompile Include="src\core\features\PlatformFactory.cpp" />
+    <ClCompile Include="src\core\features\ServiceLocator.cpp" />
+    <ClCompile Include="src\core\layers\Layer.cpp" />
+    <ClCompile Include="src\graphics\renderpasses\BloomLayer.cpp" />
+    <ClCompile Include="src\graphics\renderpasses\RenderPass.cpp" />
+    <ClCompile Include="src\graphics\renderpasses\ShadowLayer.cpp" />
+    <ClCompile Include="src\graphics\renderpasses\SSAOLayer.cpp" />
+    <ClCompile Include="src\graphics\renderpasses\SSRLayer.cpp" />
+    <ClCompile Include="src\logging\framework\LoggerSpd.cpp" />
+    <ClCompile Include="src\services\Service.cpp" />
+    <ClCompile Include="src\window\platform\GLFW\InputGLFW.cpp" />
+    <ClCompile Include="src\core\features\EngineUtils.cpp" />
+    <ClCompile Include="src\core\components\LightComponent.cpp" />
+    <ClCompile Include="src\core\features\pch.cpp" />
+    <ClCompile Include="src\core\features\Stream.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\theme\ImGuiThemes.cpp" />
+    <ClCompile Include="src\window\platform\GLFW\AppWindowGLFW.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiEntityControlWidget.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiLeftSidebarWidget.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiMainViewWidget.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiMenuWidget.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiRightSidebarWidget.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\widgets\ImGuiSubViewWidget.cpp" />
+    <ClCompile Include="src\apps\sandbox\main.cpp" />
+    <ClCompile Include="src\core\components\CubeMapComponent.cpp" />
+    <ClCompile Include="src\core\components\CameraComponent.cpp" />
+    <ClCompile Include="src\core\entities\Entity.cpp" />
+    <ClCompile Include="src\window\Input.h" />
+    <ClCompile Include="src\core\features\Profiler.cpp" />
+    <ClCompile Include="src\core\scene\Scene.cpp" />
+    <ClCompile Include="src\core\layers\AppLayer.cpp" />
+    <ClCompile Include="src\core\layers\LayerManager.cpp" />
+    <ClCompile Include="src\core\layers\EditorLayer.cpp" />
+    <ClCompile Include="src\core\scene\SceneManager.cpp" />
+    <ClCompile Include="src\core\events\EventManager.cpp" />
+    <ClCompile Include="src\core\Engine.cpp" />
+    <ClCompile Include="src\core\features\Timer.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\ParticleGeometry.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\AtmosphereRenderer.cpp" />
+    <ClCompile Include="src\core\components\ModelComponent.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\ImageBasedRenderer.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\BloomRenderer.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\BloomFBO.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\DepthCubeMap.cpp" />
+    <ClCompile Include="Libraries\include\ImGuizmo\GraphEditor.cpp" />
+    <ClCompile Include="Libraries\include\ImGuizmo\ImCurveEdit.cpp" />
+    <ClCompile Include="Libraries\include\ImGuizmo\ImGradient.cpp" />
+    <ClCompile Include="Libraries\include\ImGuizmo\ImGuizmo.cpp" />
+    <ClCompile Include="Libraries\include\ImGuizmo\ImSequencer.cpp" />
+    <ClCompile Include="src\graphics\utils\Utils.cpp" />
+    <ClCompile Include="src\window\AppWindow.cpp" />
+    <ClCompile Include="src\gui\framework\ImGui\ImGuiManager.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\FrameBuffer.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\SkyboxRenderer.cpp" />
+    <ClCompile Include="src\animation\Animation.cpp" />
+    <ClCompile Include="src\animation\Animator.cpp" />
+    <ClCompile Include="src\animation\Bone.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\DepthMap.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\skybox.cpp" />
+    <ClCompile Include="src\core\features\camera.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\EBO.cpp" />
+    <ClCompile Include="Libraries\include\glad\glad.c" />
+    <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_opengl2.cpp" />
+    <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="Libraries\include\imgui\imgui.cpp" />
+    <ClCompile Include="Libraries\include\imgui\imgui_demo.cpp" />
+    <ClCompile Include="Libraries\include\imgui\imgui_draw.cpp" />
+    <ClCompile Include="Libraries\include\imgui\imgui_tables.cpp" />
+    <ClCompile Include="Libraries\include\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\MeshOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\ModelOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\ShaderOpenGL.cpp" />
+    <ClCompile Include="src\graphics\utils\stb.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\VAO.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\VBO.cpp" />
+    <ClCompile Include="src\core\systems\System.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\renderpasses\VulkanRenderPass.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\OpenGL\core\TextureOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanDescriptorManager.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\UniformBufferVulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanUtils.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\textures\TextureManagerVulkan.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\graphics\framework\Vulkan\renderers\RendererVulkan.h" />
+    <ClInclude Include="src\core\resources\managers\Manager.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\WrapperStructs.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\BufferVulkan.h" />
+    <ClInclude Include="Headers\Texture.h" />
+    <ClInclude Include="src\core\materials\Materials.h" />
+    <ClInclude Include="src\core\resources\managers\MeshesManager.h" />
+    <ClInclude Include="src\core\resources\managers\ModelsManager.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\IndexBufferVulkan.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\VertexBufferVulkan.h" />
+    <ClInclude Include="src\graphics\renderers\IndexBuffer.h" />
+    <ClInclude Include="Libraries\include\imgui\backends\imgui_impl_vulkan.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\RenderDeviceVulkan.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanBufferManager.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanDevice.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\FrameBufferVulkan.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanPipeline.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\shaders\VulkanShader.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanSwapChain.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\textures\TextureVulkan.h" />
+    <ClInclude Include="src\graphics\renderers\Buffer.h" />
+    <ClInclude Include="src\graphics\RenderDevice.h" />
+    <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
+    <ClInclude Include="src\apps\particle-demo\ParticleDemo.h" />
+    <ClInclude Include="src\apps\vulkan-demo\VulkanApplication.h" />
+    <ClInclude Include="src\core\features\Configs.h" />
+    <ClInclude Include="src\core\features\PlatformFactory.h" />
+    <ClInclude Include="src\core\features\ServiceLocator.h" />
+    <ClInclude Include="src\graphics\renderers\ShadowMapRenderer.h" />
+    <ClInclude Include="src\graphics\renderpasses\BloomPass.h" />
+    <ClInclude Include="src\graphics\renderpasses\RenderPass.h" />
+    <ClInclude Include="src\graphics\renderpasses\ShadowLayer.h" />
+    <ClInclude Include="src\graphics\renderpasses\SSAOLayer.h" />
+    <ClInclude Include="src\graphics\renderpasses\SSRLayer.h" />
+    <ClInclude Include="src\logging\framework\LoggerSpd.h" />
+    <ClInclude Include="src\logging\Logger.h" />
+    <ClInclude Include="src\services\Service.h" />
+    <ClInclude Include="src\window\InputKeyCode.h" />
+    <ClInclude Include="src\window\platform\GLFW\InputGLFW.h" />
+    <ClInclude Include="src\core\features\EngineUtils.h" />
+    <ClInclude Include="Headers\pch.h" />
+    <ClInclude Include="src\core\components\LightComponent.h" />
+    <ClInclude Include="src\core\features\Stream.h" />
+    <ClInclude Include="src\gui\framework\ImGui\theme\ImGuiThemes.h" />
+    <ClInclude Include="src\window\platform\GLFW\AppWindowGLFW.h" />
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiConsoleLogWidget.h" />
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiEntityControlWidget.h" />
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiLeftSidebarWidget.h" />
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiMainViewWidget.h" />
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiMenuWidget.h" />
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiRightSidebarWidget.h" />
+    <ClInclude Include="src\gui\framework\ImGui\widgets\ImGuiSubViewWidget.h" />
+    <ClInclude Include="Libraries\include\FileWatch\FileWatch.hpp" />
+    <ClInclude Include="src\core\components\CubeMapComponent.h" />
+    <ClInclude Include="Libraries\include\glad\glad.h" />
+    <ClInclude Include="src\core\components\CameraComponent.h" />
+    <ClInclude Include="src\core\components\MComponent.h" />
+    <ClInclude Include="src\core\entities\Entity.h" />
+    <ClInclude Include="Libraries\include\entt\entt.hpp" />
+    <ClInclude Include="src\core\features\Profiler.h" />
+    <ClInclude Include="src\core\scene\Scene.h" />
+    <ClInclude Include="src\core\components\ModelComponent.h" />
+    <ClInclude Include="src\graphics\renderers\SkyboxRenderer.h" />
+    <ClInclude Include="src\core\layers\AppLayer.h" />
+    <ClInclude Include="src\core\layers\LayerManager.h" />
+    <ClInclude Include="src\core\layers\EditorLayer.h" />
+    <ClInclude Include="src\core\layers\Layer.h" />
+    <ClInclude Include="src\core\scene\SceneManager.h" />
+    <ClInclude Include="src\core\events\EventListener.h" />
+    <ClInclude Include="src\core\events\EventManager.h" />
+    <ClInclude Include="src\core\Engine.h" />
+    <ClInclude Include="src\core\events\Event.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\ParticleGeometry.h" />
+    <ClInclude Include="Headers\PreCompile.h" />
+    <ClInclude Include="src\core\features\Timer.h" />
+    <ClInclude Include="src\graphics\renderers\AtmosphereRenderer.h" />
+    <ClInclude Include="src\graphics\renderers\Renderer.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\BloomRenderer.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\BloomFBO.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\DepthCubeMap.h" />
+    <ClInclude Include="src\graphics\renderers\ImageBasedRenderer.h" />
+    <ClInclude Include="Libraries\include\ImGuizmo\GraphEditor.h" />
+    <ClInclude Include="Libraries\include\ImGuizmo\ImCurveEdit.h" />
+    <ClInclude Include="Libraries\include\ImGuizmo\ImGradient.h" />
+    <ClInclude Include="Libraries\include\ImGuizmo\ImGuizmo.h" />
+    <ClInclude Include="Libraries\include\ImGuizmo\ImSequencer.h" />
+    <ClInclude Include="Libraries\include\ImGuizmo\ImZoomSlider.h" />
+    <ClInclude Include="src\gui\framework\ImGui\ImGuiManager.h" />
+    <ClInclude Include="src\graphics\utils\ltc_matrix.h" />
+    <ClInclude Include="src\graphics\utils\Utils.h" />
+    <ClInclude Include="src\window\AppWindow.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\Axis.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\FrameBuffer.h" />
+    <ClInclude Include="src\animation\Animation.h" />
+    <ClInclude Include="src\animation\Animator.h" />
+    <ClInclude Include="Headers\assimp_glm_helpers.h" />
+    <ClInclude Include="src\animation\Bone.h" />
+    <ClInclude Include="src\core\features\camera.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\DepthMap.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\EBO.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\MeshOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\ModelOpenGL.h" />
+    <ClInclude Include="Headers\resource.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\ShaderOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\VAO.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\VBO.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\skybox.h" />
+    <ClInclude Include="src\core\systems\System.h" />
+    <ClInclude Include="src\gui\GuiManager.h" />
+    <ClInclude Include="src\gui\Themes\Themes.h" />
+    <ClInclude Include="src\gui\widgets\ConsoleLogWidget.h" />
+    <ClInclude Include="src\gui\widgets\EntityControlWidget.h" />
+    <ClInclude Include="src\gui\widgets\IconsFontAwesome5.h" />
+    <ClInclude Include="src\gui\widgets\LeftSidebarWidget.h" />
+    <ClInclude Include="src\gui\widgets\MainViewWidget.h" />
+    <ClInclude Include="src\gui\widgets\MenuWidget.h" />
+    <ClInclude Include="src\gui\widgets\RightSidebarWidget.h" />
+    <ClInclude Include="src\gui\widgets\SubViewWidget.h" />
+    <ClInclude Include="src\gui\widgets\Widget.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\renderpasses\VulkanRenderPass.h" />
+    <ClInclude Include="src\graphics\renderers\VertexBuffer.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\OpenGL\core\TextureOpenGL.h" />
+    <ClInclude Include="src\core\resources\managers\TextureManager.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanDescriptorManager.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\UniformBufferVulkan.h" />
+    <ClInclude Include="src\graphics\renderers\UniformBuffer.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanUtils.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\textures\TextureManagerVulkan.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="comprehensive.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\areaLight.frag" />
+    <None Include="Shaders\areaLight.vert" />
+    <None Include="Shaders\background.frag" />
+    <None Include="Shaders\background.vert" />
+    <None Include="Shaders\brdf.frag" />
+    <None Include="Shaders\brdf.vert" />
+    <None Include="Shaders\cellShader.frag" />
+    <None Include="Shaders\cellShader.vert" />
+    <None Include="Shaders\cubemap-hdr.vert" />
+    <None Include="Shaders\cubemap.frag" />
+    <None Include="Shaders\cubemap.vert" />
+    <None Include="Shaders\default-2.frag" />
+    <None Include="Shaders\default-2.vert" />
+    <None Include="Shaders\default.frag" />
+    <None Include="Shaders\default.geom" />
+    <None Include="Shaders\default.vert" />
+    <None Include="Shaders\deferredIBL\colorPass.frag" />
+    <None Include="Shaders\deferredIBL\colorPass.vert" />
+    <None Include="Shaders\deferredIBL\gPass.frag" />
+    <None Include="Shaders\deferredIBL\gPass.vert" />
+    <None Include="Shaders\deferredShading\deferredShading.vert" />
+    <None Include="Shaders\deferredShading\deferredShadinw.frag" />
+    <None Include="Shaders\equireRectToCubemap.frag" />
+    <None Include="Shaders\godRays\blackScreen.frag" />
+    <None Include="Shaders\godRays\blackScreen.vert" />
+    <None Include="Shaders\godRays\godRays.frag" />
+    <None Include="Shaders\godRays\godRays.vert" />
+    <None Include="Shaders\irradianceConvolution.frag" />
+    <None Include="Shaders\light.frag" />
+    <None Include="Shaders\light.vert" />
+    <None Include="Shaders\material.frag" />
+    <None Include="Shaders\material.vert" />
+    <None Include="Shaders\model.frag" />
+    <None Include="Shaders\model.vert" />
+    <None Include="Shaders\prefilter.frag" />
+    <None Include="Shaders\shadowMap.frag" />
+    <None Include="Shaders\shadowMap.vert" />
+    <None Include="Shaders\shadow\pointShadowsDepth.frag" />
+    <None Include="Shaders\shadow\pointShadowsDepth.geom" />
+    <None Include="Shaders\shadow\pointShadowsDepth.vert" />
+    <None Include="Shaders\skeletonModel.frag" />
+    <None Include="Shaders\skeletonModel.vert" />
+    <None Include="Shaders\skyAtmosphere\atmosphere.frag" />
+    <None Include="Shaders\skyAtmosphere\multipleScatteredLUT.frag" />
+    <None Include="Shaders\skyAtmosphere\skyViewLUT.frag" />
+    <None Include="Shaders\skyAtmosphere\transmittanceLUT.frag" />
+    <None Include="Shaders\skybox.frag" />
+    <None Include="Shaders\skybox.vert" />
+    <None Include="src\apps\vulkan-demo\shaders\compile.bat" />
+    <None Include="src\apps\vulkan-demo\shaders\default.frag" />
+    <None Include="src\apps\vulkan-demo\shaders\default.frag.spv" />
+    <None Include="src\apps\vulkan-demo\shaders\default.vert" />
+    <None Include="src\apps\vulkan-demo\shaders\default.vert.spv" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Textures\ice-snow.png" />
+    <Image Include="Textures\metal.png" />
+    <Image Include="Textures\planks.png" />
+    <Image Include="Textures\planksSpec-2.png" />
+    <Image Include="Textures\planksSpec.png" />
+    <Image Include="Textures\squish.png" />
+    <Image Include="Textures\wood.png" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

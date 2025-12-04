@@ -122,7 +122,7 @@ void VulkanDevice::createSurface() {
 	VkWin32SurfaceCreateInfoKHR surfaceInfo = {};
 	surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	surfaceInfo.hinstance = GetModuleHandle(nullptr);
-	surfaceInfo.hwnd = (HWND)AppWindow::getNativeWindowHandle();           // your Win32 window handle
+	surfaceInfo.hwnd = static_cast<HWND>(AppWindow::getNativeWindowHandle());
 
 	vkCreateWin32SurfaceKHR(instance, &surfaceInfo, nullptr, &surface);
 }
@@ -312,20 +312,6 @@ bool VulkanDevice::checkValidationLayerSupport()
 
 	return true;
 }
-
-//std::vector<const char*> VulkanDevice::getRequiredExtensions() {
-//	uint32_t glfwExtensionCount = 0;
-//	const char** glfwExtensions;
-//	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-//
-//	std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-//
-//	if (enableValidationLayers) {
-//		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-//	}
-//
-//	return extensions;
-//}
 
 std::vector<const char*> VulkanDevice::getRequiredExtensions() {
 	std::vector<const char*> extensions;

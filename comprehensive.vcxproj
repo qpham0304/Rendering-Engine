@@ -190,20 +190,25 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\graphics\framework\Vulkan\renderers\RendererVulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\BufferVulkan.cpp" />
+    <ClCompile Include="src\core\materials\Materials.cpp" />
+    <ClCompile Include="src\core\resources\managers\MeshesManager.cpp" />
+    <ClCompile Include="src\core\resources\managers\ModelsManager.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.cpp" />
-    <ClCompile Include="src\graphics\renderers\IndexBuffer.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\IndexBufferVulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\VertexBufferVulkan.cpp" />
     <ClCompile Include="Libraries\include\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.cpp" />
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.cpp" />
     <ClCompile Include="src\graphics\framework\Vulkan\RenderDeviceVulkan.cpp" />
-    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanBuffer.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanBufferManager.cpp" />
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanDevice.cpp" />
-    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanFrameBuffer.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\FrameBufferVulkan.cpp" />
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanPipeline.cpp" />
-    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanShader.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\shaders\VulkanShader.cpp" />
     <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanSwapChain.cpp" />
-    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanTexture.cpp" />
-    <ClCompile Include="src\graphics\renderers\Buffer.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\textures\TextureVulkan.cpp" />
     <ClCompile Include="src\graphics\RenderDevice.cpp" />
     <ClCompile Include="src\apps\deferred-IBL-demo\deferredIBL_demo.cpp" />
     <ClCompile Include="src\apps\particle-demo\ParticleDemo.cpp" />
@@ -244,11 +249,10 @@
     <ClCompile Include="src\core\layers\EditorLayer.cpp" />
     <ClCompile Include="src\core\scene\SceneManager.cpp" />
     <ClCompile Include="src\core\events\EventManager.cpp" />
-    <ClCompile Include="src\core\Application.cpp" />
+    <ClCompile Include="src\core\Engine.cpp" />
     <ClCompile Include="src\core\features\Timer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\ParticleGeometry.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\AtmosphereRenderer.cpp" />
-    <ClCompile Include="src\graphics\renderers\Renderer.cpp" />
     <ClCompile Include="src\core\components\ModelComponent.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\ImageBasedRenderer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\BloomRenderer.cpp" />
@@ -284,30 +288,41 @@
     <ClCompile Include="src\graphics\framework\OpenGL\core\ModelOpenGL.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\ShaderOpenGL.cpp" />
     <ClCompile Include="src\graphics\utils\stb.cpp" />
-    <ClCompile Include="src\graphics\framework\OpenGL\core\Texture.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\VAO.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\VBO.cpp" />
     <ClCompile Include="src\core\systems\System.cpp" />
     <ClCompile Include="src\graphics\framework\Vulkan\renderpasses\VulkanRenderPass.cpp" />
-    <ClCompile Include="src\graphics\renderers\VertexBuffer.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.cpp" />
     <ClCompile Include="src\graphics\framework\OpenGL\core\TextureOpenGL.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanDescriptorManager.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\buffers\UniformBufferVulkan.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\core\VulkanUtils.cpp" />
+    <ClCompile Include="src\graphics\framework\Vulkan\resources\textures\TextureManagerVulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\graphics\framework\Vulkan\renderers\RendererVulkan.h" />
+    <ClInclude Include="src\core\resources\managers\Manager.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\WrapperStructs.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\BufferVulkan.h" />
     <ClInclude Include="Headers\Texture.h" />
+    <ClInclude Include="src\core\materials\Materials.h" />
+    <ClInclude Include="src\core\resources\managers\MeshesManager.h" />
+    <ClInclude Include="src\core\resources\managers\ModelsManager.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\renderers\IndexBufferOpenGL.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\IndexBufferVulkan.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\VertexBufferVulkan.h" />
     <ClInclude Include="src\graphics\renderers\IndexBuffer.h" />
     <ClInclude Include="Libraries\include\imgui\backends\imgui_impl_vulkan.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\RenderDeviceOpenGL.h" />
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanCommandPool.h" />
     <ClInclude Include="src\graphics\framework\Vulkan\RenderDeviceVulkan.h" />
-    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanBuffer.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanBufferManager.h" />
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanDevice.h" />
-    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanFrameBuffer.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\FrameBufferVulkan.h" />
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanPipeline.h" />
-    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanShader.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\shaders\VulkanShader.h" />
     <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanSwapChain.h" />
-    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanTexture.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\textures\TextureVulkan.h" />
     <ClInclude Include="src\graphics\renderers\Buffer.h" />
     <ClInclude Include="src\graphics\RenderDevice.h" />
     <ClInclude Include="src\apps\deferred-IBL-demo\deferredIBL_demo.h" />
@@ -358,7 +373,7 @@
     <ClInclude Include="src\core\scene\SceneManager.h" />
     <ClInclude Include="src\core\events\EventListener.h" />
     <ClInclude Include="src\core\events\EventManager.h" />
-    <ClInclude Include="src\core\Application.h" />
+    <ClInclude Include="src\core\Engine.h" />
     <ClInclude Include="src\core\events\Event.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\ParticleGeometry.h" />
     <ClInclude Include="Headers\PreCompile.h" />
@@ -411,6 +426,12 @@
     <ClInclude Include="src\graphics\renderers\VertexBuffer.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\renderers\VertexBufferOpenGL.h" />
     <ClInclude Include="src\graphics\framework\OpenGL\core\TextureOpenGL.h" />
+    <ClInclude Include="src\core\resources\managers\TextureManager.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanDescriptorManager.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\buffers\UniformBufferVulkan.h" />
+    <ClInclude Include="src\graphics\renderers\UniformBuffer.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\core\VulkanUtils.h" />
+    <ClInclude Include="src\graphics\framework\Vulkan\resources\textures\TextureManagerVulkan.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="comprehensive.rc" />

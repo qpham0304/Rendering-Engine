@@ -13,15 +13,11 @@ public:
 		size_t stride;
 	};
 
-
 	virtual ~IndexBuffer() = default;
 
-	virtual void create(const void* data, size_t size) override = 0;
-	virtual void destroy() override = 0;
-	virtual void bind() override = 0;
+	virtual void bind(void* commandBuffer) override = 0;
 
 protected:
-	IndexBuffer() = default;
-
+	IndexBuffer(uint32_t id) : Buffer(id) {};
 };
 
