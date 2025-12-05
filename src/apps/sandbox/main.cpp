@@ -1,8 +1,8 @@
 #include "../vulkan-demo/VulkanApplication.h"
 #include "../vulkan-demo/example_glfw_vulkan.h"
 #include "../../core/Engine.h"
-#include "../../src/apps/deferred-IBL-demo/deferredIBL_demo.h"
-#include "../../src/apps/particle-demo/particleDemo.h"
+#include "src/apps/deferred-IBL-demo/deferredIBL_demo.h"
+#include "src/apps/particle-demo/particleDemo.h"
 
 //#define RUN_EDITOR
 int main()

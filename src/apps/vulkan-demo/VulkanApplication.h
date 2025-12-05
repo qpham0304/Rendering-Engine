@@ -16,13 +16,13 @@
 #include <glm/glm.hpp>
 #include <array>
 #include <memory>
-#include "../../src/core/features/Camera.h"
+#include "src/core/features/Camera.h"
 //#include "OrbitCamera.h"
-#include "../../src/core/features/ServiceLocator.h"
-#include "../../src/core/features/PlatformFactory.h"
-#include "../../src/core/layers/EditorLayer.h"
-#include "../../src/core/layers/LayerManager.h"
-#include "../../src/core/scene/SceneManager.h"
+#include "src/core/features/ServiceLocator.h"
+#include "src/core/features/PlatformFactory.h"
+#include "src/core/layers/EditorLayer.h"
+#include "src/core/layers/LayerManager.h"
+#include "src/core/scene/SceneManager.h"
 #include "src/graphics/framework/Vulkan/Renderers/RendererVulkan.h" //TODO: use generic interface ptr instead
 #include "src/core/resources/managers/TextureManager.h"
 
@@ -74,7 +74,7 @@ private:
 
 private:
     Camera camera;
-    PushConstantData pushConstantData;
+    PushConstantData pushConstantData {};
 
     void render();
     void renderGui(void* commandBuffer);

@@ -5,12 +5,12 @@
 #include <functional>
 #include <memory>
 
-#include "../../src/gui/GuiManager.h"
-#include "../../src/window/AppWindow.h"
-#include "../../src/graphics/renderers/Renderer.h"
-#include "../../src/logging/Logger.h"
-#include "../../src/services/Service.h"
-#include "../../src/graphics/RenderDevice.h"
+#include "src/gui/GuiManager.h"
+#include "src/window/AppWindow.h"
+#include "src/graphics/renderers/Renderer.h"
+#include "src/logging/Logger.h"
+#include "src/services/Service.h"
+#include "src/graphics/RenderDevice.h"
 #include "configs.h"
 #include "ServiceLocator.h"
 

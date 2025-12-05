@@ -10,7 +10,7 @@
 #include "Event.h"
 #include <atomic>
 #include "EventListener.h"
-#include "../../src/core/features/Timer.h"
+#include "src/core/features/Timer.h"
 
 class EventManager
 {

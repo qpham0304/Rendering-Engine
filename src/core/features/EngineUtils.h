@@ -23,7 +23,7 @@ namespace FileReader {
 		std::ifstream file(filename.data(), std::ios::ate | std::ios::binary);
 
 		if (!file.is_open()) {
-			throw std::runtime_error("failed to open file!");
+			throw std::runtime_error("EngineUtil::readFileBinary::failed to open file!");
 		}
 
 		size_t fileSize = (size_t)file.tellg();

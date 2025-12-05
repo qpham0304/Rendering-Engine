@@ -6,7 +6,6 @@ class VAO
 {
 public:
 	GLuint ID;
-	GLuint va;
 	VAO();
 	VAO& operator=(const VAO& other);
 	void LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset);

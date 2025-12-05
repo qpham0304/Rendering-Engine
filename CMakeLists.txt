@@ -1,96 +1,142 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.5...4.0)
 
-# ---------------------------------------------------------
-# Project Setup
-# ---------------------------------------------------------
 project(MyGraphicsEngine LANGUAGES CXX)
 
-# Future-proof:
-# When you later split engine into a library:
-#   change add_executable(...) -> add_library(...)
-#   move main.cpp into a separate project
-#
-# Everything else will still work.
-# ---------------------------------------------------------
+# for glad C 
+enable_language(C)
 
-set(CMAKE_CXX_STANDARD 20)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(ARCH "x64")
+else()
+    set(ARCH "Win32")
+endif()
+
+
+if(ARCH STREQUAL "x64")
+    set(CMAKE_CXX_STANDARD 20)
+else()
+    set(CMAKE_CXX_STANDARD 17)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ---------------------------------------------------------
-# Source File Collection
-# ---------------------------------------------------------
-# Recursively collect all source files in src/
-file(GLOB_RECURSE ENGINE_SOURCES
+
+file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
 )
 
-# NOTE: main.cpp is included in that search.
-# If you later separate it, remove it from ENGINE_SOURCES
-# and create a new project for the app/game.
 
-# ---------------------------------------------------------
-# Engine Executable (change to add_library later)
-# add_library(MyGraphicsEngine STATIC ${ENGINE_SOURCES})
-# ---------------------------------------------------------
-add_executable(${PROJECT_NAME}
+set(IMGUI_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/imgui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/imgui_draw.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/imgui_tables.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/imgui_widgets.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_glfw.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_opengl3.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_vulkan.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImGuizmo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/GraphEditor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImCurveEdit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImGradient.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImSequencer.cpp
+)
+
+add_executable(
+    ${PROJECT_NAME}
     ${ENGINE_SOURCES}
+    ${IMGUI_SOURCES}
 )
 
-# ---------------------------------------------------------
-# Include Directories
-# ---------------------------------------------------------
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${PROJECT_NAME}/${ARCH}/$<CONFIG>"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${PROJECT_NAME}/${ARCH}/$<CONFIG>"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${PROJECT_NAME}/${ARCH}/$<CONFIG>"
+)
+
+add_subdirectory(Libraries/include/glad)
+add_subdirectory(Libraries/include/spdlog)
+add_subdirectory(Libraries/include/glfw)
+add_subdirectory(Libraries/include/nlohmann_json)
+add_subdirectory(Libraries/include/assimp)
+
+add_library(vulkan-1 STATIC IMPORTED)
+set_target_properties(vulkan-1 PROPERTIES
+    IMPORTED_LOCATION "$ENV{VULKAN_SDK}/Lib/vulkan-1.lib"
+    INTERFACE_INCLUDE_DIRECTORIES "$ENV{VULKAN_SDK}/Include"
+)
+
+
 target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    $ENV{VULKAN_SDK}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/entt
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/FileWatch
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/stb
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/glm
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo
 )
 
-# ---------------------------------------------------------
-# Library Paths
-# ---------------------------------------------------------
-link_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/lib
-    $ENV{VULKAN_SDK}/lib
-)
 
-# ---------------------------------------------------------
-# Link Libraries
-# ---------------------------------------------------------
-# Static libs you said exist:
-#   assimp-vc143-mtd.lib
-#   glfw3.lib
-#   spdlog.lib
-#
-# Vulkan loader:
-#   vulkan-1.lib
-#
-# Windows system libs:
-#   opengl32.lib
-# ---------------------------------------------------------
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    assimp-vc143-mtd
-    glfw3
-    spdlog
+    assimp
     vulkan-1
     opengl32
+    glad
+    spdlog
+    nlohmann_json
+    glfw
 )
 
-# ---------------------------------------------------------
-# Optional: ImGui, ImGuizmo, Glad, stb, ENTt, glm, etc.
-# Since these are header-only or compiled inside your repo,
-# no linking is required beyond including their headers.
-# ---------------------------------------------------------
-
-# ---------------------------------------------------------
-# Debug / Release Configuration
-# ---------------------------------------------------------
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    $<$<CONFIG:Debug>:_DEBUG>
-    $<$<CONFIG:Release>:NDEBUG>
     WIN32
     _CONSOLE
+    IMGUI_IMPL_OPENGL_LOADER_GLAD
+    $<$<CONFIG:Debug>:_DEBUG>
+    $<$<CONFIG:Release>:NDEBUG>
 )
 
-# Visual Studio filters (helps in the VS Solution)
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source" FILES ${ENGINE_SOURCES})
+# If using dynamic GLFW (glfw3.dll)
+# target_compile_definitions(${PROJECT_NAME} PRIVATE GLFW_DLL)
+
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
+endif()
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:Debug>:/W3 /SDL /MP /Zc:__cplusplus>
+    $<$<CONFIG:Release>:/W3 /O2 /GL /Oi /fp:precise /SDL /MP /Zc:__cplusplus>
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/dll"
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/Textures"
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>/Textures
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>/src
+)
+
+foreach(SRC ${ENGINE_SOURCES})
+    file(RELATIVE_PATH REL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src" "${SRC}")
+    get_filename_component(DIR "${REL_PATH}" PATH)
+    string(REPLACE "/" "\\" DIR_GROUP "${DIR}")
+    if(DIR_GROUP STREQUAL "")
+        set(DIR_GROUP "Source")
+    else()
+        set(DIR_GROUP "Source\\${DIR_GROUP}")
+    endif()
+    source_group("${DIR_GROUP}" FILES "${SRC}")
+endforeach()

@@ -13,3 +13,6 @@
 [submodule "Libraries/include/glfw"]
 	path = Libraries/include/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "Libraries/include/assimp"]
+	path = Libraries/include/assimp
+	url = https://github.com/assimp/assimp.git

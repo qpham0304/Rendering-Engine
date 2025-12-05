@@ -102,6 +102,7 @@ void VulkanApplication::start()
 		}
 	});
 
+	pushConstantData.flag = false;
 	pushConstantData.color = glm::vec3(1.0f, 1.0f, 0.0f);
 	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
 	pushConstantData.data = 0.1f;

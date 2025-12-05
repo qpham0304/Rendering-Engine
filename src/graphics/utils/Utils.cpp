@@ -465,10 +465,10 @@ void Utils::OpenGL::vramUsage()
 {
 	if (glfwExtensionSupported("GL_NVX_gpu_memory_info")) {
 		GLint total_memory = 0;
-		glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &total_memory);
+		//glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &total_memory);
 
 		GLint current_memory = 0;
-		glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &current_memory);
+		//glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &current_memory);
 
 		std::cout << "Total GPU Memory: " << total_memory / 1024 << " MB\n";
 		std::cout << "Current GPU Memory: " << (total_memory - current_memory) / 1024 << " MB\n";
