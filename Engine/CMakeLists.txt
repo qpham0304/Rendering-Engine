@@ -52,7 +52,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 add_subdirectory(Libraries/include/glad)
 add_subdirectory(Libraries/include/spdlog)
 add_subdirectory(Libraries/include/glfw)
-add_subdirectory(Libraries/include/nlohmann_json)
+add_subdirectory(Libraries/include/external/json)
 add_subdirectory(Libraries/include/assimp)
 
 add_library(vulkan-1 STATIC IMPORTED)
