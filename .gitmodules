@@ -1,18 +1,18 @@
-[submodule "Libraries/include/imgui"]
-	path = Libraries/include/imgui
-	url = https://github.com/ocornut/imgui.git
-[submodule "Libraries/include/ImGuizmo"]
-	path = Libraries/include/ImGuizmo
-	url = https://github.com/CedricGuillemet/ImGuizmo.git
-[submodule "Libraries/include/external/json"]
-	path = Libraries/include/external/json
-	url = https://github.com/nlohmann/json
-[submodule "Libraries/include/spdlog"]
-	path = Libraries/include/spdlog
-	url = https://github.com/gabime/spdlog.git
-[submodule "Libraries/include/glfw"]
-	path = Libraries/include/glfw
-	url = https://github.com/glfw/glfw.git
-[submodule "Libraries/include/assimp"]
-	path = Libraries/include/assimp
-	url = https://github.com/assimp/assimp.git
+[submodule "Engine/Libraries/include/imgui"]
+    path = Engine/Libraries/include/imgui
+    url = https://github.com/ocornut/imgui.git
+[submodule "Engine/Libraries/include/ImGuizmo"]
+    path = Engine/Libraries/include/ImGuizmo
+    url = https://github.com/CedricGuillemet/ImGuizmo.git
+[submodule "Engine/Libraries/include/external/json"]
+    path = Engine/Libraries/include/external/json
+    url = https://github.com/nlohmann/json
+[submodule "Engine/Libraries/include/spdlog"]
+    path = Engine/Libraries/include/spdlog
+    url = https://github.com/gabime/spdlog.git
+[submodule "Engine/Libraries/include/glfw"]
+    path = Engine/Libraries/include/glfw
+    url = https://github.com/glfw/glfw.git
+[submodule "Engine/Libraries/include/assimp"]
+    path = Engine/Libraries/include/assimp
+    url = https://github.com/assimp/assimp.git
