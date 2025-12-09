@@ -1,0 +1,41 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Sandbox",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Sandbox/bin/Debug/Sandbox.exe",
+            "cwd": "${workspaceFolder}/Sandbox/bin/Debug",
+            "console": "externalTerminal",
+            "preLaunchTask": "build Sandbox"
+        },
+        {
+            "name": "Debug Editor",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Editor/bin/Debug/Editor.exe",
+            "cwd": "${workspaceFolder}/Editor/bin/Debug",
+            "console": "externalTerminal",
+            "preLaunchTask": "build Editor"
+        },
+        {
+            "name": "Release Sandbox",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Sandbox/bin/Release/Sandbox.exe",
+            "cwd": "${workspaceFolder}/Sandbox/bin/Release",
+            "console": "externalTerminal",
+            "preLaunchTask": "build Sandbox"
+        },
+        {
+            "name": "Release Editor",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Editor/bin/Release/Editor.exe",
+            "cwd": "${workspaceFolder}/Editor/bin/Release",
+            "console": "externalTerminal",
+            "preLaunchTask": "build Editor"
+        }
+    ]
+}

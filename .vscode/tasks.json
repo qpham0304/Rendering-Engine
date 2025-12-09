@@ -1,0 +1,33 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build Sandbox",
+            "type": "shell",
+            "command": "cmake --build build --target Sandbox --config Debug",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "build Sandbox",
+            "type": "shell",
+            "command": "cmake --build build --target Sandbox --config Release",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "build Editor",
+            "type": "shell",
+            "command": "cmake --build build --target Editor --config Debug",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "build Editor",
+            "type": "shell",
+            "command": "cmake --build build --target Editor --config Release",
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}
