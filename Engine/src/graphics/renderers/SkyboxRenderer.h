@@ -11,12 +11,12 @@ class SkyboxRenderer
 private:
 	void setup();
 	std::vector<std::string> faces = {	// default skybox textures
-		"Textures/skybox/right.jpg",
-		"Textures/skybox/left.jpg",
-		"Textures/skybox/top.jpg",
-		"Textures/skybox/bottom.jpg",
-		"Textures/skybox/front.jpg",
-		"Textures/skybox/back.jpg"
+		"assets/Textures/skybox/right.jpg",
+		"assets/Textures/skybox/left.jpg",
+		"assets/Textures/skybox/top.jpg",
+		"assets/Textures/skybox/bottom.jpg",
+		"assets/Textures/skybox/front.jpg",
+		"assets/Textures/skybox/back.jpg"
 	};
 
 	Skybox skybox;

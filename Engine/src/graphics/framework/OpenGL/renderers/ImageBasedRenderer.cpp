@@ -192,11 +192,11 @@ void ImageBasedRenderer::renderBRDF()
 
 ImageBasedRenderer::ImageBasedRenderer()
 {
-    equirectToCubeMapShader.Init("Shaders/cubemap-hdr.vert", "Shaders/equireRectToCubemap.frag");
-    irradianceShader.Init("Shaders/cubemap-hdr.vert", "Shaders/irradianceConvolution.frag");
-    backgroundShader.Init("Shaders/background.vert", "Shaders/background.frag");
-    prefilterShader.Init("Shaders/cubemap-hdr.vert", "Shaders/prefilter.frag");
-    brdfShader.Init("Shaders/brdf.vert", "Shaders/brdf.frag");
+    equirectToCubeMapShader.Init("assets/Shaders/cubemap-hdr.vert", "assets/Shaders/equireRectToCubemap.frag");
+    irradianceShader.Init("assets/Shaders/cubemap-hdr.vert", "assets/Shaders/irradianceConvolution.frag");
+    backgroundShader.Init("assets/Shaders/background.vert", "assets/Shaders/background.frag");
+    prefilterShader.Init("assets/Shaders/cubemap-hdr.vert", "assets/Shaders/prefilter.frag");
+    brdfShader.Init("assets/Shaders/brdf.vert", "assets/Shaders/brdf.frag");
 }
 
 void ImageBasedRenderer::init(const std::string& path) {

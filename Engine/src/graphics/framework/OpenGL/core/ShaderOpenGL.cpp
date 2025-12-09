@@ -185,6 +185,8 @@ unsigned int ShaderOpenGL::getUniformLocation(const std::string& name) const
 
 unsigned int ShaderOpenGL::createShader(const char* vertexFile, const char* fragmentFile)
 {
+	printf("loading files: %s and %s\n", vertexFile, fragmentFile);
+	
 	//TODO properly validate format 
 	//if false, use a default shader or something to prevent crash maybe?
 	if (!(validateFormat(vertexFile) && validateFormat(fragmentFile))) {

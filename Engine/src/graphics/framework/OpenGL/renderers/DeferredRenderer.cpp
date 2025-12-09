@@ -7,8 +7,8 @@
 //{
 //    this->width = width;
 //    this->height = height;
-//	geometryShader.reset(new ShaderOpenGL("Shaders/deferredShading/gBuffer.vert", "Shaders/deferredShading/gBuffer.frag"));
-//    colorShader.reset(new ShaderOpenGL("Shaders/deferredShading/deferredShading.vert", "Shaders/deferredShading/deferredShading.frag"));
+//	geometryShader.reset(new ShaderOpenGL("assets/Shaders/deferredShading/gBuffer.vert", "assets/Shaders/deferredShading/gBuffer.frag"));
+//    colorShader.reset(new ShaderOpenGL("assets/Shaders/deferredShading/deferredShading.vert", "assets/Shaders/deferredShading/deferredShading.frag"));
 //
 //    glGenFramebuffers(1, &gBuffer);
 //	glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);

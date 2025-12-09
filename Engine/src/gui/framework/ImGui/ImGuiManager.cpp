@@ -67,8 +67,8 @@ int ImGuiManager::init(WindowConfig config)
 		throw std::runtime_error("ImGuiManager: Unsupported window platform for ImGui initialization");
 	}
 
-	io.Fonts->AddFontFromFileTTF("src/gui/fonts/Roboto/Roboto-Regular.ttf", fontSize);
-	io.Fonts->AddFontFromFileTTF("src/gui/fonts/fa/" FONT_ICON_FILE_NAME_FAS, fontSize*0.75, &icons_config, icons_ranges);
+	io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto/Roboto-Regular.ttf", fontSize);
+	io.Fonts->AddFontFromFileTTF("assets/fonts/fa/" FONT_ICON_FILE_NAME_FAS, fontSize*0.75, &icons_config, icons_ranges);
 
 	darkTheme ? useDarkTheme() : useLightTheme(); // preset style from others
 	

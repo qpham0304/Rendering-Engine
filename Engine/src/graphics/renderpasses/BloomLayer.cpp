@@ -38,7 +38,7 @@ BloomPass::BloomPass(const std::string& name) : Layer(name), VAO(0), VBO(0)
         std::cout << "Framebuffer not complete!" << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    bloomShader.reset(new ShaderOpenGL("Shaders/bloom/bloom.vert", "Shaders/bloom/bloom.frag"));
+    bloomShader.reset(new ShaderOpenGL("assets/Shaders/bloom/bloom.vert", "assets/Shaders/bloom/bloom.frag"));
     bloomShader->Activate();
     bloomShader->setInt("scene", 0);
     bloomShader->setInt("bloomBlur", 1);
@@ -56,14 +56,14 @@ void BloomPass::onDetach()
 
 void BloomPass::onUpdate()
 {
-    ShaderOpenGL lightShader("Shaders/light.vert", "Shaders/light.frag");
-    ShaderOpenGL bloomShader("Shaders/bloom/bloom.vert", "Shaders/bloom/bloom.frag");
+    ShaderOpenGL lightShader("assets/Shaders/light.vert", "assets/Shaders/light.frag");
+    ShaderOpenGL bloomShader("assets/Shaders/bloom/bloom.vert", "assets/Shaders/bloom/bloom.frag");
 
     ShaderOpenGL frameShaderProgram("src/apps/frame-buffer/framebuffer.vert", "src/apps/frame-buffer/framebuffer.frag");
     frameShaderProgram.Activate();
     frameShaderProgram.setFloat("screenTexture", 0);
 
-    ShaderOpenGL quadShader("Shaders/postProcess/renderQuad.vert", "Shaders/postProcess/renderQuad.frag");
+    ShaderOpenGL quadShader("assets/Shaders/postProcess/renderQuad.vert", "assets/Shaders/postProcess/renderQuad.frag");
     quadShader.Activate();
     quadShader.setInt("scene", 0);
     quadShader.setInt("effect", 1);

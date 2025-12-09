@@ -288,34 +288,34 @@ std::vector<TextureOpenGL> ModelOpenGL::loadMaterialTextures(aiMaterial* mat, ai
     }
     if (textures.empty()) {
         if (typeName == "albedoMap"){
-            loadDefaultTexture("Textures/default/32x32/albedo.png", "albedoMap");
-            textures.push_back(loaded_textures["Textures/default/32x32/albedo.png"]);
+            loadDefaultTexture("assets/Textures/default/32x32/albedo.png", "albedoMap");
+            textures.push_back(loaded_textures["assets/Textures/default/32x32/albedo.png"]);
         }
 
         else if (typeName == "normalMap") {
-            loadDefaultTexture("Textures/default/32x32/normal.png", "normalMap");
-            textures.push_back(loaded_textures["Textures/default/32x32/normal.png"]);
+            loadDefaultTexture("assets/Textures/default/32x32/normal.png", "normalMap");
+            textures.push_back(loaded_textures["assets/Textures/default/32x32/normal.png"]);
         }
 
         else if (typeName == "metallicMap") {
-            loadDefaultTexture("Textures/default/32x32/metallic.png", "metallicMap");
-            textures.push_back(loaded_textures["Textures/default/32x32/metallic.png"]);
+            loadDefaultTexture("assets/Textures/default/32x32/metallic.png", "metallicMap");
+            textures.push_back(loaded_textures["assets/Textures/default/32x32/metallic.png"]);
         }
 
         else if (typeName == "roughnessMap") {
-            loadDefaultTexture("Textures/default/32x32/roughness.png", "roughnessMap");
-            textures.push_back(loaded_textures["Textures/default/32x32/roughness.png"]);
+            loadDefaultTexture("assets/Textures/default/32x32/roughness.png", "roughnessMap");
+            textures.push_back(loaded_textures["assets/Textures/default/32x32/roughness.png"]);
             textures[textures.size() - 1].type() = "roughnesMap";
         }
 
         else if (typeName == "aoMap") {
-            loadDefaultTexture("Textures/default/32x32/ao.png", "aoMap");
-            textures.push_back(loaded_textures["Textures/default/32x32/ao.png"]);
+            loadDefaultTexture("assets/Textures/default/32x32/ao.png", "aoMap");
+            textures.push_back(loaded_textures["assets/Textures/default/32x32/ao.png"]);
         }
 
         else if (typeName == "emissiveMap") {
-            loadDefaultTexture("Textures/default/32x32/emissive.png", "emissiveMap");
-            textures.push_back(loaded_textures["Textures/default/32x32/emissive.png"]);
+            loadDefaultTexture("assets/Textures/default/32x32/emissive.png", "emissiveMap");
+            textures.push_back(loaded_textures["assets/Textures/default/32x32/emissive.png"]);
         }
     }
     return textures;

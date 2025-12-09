@@ -41,9 +41,9 @@ void ParticleDemo::onUpdate()
 {
     glEnable(GL_DEPTH_TEST);
     AppLayer::onUpdate();
-    ShaderOpenGL lightShader("Shaders/light.vert", "Shaders/light.frag");
-    ShaderOpenGL particleShader("Shaders/particle.vert", "Shaders/particle.frag");
-    ShaderOpenGL renderScene("Shaders/postProcess/renderQuad.vert", "Shaders/postProcess/renderQuad.frag");
+    ShaderOpenGL lightShader("assets/Shaders/light.vert", "assets/Shaders/light.frag");
+    ShaderOpenGL particleShader("assets/Shaders/particle.vert", "assets/Shaders/particle.frag");
+    ShaderOpenGL renderScene("assets/Shaders/postProcess/renderQuad.vert", "assets/Shaders/postProcess/renderQuad.frag");
 
     applicationFBO.Bind();
     glViewport(0.0, 0.0, AppWindow::getWidth(), AppWindow::getHeight());

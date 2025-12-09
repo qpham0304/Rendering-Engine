@@ -49,12 +49,12 @@ void Entity::onCameraComponentAdded()
             2, 3, 0
         };
 
-        TextureOpenGL albedo("Textures/mobi-padoru.png", "albedo");
-        TextureOpenGL normal("Textures/default/32x32/normal.png", "normalMap");
-        TextureOpenGL metallic("Textures/default/32x32/metallic.png", "metallicMap");
-        TextureOpenGL roughness("Textures/default/32x32/roughness.png", "roughnessMap");
-        TextureOpenGL ao("Textures/default/32x32/ao.png", "aoMap");
-        TextureOpenGL emissive("Textures/default/32x32/emissive.png", "emissiveMap");
+        TextureOpenGL albedo("assets/Textures/mobi-padoru.png", "albedo");
+        TextureOpenGL normal("assets/Textures/default/32x32/normal.png", "normalMap");
+        TextureOpenGL metallic("assets/Textures/default/32x32/metallic.png", "metallicMap");
+        TextureOpenGL roughness("assets/Textures/default/32x32/roughness.png", "roughnessMap");
+        TextureOpenGL ao("assets/Textures/default/32x32/ao.png", "aoMap");
+        TextureOpenGL emissive("assets/Textures/default/32x32/emissive.png", "emissiveMap");
 
         MeshOpenGL quadMesh(quadMeshVertices, quadMeshIndices, { albedo, normal, metallic, roughness, ao, emissive });
         meshes.push_back(quadMesh);

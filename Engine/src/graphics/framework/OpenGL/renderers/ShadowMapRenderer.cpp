@@ -5,7 +5,7 @@
 //ShadowMapRenderer::ShadowMapRenderer(const unsigned int width, const unsigned int height)
 //{
 //	depthMap.reset(new DepthMap(width, height));
-//	shader.reset(new Shader("Shaders/shadowMap.vert", "Shaders/shadowMap.frag"));
+//	shader.reset(new Shader("assets/Shaders/shadowMap.vert", "assets/Shaders/shadowMap.frag"));
 //}
 //
 //void ShadowMapRenderer::renderShadow(Light& light, std::vector<Model>& models, std::vector<glm::mat4>& modelMatrices)	//TODO: should be a Component since it contains positions
@@ -28,7 +28,7 @@
 //void ShadowMapRenderer::init(unsigned int width, unsigned int height)
 //{
 //	depthMap.reset(new DepthMap(width, height));
-//	shader.reset(new Shader("Shaders/shadowMap.vert", "Shaders/shadowMap.frag"));
+//	shader.reset(new Shader("assets/Shaders/shadowMap.vert", "assets/Shaders/shadowMap.frag"));
 //}
 //
 //unsigned int ShadowMapRenderer::depthTexture()

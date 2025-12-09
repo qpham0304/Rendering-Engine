@@ -38,12 +38,11 @@ void VulkanPipeline::createGraphicsPipeline(
 	// separate shader creation, allow a function to add shader stages into pipeline
 	// set some default config for pipeline
 	// pass in attribute description object for the pipeline to create
-	std::string vertPath = "src/apps/vulkan-demo/shaders/default.vert.spv";
-	std::string fragPath = "src/apps/vulkan-demo/shaders/default.frag.spv";
-
+	std::string vertPath = "assets/shaders/default.vert.spv";
+	std::string fragPath = "assets/shaders/default.frag.spv";
+	
 	auto vertShaderCode = readFile(vertPath);
 	auto fragShaderCode = readFile(fragPath);
-
 	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 

@@ -21,8 +21,8 @@ bool BloomRenderer::Init(unsigned int windowWidth, unsigned int windowHeight)
 	}
 
 	// Shaders
-	mDownsampleShader = new ShaderOpenGL("Shaders/bloom/downSampler.vert", "Shaders/bloom/downSampler.frag");
-	mUpsampleShader = new ShaderOpenGL("Shaders/bloom/upSampler.vert", "Shaders/bloom/upSampler.frag");
+	mDownsampleShader = new ShaderOpenGL("assets/Shaders/bloom/downSampler.vert", "assets/Shaders/bloom/downSampler.frag");
+	mUpsampleShader = new ShaderOpenGL("assets/Shaders/bloom/upSampler.vert", "assets/Shaders/bloom/upSampler.frag");
 
 	// Downsample
 	mDownsampleShader->Activate();

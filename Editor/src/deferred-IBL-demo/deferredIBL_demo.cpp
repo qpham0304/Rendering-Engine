@@ -101,7 +101,7 @@ void DeferredIBLDemo::renderDeferredPass()
 {
     Scene& scene = *SceneManager::getInstance().getActiveScene();
     
-    scene.addShader("colorPassShader", "Shaders/deferredIBL/colorPass.vert", "Shaders/deferredIBL/colorPass.frag");
+    scene.addShader("colorPassShader", "assets/Shaders/deferredIBL/colorPass.vert", "assets/Shaders/deferredIBL/colorPass.frag");
     scene.getShader("colorPassShader")->Activate();
     scene.getShader("colorPassShader")->setInt("gDepth", 0);
     scene.getShader("colorPassShader")->setInt("gNormal", 1);
@@ -222,7 +222,7 @@ void DeferredIBLDemo::setupSkyView()
     transmittanceLUT.Bind();
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    ShaderOpenGL transmittanceShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/transmittanceLUT.frag");
+    ShaderOpenGL transmittanceShader("assets/Shaders/atmospheric.vert", "assets/Shaders/skyAtmosphere/transmittanceLUT.frag");
     transmittanceShader.Activate();
     Utils::OpenGL::Draw::drawQuad();
     transmittanceLUT.Unbind();
@@ -230,7 +230,7 @@ void DeferredIBLDemo::setupSkyView()
     multipleScatteredLUT.Bind();
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    ShaderOpenGL multipleScatteredShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/multipleScatteredLUT.frag");
+    ShaderOpenGL multipleScatteredShader("assets/Shaders/atmospheric.vert", "assets/Shaders/skyAtmosphere/multipleScatteredLUT.frag");
     multipleScatteredShader.Activate();
     multipleScatteredShader.setInt("iChannel0", 0);
     multipleScatteredShader.setVec2("iChannelResolution", glm::vec2(width, height));
@@ -252,7 +252,7 @@ void DeferredIBLDemo::renderSkyView()
     skyViewLUT.Bind();
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    ShaderOpenGL skyViewShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/skyViewLUT.frag");
+    ShaderOpenGL skyViewShader("assets/Shaders/atmospheric.vert", "assets/Shaders/skyAtmosphere/skyViewLUT.frag");
     skyViewShader.Activate();
     skyViewShader.setInt("transmittanceLUT", 0);
     skyViewShader.setInt("multipleScatteredLUT", 1);
@@ -274,7 +274,7 @@ void DeferredIBLDemo::renderSkyView()
     atmosphereScene.Bind();
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    ShaderOpenGL atmosphereShader("Shaders/atmospheric.vert", "Shaders/skyAtmosphere/atmosphere.frag");
+    ShaderOpenGL atmosphereShader("assets/Shaders/atmospheric.vert", "assets/Shaders/skyAtmosphere/atmosphere.frag");
     atmosphereShader.Activate();
     atmosphereShader.setInt("skyLUT", 0);
     atmosphereShader.setInt("transmittanceLUT", 1);
@@ -366,7 +366,7 @@ void DeferredIBLDemo::setupSSAO()
 void DeferredIBLDemo::renderSSAO()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
-    ShaderOpenGL ssaoShader("Shaders/ssao/ssao.vert", "Shaders/ssao/ssao_depth.frag");
+    ShaderOpenGL ssaoShader("assets/Shaders/ssao/ssao.vert", "assets/Shaders/ssao/ssao_depth.frag");
     ssaoShader.Activate();
     ssaoShader.setInt("gDepth", 0);
     ssaoShader.setInt("gNormal", 1);
@@ -398,7 +398,7 @@ void DeferredIBLDemo::renderSSAO()
 
 
     glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
-    ShaderOpenGL blurShader("Shaders/ssao/ssao.vert", "Shaders/ssao/blur.frag");
+    ShaderOpenGL blurShader("assets/Shaders/ssao/ssao.vert", "assets/Shaders/ssao/blur.frag");
     blurShader.Activate();
     blurShader.setInt("ssaoInput", 0);
 
@@ -417,7 +417,7 @@ void DeferredIBLDemo::setupSSR()
 
 void DeferredIBLDemo::renderSSR()
 {
-    ShaderOpenGL SSRShader("Shaders/SSR/SSR.vert", "Shaders/SSR/SSR_PBR.frag");
+    ShaderOpenGL SSRShader("assets/Shaders/SSR/SSR.vert", "assets/Shaders/SSR/SSR_PBR.frag");
     ssrSceneFBO.Bind();
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -456,7 +456,7 @@ void DeferredIBLDemo::renderSSR()
 void DeferredIBLDemo::setupShadow()
 {
     Scene& scene = *SceneManager::getInstance().getActiveScene();
-    //scene.addShader("shadowShader", "Shaders/shadowMap.vert", "Shaders/shadowMap.frag");
+    //scene.addShader("shadowShader", "assets/Shaders/shadowMap.vert", "assets/Shaders/shadowMap.frag");
 }
 
 void DeferredIBLDemo::renderShadow()
@@ -472,7 +472,7 @@ void DeferredIBLDemo::renderShadow()
     glm::mat4 lightView = glm::lookAt(light.position, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0, 1.0, 0.0));
     glm::mat4 lightMVP = lightOrtho * lightView;
 
-    ShaderOpenGL shadowShader("Shaders/shadowMap.vert", "Shaders/shadowMap.frag");
+    ShaderOpenGL shadowShader("assets/Shaders/shadowMap.vert", "assets/Shaders/shadowMap.frag");
 
     depthMap.Bind();
     glViewport(0, 0, AppWindow::getWidth(), AppWindow::getHeight());
@@ -650,7 +650,7 @@ void DeferredIBLDemo::renderPrePass()
 {
     Scene& scene = *SceneManager::getInstance().getActiveScene();
 
-    scene.addShader("gPassShader", "Shaders/deferredIBL/gPass.vert", "Shaders/deferredIBL/gPass.frag");
+    scene.addShader("gPassShader", "assets/Shaders/deferredIBL/gPass.vert", "assets/Shaders/deferredIBL/gPass.frag");
     scene.getShader("gPassShader")->Activate();
     scene.getShader("gPassShader")->setInt("albedoMap", 0);
     scene.getShader("gPassShader")->setInt("normalMap", 1);
@@ -730,8 +730,8 @@ void DeferredIBLDemo::onAttach(LayerManager* manager)
 	Log().debug("Deferred IBL Demo Layer Attached");
     
     //particleRenderer.init(particleControl);
-    pbrShader.Init("Shaders/default-2.vert", "Shaders/default-2.frag");
-    particleShader.Init("Shaders/particle.vert", "Shaders/particle.frag");
+    pbrShader.Init("assets/Shaders/default-2.vert", "assets/Shaders/default-2.frag");
+    particleShader.Init("assets/Shaders/particle.vert", "assets/Shaders/particle.frag");
     lightPassFBO.Init(AppWindow::getWidth(), AppWindow::getHeight(), GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
     depthMap.Init(AppWindow::getWidth(), AppWindow::getHeight());
 
@@ -749,25 +749,25 @@ void DeferredIBLDemo::onAttach(LayerManager* manager)
     ModelLoadEvent event;
     AnimationLoadEvent animationLoadEvent;
 
-    gDUV = Utils::OpenGL::loadTexture("Textures/wdudv.jpg");
+    gDUV = Utils::OpenGL::loadTexture("assets/Textures/wdudv.jpg");
 
     try {
         uint32_t helmetID = scene.addEntity("helmet");
-        event = ModelLoadEvent("Models/DamagedHelmet/gltf/DamagedHelmet.gltf", scene.entities[helmetID]);
+        event = ModelLoadEvent("assets/Models/DamagedHelmet/gltf/DamagedHelmet.gltf", scene.entities[helmetID]);
         EventManager::getInstance().publish(event);
         transform = &scene.entities[helmetID].getComponent<TransformComponent>();
         transform->translate(glm::vec3(2.0, 3.0, -3.0));
 
         uint32_t aruID = scene.addEntity("aru");
-        event = ModelLoadEvent("Models/aru/aru.gltf", scene.entities[aruID]);
+        event = ModelLoadEvent("assets/Models/aru/aru.gltf", scene.entities[aruID]);
         EventManager::getInstance().publish(event);
-        animationLoadEvent = AnimationLoadEvent("Models/aru/aru.gltf", scene.entities[aruID]);
+        animationLoadEvent = AnimationLoadEvent("assets/Models/aru/aru.gltf", scene.entities[aruID]);
         EventManager::getInstance().publish(animationLoadEvent);
         transform = &scene.entities[aruID].getComponent<TransformComponent>();
         transform->translate(glm::vec3(-5.8, 3.0, 5.8));
 
         //uint32_t terrainID = scene.addEntity("terrain");
-        //event = ModelLoadEvent("Models/death-valley-terrain/scene.gltf", scene.entities[terrainID]);
+        //event = ModelLoadEvent("assets/Models/death-valley-terrain/scene.gltf", scene.entities[terrainID]);
         //EventManager::getInstance().publish(event);
         //transform = &scene.entities[terrainID].getComponent<TransformComponent>();
         //transform->translate(glm::vec3(0.0, -5.0, 0.0));
@@ -811,13 +811,13 @@ void DeferredIBLDemo::onAttach(LayerManager* manager)
 
         uint32_t cubemapID = scene.addEntity("cubemap");
         Entity cubemapEntity = scene.getEntity(cubemapID);
-        cubemapEntity.addComponent<CubeMapComponent>("Textures/hdr/industrial_sunset_02_puresky_1k.hdr");
+        cubemapEntity.addComponent<CubeMapComponent>("assets/Textures/hdr/industrial_sunset_02_puresky_1k.hdr");
     }
     catch (std::runtime_error e) {
         Console::error(e.what());
     }
 
-    scene.addShader("lightShader", "Shaders/light.vert", "Shaders/light.frag");
+    scene.addShader("lightShader", "assets/Shaders/light.vert", "assets/Shaders/light.frag");
     scene.getShader("lightShader")->Activate();
     scene.getShader("lightShader")->setInt("irradianceMap", 6);
 

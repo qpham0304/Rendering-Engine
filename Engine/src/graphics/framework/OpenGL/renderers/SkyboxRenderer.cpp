@@ -62,7 +62,7 @@ void SkyboxRenderer::setup()
 SkyboxRenderer::SkyboxRenderer()
 {
 	skybox.init(faces);
-	shaderProgram.Init("Shaders/skybox.vert", "Shaders/skybox.frag");
+	shaderProgram.Init("assets/Shaders/skybox.vert", "assets/Shaders/skybox.frag");
 
 	setup();
 }
@@ -81,7 +81,7 @@ SkyboxRenderer::SkyboxRenderer(const char* path)
 	std::for_each(faces.begin(), faces.end(), replacePath);
 
 	skybox.init(faces);
-	shaderProgram.Init("Shaders/skybox.vert", "Shaders/skybox.frag");
+	shaderProgram.Init("assets/Shaders/skybox.vert", "assets/Shaders/skybox.frag");
 	setup();
 }
 

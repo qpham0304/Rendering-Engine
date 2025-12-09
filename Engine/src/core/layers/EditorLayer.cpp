@@ -14,21 +14,21 @@ void EditorLayer::mockThreadTasks()
 {
 	AsyncEvent addComponentEvent;
 	auto func = [](Event& event) -> void {
-		//Component reimu("Models/reimu/reimu.obj");
+		//Component reimu("assets/Models/reimu/reimu.obj");
 		//SceneManager::addComponent(reimu);
 	};
 	eventManager.queue(addComponentEvent, func);
 
 	AsyncEvent addComponentEvent1;
 	auto func1 = [](Event& event) -> void {
-		//Component reimu("Models/sponza/sponza.obj");
+		//Component reimu("assets/Models/sponza/sponza.obj");
 		//SceneManager::addComponent(reimu);
 	};
 	eventManager.queue(addComponentEvent1, func1);
 
 	AsyncEvent addComponentEvent2;
 	auto func2 = [](Event& event) -> void {
-		//Component reimu("Models/aru/aru.gltf");
+		//Component reimu("assets/Models/aru/aru.gltf");
 		//SceneManager::addComponent(reimu);
 	};
 	eventManager.queue(addComponentEvent2, func2);
@@ -55,7 +55,7 @@ int EditorLayer::init()
 {
 	guiController.useDarkTheme();
 	sceneManager.addScene("default");
-	modelShader.Init("Shaders/model.vert", "Shaders/model.frag");
+	modelShader.Init("assets/Shaders/model.vert", "assets/Shaders/model.frag");
 
 	return 0;
 }

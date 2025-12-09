@@ -4,7 +4,7 @@
 
 int main()
 {
-	try {
+	// try {
 		WindowConfig windowConfig{};
 		windowConfig.title = "Engine Editor";
 		windowConfig.windowPlatform = WindowPlatform::GLFW;
@@ -25,8 +25,8 @@ int main()
 
 		app.run();
 		app.end();
-	}
-	catch (const std::runtime_error& e) {
-		std::cerr << "Exception caught by main: " << e.what() << std::endl;
-	}
+	// }
+	// catch (const std::runtime_error& e) {
+	// 	std::cerr << "Exception caught by main: " << e.what() << std::endl;
+	// }
 }
