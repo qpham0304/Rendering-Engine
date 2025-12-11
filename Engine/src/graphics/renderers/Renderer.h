@@ -14,6 +14,8 @@ public:
 	virtual void endFrame() = 0;
 	virtual void render() = 0;
 	virtual void shutdown() = 0;
+	virtual void addMesh() = 0;
+	virtual void addModel(std:: string_view path) = 0;
 
 protected:
 	Renderer() = default;

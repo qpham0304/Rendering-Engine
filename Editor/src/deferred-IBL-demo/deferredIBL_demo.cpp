@@ -12,7 +12,7 @@
 #include "src/core/events/EventManager.h"
 #include "src/core/layers/layerManager.h"
 #include "src/graphics/renderers/ShadowMapRenderer.h"
-#include "src/gui/GuiManager.h"   // need this to use imgui for now
+#include "imgui.h"	// TODO: remove dependency with imgui once gui interface is setup
 
 
 static glm::vec3 lightPositions[] = {
@@ -727,7 +727,6 @@ DeferredIBLDemo::DeferredIBLDemo(const std::string& name) : AppLayer(name)
 void DeferredIBLDemo::onAttach(LayerManager* manager)
 {
     AppLayer::onAttach(manager);
-	Log().debug("Deferred IBL Demo Layer Attached");
     
     //particleRenderer.init(particleControl);
     pbrShader.Init("assets/Shaders/default-2.vert", "assets/Shaders/default-2.frag");

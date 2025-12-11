@@ -15,8 +15,8 @@ public:
 
 	virtual bool isMousePressed(MouseCodes mouseCode) override;
 	virtual bool isKeyPressed(KeyCodes keyCode) override;
-	virtual int getMouseButton(MouseCodes mouseCode) override;
 	virtual void getCursorPos(double* x, double* y) override;
+	virtual int getMouseButton(MouseCodes mouseCode) override;
 	virtual int getKey(KeyCodes keyCode) override;
 
 private:

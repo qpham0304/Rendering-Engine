@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -15,21 +14,23 @@
 #include <glm/glm.hpp>
 #include <array>
 #include <memory>
-#include "src/core/features/Camera.h"
-//#include "OrbitCamera.h"
-#include "src/core/features/ServiceLocator.h"
-#include "src/core/features/PlatformFactory.h"
-#include "src/core/layers/EditorLayer.h"
-#include "src/core/layers/LayerManager.h"
-#include "src/core/scene/SceneManager.h"
-#include "src/graphics/framework/Vulkan/Renderers/RendererVulkan.h" //TODO: use generic interface ptr instead
-#include "src/core/resources/managers/TextureManager.h"
+#include <core/features/Camera.h>
+#include <core/features/ServiceLocator.h>
+#include <core/features/PlatformFactory.h>
+#include <core/layers/EditorLayer.h>
+#include <core/layers/LayerManager.h>
+#include <core/scene/SceneManager.h>
+#include <core/resources/managers/TextureManager.h>
+#include <core/resources/managers/MeshManager.h>
+#include <core/resources/managers/ModelManager.h>
 
+//TODO: eventually have all these concrete changed to using interface
+#include <graphics/framework/Vulkan/Renderers/RendererVulkan.h> 
+#include <graphics/framework/Vulkan/core/WrapperStructs.h>
 class RenderDeviceVulkan;
 class RendererVulkan;
-//class TextureManager;
 
-class VulkanApplication
+class VulkanApplication : protected VkWrap
 {
 public:
     VulkanApplication() = default;
@@ -41,12 +42,6 @@ public:
     void end();
     void onClose();
 
-    struct PushConstantData {
-        alignas(16) glm::vec3 color;
-        alignas(16) glm::vec3 range;
-        alignas(4)  bool flag;
-        alignas(4)  float data;
-    };
 
 private:
     bool showGui = true;
@@ -63,17 +58,22 @@ private:
     std::unique_ptr<RenderDevice> renderDevice;
     std::unique_ptr<Logger> engineLogger;
     std::unique_ptr<Logger> clientLogger;
-    RenderDeviceVulkan* renderDeviceVulkan{ nullptr };  //TODO: should not be able to use concrete type object remove later
+    RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
     RendererVulkan vulkanRenderer;
     EditorLayer* editorLayer;
     uint32_t indexBufferID = 0;
     uint32_t vertexBufferID = 0;
     std::unique_ptr<TextureManager> textureManager;
-    //TextureManager* textureManager;
+    std::unique_ptr<MeshManager> meshManager;
+    std::unique_ptr<ModelManager> modelManager;
 
 private:
     Camera camera;
-    PushConstantData pushConstantData {};
+
+    uint32_t aruID;
+    uint32_t reimuID;
+    std::pair<std::vector<uint32_t>, std::vector<uint32_t>> aruMeshIDs;
+    std::pair<std::vector<uint32_t>, std::vector<uint32_t>> reimuMeshIDs;
 
     void render();
     void renderGui(void* commandBuffer);

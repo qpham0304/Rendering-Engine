@@ -154,13 +154,13 @@ void ModelOpenGL::processNode(aiNode* node, const aiScene* scene)
 
 MeshOpenGL ModelOpenGL::processMesh(aiMesh* mesh, const aiScene* scene)
 {
-    std::vector<Vertex> vertices;
+    std::vector<MeshOpenGL::Vertex> vertices;
     std::vector<unsigned int> indices;
     std::vector<TextureOpenGL> textures;
 
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
-        Vertex vertex;
+        MeshOpenGL::Vertex vertex;
         glm::vec3 vector;
         SetVertexBoneDataToDefault(vertex);
 
@@ -330,7 +330,7 @@ int& ModelOpenGL::GetBoneCount() {
     return m_BoneCounter;
 }
 
-void ModelOpenGL::SetVertexBoneDataToDefault(Vertex& vertex)
+void ModelOpenGL::SetVertexBoneDataToDefault(MeshOpenGL::Vertex& vertex)
 {
     for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
         vertex.m_BoneIDs[i] = -1;
@@ -338,7 +338,7 @@ void ModelOpenGL::SetVertexBoneDataToDefault(Vertex& vertex)
     }
 }
 
-void ModelOpenGL::SetVertexBoneData(Vertex& vertex, int boneID, float weight)
+void ModelOpenGL::SetVertexBoneData(MeshOpenGL::Vertex& vertex, int boneID, float weight)
 {
     for (int i = 0; i < MAX_BONE_INFLUENCE; ++i) {
         if (vertex.m_BoneIDs[i] < 0) {
@@ -350,7 +350,7 @@ void ModelOpenGL::SetVertexBoneData(Vertex& vertex, int boneID, float weight)
 }
 
 
-void ModelOpenGL::ExtractBoneWeightForVertices(std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene)
+void ModelOpenGL::ExtractBoneWeightForVertices(std::vector<MeshOpenGL::Vertex>& vertices, aiMesh* mesh, const aiScene* scene)
 {
     auto& boneInfoMap = m_BoneInfoMap;
     int& boneCount = m_BoneCounter;

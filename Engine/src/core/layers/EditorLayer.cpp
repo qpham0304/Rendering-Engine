@@ -9,6 +9,7 @@
 #include "src/core/layers/layerManager.h"
 #include "src/gui/GuiManager.h"
 #include "src/core/features/Camera.h"
+#include "imgui.h"	// TODO: remove dependency with imgui once gui interface is setup
 
 void EditorLayer::mockThreadTasks()
 {

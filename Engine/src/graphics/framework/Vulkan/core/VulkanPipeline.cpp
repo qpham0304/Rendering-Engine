@@ -60,8 +60,8 @@ void VulkanPipeline::createGraphicsPipeline(
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
-	auto bindingDescription = VulkanDevice::Vertex::getBindingDescription();
-	auto attributeDescriptions = VulkanDevice::Vertex::getAttributeDescriptions();
+	auto bindingDescription = VulkanDevice::VertexVulkan::getBindingDescription();
+	auto attributeDescriptions = VulkanDevice::VertexVulkan::getAttributeDescriptions();
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.vertexBindingDescriptionCount = 1;

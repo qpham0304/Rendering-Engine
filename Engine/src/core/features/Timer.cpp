@@ -12,6 +12,12 @@ Timer::Timer(const char* label, const bool guiOn) : label(label), guiOn(guiOn)
     Start();
 }
 
+Timer::Timer(std::string_view label, const bool guiOn) : label(label.data()), guiOn(guiOn)
+{
+    Start();
+}
+
+
 Timer::~Timer() {
     float ms = Stop();
     std::ostringstream oss;

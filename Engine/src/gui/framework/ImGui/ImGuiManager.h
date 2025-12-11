@@ -5,11 +5,11 @@
 #include <imgui_impl_vulkan.h>
 #include <ImGuizmo.h>
 
-#include "../../GuiManager.h"
 #include "widgets/ImGuiConsoleLogWidget.h"
 #include "widgets/ImGuiLeftSidebarWidget.h"
 #include "widgets/ImGuiRightSidebarWidget.h"
 #include "widgets/ImGuiMenuWidget.h"
+#include "gui/GuiManager.h"
 
 class ImGuiManager : public GuiManager 
 {

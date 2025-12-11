@@ -2,9 +2,9 @@
 
 #include <vector>
 #include <memory>
-#include "./widgets/widget.h"
-#include "../../src/core/features/Configs.h"
-#include "../../src/services/Service.h"
+#include "widgets/widget.h"
+#include "core/features/Configs.h"
+#include "services/Service.h"
 
 class TransformComponent;
 

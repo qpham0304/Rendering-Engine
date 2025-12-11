@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../AppWindow.h"
+#include "window/AppWindow.h"
 
 class GLFWwindow;
 
@@ -16,8 +16,8 @@ public:
 
 
 	virtual int init(WindowConfig platform) override;		// set up and init the graphics api depending on the platform
-	virtual int onClose() override;						// close and terminate the program
 	virtual void onUpdate() override;
+	virtual int onClose() override;							// close and terminate the program
 
 protected:
 	void* _getWindow() override;
@@ -30,7 +30,7 @@ protected:
 	void _setContextCurrent() override;
 
 	//platform specific implementations
-	//Ideally want to have glu files each platform
+	//Ideally want to have glue files for each platform
 	//but no more than 3 graphics and 3 window api
 	//are supported so these are enough
 	int _initOpenGL();

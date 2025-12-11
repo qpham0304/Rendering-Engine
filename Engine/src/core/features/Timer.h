@@ -6,6 +6,7 @@ class Timer
 public:
 	Timer();
 	Timer(const char* label, const bool guiOn = false);
+	Timer(std::string_view label, const bool guiOn);
 	~Timer();
 
 private:

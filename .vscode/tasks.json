@@ -1,29 +1,31 @@
+// It's better to use cmake task types to build properly instead of hard coded build variants
+// debug and release mode but this is sufficient for now and requires less configuration
 {
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build Sandbox",
+            "label": "build Sandbox Debug",
             "type": "shell",
             "command": "cmake --build build --target Sandbox --config Debug",
             "group": "build",
             "problemMatcher": []
         },
         {
-            "label": "build Sandbox",
+            "label": "build Sandbox Release",
             "type": "shell",
             "command": "cmake --build build --target Sandbox --config Release",
             "group": "build",
             "problemMatcher": []
         },
         {
-            "label": "build Editor",
+            "label": "build Editor Debug",
             "type": "shell",
             "command": "cmake --build build --target Editor --config Debug",
             "group": "build",
             "problemMatcher": []
         },
         {
-            "label": "build Editor",
+            "label": "build Editor Release",
             "type": "shell",
             "command": "cmake --build build --target Editor --config Release",
             "group": "build",

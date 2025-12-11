@@ -9,7 +9,8 @@
 // might want to use enum over string name for each supported service
 // but then how to extend the support for them later on? (prob never)
 // aka adding more services from elsewhere without touching this enum
-// benefit? prevent client from string typos
+// benefit? compile time check only, prevent client from string typos
+// but in doing that, there's no way to add service at runtime anymore
 enum class AvailableServices {
     
 };

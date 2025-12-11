@@ -1,5 +1,4 @@
 #include "BloomPass.h"
-#include "Imgui.h"  //TODO: remove when there's no ui dependency
 #include "../../src/core/features/Camera.h"
 #include "../../src/core/layers/layerManager.h"
 #include "../../src/core/scene/SceneManager.h"// this should be gone once ECS is done setting up
@@ -111,10 +110,10 @@ void BloomPass::onUpdate()
 
 void BloomPass::onGuiUpdate()
 {
-    ImVec2 wsize = ImGui::GetWindowSize();
-    ImGui::Image((ImTextureID)colorBuffers[0], wsize, ImVec2(0, 1), ImVec2(1, 0));
-    ImGui::Image((ImTextureID)colorBuffers[1], wsize, ImVec2(0, 1), ImVec2(1, 0));
-    ImGui::Image((ImTextureID)bloomRenderer.BloomTexture(), wsize, ImVec2(0, 1), ImVec2(1, 0));
+    // ImVec2 wsize = ImGui::GetWindowSize();
+    // ImGui::Image((ImTextureID)colorBuffers[0], wsize, ImVec2(0, 1), ImVec2(1, 0));
+    // ImGui::Image((ImTextureID)colorBuffers[1], wsize, ImVec2(0, 1), ImVec2(1, 0));
+    // ImGui::Image((ImTextureID)bloomRenderer.BloomTexture(), wsize, ImVec2(0, 1), ImVec2(1, 0));
 }
 
 void BloomPass::onEvent(Event& event)

@@ -4,7 +4,7 @@
 #include <string>
 #include <format>
 #include <vector>
-#include "../../src/services/Service.h"
+#include "services/Service.h"
 
 // Core logging macros
 #define ENGINE_CORE_TRACE(...)    ::Engine::Log::CoreLogger()->trace(__VA_ARGS__)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../src/gui/widgets/EntityControlWidget.h"
+#include <imgui.h>
 
 class ImGuiEntityControlWidget : public EntityControlWidget
 {

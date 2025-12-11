@@ -22,6 +22,8 @@ public:
 	}
 
 protected:
+	// incremental resource so optimize by using with a vector for contiguous data is possible
+	// but then managing destroy of resource could be a hassle so use map for now;
 	std::unordered_map<uint32_t, std::shared_ptr<Texture>> m_textures;
 	std::unordered_map<std::string, uint32_t> m_textureData;
 

@@ -1,6 +1,5 @@
 #include "CubeMapComponent.h"
 #include "../src/graphics/utils/Utils.h"
-#include <imgui.h>
 #include "../../src/core/features/Camera.h"
 
 CubeMapComponent::CubeMapComponent(const std::string& m_path)

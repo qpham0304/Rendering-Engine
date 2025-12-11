@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+class Logger;
+
 class Manager
 {
 public:
@@ -31,6 +33,6 @@ protected:
 protected:
 	std::atomic<uint32_t> m_ids;
 	std::shared_mutex m_resourceLock;
-
+	Logger* m_logger;
 };
 

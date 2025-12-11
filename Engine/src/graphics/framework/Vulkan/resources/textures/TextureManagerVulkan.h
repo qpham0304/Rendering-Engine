@@ -1,6 +1,6 @@
 #pragma once
 
-#include "src/core/resources/managers/TextureManager.h"
+#include "core/resources/managers/TextureManager.h"
 #include <vulkan/vulkan.h>
 #include "TextureVulkan.h"
 

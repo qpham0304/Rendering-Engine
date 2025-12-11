@@ -44,6 +44,11 @@ public:
 	PlatformFactory(ServiceLocator& serviceLocator);
 	~PlatformFactory() = default;
 
+	template<typename Interface, typename Concrete, typename... Args>
+	std::unique_ptr<Interface> create(WindowPlatform config, Args... args) {
+
+	}
+
 	std::unique_ptr<AppWindow> createWindow(WindowPlatform config);
 	std::unique_ptr<GuiManager> createGuiManager(GuiPlatform config);
 	std::unique_ptr<Renderer> createRenderer(RenderPlatform platform);
@@ -57,7 +62,7 @@ private:
 	auto RegisterConstructor(std::string_view serviceName) {
 		return [this, serviceName](Args&&... args) -> std::unique_ptr<Interface> {
 			std::unique_ptr<Interface> instance = std::make_unique<Concrete>(std::forward<Args>(args)...);
-			serviceLocator.Register(instance->getServiceName(), *instance);
+			serviceLocator.Register<Interface>(instance->getServiceName(), *instance);
 			return instance;
 		};
 	}

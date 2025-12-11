@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../src/gui/widgets/ConsoleLogWidget.h"
-
+#include <imgui.h>
 
 class ImGuiConsoleLogWidget : public ConsoleLogWidget
 {

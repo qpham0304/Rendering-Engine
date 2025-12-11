@@ -32,16 +32,16 @@ void Entity::onCameraComponentAdded()
         auto& modelComponent = this->addComponent<ModelComponent>();
 
         std::vector<MeshOpenGL> meshes;
-        std::vector<Vertex> vertices;
+        std::vector<MeshOpenGL::Vertex> vertices;
         std::vector<GLuint> indices;
         std::vector<Texture>textures;
 
-        std::vector<Vertex> quadMeshVertices = {
+        std::vector<MeshOpenGL::Vertex> quadMeshVertices = {
             // Positions            // Colors             // TexCoords   // Normals
-            Vertex{glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)},  // Bottom-left
-            Vertex{glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)},  // Bottom-right
-            Vertex{glm::vec3(0.5f,  0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f)},  // Top-right
-            Vertex{glm::vec3(-0.5f,  0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 0.0f), glm::vec2(0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f)},  // Top-left
+            MeshOpenGL::Vertex{glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)},  // Bottom-left
+            MeshOpenGL::Vertex{glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)},  // Bottom-right
+            MeshOpenGL::Vertex{glm::vec3(0.5f,  0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f)},  // Top-right
+            MeshOpenGL::Vertex{glm::vec3(-0.5f,  0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 0.0f), glm::vec2(0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f)},  // Top-left
         };
 
         std::vector<unsigned int> quadMeshIndices = {

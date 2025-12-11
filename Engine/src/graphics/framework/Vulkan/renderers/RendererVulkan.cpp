@@ -1,7 +1,9 @@
 #include "RendererVulkan.h"
-#include "src/core/features/ServiceLocator.h"
-#include "src/graphics/RenderDevice.h"
-#include "src/graphics/framework/Vulkan/RenderDeviceVulkan.h"
+#include "core/features/ServiceLocator.h"
+#include "graphics/RenderDevice.h"
+#include "graphics/framework/Vulkan/RenderDeviceVulkan.h"
+#include "window/AppWindow.h"
+#include "core/events/EventManager.h"
 
 RendererVulkan::RendererVulkan()
 {
@@ -18,6 +20,20 @@ void RendererVulkan::init()
 	if (!renderDeviceVulkan) {
 		throw std::runtime_error("Failed to accquire render device");
 	}
+	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
+		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
+		if (keyPressedEvent.keyCode == KEY_1) {
+			pushConstantData.flag = !pushConstantData.flag;
+		}
+	});
+
+	pushConstantData.flag = false;
+	pushConstantData.color = glm::vec3(1.0f, 1.0f, 0.0f);
+	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
+	pushConstantData.data = 0.1f;
+
+	renderDeviceVulkan->setPushConstantRange(sizeof(PushConstantData));
+	renderDeviceVulkan->init(AppWindow::getWindowConfig());
 }
 
 void RendererVulkan::beginFrame()
@@ -39,6 +55,17 @@ void RendererVulkan::render()
 }
 
 void RendererVulkan::shutdown()
+{
+
+}
+
+
+void RendererVulkan::addMesh()
+{
+
+}
+
+void RendererVulkan::addModel(std::string_view path)
 {
 
 }
@@ -83,6 +110,15 @@ void RendererVulkan::beginRecording(void* cmdBuffer)
 		&renderDeviceVulkan->descriptorSets[renderDeviceVulkan->getCurrentFrame()],
 		0,
 		nullptr
+	);
+
+	vkCmdPushConstants(
+		renderDeviceVulkan->commandPool.commandBuffers[renderDeviceVulkan->getCurrentFrame()],
+		renderDeviceVulkan->pipeline.pipelineLayout,
+		VK_SHADER_STAGE_FRAGMENT_BIT,
+		0, // offset
+		sizeof(PushConstantData),
+		&pushConstantData
 	);
 }
 

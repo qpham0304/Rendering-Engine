@@ -17,6 +17,8 @@ struct VkSampler_T;
 struct VkFormat_T;
 struct VkImageAspectFlags_T;
 
+struct VkCommandBuffer_T;
+
 class VkWrap {
 protected:
 	typedef VkBuffer_T* VkBuffer;
@@ -26,8 +28,7 @@ protected:
 	typedef VkDescriptorSetLayout_T* VkDescriptorSetLayout;
 	typedef VkDescriptorPool_T* VkDescriptorPool;
 	typedef VkDescriptorSet_T* VkDescriptorSet;
-	//typedef VkDescriptorSetLayoutBinding_T* VkDescriptorSetLayoutBinding;
-	using VkDescriptorSetLayoutBinding = VkDescriptorSetLayoutBinding_T;
+	typedef VkDescriptorSetLayoutBinding_T* VkDescriptorSetLayoutBinding;
 
 	typedef VkImage_T* VkImage;
 	typedef VkDeviceMemory_T* VkDeviceMemory;
@@ -36,5 +37,7 @@ protected:
 
 	typedef VkFormat_T* VkFormat;
 	typedef VkImageAspectFlags_T* VkImageAspectFlags;
+
+	typedef VkCommandBuffer_T* VkCommandBuffer;
 };
 

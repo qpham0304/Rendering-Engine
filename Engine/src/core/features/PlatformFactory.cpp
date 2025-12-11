@@ -1,9 +1,9 @@
 #include "PlatformFactory.h"
-#include "../../src/window/platform/GLFW/AppWindowGLFW.h"
-#include "../../src/gui/framework/ImGui/ImGuiManager.h"
-#include "../../src/logging/framework/LoggerSpd.h"
-#include "../../src/graphics/framework/Vulkan/RenderDeviceVulkan.h"
-#include "../../src/graphics/framework/OpenGL/RenderDeviceOpenGL.h"
+#include "window/platform/GLFW/AppWindowGLFW.h"
+#include "gui/framework/ImGui/ImGuiManager.h"
+#include "logging/framework/LoggerSpd.h"
+#include "graphics/framework/Vulkan/RenderDeviceVulkan.h"
+#include "graphics/framework/OpenGL/RenderDeviceOpenGL.h"
 
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)

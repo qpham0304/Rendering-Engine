@@ -1,8 +1,9 @@
 #include "TextureManagerVulkan.h"
 #include <stb/stb_image.h>
 #include <vulkan/vulkan.h>
-#include "src/core/features/ServiceLocator.h"
-#include "../../RenderDeviceVulkan.h"
+#include "core/features/ServiceLocator.h"
+#include "graphics/framework/vulkan/RenderDeviceVulkan.h"
+#include "logging/Logger.h"
 
 TextureManagerVulkan::TextureManagerVulkan() : renderDeviceVulkan(nullptr)
 {
@@ -18,14 +19,17 @@ void TextureManagerVulkan::init()
 {
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = static_cast<RenderDeviceVulkan*>(&device);
+	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
 }
 
 void TextureManagerVulkan::shutdown()
 {
+    WriteLock lock = _lockWrite();
 	for (auto& [id, texture] : m_textures) {
 		static_cast<TextureVulkan*>(texture.get())->destroy(renderDeviceVulkan->device);
 	}
 	m_textures.clear();
+	m_textureData.clear();
 }
 
 void TextureManagerVulkan::destroy(uint32_t id)
@@ -39,18 +43,23 @@ void TextureManagerVulkan::destroy(uint32_t id)
 
 uint32_t TextureManagerVulkan::loadTexture(std::string_view path)
 {
+	if (m_textureData.find(path.data()) != m_textureData.end()) {
+		return m_textureData[path.data()];
+	}
+
 	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load("Textures/mobi-padoru.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = texWidth * texHeight * 4;
 
 	if (!pixels) {
-		throw std::runtime_error("failed to load texture image!");
+		std::string message = "TextureManagerVulkan::loadTexture: failed to load texture image ";
+		throw std::runtime_error(message + path.data());
 	}
 
 	VkDeviceMemory stagingBufferMemory;
 	VkBuffer stagingBuffer;
 
-	renderDeviceVulkan->vulkanBuffer.createBuffer(
+	renderDeviceVulkan->vulkanBufferManager.createBuffer(
 		imageSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -90,6 +99,7 @@ uint32_t TextureManagerVulkan::loadTexture(std::string_view path)
 
 	texture->textureImageView = createImageView(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 	createTextureSampler(texture->textureSampler);
+	m_logger->debug("Texture loaded {}, id: {}", path.data(), static_cast<uint32_t>(m_ids.load()));
 
 	return _assignID();
 }
@@ -135,7 +145,7 @@ void TextureManagerVulkan::createImage(
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = renderDeviceVulkan->vulkanBuffer.findMemoryType(memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = renderDeviceVulkan->vulkanBufferManager.findMemoryType(memRequirements.memoryTypeBits, properties);
 
 	if (vkAllocateMemory(renderDeviceVulkan->device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate image memory!");

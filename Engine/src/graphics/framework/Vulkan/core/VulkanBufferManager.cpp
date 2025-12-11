@@ -2,9 +2,11 @@
 #include <stdexcept>
 #include <chrono>
 
-#include "src/core/features/ServiceLocator.h"
+#include "core/features/ServiceLocator.h"
 #include "../RenderDeviceVulkan.h"
 #include "VulkanSwapChain.h"
+#include "core/features/Mesh.h"
+#include "logging/Logger.h"
 
 #include "../resources/buffers/IndexBufferVulkan.h"
 #include "../resources/buffers/VertexBufferVulkan.h"
@@ -25,6 +27,7 @@ void VulkanBufferManager::init()
 {
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = static_cast<RenderDeviceVulkan*>(&device);
+	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
 }
 
 uint32_t VulkanBufferManager::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -106,9 +109,9 @@ void VulkanBufferManager::createBuffer(
 	vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
-uint32_t VulkanBufferManager::createVertexBuffer(std::vector<VulkanDevice::Vertex> vertices, VkCommandPool commandPool)
+uint32_t VulkanBufferManager::createVertexBuffer(const Vertex* vertices, int size, VkCommandPool commandPool)
 {
-	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+	VkDeviceSize bufferSize = sizeof(Vertex) * size;
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
 
@@ -125,7 +128,7 @@ uint32_t VulkanBufferManager::createVertexBuffer(std::vector<VulkanDevice::Verte
 
 	void* data;
 	vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, vertices.data(), (size_t)bufferSize);
+	memcpy(data, vertices, (size_t)bufferSize);
 	vkUnmapMemory(device, stagingBufferMemory);
 
 
@@ -142,15 +145,15 @@ uint32_t VulkanBufferManager::createVertexBuffer(std::vector<VulkanDevice::Verte
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-	buffers[ids] = std::make_shared<VertexBufferVulkan>(ids ,vertexBuffer, vertexBufferMemory);
+	buffers[m_ids] = std::make_shared<VertexBufferVulkan>(m_ids ,vertexBuffer, vertexBufferMemory);
 
 	return _assignID();
 }
 
 
-uint32_t VulkanBufferManager::createIndexBuffer(std::vector<uint16_t> indices, VkCommandPool commandPool)
+uint32_t VulkanBufferManager::createIndexBuffer(uint32_t* indices, int size, VkCommandPool commandPool)
 {
-	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+	VkDeviceSize bufferSize = sizeof(uint32_t) * size;
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
@@ -166,7 +169,7 @@ uint32_t VulkanBufferManager::createIndexBuffer(std::vector<uint16_t> indices, V
 
 	void* data;
 	vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, indices.data(), (size_t)bufferSize);
+	memcpy(data, indices, (size_t)bufferSize);
 	vkUnmapMemory(device, stagingBufferMemory);
 
 	createBuffer(
@@ -182,7 +185,7 @@ uint32_t VulkanBufferManager::createIndexBuffer(std::vector<uint16_t> indices, V
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-	buffers[ids] = std::make_shared<IndexBufferVulkan>(ids, indexBuffer, indexBufferMemory);
+	buffers[m_ids] = std::make_shared<IndexBufferVulkan>(m_ids, indexBuffer, indexBufferMemory);
 
 	return _assignID();
 }
@@ -210,8 +213,8 @@ uint32_t VulkanBufferManager::createUniformBuffer(VkBuffer& buffer, VkDeviceMemo
 		buffersMemory
 	);
 
-	buffers[ids] = std::make_shared<UniformBufferVulkan>(ids, buffer, buffersMemory);
-	UniformBufferVulkan* ref = static_cast<UniformBufferVulkan*>(buffers[ids].get());
+	buffers[m_ids] = std::make_shared<UniformBufferVulkan>(m_ids, buffer, buffersMemory);
+	UniformBufferVulkan* ref = static_cast<UniformBufferVulkan*>(buffers[m_ids].get());
 
 	vkMapMemory(device, buffersMemory, 0, bufferSize, 0, &ref->uniformBufferMapped);
 
@@ -234,5 +237,5 @@ void VulkanBufferManager::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkD
 
 const uint32_t& VulkanBufferManager::_assignID()
 {
-	return ids.fetch_add(1, std::memory_order_relaxed);
+	return m_ids.fetch_add(1, std::memory_order_relaxed);
 }

@@ -1,5 +1,4 @@
 #include "Scene.h"
-#include "imgui.h"
 #include "../../graphics/utils/Utils.h"
 #include "../entities/Entity.h"
 #include "../components/MComponent.h"

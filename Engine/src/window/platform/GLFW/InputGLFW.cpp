@@ -1,6 +1,6 @@
-#include "InputGLFW.h"
 #include <GLFW/glfw3.h>
-#include "../../AppWindow.h"
+#include "InputGLFW.h"
+#include "window/AppWindow.h"
 #include "AppWindowGLFW.h"
 
 InputGLFW::InputGLFW() : Input()
@@ -23,14 +23,14 @@ bool InputGLFW::isKeyPressed(KeyCodes keyCode)
 	return glfwGetKey(m_windowHandle, static_cast<int>(keyCode)) == GLFW_PRESS;
 }
 
-int InputGLFW::getMouseButton(MouseCodes mouseCode)
-{
-	return glfwGetMouseButton(m_windowHandle, static_cast<int>(mouseCode));
-}
-
 void InputGLFW::getCursorPos(double* x, double* y)
 {
 	return glfwGetCursorPos(m_windowHandle, x, y);
+}
+
+int InputGLFW::getMouseButton(MouseCodes mouseCode)
+{
+	return glfwGetMouseButton(m_windowHandle, static_cast<int>(mouseCode));
 }
 
 int InputGLFW::getKey(KeyCodes keyCode)

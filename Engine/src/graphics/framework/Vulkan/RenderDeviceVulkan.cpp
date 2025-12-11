@@ -1,13 +1,14 @@
 #include "RenderDeviceVulkan.h"
 #include "../../src/core/features/ServiceLocator.h"
 #include "../../src/Logging/Logger.h"
+#include "resources/Textures/TextureVulkan.h"
 #include <stb/stb_image.h>
 
 RenderDeviceVulkan::RenderDeviceVulkan()
 	: RenderDevice("RenderDeviceVulkan"),
 	swapchain(device, *this),
 	pipeline(device),
-	vulkanBuffer(device),
+	vulkanBufferManager(device),
 	commandPool(device)
 {
 
@@ -24,7 +25,6 @@ int RenderDeviceVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
-	ServiceLocator::supportingServices();
 	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
 	m_logger->info("Vulkan Render Device initialized");
 
@@ -34,21 +34,17 @@ int RenderDeviceVulkan::init(WindowConfig config)
 
 	commandPool.create();
 
-	vulkanBuffer.init();
-	vulkanBuffer.createUniformBuffers(sizeof(VulkanDevice::UniformBufferObject));
+	vulkanBufferManager.init();
+	vulkanBufferManager.createUniformBuffers(sizeof(VulkanDevice::UniformBufferObject));
 
-	//createTextureImage();
-	//createTextureImageView();
-	//createTextureSampler();
+	createDepthResources();
 
-	//createDescriptorSetLayout();
-	//createDescriptorPool();
-	//createDescriptorSets();
-	//createTextureViewDescriptorSet();
+	createDescriptorSetLayout();
+	createDescriptorPool();
 
-	//pipeline.create();
-	//swapchain.createFramebuffers();
-	//pipeline.createGraphicsPipeline(descriptorSetLayout, swapchain.renderPass, pushConstantRange);
+	pipeline.create();
+	swapchain.createFramebuffers();
+	pipeline.createGraphicsPipeline(descriptorSetLayout, swapchain.renderPass, pushConstantRange);
 
 
 	return 0;
@@ -136,7 +132,7 @@ void RenderDeviceVulkan::_cleanup()
 	vkDestroyDescriptorPool(device.device, imguiDescriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(device.device, imguiDescriptorSetLayout, nullptr);
 
-	vulkanBuffer.shutdown();
+	vulkanBufferManager.shutdown();
 	pipeline.destroy();
 	commandPool.destroy();
 	device.destroy();
@@ -233,7 +229,7 @@ void RenderDeviceVulkan::createDescriptorSets()
 	
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = (VkBuffer)*vulkanBuffer.uniformbuffersList[i];
+		bufferInfo.buffer = (VkBuffer)*vulkanBufferManager.uniformbuffersList[i];
 		bufferInfo.offset = 0;
 		bufferInfo.range = sizeof(VulkanDevice::UniformBufferObject);
 
@@ -320,7 +316,7 @@ void RenderDeviceVulkan::createImage(uint32_t width, uint32_t height, VkFormat f
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = vulkanBuffer.findMemoryType(memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = vulkanBufferManager.findMemoryType(memRequirements.memoryTypeBits, properties);
 
 	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate image memory!");

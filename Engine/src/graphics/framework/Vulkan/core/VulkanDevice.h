@@ -17,6 +17,8 @@
 #include <memory>
 #include <unordered_map>
 
+#define MAX_BONE_INFLUENCE 4
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -68,37 +70,66 @@ public:
 	};
 
 
-	struct Vertex {
+	struct VertexVulkan {
 		glm::vec3 pos;
 		glm::vec3 color;
 		glm::vec2 texCoord;
-
+		glm::vec3 normal;
+		glm::vec3 tangent;
+		glm::vec3 bitangent;
+		int m_BoneIDs[MAX_BONE_INFLUENCE];		//bone indexes which will influence this vertex
+		float m_Weights[MAX_BONE_INFLUENCE];	//weights from each bone
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription{};
 			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(Vertex);
+			bindingDescription.stride = sizeof(VertexVulkan);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // VK_VERTEX_INPUT_RATE_INSTANCE for instance drawing
 
 			return bindingDescription;
 		}
 
-		static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+		static std::array<VkVertexInputAttributeDescription, 8> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 8> attributeDescriptions{};
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
 			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[0].offset = offsetof(Vertex, pos);
+			attributeDescriptions[0].offset = offsetof(VertexVulkan, pos);
 
 			attributeDescriptions[1].binding = 0;
 			attributeDescriptions[1].location = 1;
 			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[1].offset = offsetof(Vertex, color);
+			attributeDescriptions[1].offset = offsetof(VertexVulkan, color);
 
 			attributeDescriptions[2].binding = 0;
 			attributeDescriptions[2].location = 2;
 			attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-			attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+			attributeDescriptions[2].offset = offsetof(VertexVulkan, texCoord);
+			
+			attributeDescriptions[3].binding = 0;
+			attributeDescriptions[3].location = 3;
+			attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[3].offset = offsetof(VertexVulkan, normal);
+			
+			attributeDescriptions[4].binding = 0;
+			attributeDescriptions[4].location = 4;
+			attributeDescriptions[4].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[4].offset = offsetof(VertexVulkan, tangent);
+			
+			attributeDescriptions[5].binding = 0;
+			attributeDescriptions[5].location = 5;
+			attributeDescriptions[5].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[5].offset = offsetof(VertexVulkan, bitangent);
+
+			attributeDescriptions[6].binding = 0;
+			attributeDescriptions[6].location = 6;
+			attributeDescriptions[6].format = VK_FORMAT_R32G32B32A32_SINT;
+			attributeDescriptions[6].offset = offsetof(VertexVulkan, m_BoneIDs);
+
+			attributeDescriptions[7].binding = 0;
+			attributeDescriptions[7].location = 7;
+			attributeDescriptions[7].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[7].offset = offsetof(VertexVulkan, m_Weights);
 
 			return attributeDescriptions;
 		}

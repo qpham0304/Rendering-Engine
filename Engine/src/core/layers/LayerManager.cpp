@@ -1,5 +1,4 @@
 #include "LayerManager.h"
-#include "ImGui.h" // TODO remove when gui is refactored
 #include "../../src/core/features/ServiceLocator.h"
 
 #define OUT_OF_BOUND_ERROR(index) { \
@@ -132,9 +131,9 @@ void LayerManager::onGuiUpdate()
 		layer->onGuiUpdate();
 	}
 	for (auto& layer : m_Layers) {
-		ImGui::Begin("Layers");
-		ImGui::Checkbox(layer->getName().c_str(), &layer->m_Enabled);
-		ImGui::End();
+		// ImGui::Begin("Layers");
+		// ImGui::Checkbox(layer->getName().c_str(), &layer->m_Enabled);
+		// ImGui::End();
 	}
 }
 

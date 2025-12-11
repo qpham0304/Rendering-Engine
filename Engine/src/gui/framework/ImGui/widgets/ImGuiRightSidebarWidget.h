@@ -1,5 +1,6 @@
 #pragma once
 #include "../../src/gui/widgets/RightSidebarWidget.h"
+#include <imgui.h>
 
 class ImGuiRightSidebarWidget : public RightSidebarWidget
 {

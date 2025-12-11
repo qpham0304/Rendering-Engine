@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../../widgets/LeftSidebarWidget.h"
+#include <imgui.h>
 
 class ImGuiLeftSidebarWidget : public LeftSidebarWidget
 {
