@@ -19,19 +19,19 @@
 struct KeyPosition
 {
 	glm::vec3 position;
-	float timeStamp;
+	float timeStamp{ 0.0f };
 };
 
 struct KeyRotation
 {
 	glm::quat orientation;
-	float timeStamp;
+	float timeStamp { 0.0f };
 };
 
 struct KeyScale
 {
 	glm::vec3 scale;
-	float timeStamp;
+	float timeStamp { 0.0f };
 };
 
 class Bone

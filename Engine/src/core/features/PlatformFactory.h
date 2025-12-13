@@ -13,6 +13,9 @@
 #include "src/graphics/RenderDevice.h"
 #include "configs.h"
 #include "ServiceLocator.h"
+#include "src/core/resources/managers/Manager.h"
+#include "src/core/resources/managers/TextureManager.h"
+#include "src/core/resources/managers/BufferManager.h"
 
 // one single file to register and create all subsystems and services
 // might separate into files per subsystem but good enough for now
@@ -49,11 +52,13 @@ public:
 
 	}
 
+	std::unique_ptr<Logger> createLogger(LoggerPlatform platform, std::string_view name);
 	std::unique_ptr<AppWindow> createWindow(WindowPlatform config);
 	std::unique_ptr<GuiManager> createGuiManager(GuiPlatform config);
 	std::unique_ptr<Renderer> createRenderer(RenderPlatform platform);
 	std::unique_ptr<RenderDevice> createRenderDevice(RenderPlatform platform);
-	std::unique_ptr<Logger> createLogger(LoggerPlatform platform, std::string_view name);
+	std::unique_ptr<TextureManager> createTextureManager(RenderPlatform platform);
+	std::unique_ptr<BufferManager> createBufferManager(RenderPlatform platform);
 
 
 private:
@@ -71,9 +76,11 @@ private:
 private:
 	ServiceLocator& serviceLocator;
 
+	ConstructorRegistry<Logger, LoggerPlatform, std::string> loggerRegistry;
 	ConstructorRegistry<AppWindow, WindowPlatform> windowRegistry;
 	ConstructorRegistry<GuiManager, GuiPlatform> guiRegistry;
 	ConstructorRegistry<Renderer, RenderPlatform> rendererRegistry;
 	ConstructorRegistry<RenderDevice, RenderPlatform> renderDeviceRegistry;
-	ConstructorRegistry<Logger, LoggerPlatform, std::string> loggerRegistry;
+	ConstructorRegistry<TextureManager, RenderPlatform> textureManagerRegistry;
+	ConstructorRegistry<BufferManager, RenderPlatform> bufferManagerRegistry;
 };

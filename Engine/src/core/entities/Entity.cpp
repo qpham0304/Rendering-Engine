@@ -20,9 +20,9 @@ bool Entity::operator!=(const Entity& other) const
     return !operator==(other);
 }
 
-const uint32_t& Entity::getID() const
+uint32_t Entity::getID() const
 {
-    return (uint32_t)entity;
+    return static_cast<uint32_t>(entity);
 }
 
 void Entity::onCameraComponentAdded()

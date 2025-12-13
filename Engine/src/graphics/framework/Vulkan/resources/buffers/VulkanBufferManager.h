@@ -1,13 +1,13 @@
 #pragma once
 
-#include "./VulkanDevice.h"
-#include "./VulkanSwapChain.h"
-#include "../resources/buffers/UniformBufferVulkan.h"
+#include "UniformBufferVulkan.h"
+#include "../../core/VulkanDevice.h"
+#include "../../core/VulkanSwapChain.h"
+#include "../../core/VulkanUtils.h"
 #include "core/resources/managers/BufferManager.h"
 
 class BufferVulkan;
 class RenderDeviceVulkan;
-struct Vertex;
 
 class VulkanBufferManager : public BufferManager
 {
@@ -15,11 +15,11 @@ public:
     std::vector<UniformBufferVulkan*> uniformbuffersList;
 
 public:
-    VulkanBufferManager(VulkanDevice& deviceRef);
+    VulkanBufferManager();
     ~VulkanBufferManager();
 
-    virtual void init() override;
-    virtual void shutdown() override;
+    virtual int init() override;
+    virtual int onClose() override;
     virtual void destroy(uint32_t id) override;
     void bind(uint32_t id);
     BufferVulkan* getBuffer(uint32_t id);
@@ -34,9 +34,9 @@ public:
         VkDeviceMemory& bufferMemory
     );
 
-    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkCommandPool commandPool);
-    uint32_t createVertexBuffer(const Vertex* vertices, int size, VkCommandPool commandPool);
-    uint32_t createIndexBuffer(uint32_t* indices, int size, VkCommandPool commandPool);
+    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+    virtual uint32_t createVertexBuffer(const Vertex* vertices, int size) override;
+    virtual uint32_t createIndexBuffer(const uint16_t* indices, int size) override;
     
     void createUniformBuffers(size_t bufferSize);
 
@@ -57,7 +57,6 @@ private:
     const uint32_t& _assignID();
 
 private:
-    VulkanDevice& device;
     RenderDeviceVulkan* renderDeviceVulkan;
     std::unordered_map<uint32_t, std::shared_ptr<BufferVulkan>> buffers;
 };

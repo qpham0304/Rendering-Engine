@@ -3,15 +3,15 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/vector_angle.hpp>
-#include "src/core/features/Camera.h"
-#include "src/core/scene/SceneManager.h"
-#include "src/core/components/MComponent.h"
-#include "src/core/components/CameraComponent.h"
-#include "src/core/components/CubeMapComponent.h"
-#include "src/window/AppWindow.h"
-#include "src/core/events/EventManager.h"
-#include "src/core/layers/layerManager.h"
-#include "src/graphics/renderers/ShadowMapRenderer.h"
+#include <core/features/Camera.h>
+#include <core/scene/SceneManager.h>
+#include <core/components/MComponent.h>
+#include <core/components/CameraComponent.h>
+#include <core/components/CubeMapComponent.h>
+#include <window/AppWindow.h>
+#include <core/events/EventManager.h>
+#include <core/layers/layerManager.h>
+#include <graphics/renderers/ShadowMapRenderer.h>
 #include "imgui.h"	// TODO: remove dependency with imgui once gui interface is setup
 
 
@@ -147,7 +147,7 @@ void DeferredIBLDemo::renderDeferredPass()
     scene.getShader("colorPassShader")->setMat4("invProjection", camera->getInProjectionMatrix());
     scene.getShader("colorPassShader")->setMat4("inverseView", camera->getInViewMatrix());
     scene.getShader("colorPassShader")->setBool("gamma", true);
-    scene.getShader("colorPassShader")->setBool("sampleRadius", 2);
+    scene.getShader("colorPassShader")->setInt("sampleRadius", 2);
     scene.getShader("colorPassShader")->setBool("time", AppWindow::getTime());
     scene.getShader("colorPassShader")->setBool("rippleStrength", 1.0);
 

@@ -3,11 +3,6 @@
 #include "VulkanDevice.h"
 
 class VulkanCommandPool {
-public:
-    VulkanDevice& device;
-    VkCommandPool commandPool;
-    std::vector<VkCommandBuffer> commandBuffers;
-    uint32_t queueFamily;
 
 public:
     VulkanCommandPool(VulkanDevice& deviceRef);
@@ -30,6 +25,12 @@ public:
 private:
     void createCommandPool();
     void createCommandBuffers();
-    //void recordCommandBuffer(uint32_t imageIndex);
+
+private:
+    VulkanDevice& device;
+    VkCommandPool commandPool;
+    std::vector<VkCommandBuffer> commandBuffers;
+    uint32_t queueFamily;
+
 
 };

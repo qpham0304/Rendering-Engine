@@ -1,6 +1,15 @@
 #include "Animator.h"
 
-Animator::Animator(Animation* animation)
+Animator::Animator()
+	:	 m_FinalBoneMatrices{},
+		m_CurrentAnimation(nullptr),
+		m_CurrentTime(0.0f),
+		m_DeltaTime(0.0f)
+{
+
+}
+
+Animator::Animator(Animation* animation) : m_DeltaTime(0.0f)
 {
 	m_CurrentTime = 0.0;
 	m_CurrentAnimation = animation;

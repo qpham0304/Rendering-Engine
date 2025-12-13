@@ -10,16 +10,6 @@
 class ServiceLocator;
 class LayerManager
 {
-private:
-	static std::unordered_map<std::string,std::shared_ptr<FrameBuffer>> frameBuffers;
-	std::vector<Layer*> m_Layers;
-	int m_SelectedLayer;
-
-	bool boundCheck(const int& index) const;
-
-	AppWindow& appWindow;
-	ServiceLocator& serviceLocator;
-
 public:
 	friend class Layer;
 
@@ -36,7 +26,7 @@ public:
 	bool removeLayer(const int index);
 	void EnableLayer(const int index);
 	void DisableLayer(const int index);
-	const int& size() const;
+	int size() const;
 	const std::string& CurrentLayer();
 
 	int init();
@@ -53,4 +43,15 @@ public:
 	const std::vector<Layer*>::const_iterator end() const;
 	const std::vector<Layer*>::const_reverse_iterator rbegin() const;
 	const std::vector<Layer*>::const_reverse_iterator rend() const;
+	
+private:
+	static std::unordered_map<std::string,std::shared_ptr<FrameBuffer>> frameBuffers;
+	std::vector<Layer*> m_Layers;
+	int m_SelectedLayer;
+
+	bool boundCheck(const int& index) const;
+
+	AppWindow& appWindow;
+	ServiceLocator& serviceLocator;
+
 };

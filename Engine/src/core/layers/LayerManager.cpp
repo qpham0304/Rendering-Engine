@@ -94,7 +94,7 @@ void LayerManager::DisableLayer(const int index)
 	m_Layers[index]->m_Enabled = false;
 }
 
-const int& LayerManager::size() const
+int LayerManager::size() const
 {
 	return m_Layers.size();
 }

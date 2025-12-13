@@ -3,11 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 #include "VulkanDevice.h"
-//struct SwapChainSupportDetails {
-//    VkSurfaceCapabilitiesKHR capabilities;
-//    std::vector<VkSurfaceFormatKHR> formats;
-//    std::vector<VkPresentModeKHR> presentModes;
-//};
+
 class RenderDeviceVulkan;
 
 class VulkanSwapChain
@@ -36,7 +32,6 @@ public:
     void create();
     void destroy();
 
-    //SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
     void createSyncObject();
     void createFramebuffers();
     void recreateSwapchain();

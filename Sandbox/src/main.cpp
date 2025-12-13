@@ -1,4 +1,4 @@
-#include "VulkanApplication.h"
+#include "Sandbox.h"
 #include <core/Engine.h>
 
 
@@ -15,7 +15,7 @@ int main()
         windowConfig.height = 1080;
         windowConfig.vsync = false;
 
-        VulkanApplication app;
+        Sandbox app;
         app.init(windowConfig);
         app.start();
         app.run();

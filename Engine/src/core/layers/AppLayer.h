@@ -33,6 +33,6 @@ public:
 	void onUpdate() override;
 	void onGuiUpdate() override;
 	void onEvent(Event& event) override;
-	const int& GetTextureID();
+	int GetTextureID() const;
 };
 

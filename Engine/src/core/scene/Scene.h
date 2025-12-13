@@ -2,8 +2,8 @@
 
 #include <glm/glm.hpp>
 #include "entt.hpp"
-#include "../entities/Entity.h"
-#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "core/entities/Entity.h"
 
 class Scene
 {

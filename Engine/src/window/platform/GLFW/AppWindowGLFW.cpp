@@ -250,6 +250,8 @@ int AppWindowGLFW::_initOpenGL()
 		glfwTerminate();
 		return -1;
 	}
+
+	return 0;
 }
 
 void AppWindowGLFW::_onCloseOpenGL()

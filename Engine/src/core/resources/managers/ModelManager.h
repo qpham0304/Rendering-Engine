@@ -14,8 +14,8 @@ public:
 	ModelManager();
 	~ModelManager();
 
-	virtual void init() override;
-	virtual void shutdown() override;
+	virtual int init() override;
+	virtual int onClose() override;
 	virtual void destroy(uint32_t id) override;
 	uint32_t loadModel(std::string_view path);
 	Model* getModel(uint32_t id);
@@ -24,7 +24,7 @@ private:
 	void _loadModel(std::string_view path);
     void _processNode(aiNode* node, const aiScene* scene, std::vector<uint32_t>& meshes, std::string_view directory);
     uint32_t _processMesh(aiMesh* mesh, const aiScene* scene, std::string_view directory);
-    std::vector<uint32_t> _loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName, std::string_view directory);
+    std::vector<uint8_t> _loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName, std::string_view directory);
 	//void _extractBoneWeightForVertices(std::vector<MeshOpenGL::Vertex>& vertices, aiMesh* mesh, const aiScene* scene);
 	//void _setVertexBoneDataToDefault(MeshOpenGL::Vertex& vertex);
 	

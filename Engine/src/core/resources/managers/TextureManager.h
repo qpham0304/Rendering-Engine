@@ -7,10 +7,11 @@ class Texture;
 class TextureManager : public Manager
 {
 public:
+	TextureManager(std::string serviceName = "TextureManager") : Manager(serviceName) {};
 	virtual ~TextureManager() = default;
 
-	virtual void init() = 0;
-	virtual void shutdown() = 0;
+	virtual int init() = 0;
+	virtual int onClose() = 0;
 	virtual void destroy(uint32_t id) = 0;
 	virtual uint32_t loadTexture(std::string_view path) = 0;
 	virtual uint32_t createDepthTexture() = 0;
@@ -26,7 +27,5 @@ protected:
 	// but then managing destroy of resource could be a hassle so use map for now;
 	std::unordered_map<uint32_t, std::shared_ptr<Texture>> m_textures;
 	std::unordered_map<std::string, uint32_t> m_textureData;
-
-	TextureManager() = default;
 };
 

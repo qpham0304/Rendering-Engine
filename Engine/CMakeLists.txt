@@ -65,6 +65,7 @@ set_target_properties(vulkan-1 PROPERTIES
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    SYSTEM
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/entt

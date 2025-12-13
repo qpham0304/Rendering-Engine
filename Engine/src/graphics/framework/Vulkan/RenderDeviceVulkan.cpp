@@ -8,16 +8,17 @@ RenderDeviceVulkan::RenderDeviceVulkan()
 	: RenderDevice("RenderDeviceVulkan"),
 	swapchain(device, *this),
 	pipeline(device),
-	vulkanBufferManager(device),
+	vulkanBufferManager(),
 	commandPool(device)
 {
 
 }
 
-
+// everything else are destroyed explicitly except core resources
+// vulkan device resources are the last to be destroyed automatically right before the app closed
 RenderDeviceVulkan::~RenderDeviceVulkan()
 {
-
+	_cleanup();	
 }
 
 
@@ -50,10 +51,10 @@ int RenderDeviceVulkan::init(WindowConfig config)
 	return 0;
 }
 
+// wait for other vulkan resources to be destroyed before device cleanup
 int RenderDeviceVulkan::onClose()
 {
-	_cleanup();
-
+	waitIdle();
 	return 0;
 }
 
@@ -72,18 +73,22 @@ void RenderDeviceVulkan::beginFrame()
 void RenderDeviceVulkan::render()
 {
 	vkResetFences(device.device, 1, &swapchain.inFlightFences[currentFrame]);
-	vkResetCommandBuffer(commandPool.commandBuffers[currentFrame], 0);
+	vkResetCommandBuffer(commandPool.currentBuffer(), 0);
 }
 
 void RenderDeviceVulkan::endFrame()
 {
-	swapchain.submitAndPresent(currentFrame, commandPool.commandBuffers[currentFrame]);
+	swapchain.submitAndPresent(currentFrame, commandPool.currentBuffer());
 
 	currentFrame = (currentFrame + 1) % VulkanSwapChain::MAX_FRAMES_IN_FLIGHT;
 }
 
 void RenderDeviceVulkan::draw(uint32_t numIndicies, uint32_t numInstances)
 {
+	if (numInstances < 1) {
+		return;
+	}
+
 	if (numInstances == 1) {
 		commandPool.drawIndexed(numIndicies);
 	}
@@ -92,7 +97,7 @@ void RenderDeviceVulkan::draw(uint32_t numIndicies, uint32_t numInstances)
 	}
 }
 
-const uint32_t& RenderDeviceVulkan::getCurrentFrame() const
+const uint32_t& RenderDeviceVulkan::getCurrentFrameIndex() const
 {
 	return currentFrame;
 }
@@ -122,6 +127,11 @@ Logger& RenderDeviceVulkan::Log() const
 	return *m_logger;
 }
 
+uint16_t RenderDeviceVulkan::_assignID()
+{
+	return m_ids.fetch_add(1, std::memory_order_relaxed);
+}
+
 void RenderDeviceVulkan::_cleanup()
 {
 	swapchain.destroy();
@@ -132,7 +142,7 @@ void RenderDeviceVulkan::_cleanup()
 	vkDestroyDescriptorPool(device.device, imguiDescriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(device.device, imguiDescriptorSetLayout, nullptr);
 
-	vulkanBufferManager.shutdown();
+	vulkanBufferManager.onClose();
 	pipeline.destroy();
 	commandPool.destroy();
 	device.destroy();
@@ -229,7 +239,7 @@ void RenderDeviceVulkan::createDescriptorSets()
 	
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = (VkBuffer)*vulkanBufferManager.uniformbuffersList[i];
+		bufferInfo.buffer = static_cast<VkBuffer>(*vulkanBufferManager.uniformbuffersList[i]);
 		bufferInfo.offset = 0;
 		bufferInfo.range = sizeof(VulkanDevice::UniformBufferObject);
 
@@ -285,11 +295,27 @@ void RenderDeviceVulkan::createDepthResources()
 {
 	VkFormat depthFormat = findDepthFormat();
 
-	createImage(swapchain.swapChainExtent.width, swapchain.swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
+	createImage(swapchain.swapChainExtent.width,
+		swapchain.swapChainExtent.height,
+		depthFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		depthImage,
+		depthImageMemory
+	);
 	depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void RenderDeviceVulkan::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
+void RenderDeviceVulkan::createImage(uint32_t width,
+	uint32_t height,
+	VkFormat format,
+	VkImageTiling tiling,
+	VkImageUsageFlags usage,
+	VkMemoryPropertyFlags properties,
+	VkImage& image,
+	VkDeviceMemory& imageMemory
+) {
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -309,14 +335,13 @@ void RenderDeviceVulkan::createImage(uint32_t width, uint32_t height, VkFormat f
 		throw std::runtime_error("failed to create image!");
 	}
 
-
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(device, image, &memRequirements);
 
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = vulkanBufferManager.findMemoryType(memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = VulkanUtils::findMemoryType(device.physicalDevice, memRequirements.memoryTypeBits, properties);
 
 	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate image memory!");
@@ -419,7 +444,7 @@ void RenderDeviceVulkan::setViewport()
 	viewport.height = (float)swapchain.swapChainExtent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
-	vkCmdSetViewport(commandPool.commandBuffers[currentFrame], 0, 1, &viewport);
+	vkCmdSetViewport(commandPool.currentBuffer(), 0, 1, &viewport);
 }
 
 void RenderDeviceVulkan::setScissor()
@@ -427,7 +452,7 @@ void RenderDeviceVulkan::setScissor()
 	VkRect2D scissor{};
 	scissor.offset = { 0, 0 };
 	scissor.extent = swapchain.swapChainExtent;
-	vkCmdSetScissor(commandPool.commandBuffers[currentFrame], 0, 1, &scissor);
+	vkCmdSetScissor(commandPool.currentBuffer(), 0, 1, &scissor);
 }
 
 void RenderDeviceVulkan::waitIdle()

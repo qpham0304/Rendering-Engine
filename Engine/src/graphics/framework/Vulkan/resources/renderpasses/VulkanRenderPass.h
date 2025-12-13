@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../src/graphics/renderpasses/RenderPass.h"
-#include "../core/VulkanDevice.h"
+#include "graphics/renderpasses/RenderPass.h"
+#include "../../core/VulkanDevice.h"
 
 class VulkanRenderPass : RenderPass
 {

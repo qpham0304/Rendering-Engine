@@ -9,11 +9,12 @@ class RenderDeviceVulkan;
 class TextureManagerVulkan : public TextureManager
 {
 public:
-	TextureManagerVulkan();
+	// ideally service name should be "TextureManagerVulkan" but then client need to check for platform specific
+	TextureManagerVulkan(std::string serviceName = "TextureManager");	
 	~TextureManagerVulkan();
 
-	virtual void init() override;
-	virtual void shutdown() override;
+	virtual int init() override;
+	virtual int onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual uint32_t loadTexture(std::string_view path) override;
 	virtual uint32_t createDepthTexture() override;

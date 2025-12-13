@@ -53,7 +53,7 @@ public:
 		throw std::runtime_error("Component does not exist");
 	}
 
-	const uint32_t& getID() const;
+	uint32_t getID() const;
 
 	void onCameraComponentAdded();
 };

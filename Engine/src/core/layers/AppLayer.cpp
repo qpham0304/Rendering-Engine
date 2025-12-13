@@ -174,7 +174,7 @@ void AppLayer::onEvent(Event& event)
 
 }
 
-const int& AppLayer::GetTextureID()
+int AppLayer::GetTextureID() const
 {
 	return applicationFBO.texture;
 }

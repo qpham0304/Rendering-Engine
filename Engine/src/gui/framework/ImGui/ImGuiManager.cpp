@@ -61,10 +61,12 @@ int ImGuiManager::init(WindowConfig config)
 		}
 		else {
 			throw std::runtime_error("ImGuiManager: Unsupported render platform for ImGui initialization with GLFW");
+			return -1;
 		}
 	}
 	else {
 		throw std::runtime_error("ImGuiManager: Unsupported window platform for ImGui initialization");
+		return -1;
 	}
 
 	io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto/Roboto-Regular.ttf", fontSize);
@@ -95,6 +97,7 @@ int ImGuiManager::init(WindowConfig config)
 			style.Colors[i].z = pow(c.z, 2.2f);
 		}
 	}
+	return 0;
 }
 
 void ImGuiManager::onUpdate()

@@ -10,7 +10,7 @@
 class Animator
 {
 public:
-	Animator() = default;
+	Animator();
 	Animator(Animation* animation);
 	void Init(Animation* animation);
 	void UpdateAnimation(float dt);

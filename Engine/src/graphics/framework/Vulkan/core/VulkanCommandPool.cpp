@@ -74,7 +74,7 @@ VkCommandBuffer VulkanCommandPool::currentBuffer()
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	RenderDeviceVulkan& renderDeviceVulkan = static_cast<RenderDeviceVulkan&>(device);
 
-	return commandBuffers[renderDeviceVulkan.getCurrentFrame()];
+	return commandBuffers[renderDeviceVulkan.getCurrentFrameIndex()];
 }
 
 void VulkanCommandPool::createCommandPool() {

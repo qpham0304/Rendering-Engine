@@ -15,6 +15,7 @@ public:
 class TransformComponent {
 private:
 	glm::mat4 modelMatrix = glm::mat4(1.0f);
+	bool isDirty = true;
 
 public:
 	glm::vec3 translateVec = glm::vec3(0.0f);
@@ -90,6 +91,7 @@ struct ModelComponent {
 public:
 	std::string path = "None";
 	std::weak_ptr<ModelOpenGL> model;
+	uint32_t modelID = -1;
 
 	ModelComponent() = default;
 	ModelComponent(std::string&& path, std::shared_ptr<ModelOpenGL> model) : path(path), model(model) {};
@@ -134,9 +136,9 @@ enum LightType { POINT_LIGHT, DIRECTION_LIGHT, SPOT_LIGHT, AREA_LIGHT };
 struct MLightComponent {
 
 public:
-	glm::vec3 color = glm::vec3(1.0);
-	glm::vec3 position = glm::vec3(0.0);
-	float radius;
+	glm::vec3 color = glm::vec3(1.0f);
+	glm::vec3 position = glm::vec3(0.0f);
+	float radius = 0.0f;
 	LightType type = POINT_LIGHT;
 
 	MLightComponent() = default;

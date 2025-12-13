@@ -1,9 +1,9 @@
 #include "VulkanDescriptorManager.h"
 
-#include "./VulkanDevice.h"
-#include "./VulkanSwapChain.h"
-#include "src/core/features/ServiceLocator.h"
-#include "../RenderDeviceVulkan.h"
+#include "../../core/VulkanDevice.h"
+#include "../../core/VulkanSwapChain.h"
+#include "../../RenderDeviceVulkan.h"
+#include "core/features/ServiceLocator.h"
 
 VulkanDescriptorManager::VulkanDescriptorManager()
 {
@@ -15,14 +15,26 @@ VulkanDescriptorManager::~VulkanDescriptorManager()
 
 }
 
-void VulkanDescriptorManager::init()
+int VulkanDescriptorManager::init()
 {
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
-	renderDeviceVulkan = static_cast<RenderDeviceVulkan*>(&device);
-}
-void VulkanDescriptorManager::shutdown()
-{
+	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&device);
 
+	if (!renderDeviceVulkan) {
+		return -1;
+	}
+
+	return 0;
+}
+
+int VulkanDescriptorManager::onClose()
+{
+	WriteLock lock = _lockWrite();
+	descriptorSetLayouts.clear();
+	descriptorPools.clear();
+	descriptorSets.clear();
+
+	return 0;
 }
 
 void VulkanDescriptorManager::destroy(uint32_t)
@@ -48,12 +60,6 @@ uint32_t VulkanDescriptorManager::createLayout(std::vector<VkDescriptorSetLayout
 
 uint32_t VulkanDescriptorManager::createPool(std::vector<VkDescriptorPoolSize> poolSizes, uint32_t maxSets)
 {
-	//std::array<VkDescriptorPoolSize, 2> poolSizes{};
-	//poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	//poolSizes[0].descriptorCount = static_cast<uint32_t>(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT);
-	//poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	//poolSizes[1].descriptorCount = static_cast<uint32_t>(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT);
-
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
@@ -72,4 +78,14 @@ uint32_t VulkanDescriptorManager::createPool(std::vector<VkDescriptorPoolSize> p
 uint32_t VulkanDescriptorManager::createSet()
 {
 	return _assignID();
+}
+
+void VulkanDescriptorManager::write()
+{
+
+}
+
+void VulkanDescriptorManager::bindDescriptorSets()
+{
+
 }

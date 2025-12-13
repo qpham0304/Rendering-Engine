@@ -19,13 +19,13 @@ void VulkanPipeline::create()
 
 void VulkanPipeline::destroy()
 {
-	vkDestroyPipeline(device.device, graphicsPipeline, nullptr);
+	vkDestroyPipeline(device.device, pipeline, nullptr);
 	vkDestroyPipelineLayout(device.device, pipelineLayout, nullptr);
 }
 
 void VulkanPipeline::bind(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint)
 {
-	vkCmdBindPipeline(commandBuffer, pipelineBindPoint, graphicsPipeline);
+	vkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
 
 }
 
@@ -173,7 +173,7 @@ void VulkanPipeline::createGraphicsPipeline(
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	if (vkCreateGraphicsPipelines(device.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+	if (vkCreateGraphicsPipelines(device.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create graphics pipeline!");
 	}
 

@@ -12,14 +12,15 @@ public:
 	VulkanDescriptorManager();
 	~VulkanDescriptorManager();
 
-	virtual void init();
-	virtual void shutdown();
+	virtual int init();
+	virtual int onClose();
 	virtual void destroy(uint32_t id);
 
 	uint32_t createLayout(std::vector<VkDescriptorSetLayoutBinding> bindings);
 	uint32_t createPool(std::vector<VkDescriptorPoolSize> poolSizes, uint32_t maxSets);
 	uint32_t createSet();
 	void write();
+	void bindDescriptorSets();
 
 private:
 	RenderDeviceVulkan* renderDeviceVulkan;

@@ -233,7 +233,7 @@ class AnimationLoadEvent : public Event
 {
 public:
 	std::string path = "None";
-	Entity entity;
+	Entity entity = {};
 
 	AnimationLoadEvent() = default;
 	AnimationLoadEvent(const std::string path, const Entity entity) : path(path), entity(entity)

@@ -39,8 +39,16 @@ struct PipelineConfigInfo {
 class VulkanPipeline
 {
 public:
+	struct Pipeline {
+		VkPipelineLayout pipelineLayout;
+		VkPipeline pipeline;
+	};
+
+	std::unordered_map<uint32_t, Pipeline> pipelines;
+
+
 	VkPipelineLayout pipelineLayout;
-	VkPipeline graphicsPipeline;
+	VkPipeline pipeline;
 
 public:
 	VulkanPipeline(VulkanDevice& deviceRef);
@@ -55,6 +63,8 @@ public:
 		VkRenderPass renderPass,
 		size_t pushConstantSize = 0
 	);
+
+	void createComputePipeline();
 
 
 

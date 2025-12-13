@@ -13,7 +13,7 @@ public:
 	};
 
 	struct DeviceInfo {
-		std::optional<uint32_t> apiVersion; // Can be empty or not set
+		std::optional<uint32_t> apiVersion;			// Can be empty or not set
 		std::optional<uint32_t> queueFamilyIndex;
 		std::optional<void*> queueHandle;
 		std::optional<int> minImageCount;

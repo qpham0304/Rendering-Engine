@@ -5,7 +5,8 @@
 #include "graphics/framework/vulkan/RenderDeviceVulkan.h"
 #include "logging/Logger.h"
 
-TextureManagerVulkan::TextureManagerVulkan() : renderDeviceVulkan(nullptr)
+TextureManagerVulkan::TextureManagerVulkan(std::string serviceName)
+	: TextureManager(serviceName), renderDeviceVulkan(nullptr)
 {
 
 }
@@ -15,14 +16,15 @@ TextureManagerVulkan::~TextureManagerVulkan()
 
 }
 
-void TextureManagerVulkan::init()
+int TextureManagerVulkan::init()
 {
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = static_cast<RenderDeviceVulkan*>(&device);
 	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+	return 0;
 }
 
-void TextureManagerVulkan::shutdown()
+int TextureManagerVulkan::onClose()
 {
     WriteLock lock = _lockWrite();
 	for (auto& [id, texture] : m_textures) {
@@ -30,6 +32,7 @@ void TextureManagerVulkan::shutdown()
 	}
 	m_textures.clear();
 	m_textureData.clear();
+	return 0;
 }
 
 void TextureManagerVulkan::destroy(uint32_t id)

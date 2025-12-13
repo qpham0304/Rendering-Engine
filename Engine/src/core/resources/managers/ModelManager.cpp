@@ -22,18 +22,24 @@ ModelManager::~ModelManager()
 
 }
 
-void ModelManager::init()
+int ModelManager::init()
 {
     m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManager");
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+    if (!(m_logger && textureManager && meshManager)) {
+        return -1;
+    }
+    return 0;
 }
 
-void ModelManager::shutdown()
+int ModelManager::onClose()
 {
     WriteLock lock = _lockWrite();
     m_models.clear();
     m_modelData.clear();
+
+    return 0;
 }
 
 void ModelManager::destroy(uint32_t id)
@@ -64,6 +70,7 @@ void ModelManager::_loadModel(std::string_view path)
 {
     std::string loadTimer = std::string("Model loading ") + path.data();
     Timer(loadTimer.c_str());
+
     std::string directory = std::string(path).substr(0, path.find_last_of('/'));
     std::string fileName = std::string(path).substr(path.find_last_of('/') + 1);
 
@@ -84,9 +91,6 @@ void ModelManager::_loadModel(std::string_view path)
         std::string error = import.GetErrorString();
         m_logger->error("Model Loading failed: ERROR::ASSIMP::{}", error);
     }
-
-    //directory = path.substr(0, path.find_last_of('/'));
-    //fileName = path.substr(path.find_last_of('/') + 1);
 
     std::vector<uint32_t> meshes = {};
     _processNode(scene->mRootNode, scene, meshes, directory);
@@ -115,8 +119,8 @@ void ModelManager::_processNode(aiNode* node, const aiScene* scene, std::vector<
 uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::string_view directory)
 {
     std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    std::vector<uint32_t> textures;
+    std::vector<uint16_t> indices;
+    std::vector<uint8_t> textures;
 
     // process vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
@@ -164,15 +168,15 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     if (mesh->mMaterialIndex >= 0)
     {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-        std::vector<uint32_t> albedoMaps;
-        std::vector<uint32_t> normalMaps;
-        std::vector<uint32_t> metalnessMaps;
-        std::vector<uint32_t> roughnessMaps;
-        std::vector<uint32_t> aoMaps;
-        std::vector<uint32_t> emissiveMaps;
+        std::vector<uint8_t> albedoMaps;
+        std::vector<uint8_t> normalMaps;
+        std::vector<uint8_t> metalnessMaps;
+        std::vector<uint8_t> roughnessMaps;
+        std::vector<uint8_t> aoMaps;
+        std::vector<uint8_t> emissiveMaps;
 
-        std::string extension = ".gltf";
-        // support gltf for pbr materials
+        //TODO: find a better way to support materials PBR or not might need different descriptors
+        std::string extension = ".gltf";    
         if (extension == ".gltf") {
            albedoMaps = _loadMaterialTextures(material, aiTextureType_BASE_COLOR, "albedoMap", directory);
            textures.insert(textures.end(), albedoMaps.begin(), albedoMaps.end());
@@ -221,34 +225,20 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     m.vertices = vertices;
     m.indices = indices;
     m.materialIDs = textures;
-    m_logger->critical("indicies size: {}", indices.size());
-    m_logger->critical("vertices size: {}", vertices.size());
     
     return meshManager->loadMesh(m);
 }
 
-std::vector<uint32_t> ModelManager::_loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName, std::string_view directory)
+std::vector<uint8_t> ModelManager::_loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName, std::string_view directory)
 {
-    std::vector<uint32_t> textureIDs;
+    std::vector<uint8_t> textureIDs;
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
     {
         aiString str;
         mat->GetTexture(type, i, &str);
 
-
         std::string path = std::string(directory) + '/' + std::string(str.C_Str());
-
-        //if (loaded_textures.find(path.data()) != loaded_textures.end()) {
-        //    textures.push_back(loaded_textures[path.data()]);
-        //    if (typeName == "roughnessMap") {
-        //        // since cache map only stores one path
-        //        // gltf's roughnessMap with two components metallic and roughness will cause wrong type on insertion
-        //        textures[textures.size() - 1].type() = "roughnesMap";
-        //    }
-        //    break;
-        //}
-
-        uint32_t textureID = textureManager->loadTexture(path.data());
+        uint8_t textureID = textureManager->loadTexture(path.data());
         textureIDs.push_back(textureID);
     }
 

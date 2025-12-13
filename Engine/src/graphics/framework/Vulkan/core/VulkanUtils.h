@@ -5,9 +5,16 @@
 #include <stdexcept>
 #include <functional>
 #include <memory>
+#include <vulkan/vulkan.h>
 
-class VulkanUtils
+namespace VulkanUtils
 {
+    uint32_t findMemoryType(
+        VkPhysicalDevice physicalDevice, 
+        uint32_t typeFilter, 
+        VkMemoryPropertyFlags properties
+    );
+
 
 };
 

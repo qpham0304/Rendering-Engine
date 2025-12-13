@@ -7,7 +7,6 @@
 std::unordered_map<std::string, std::unique_ptr<ShaderOpenGL>> SceneManager::shaders = {};
 Camera* SceneManager::cameraController = nullptr;
 std::string SceneManager::selectedID = "";
-std::mutex SceneManager::mtx;
 
 SceneManager::SceneManager() {
 	
@@ -63,6 +62,15 @@ Scene* SceneManager::getActiveScene()
 	return nullptr;
 }
 
+void SceneManager::setActiveScene(const std::string& name)
+{
+	if (scenes.find(activeScene) != scenes.end()) {
+		activeScene = name;
+	}
+	return;
+}
+
+
 bool SceneManager::removeScene(const std::string& name)
 {
 	if (scenes.find(name) != scenes.end()) {
@@ -75,7 +83,7 @@ bool SceneManager::removeScene(const std::string& name)
 	}
 }
 
-void SceneManager::onUpdate(const float deltaTime)
+void SceneManager::onUpdate(const float& deltaTime)
 {
 	for (auto& [name, scene] : scenes) {
 		if(!scene->isEnabled) {
@@ -136,19 +144,16 @@ bool SceneManager::removeModel(const std::string& path)
 
 std::string SceneManager::addAnimation(const std::string& path, ModelOpenGL* model)
 {
-	try {
-		std::string uuid = Utils::uuid::get_uuid();
-		std::scoped_lock<std::mutex> lock(animationsLock);
-		if (animations.find(uuid) == animations.end()) {
-			animations[uuid] = std::make_shared<Animation>(path, model);
-			return uuid;
-		}
-		
+	std::string uuid = Utils::uuid::get_uuid();
+	std::scoped_lock<std::mutex> lock(animationsLock);
+	if (animations.find(uuid) == animations.end()) {
+		animations[uuid] = std::make_shared<Animation>(path, model);
+		return uuid;
 	}
-	catch (std::runtime_error) {
+	else {
+		throw::std::runtime_error ("failed to load model");
 		return "";
 	}
-
 }
 
 bool SceneManager::removeAnimation(const std::string& path)
