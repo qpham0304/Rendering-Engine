@@ -1,28 +1,30 @@
-#include "VulkanBufferManager.h"
+#include "BufferManagerVulkan.h"
 #include <stdexcept>
 #include <chrono>
 
 #include "core/features/Mesh.h"
 #include "logging/Logger.h"
 #include "core/features/ServiceLocator.h"
-#include "graphics/framework/vulkan/RenderDeviceVulkan.h"
+#include "graphics/framework/vulkan/renderers/RenderDeviceVulkan.h"
 #include "graphics/framework/vulkan/core/VulkanSwapChain.h"
 #include "IndexBufferVulkan.h"
 #include "VertexBufferVulkan.h"
 #include "UniformBufferVulkan.h"
 #include "BufferVulkan.h"
 
-VulkanBufferManager::VulkanBufferManager()
+BufferManagerVulkan::BufferManagerVulkan()
 {
 }
 
-VulkanBufferManager::~VulkanBufferManager()
+BufferManagerVulkan::~BufferManagerVulkan()
 {
 
 }
 
-int VulkanBufferManager::init()
+int BufferManagerVulkan::init(WindowConfig config)
 {
+	Service::init(config);
+
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&device);
 	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
@@ -34,7 +36,7 @@ int VulkanBufferManager::init()
 	return 0;
 }
 
-uint32_t VulkanBufferManager::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+uint32_t BufferManagerVulkan::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(renderDeviceVulkan->device.physicalDevice, &memProperties);
 
@@ -47,7 +49,7 @@ uint32_t VulkanBufferManager::findMemoryType(uint32_t typeFilter, VkMemoryProper
 	throw std::runtime_error("failed to find suitable memory type!");
 }
 
-int VulkanBufferManager::onClose()
+int BufferManagerVulkan::onClose()
 {
 	for (auto& [id, buffer] : buffers) {
 		buffer->destroy(renderDeviceVulkan->device);
@@ -56,7 +58,7 @@ int VulkanBufferManager::onClose()
 	return 0;
 }
 
-void VulkanBufferManager::destroy(uint32_t id)
+void BufferManagerVulkan::destroy(uint32_t id)
 {
 	if (buffers.find(id) == buffers.end()) {
 		throw std::runtime_error("buffer not found");
@@ -65,7 +67,7 @@ void VulkanBufferManager::destroy(uint32_t id)
 	buffers.erase(id);
 }
 
-void VulkanBufferManager::bind(uint32_t id)
+void BufferManagerVulkan::bind(uint32_t id)
 {
 	VkCommandBuffer commandBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 	if (buffers.find(id) == buffers.end()) {
@@ -74,7 +76,7 @@ void VulkanBufferManager::bind(uint32_t id)
 	buffers[id]->bind(commandBuffer);
 }
 
-BufferVulkan* VulkanBufferManager::getBuffer(uint32_t id)
+BufferVulkan* BufferManagerVulkan::getBuffer(uint32_t id)
 {
 	if (buffers.find(id) == buffers.end()) {
 		throw std::runtime_error("buffer not found");
@@ -82,7 +84,7 @@ BufferVulkan* VulkanBufferManager::getBuffer(uint32_t id)
 	return buffers[id].get();
 }
 
-void VulkanBufferManager::createBuffer(
+void BufferManagerVulkan::createBuffer(
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
 	VkMemoryPropertyFlags properties,
@@ -114,7 +116,7 @@ void VulkanBufferManager::createBuffer(
 	vkBindBufferMemory(renderDeviceVulkan->device, buffer, bufferMemory, 0);
 }
 
-uint32_t VulkanBufferManager::createVertexBuffer(const Vertex* vertices, int size)
+uint32_t BufferManagerVulkan::createVertexBuffer(const Vertex* vertices, int size)
 {
 	VkDeviceSize bufferSize = sizeof(Vertex) * size;
 	VkBuffer vertexBuffer;
@@ -156,7 +158,7 @@ uint32_t VulkanBufferManager::createVertexBuffer(const Vertex* vertices, int siz
 }
 
 
-uint32_t VulkanBufferManager::createIndexBuffer(const uint16_t* indices, int size)
+uint32_t BufferManagerVulkan::createIndexBuffer(const uint16_t* indices, int size)
 {
 	VkDeviceSize bufferSize = sizeof(uint16_t) * size;
 	VkBuffer indexBuffer;
@@ -195,20 +197,20 @@ uint32_t VulkanBufferManager::createIndexBuffer(const uint16_t* indices, int siz
 	return _assignID();
 }
 
-void VulkanBufferManager::createUniformBuffers(size_t bufferSize)
+void BufferManagerVulkan::createUniformBuffers(std::vector<UniformBufferVulkan*>& uniformBuffers, size_t bufferSize)
 {
 	VkBuffer uniformBuffer;
 	VkDeviceMemory uniformBufferMemory;
 
-	uniformbuffersList.resize(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT);
+	uniformBuffers.resize(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT);
 
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
 		uint32_t id = createUniformBuffer(uniformBuffer, uniformBufferMemory, bufferSize);
-		uniformbuffersList[i] = (UniformBufferVulkan*)getBuffer(id);
+		uniformBuffers[i] = (UniformBufferVulkan*)getBuffer(id);
 	}
 }
 
-uint32_t VulkanBufferManager::createUniformBuffer(VkBuffer& buffer, VkDeviceMemory& buffersMemory, size_t bufferSize)
+uint32_t BufferManagerVulkan::createUniformBuffer(VkBuffer& buffer, VkDeviceMemory& buffersMemory, size_t bufferSize)
 {
 	createBuffer(
 		bufferSize,
@@ -227,7 +229,7 @@ uint32_t VulkanBufferManager::createUniformBuffer(VkBuffer& buffer, VkDeviceMemo
 }
 
 
-void VulkanBufferManager::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+void BufferManagerVulkan::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
 	VkCommandBuffer commandBuffer = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 
@@ -240,7 +242,7 @@ void VulkanBufferManager::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkD
 	renderDeviceVulkan->commandPool.endSingleTimeCommand(commandBuffer);
 }
 
-const uint32_t& VulkanBufferManager::_assignID()
+const uint32_t& BufferManagerVulkan::_assignID()
 {
 	return m_ids.fetch_add(1, std::memory_order_relaxed);
 }

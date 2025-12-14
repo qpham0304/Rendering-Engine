@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../src/gui/widgets/MenuWidget.h"
+#include "gui/widgets/MenuWidget.h"
 #include <imgui.h>
 
 class ImGuiMenuWidget : public MenuWidget

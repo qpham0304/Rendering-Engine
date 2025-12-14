@@ -1,9 +1,8 @@
 #pragma once
 
-#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
-
-#include "../../src/core/layers/Layer.h"
-#include "../../src/graphics/framework/OpenGL/renderers/BloomRenderer.h"
+#include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "core/layers/Layer.h"
+#include "graphics/framework/OpenGL/renderers/BloomRenderer.h"
 
 class BloomPass : public Layer
 {

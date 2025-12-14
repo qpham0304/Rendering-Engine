@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../src/logging/Logger.h"
+#include "logging/Logger.h"
 #include <memory>
 
 class LoggerSpd : public Logger

@@ -1,7 +1,7 @@
 #include "Layer.h"
-#include "../../src/core/layers/LayerManager.h"
-#include "../../src/core/features/ServiceLocator.h"
-#include "../../src/logging/Logger.h"
+#include "core/layers/LayerManager.h"
+#include "core/features/ServiceLocator.h"
+#include "logging/Logger.h"
 
 Layer::Layer(const std::string& name = "Undefined")
 	:	m_LayerName(name),

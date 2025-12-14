@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Texture.h"
-#include "src/graphics/framework/vulkan/core/WrapperStructs.h"
+#include "graphics/framework/vulkan/core/WrapperStructs.h"
 
 class TextureVulkan : public Texture, protected VkWrap
 {
@@ -11,9 +11,9 @@ public:
 	TextureVulkan(uint32_t id);
 	virtual ~TextureVulkan() override;
 
-	virtual void Bind() override;
-	virtual void Unbind() override;
-	virtual void Delete() override;
+	virtual void Bind() override {};
+	virtual void Unbind() override {};
+	virtual void Delete() override {};
 
 protected:
 	virtual void loadTexture(const char* path, bool flip) {};

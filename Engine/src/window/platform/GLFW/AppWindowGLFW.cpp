@@ -6,8 +6,8 @@
 #if defined _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
-#include "../../src/core/features/Timer.h"
-#include "../../src/core/events/eventManager.h"
+#include "core/features/Timer.h"
+#include "core/events/eventManager.h"
 #endif
 
 //extern "C" __declspec(dllexport)

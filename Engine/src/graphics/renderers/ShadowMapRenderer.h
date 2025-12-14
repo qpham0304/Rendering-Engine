@@ -1,9 +1,9 @@
 #pragma once
 
 #include <memory>
-#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
-#include "src/core/components/LightComponent.h"
-#include "src/graphics/framework/OpenGL/core/DepthMap.h"
+#include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "core/components/LightComponent.h"
+#include "graphics/framework/OpenGL/core/DepthMap.h"
 
 class ShadowMapRenderer
 {

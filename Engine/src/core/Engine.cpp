@@ -1,10 +1,10 @@
 #include "Engine.h"
 #include <FileWatch.hpp>
-#include "../../src/window/AppWindow.h"
-#include "../../src/core/features/Timer.h"
-#include "../../src/core/layers/AppLayer.h"
-#include "../../src/core/features/Profiler.h"
-#include "../../src/window/platform/GLFW/AppWindowGLFW.h"
+#include "window/AppWindow.h"
+#include "core/features/Timer.h"
+#include "core/layers/AppLayer.h"
+#include "core/features/Profiler.h"
+#include "window/platform/GLFW/AppWindowGLFW.h"
 
 
 Engine::Engine(WindowConfig windowConfig) 

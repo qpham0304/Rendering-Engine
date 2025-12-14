@@ -1,6 +1,6 @@
 #pragma once
 
-#include "src/core/events/Event.h"
+#include "core/events/Event.h"
 
 class LayerManager;
 class Logger;

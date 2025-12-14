@@ -1,11 +1,11 @@
 #pragma once
 
-#include "../../src/core/layers/LayerManager.h"
-#include "../../src/core/scene/SceneManager.h"
-#include "../../src/core/events/EventManager.h"
-#include "../../src/core/features/ServiceLocator.h"
-#include "../../src/core/features/PlatformFactory.h"
-#include "../../src/core/layers/EditorLayer.h"
+#include "core/layers/LayerManager.h"
+#include "core/scene/SceneManager.h"
+#include "core/events/EventManager.h"
+#include "core/features/ServiceLocator.h"
+#include "core/features/PlatformFactory.h"
+#include "core/layers/EditorLayer.h"
 
 class Engine
 {

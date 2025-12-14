@@ -1,8 +1,8 @@
 #pragma once
 
 #include <string>
-#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
 #include <memory>
+#include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
 
 class ImageBasedRenderer
 {

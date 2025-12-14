@@ -3,7 +3,7 @@
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
-#include "src/graphics/framework/OpenGL/core/TextureOpenGL.h"
+#include "graphics/framework/OpenGL/core/TextureOpenGL.h"
 
 #define MAX_BONE_INFLUENCE 4
 

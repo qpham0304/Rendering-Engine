@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <unordered_map>
+#include "../resources/buffers/BufferManagerVulkan.h"
 
 class Logger;
 class TextureManager;
@@ -13,6 +14,8 @@ class ModelManager;
 class GuiManager;
 class BufferManager;
 class RenderDeviceVulkan;
+class TextureVulkan;
+class DescriptorManagerVulkan;
 
 class RendererVulkan : public Renderer, protected VkWrap
 {
@@ -24,6 +27,12 @@ private:
         alignas(4)  float data;
     };
 
+	
+	struct UniformBufferObject {
+		glm::mat4 model;
+		glm::mat4 view;
+		glm::mat4 proj;
+	};
 
 public:
 	RendererVulkan();
@@ -36,7 +45,6 @@ public:
 	virtual void beginFrame() override;
 	virtual void endFrame() override;
 	virtual void render(Camera& camera, Scene* scene) override;
-	virtual void shutdown() override;
 	virtual void addMesh() override;
 	virtual void addModel(std::string_view path) override;
 
@@ -51,18 +59,39 @@ private:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	void renderGui(void* commandBuffer);
 
+	void _createDescriptorSetLayout();
+	void _createDescriptorPool();
+	void _createDescriptorSets();
+	void _createTextureViewDescriptorSet();
+
 private:
-	Logger* m_logger;
+	bool showGui{ true };
+	Logger* m_logger{ nullptr };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	TextureManager* textureManager{ nullptr };
-	MeshManager* meshManager { nullptr };
-	ModelManager* modelManager { nullptr };
-	GuiManager* guiManager { nullptr };
-	bool showGui{ true };
-	
-	PushConstantData pushConstantData{};
+	MeshManager* meshManager{ nullptr };
+	ModelManager* modelManager{ nullptr };
+	GuiManager* guiManager{ nullptr };
+	TextureVulkan* texture{ nullptr };
 
+	PushConstantData pushConstantData{};
 	uint32_t modelID;
+
+    std::vector<UniformBufferVulkan*> uniformbuffersList;
+
+	VkDescriptorSetLayout descriptorSetLayout;
+	uint32_t layoutID;
+	VkDescriptorPool descriptorPool;
+	uint32_t poolID;
+	std::vector<VkDescriptorSet> descriptorSets;
+	uint32_t setsID;
+
+	VkDescriptorSetLayout imguiDescriptorSetLayout;
+	VkDescriptorPool imguiDescriptorPool;
+	VkDescriptorSet imguiTextureDescriptorSet;
+
+	BufferManagerVulkan* bufferManagerVulkan{ nullptr };
+	DescriptorManagerVulkan* descriptorManagerVulkan{ nullptr };
 
 };
 

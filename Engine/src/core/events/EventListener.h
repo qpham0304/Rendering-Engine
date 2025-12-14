@@ -5,8 +5,8 @@
 #include <any>
 #include <variant>
 #include <stdexcept>
-#include "src/graphics/utils/Utils.h"
-#include "src/core/features/Timer.h"
+#include "graphics/utils/Utils.h"
+#include "core/features/Timer.h"
 #include "./Event.h"
 
 class EventListener 

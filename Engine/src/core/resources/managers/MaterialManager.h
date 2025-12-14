@@ -5,7 +5,6 @@
 class MaterialManager : public Manager
 {
 public:
-    MaterialManager();
     ~MaterialManager();
 
     virtual int init() = 0;
@@ -13,5 +12,6 @@ public:
     virtual void destroy(uint32_t id) = 0;
 
 private:
+    MaterialManager(std::string serviceName = "MaterialManager") : Manager(serviceName) {};
     
 };

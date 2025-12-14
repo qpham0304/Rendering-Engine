@@ -1,1 +1,1 @@
-#include "../../src/graphics/renderers/AtmosphereRenderer.h"
+#include "graphics/renderers/AtmosphereRenderer.h"

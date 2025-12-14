@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../src/graphics/RenderDevice.h"
+#include "graphics/renderers/RenderDevice.h"
 #include <memory>
 
 class Logger;

@@ -10,6 +10,7 @@
 #include <core/resources/managers/BufferManager.h>
 #include <core/resources/managers/MeshManager.h>
 #include <core/resources/managers/ModelManager.h>
+#include <core/resources/managers/DescriptorManager.h>
 #include <graphics/renderers/Renderer.h>
 #include <services/Service.h>
 
@@ -41,14 +42,15 @@ private:
     std::unique_ptr<RenderDevice> renderDevice;
     std::unique_ptr<Logger> engineLogger;
     std::unique_ptr<Logger> clientLogger;
-    EditorLayer* editorLayer;
     std::unique_ptr<TextureManager> textureManager;
     std::unique_ptr<BufferManager> bufferManager;
     std::unique_ptr<MeshManager> meshManager;
     std::unique_ptr<ModelManager> modelManager;
+    std::unique_ptr<DescriptorManager> descriptorManager;
     std::unique_ptr<Renderer> renderer;
 
 private:
+    EditorLayer* editorLayer;
     Camera camera;
     std::vector<Service*> services;
 

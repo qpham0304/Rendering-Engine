@@ -5,6 +5,7 @@
 #include "TextureVulkan.h"
 
 class RenderDeviceVulkan;
+class BufferManagerVulkan;
 
 class TextureManagerVulkan : public TextureManager
 {
@@ -13,7 +14,7 @@ public:
 	TextureManagerVulkan(std::string serviceName = "TextureManager");	
 	~TextureManagerVulkan();
 
-	virtual int init() override;
+	virtual int init(WindowConfig config) override;
 	virtual int onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual uint32_t loadTexture(std::string_view path) override;
@@ -43,6 +44,6 @@ protected:
 
 private:
 	RenderDeviceVulkan* renderDeviceVulkan;
-
+	BufferManagerVulkan* vulkanBufferManager;
 };
 

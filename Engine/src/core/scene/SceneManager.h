@@ -10,8 +10,8 @@
 #include <mutex>
 #include <thread>
 #include "Scene.h"
-#include "src/animation/Animator.h"	//animation dependency
-#include "src/graphics/framework/OpenGL/core/TextureOpenGL.h"
+#include "animation/Animator.h"	//animation dependency
+#include "graphics/framework/OpenGL/core/TextureOpenGL.h"
 
 class Camera;
 

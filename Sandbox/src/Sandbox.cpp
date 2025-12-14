@@ -1,14 +1,8 @@
 #include "Sandbox.h"
-#include <cstring>
-#include <cassert>
-#include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
 #include "window/AppWindow.h"
 #include "core/events/EventManager.h"
-
-//TODO: remove from application, only renderer can see these concrete implementation
-#include "graphics/framework/Vulkan/Renderers/RendererVulkan.h"
 
 //const std::vector<Vertex> vertices = {
 //    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
@@ -44,10 +38,8 @@ void Sandbox::init(WindowConfig config)
 	renderDevice = platformFactory.createRenderDevice(windowConfig.renderPlatform);
 	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
 	textureManager = platformFactory.createTextureManager(windowConfig.renderPlatform);
-	//bufferManager = platformFactory.createBufferManager(windowConfig.renderPlatform);
-
-	// should be registered via factory
-	// bufferManager = std::make_unique<VulkanBufferManager>();
+	bufferManager = platformFactory.createBufferManager(windowConfig.renderPlatform);
+	descriptorManager = platformFactory.createDescriptorManager(windowConfig.renderPlatform);
 
 	meshManager = std::make_unique<MeshManager>();
 	modelManager = std::make_unique<ModelManager>();
@@ -55,44 +47,35 @@ void Sandbox::init(WindowConfig config)
 
 	serviceLocator.Register<MeshManager>("MeshManager", *meshManager);
 	serviceLocator.Register<ModelManager>("ModelManager", *modelManager);
-
+	serviceLocator.Register<LayerManager>("LayerManager", *layerManager);
 
 
 	engineLogger->setLevel(LogLevel::Debug);
 	ServiceLocator::supportingServices();
 
 
-
 	editorLayer = new EditorLayer("EditorLayer", *guiManager);
 
 
+	//NOTE: setup order of adding is important!
 	services.push_back(engineLogger.get());
 	services.push_back(clientLogger.get());
 	services.push_back(appWindow.get());
-	services.push_back(renderer.get());
 	services.push_back(renderDevice.get());
+	services.push_back(bufferManager.get());
+	services.push_back(descriptorManager.get());
+	services.push_back(renderer.get());
 	services.push_back(guiManager.get());
+	services.push_back(textureManager.get());
+	services.push_back(meshManager.get());
+	services.push_back(modelManager.get());
 }
 
 void Sandbox::start()
 {
-	//NOTE: setup order is important!
-	//appWindow->init(windowConfig);
-	//renderer->init();
-	//renderDevice->init(windowConfig);
-	//guiManager->init(windowConfig);
 	for (Service*& service : services) {
 		service->init(windowConfig);
 	}
-
-
-	//TODO: this should be registered through platform factory
-	RendererVulkan* rendererVulkan = dynamic_cast<RendererVulkan*>(renderer.get());
-	serviceLocator.Register<BufferManager>("BufferManager", *rendererVulkan->bufferManager);
-
-	textureManager->init();
-	meshManager->init();
-	modelManager->init();
 	// renderer->addModel("assets/models/aru/aru.gltf");
 	renderer->addModel("assets/models/cube/cube-notex.gltf");
 
@@ -146,10 +129,11 @@ void Sandbox::run() {
 
 void Sandbox::end()
 {
-	renderer->onClose();
 	renderDevice->onClose();
+	renderer->onClose();
 	guiManager->onClose();
 	textureManager->onClose();
+	descriptorManager->onClose();
 	appWindow->onClose();
 }
 

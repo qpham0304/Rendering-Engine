@@ -6,7 +6,7 @@
 #include <assimp/scene.h>
 #include <functional>
 #include "Bone.h"
-#include "src/graphics/framework/OpenGL/core/ModelOpenGL.h"
+#include "graphics/framework/OpenGL/core/ModelOpenGL.h"
 
 struct AssimpNodeData
 {

@@ -1,6 +1,6 @@
 
 #include "ImGuiConsoleLogWidget.h"
-#include "../../src/core/features/Profiler.h"
+#include "core/features/Profiler.h"
 #include <imgui.h>
 
 bool ButtonCenteredOnLine(const char* label, float alignment = 0.5f)

@@ -1,6 +1,6 @@
-#include "../../src/graphics/framework/OpenGL/renderers/BloomRenderer.h"
-#include "../../src/graphics/utils/Utils.h"
-#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "graphics/framework/OpenGL/renderers/BloomRenderer.h"
+#include "graphics/utils/Utils.h"
+#include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
 
 
 BloomRenderer::BloomRenderer() : mInit(false) {}

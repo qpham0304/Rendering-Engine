@@ -7,10 +7,10 @@
 #include <mutex>
 #include <future>
 #include <thread>
-#include "Event.h"
 #include <atomic>
+#include "Event.h"
 #include "EventListener.h"
-#include "src/core/features/Timer.h"
+#include "core/features/Timer.h"
 
 class EventManager
 {

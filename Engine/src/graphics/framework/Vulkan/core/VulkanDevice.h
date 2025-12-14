@@ -3,14 +3,9 @@
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
 #include <iostream>
-#include <fstream>
 #include <stdexcept>
 #include <algorithm>
 #include <vector>
-#include <cstring>
-#include <cstdlib>
-#include <cstdint>
-#include <limits>
 #include <optional>
 #include <set>
 #include <array>
@@ -62,13 +57,6 @@ public:
 		std::vector<VkSurfaceFormatKHR> formats;
 		std::vector<VkPresentModeKHR> presentModes;
 	};
-
-	struct UniformBufferObject {
-		glm::mat4 model;
-		glm::mat4 view;
-		glm::mat4 proj;
-	};
-
 
 	struct VertexVulkan {
 		glm::vec3 pos;

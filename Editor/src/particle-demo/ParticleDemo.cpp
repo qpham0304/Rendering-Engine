@@ -2,10 +2,10 @@
 #include <core/features/Timer.h>
 #include <core/scene/SceneManager.h>
 #include <gui/framework/ImGui/ImGuiManager.h>
-#include <src/window/AppWindow.h>
-#include <src/core/events/EventManager.h>
-#include <src/core/layers/LayerManager.h>
-#include <src/core/features/Camera.h>
+#include <window/AppWindow.h>
+#include <core/events/EventManager.h>
+#include <core/layers/LayerManager.h>
+#include <core/features/Camera.h>
 
 ParticleDemo::ParticleDemo(const std::string& name) : AppLayer(name)
 {

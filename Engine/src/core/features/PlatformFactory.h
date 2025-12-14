@@ -5,17 +5,18 @@
 #include <functional>
 #include <memory>
 
-#include "src/gui/GuiManager.h"
-#include "src/window/AppWindow.h"
-#include "src/graphics/renderers/Renderer.h"
-#include "src/logging/Logger.h"
-#include "src/services/Service.h"
-#include "src/graphics/RenderDevice.h"
 #include "configs.h"
 #include "ServiceLocator.h"
-#include "src/core/resources/managers/Manager.h"
-#include "src/core/resources/managers/TextureManager.h"
-#include "src/core/resources/managers/BufferManager.h"
+#include "gui/GuiManager.h"
+#include "window/AppWindow.h"
+#include "graphics/renderers/Renderer.h"
+#include "logging/Logger.h"
+#include "services/Service.h"
+#include "graphics/renderers/RenderDevice.h"
+#include "core/resources/managers/Manager.h"
+#include "core/resources/managers/TextureManager.h"
+#include "core/resources/managers/BufferManager.h"
+#include "core/resources/managers/DescriptorManager.h"
 
 // one single file to register and create all subsystems and services
 // might separate into files per subsystem but good enough for now
@@ -59,6 +60,7 @@ public:
 	std::unique_ptr<RenderDevice> createRenderDevice(RenderPlatform platform);
 	std::unique_ptr<TextureManager> createTextureManager(RenderPlatform platform);
 	std::unique_ptr<BufferManager> createBufferManager(RenderPlatform platform);
+	std::unique_ptr<DescriptorManager> createDescriptorManager(RenderPlatform platform);
 
 
 private:
@@ -83,4 +85,5 @@ private:
 	ConstructorRegistry<RenderDevice, RenderPlatform> renderDeviceRegistry;
 	ConstructorRegistry<TextureManager, RenderPlatform> textureManagerRegistry;
 	ConstructorRegistry<BufferManager, RenderPlatform> bufferManagerRegistry;
+	ConstructorRegistry<DescriptorManager, RenderPlatform> descriptorManagerRegistry;
 };

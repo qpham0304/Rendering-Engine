@@ -3,9 +3,9 @@
 #include <glm/glm.hpp>
 #include <string>
 #include "../../graphics/utils/Utils.h"
-#include "src/animation/Animation.h"
-#include "src/animation/Animator.h"
-#include "src/graphics/framework/OpenGL/core/ModelOpenGL.h"
+#include "animation/Animation.h"
+#include "animation/Animator.h"
+#include "graphics/framework/OpenGL/core/ModelOpenGL.h"
 
 class Component {
 public:

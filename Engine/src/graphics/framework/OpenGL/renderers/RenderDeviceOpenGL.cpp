@@ -1,6 +1,6 @@
 #include "RenderDeviceOpenGL.h"
-#include "../../src/core/features/ServiceLocator.h"
-#include "../../src/Logging/Logger.h"
+#include "core/features/ServiceLocator.h"
+#include "Logging/Logger.h"
 #include <stdexcept>
 
 RenderDeviceOpenGL::RenderDeviceOpenGL()

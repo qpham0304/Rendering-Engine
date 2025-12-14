@@ -1,5 +1,5 @@
 #pragma once
-#include "../../src/window/Input.h"
+#include "window/Input.h"
 
 class GLFWwindow;
 class AppWindowGLFW;

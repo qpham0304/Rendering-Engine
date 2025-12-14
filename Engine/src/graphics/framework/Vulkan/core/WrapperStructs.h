@@ -7,7 +7,6 @@ struct VkDevice_T;
 struct VkDescriptorSetLayout_T;
 struct VkDescriptorPool_T;
 struct VkDescriptorSet_T;
-struct VkDescriptorSetLayoutBinding_T;
 
 struct VkImage_T;
 struct VkDeviceMemory_T;
@@ -28,7 +27,6 @@ protected:
 	typedef VkDescriptorSetLayout_T* VkDescriptorSetLayout;
 	typedef VkDescriptorPool_T* VkDescriptorPool;
 	typedef VkDescriptorSet_T* VkDescriptorSet;
-	typedef VkDescriptorSetLayoutBinding_T* VkDescriptorSetLayoutBinding;
 
 	typedef VkImage_T* VkImage;
 	typedef VkDeviceMemory_T* VkDeviceMemory;

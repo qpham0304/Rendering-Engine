@@ -1,8 +1,8 @@
 #include "VulkanCommandPool.h"
 #include "VulkanSwapChain.h"
-#include "../../src/logging/Logger.h"
-#include "../../src/core/features/ServiceLocator.h"
-#include "../RenderDeviceVulkan.h"
+#include "logging/Logger.h"
+#include "core/features/ServiceLocator.h"
+#include "../renderers/RenderDeviceVulkan.h"
 
 VulkanCommandPool::VulkanCommandPool(VulkanDevice& deviceRef)
 	: device(deviceRef)

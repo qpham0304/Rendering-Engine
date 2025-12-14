@@ -1,5 +1,5 @@
 #include "CameraComponent.h"
-#include "../../src/core/features/Camera.h"
+#include "core/features/Camera.h"
 
 CameraComponent::CameraComponent(int width, int height, glm::vec3 position, glm::vec3 orientation)
 {

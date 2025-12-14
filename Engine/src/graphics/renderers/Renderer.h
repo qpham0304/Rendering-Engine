@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include "../RenderDevice.h"
+#include "RenderDevice.h"
 #include "services/Service.h"
 
 class Camera;
@@ -24,7 +24,6 @@ public:
 	virtual void beginFrame() = 0;
 	virtual void endFrame() = 0;
 	virtual void render(Camera& camera, Scene* scene) = 0;
-	virtual void shutdown() = 0;
 	virtual void addMesh() = 0;
 	virtual void addModel(std:: string_view path) = 0;
 

@@ -1,7 +1,7 @@
 #include "VulkanSwapChain.h"
-#include "../../src/window/AppWindow.h"
-#include "../../src/Logging/Logger.h"
-#include "../RenderDeviceVulkan.h"
+#include "window/AppWindow.h"
+#include "Logging/Logger.h"
+#include "../renderers/RenderDeviceVulkan.h"
 
 VulkanSwapChain::VulkanSwapChain(VulkanDevice& deviceRef, RenderDeviceVulkan& renderDeviceRef)
 	: device(deviceRef), renderDevice(renderDeviceRef)

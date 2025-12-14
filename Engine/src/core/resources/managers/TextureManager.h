@@ -10,7 +10,7 @@ public:
 	TextureManager(std::string serviceName = "TextureManager") : Manager(serviceName) {};
 	virtual ~TextureManager() = default;
 
-	virtual int init() = 0;
+	virtual int init(WindowConfig config) = 0;
 	virtual int onClose() = 0;
 	virtual void destroy(uint32_t id) = 0;
 	virtual uint32_t loadTexture(std::string_view path) = 0;

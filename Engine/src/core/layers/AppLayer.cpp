@@ -1,11 +1,11 @@
 #include "AppLayer.h"
-#include "../../src/core/scene/SceneManager.h"
-#include "../../src/window/AppWindow.h"
-#include "../../src/core/events/EventManager.h"
-#include "../../src/core/features/Camera.h"
-#include "../../src/core/layers/layerManager.h"
-#include "../../src/core/features/ServiceLocator.h"
-#include "../../src/logging/Logger.h"
+#include "core/scene/SceneManager.h"
+#include "window/AppWindow.h"
+#include "core/events/EventManager.h"
+#include "core/features/Camera.h"
+#include "core/layers/layerManager.h"
+#include "core/features/ServiceLocator.h"
+#include "logging/Logger.h"
 #include "Imgui.h"  //TODO: remove when there's no ui dependency
 
 void AppLayer::renderControl()

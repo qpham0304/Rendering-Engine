@@ -1,5 +1,5 @@
-#include "../../src/graphics/renderers/SkyboxRenderer.h"
-#include "../../src/core/features/Camera.h"
+#include "graphics/renderers/SkyboxRenderer.h"
+#include "core/features/Camera.h"
 
 void SkyboxRenderer::setup()
 {

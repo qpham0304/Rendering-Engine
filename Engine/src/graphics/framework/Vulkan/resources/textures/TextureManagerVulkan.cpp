@@ -2,7 +2,8 @@
 #include <stb/stb_image.h>
 #include <vulkan/vulkan.h>
 #include "core/features/ServiceLocator.h"
-#include "graphics/framework/vulkan/RenderDeviceVulkan.h"
+#include "graphics/framework/vulkan/renderers/RenderDeviceVulkan.h"
+#include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "logging/Logger.h"
 
 TextureManagerVulkan::TextureManagerVulkan(std::string serviceName)
@@ -16,11 +17,17 @@ TextureManagerVulkan::~TextureManagerVulkan()
 
 }
 
-int TextureManagerVulkan::init()
+int TextureManagerVulkan::init(WindowConfig config)
 {
+	Service::init(config);
+
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = static_cast<RenderDeviceVulkan*>(&device);
 	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+
+	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManager");
+	vulkanBufferManager = static_cast<BufferManagerVulkan*>(&bufferManager);
+
 	return 0;
 }
 
@@ -62,7 +69,7 @@ uint32_t TextureManagerVulkan::loadTexture(std::string_view path)
 	VkDeviceMemory stagingBufferMemory;
 	VkBuffer stagingBuffer;
 
-	renderDeviceVulkan->vulkanBufferManager.createBuffer(
+	vulkanBufferManager->createBuffer(
 		imageSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -148,7 +155,7 @@ void TextureManagerVulkan::createImage(
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = renderDeviceVulkan->vulkanBufferManager.findMemoryType(memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = vulkanBufferManager->findMemoryType(memRequirements.memoryTypeBits, properties);
 
 	if (vkAllocateMemory(renderDeviceVulkan->device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate image memory!");

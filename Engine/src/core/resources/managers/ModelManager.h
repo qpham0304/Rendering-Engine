@@ -14,7 +14,7 @@ public:
 	ModelManager();
 	~ModelManager();
 
-	virtual int init() override;
+	virtual int init(WindowConfig config) override;
 	virtual int onClose() override;
 	virtual void destroy(uint32_t id) override;
 	uint32_t loadModel(std::string_view path);

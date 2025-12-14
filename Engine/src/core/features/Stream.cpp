@@ -1,6 +1,6 @@
 #include "Stream.h"
 
-#include "../../src/core/features/EngineUtils.h"
+#include "core/features/EngineUtils.h"
 
 Stream::Stream(std::string_view m_path)
 {

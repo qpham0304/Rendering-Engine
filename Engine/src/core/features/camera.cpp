@@ -1,8 +1,8 @@
-#include "../../src/core/features/Camera.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include "../../src/window/Input.h"
-#include "../../src/window/AppWindow.h"
+#include "Camera.h"
+#include "window/Input.h"
+#include "window/AppWindow.h"
 
 Camera::Camera()
 {

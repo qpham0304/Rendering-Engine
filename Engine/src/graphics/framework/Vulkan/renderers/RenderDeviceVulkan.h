@@ -1,17 +1,13 @@
 #pragma once
 
-#include "graphics/RenderDevice.h"
-#include "core/VulkanDevice.h"
-#include "core/VulkanSwapChain.h"
-#include "core/VulkanPipeline.h"
-#include "core/VulkanCommandPool.h"
-#include "core/VulkanUtils.h"
-#include "resources/descriptors/VulkanDescriptorManager.h"
-#include "resources/buffers/VulkanBufferManager.h"
+#include "graphics/renderers/RenderDevice.h"
+#include "graphics/framework/vulkan/core/VulkanDevice.h"
+#include "graphics/framework/vulkan/core/VulkanSwapChain.h"
+#include "graphics/framework/vulkan/core/VulkanPipeline.h"
+#include "graphics/framework/vulkan/core/VulkanCommandPool.h"
+#include "graphics/framework/vulkan/core/VulkanUtils.h"
 
 class Logger;
-class PushConstantData;	// move this to client defined
-class TextureVulkan;
 
 class RenderDeviceVulkan : public RenderDevice
 {
@@ -20,31 +16,17 @@ public:
 	VulkanDevice device;
 	VulkanSwapChain swapchain;
 	VulkanPipeline pipeline;
-	VulkanBufferManager vulkanBufferManager;
 	VulkanCommandPool commandPool;
-	
-	TextureVulkan* texture{ nullptr };
 
-	TextureVulkan* depthTexture{ nullptr };
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
-
-
-	VkDescriptorSetLayout descriptorSetLayout;
-	VkDescriptorPool descriptorPool;
-	std::vector<VkDescriptorSet> descriptorSets;
-
-	VkDescriptorSetLayout imguiDescriptorSetLayout;
-	VkDescriptorPool imguiDescriptorPool;
-	VkDescriptorSet imguiTextureDescriptorSet; 
 
 
 public:
 	RenderDeviceVulkan();
 	virtual ~RenderDeviceVulkan() override;
 
-					
 	virtual int init(WindowConfig platform) override;
 	virtual int onClose() override;
 	virtual void onUpdate() override;
@@ -63,13 +45,6 @@ public:
 	virtual DeviceInfo getDeviceInfo() const override;
 	virtual PipelineInfo getPipelineInfo() const override;
 
-	void createDescriptorSetLayout();
-	void createDescriptorPool();
-	void createDescriptorSets();
-
-	//void createTextureImage();
-	//void createTextureImageView();
-	//void createTextureSampler();
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
@@ -86,9 +61,6 @@ public:
 		VkDeviceMemory& imageMemory
 	);
 	
-
-	void createTextureViewDescriptorSet();
-
 	VkFormat findSupportedFormat(
 		const std::vector<VkFormat>& candidates, 
 		VkImageTiling tiling, 
@@ -97,7 +69,6 @@ public:
 	VkFormat findDepthFormat();
 	bool hasStencilComponent(VkFormat format);
 
-	void setPushConstantRange(uint32_t range);
 	void setViewport();
 	void setScissor();
 	void waitIdle();
@@ -105,12 +76,11 @@ public:
 
 private:
 	Logger* m_logger{ nullptr };
-	uint32_t pushConstantRange = 0;
 	uint32_t currentFrame = 0;
 	std::atomic<uint16_t> m_ids;
 	uint16_t activeCommandPool = 0;
 	
-	private:
+private:
 	uint16_t _assignID();
 	void _cleanup();
 };

@@ -1,6 +1,6 @@
 #include "MeshOpenGL.h"
 #include<glad/glad.h>
-#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
 
 
 void MeshOpenGL::setup()

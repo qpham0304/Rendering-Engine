@@ -1,6 +1,6 @@
 #pragma once
 
-#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
 
 
 #include <memory>

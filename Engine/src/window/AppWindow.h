@@ -4,8 +4,8 @@
 #include <set>
 #include <string>
 #include "Input.h"
-#include "../../src/core/features/Configs.h"
-#include "../../src/services/Service.h"
+#include "core/features/Configs.h"
+#include "services/Service.h"
 
 class GLFWwindow;
 

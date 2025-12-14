@@ -9,9 +9,9 @@
 #include <assimp/postprocess.h>
 #include <assimp_glm_helpers.h>
 #include "MeshOpenGL.h"
-#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "graphics/framework/OpenGL/core/TextureOpenGL.h"
 
-#include "src/graphics/framework/OpenGL/core/TextureOpenGL.h"
 #include <string>
 #include <fstream>
 #include <sstream>

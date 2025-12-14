@@ -1,5 +1,5 @@
 #include "VulkanPipeline.h"
-#include "../RenderDeviceVulkan.h"
+#include "../renderers/RenderDeviceVulkan.h"
 
 VulkanPipeline::VulkanPipeline(VulkanDevice& deviceRef)
 	: device(deviceRef)
@@ -41,8 +41,8 @@ void VulkanPipeline::createGraphicsPipeline(
 	std::string vertPath = "assets/shaders/default.vert.spv";
 	std::string fragPath = "assets/shaders/default.frag.spv";
 	
-	auto vertShaderCode = readFile(vertPath);
-	auto fragShaderCode = readFile(fragPath);
+	auto vertShaderCode = VulkanUtils::readFile(vertPath);
+	auto fragShaderCode = VulkanUtils::readFile(fragPath);
 	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 

@@ -1,8 +1,8 @@
 #include "SceneManager.h"
-#include "src/graphics/utils/Utils.h"
-#include "src/animation/Animation.h"
-#include "src/core/features/Camera.h"
-#include "src/graphics/framework/OpenGL/core/ModelOpenGL.h"
+#include "graphics/utils/Utils.h"
+#include "animation/Animation.h"
+#include "core/features/Camera.h"
+#include "graphics/framework/OpenGL/core/ModelOpenGL.h"
 
 std::unordered_map<std::string, std::unique_ptr<ShaderOpenGL>> SceneManager::shaders = {};
 Camera* SceneManager::cameraController = nullptr;

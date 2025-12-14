@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../src/graphics/renderers/ImageBasedRenderer.h"
-#include "../src/graphics/renderers/SkyboxRenderer.h"
+#include "graphics/renderers/ImageBasedRenderer.h"
+#include "graphics/renderers/SkyboxRenderer.h"
 
 class Camera;
 

@@ -1,7 +1,7 @@
 #include "Entity.h"
 #include "../scene/SceneManager.h"
 #include "../components/MComponent.h"
-#include "src/graphics/framework/OpenGL/core/TextureOpenGL.h"   //TOO remove this dependency on camera creation
+#include "graphics/framework/OpenGL/core/TextureOpenGL.h"   //TOO remove this dependency on camera creation
 
 std::string ACTIVE_SCENE = "default";
 

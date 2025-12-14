@@ -1,13 +1,13 @@
 #include "ImGuiManager.h"
-#include "../../src/gui/GuiManager.h"
-#include "../../src/core/scene/SceneManager.h"
-#include "../../src/window/appwindow.h"
-#include "../../src/gui/framework/ImGui/theme/ImGuiThemes.h"
-#include "../../src/graphics/utils/Utils.h"
-#include "../../src/core/components/MComponent.h"
-#include "../../src/core/features/ServiceLocator.h"
-#include "../../src/graphics//RenderDevice.h"
-#include "../../src/core/features/Camera.h"
+#include "gui/GuiManager.h"
+#include "core/scene/SceneManager.h"
+#include "window/appwindow.h"
+#include "gui/framework/ImGui/theme/ImGuiThemes.h"
+#include "graphics/utils/Utils.h"
+#include "core/components/MComponent.h"
+#include "core/features/ServiceLocator.h"
+#include "graphics/renderers/RenderDevice.h"
+#include "core/features/Camera.h"
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {

@@ -12,21 +12,6 @@ TextureVulkan::~TextureVulkan()
 
 }
 
-void TextureVulkan::Bind()
-{
-
-}
-
-void TextureVulkan::Unbind()
-{
-
-}
-
-void TextureVulkan::Delete()
-{
-
-}
-
 void TextureVulkan::destroy(VkDevice device)
 {
 	vkDestroySampler(device, textureSampler, nullptr);

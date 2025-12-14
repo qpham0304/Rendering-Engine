@@ -2,12 +2,12 @@
 #include <windows.h>
 #include <shobjidl.h> 
 #include "Texture.h"
-#include "../../src/core/scene/SceneManager.h"
-#include "../../src/core/events/EventManager.h"
-#include "../../src/core/components/MComponent.h"
-#include "../../src/core/components/CameraComponent.h"
-#include "../../src/window/appwindow.h"
-#include "../../src/graphics/utils/Utils.h"
+#include "core/scene/SceneManager.h"
+#include "core/events/EventManager.h"
+#include "core/components/MComponent.h"
+#include "core/components/CameraComponent.h"
+#include "window/appwindow.h"
+#include "graphics/utils/Utils.h"
 
 static ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow
 | ImGuiTreeNodeFlags_OpenOnDoubleClick

@@ -1,9 +1,9 @@
 #include "ImGuiRightSidebarWidget.h"
 
-#include "../../src/core/scene/SceneManager.h"
-#include "../../src/core/layers/LayerManager.h"
-#include "../../src/core/components/MComponent.h"
-#include "../../src/core/components/CubeMapComponent.h"
+#include "core/scene/SceneManager.h"
+#include "core/layers/LayerManager.h"
+#include "core/components/MComponent.h"
+#include "core/components/CubeMapComponent.h"
 
 ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
     :   RightSidebarWidget(),

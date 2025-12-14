@@ -16,5 +16,8 @@ namespace VulkanUtils
     );
 
 
+	std::vector<char> readFile(const std::string& filename);
+
+    uint32_t numFrames();
 };
 

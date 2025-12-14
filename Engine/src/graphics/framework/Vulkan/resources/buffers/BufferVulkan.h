@@ -1,12 +1,12 @@
 #pragma once
 
-#include "src/graphics/renderers/Buffer.h"
-#include "src/graphics/framework/Vulkan/core/WrapperStructs.h"
+#include "graphics/renderers/Buffer.h"
+#include "graphics/framework/Vulkan/core/WrapperStructs.h"
 
 class BufferVulkan : public Buffer, protected VkWrap
 {
 public:
-    friend class VulkanBufferManager;
+    friend class BufferManagerVulkan;
 
     BufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory);
 

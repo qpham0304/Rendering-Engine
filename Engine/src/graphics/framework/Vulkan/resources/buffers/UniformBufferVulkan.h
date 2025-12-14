@@ -5,7 +5,7 @@
 class UniformBufferVulkan : public BufferVulkan
 {
 public:
-	friend class VulkanBufferManager;
+	friend class BufferManagerVulkan;
 
 	UniformBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory);
 

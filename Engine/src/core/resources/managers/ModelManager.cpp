@@ -22,8 +22,10 @@ ModelManager::~ModelManager()
 
 }
 
-int ModelManager::init()
+int ModelManager::init(WindowConfig config)
 {
+    Service::init(config);
+
     m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManager");
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");

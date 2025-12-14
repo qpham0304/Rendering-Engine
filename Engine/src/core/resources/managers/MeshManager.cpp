@@ -13,8 +13,10 @@ MeshManager::~MeshManager()
 {
 
 }
-int MeshManager::init()
+int MeshManager::init(WindowConfig config)
 {
+    Service::init(config);
+
     m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
     m_bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManager");
     if (!(m_logger && m_bufferManager)) {
@@ -62,11 +64,14 @@ const Mesh* MeshManager::getMesh(uint32_t id)
     return m_meshes[id].get();
 }
 
-
-const MeshManager::MeshData* MeshManager::getMeshData(uint32_t id)
+void MeshManager::bindMesh(uint32_t id)
 {
-    if (m_meshesData.find(id) == m_meshesData.end()) {
-        return nullptr;
+    try {
+        const MeshData& meshData = m_meshesData[id];
+        m_bufferManager->bind(meshData.vertexBufferID);
+        m_bufferManager->bind(meshData.indexBufferID);
     }
-    return &m_meshesData[id];
+    catch (const std::exception& e) {
+        m_logger->error("Failed to bind mesh ID {}: {}", id, e.what());
+    }
 }

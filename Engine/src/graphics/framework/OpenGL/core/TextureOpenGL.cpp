@@ -1,7 +1,7 @@
 #include"TextureOpenGL.h"
 #include <stb/stb_image.h>
 #include<glad/glad.h>
-#include "src/graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
 
 
 void TextureOpenGL::loadTexture(const char* path, bool flip)

@@ -2,11 +2,12 @@
 #include "window/platform/GLFW/AppWindowGLFW.h"
 #include "gui/framework/ImGui/ImGuiManager.h"
 #include "logging/framework/LoggerSpd.h"
-#include "graphics/framework/Vulkan/RenderDeviceVulkan.h"
-#include "graphics/framework/OpenGL/RenderDeviceOpenGL.h"
+#include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
+#include "graphics/framework/OpenGL/renderers/RenderDeviceOpenGL.h"
 #include "graphics/framework/Vulkan/renderers/RendererVulkan.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
-#include "graphics/framework/Vulkan/resources/buffers/VulkanBufferManager.h"
+#include "graphics/framework/Vulkan/resources/buffers/BufferManagerVulkan.h"
+#include "graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h"
 
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)
@@ -48,7 +49,12 @@ PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
 
      bufferManagerRegistry.Register(
          RenderPlatform::VULKAN,
-         RegisterConstructor<BufferManager, VulkanBufferManager>("BufferManagerVulkan")
+         RegisterConstructor<BufferManager, BufferManagerVulkan>("BufferManagerVulkan")
+     );
+
+    descriptorManagerRegistry.Register(
+         RenderPlatform::VULKAN,
+         RegisterConstructor<DescriptorManager, DescriptorManagerVulkan>("DescriptorManagerVulkan")
      );
     
 }
@@ -85,5 +91,10 @@ std::unique_ptr<TextureManager> PlatformFactory::createTextureManager(RenderPlat
 std::unique_ptr<BufferManager> PlatformFactory::createBufferManager(RenderPlatform platform)
 {
     return bufferManagerRegistry.Create(platform);
+}
+
+std::unique_ptr<DescriptorManager> PlatformFactory::createDescriptorManager(RenderPlatform platform)
+{
+    return descriptorManagerRegistry.Create(platform);
 }
 

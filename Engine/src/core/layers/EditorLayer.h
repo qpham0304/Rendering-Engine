@@ -1,9 +1,9 @@
 #pragma once
 
 #include <memory>
-#include "../../core/scene/SceneManager.h"
-#include "../../src/core/events/EventManager.h"
-#include "../../core/layers/Layer.h"
+#include "core/scene/SceneManager.h"
+#include "core/events/EventManager.h"
+#include "core/layers/Layer.h"
 class Camera;
 class GuiManager;
 

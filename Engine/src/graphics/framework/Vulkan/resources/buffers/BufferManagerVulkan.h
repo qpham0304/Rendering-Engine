@@ -9,19 +9,19 @@
 class BufferVulkan;
 class RenderDeviceVulkan;
 
-class VulkanBufferManager : public BufferManager
+class BufferManagerVulkan : public BufferManager
 {
 public:
-    std::vector<UniformBufferVulkan*> uniformbuffersList;
+    BufferManagerVulkan();
+    ~BufferManagerVulkan();
 
-public:
-    VulkanBufferManager();
-    ~VulkanBufferManager();
-
-    virtual int init() override;
+    virtual int init(WindowConfig config) override;
     virtual int onClose() override;
     virtual void destroy(uint32_t id) override;
-    void bind(uint32_t id);
+    virtual void bind(uint32_t id) override;
+    virtual uint32_t createVertexBuffer(const Vertex* vertices, int size) override;
+    virtual uint32_t createIndexBuffer(const uint16_t* indices, int size) override;
+
     BufferVulkan* getBuffer(uint32_t id);
 
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
@@ -35,24 +35,16 @@ public:
     );
 
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-    virtual uint32_t createVertexBuffer(const Vertex* vertices, int size) override;
-    virtual uint32_t createIndexBuffer(const uint16_t* indices, int size) override;
     
-    void createUniformBuffers(size_t bufferSize);
+    void createUniformBuffers(std::vector<UniformBufferVulkan*>& uniformBuffers, size_t bufferSize);
 
     uint32_t createUniformBuffer(VkBuffer& buffer, VkDeviceMemory& buffersMemory, size_t bufferSize);
 
-    template<typename T>
-    void updateUniformBuffer(uint32_t currentImage, T ubo) {
-        uniformbuffersList[currentImage]->updateUniformBuffer(ubo);
-    }
-
-
 private:
-    VulkanBufferManager(const VulkanBufferManager& other) = delete;
-    VulkanBufferManager& operator=(const VulkanBufferManager& other) = delete;
-    VulkanBufferManager(const VulkanBufferManager&& other) = delete;
-    VulkanBufferManager& operator=(const VulkanBufferManager&& other) = delete;
+    BufferManagerVulkan(const BufferManagerVulkan& other) = delete;
+    BufferManagerVulkan& operator=(const BufferManagerVulkan& other) = delete;
+    BufferManagerVulkan(const BufferManagerVulkan&& other) = delete;
+    BufferManagerVulkan& operator=(const BufferManagerVulkan&& other) = delete;
     
     const uint32_t& _assignID();
 

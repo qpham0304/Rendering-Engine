@@ -1,6 +1,6 @@
 #include "VulkanDevice.h"
-#include "../../src/core/features/ServiceLocator.h"
-#include "../../src/Logging/Logger.h"
+#include "core/features/ServiceLocator.h"
+#include "Logging/Logger.h"
 //#define GLFW_INCLUDE_VULKAN
 //#include <GLFW/glfw3.h>
 #include "../../../../window/AppWindow.h"
