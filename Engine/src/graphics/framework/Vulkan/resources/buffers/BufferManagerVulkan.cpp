@@ -7,12 +7,15 @@
 #include "core/features/ServiceLocator.h"
 #include "graphics/framework/vulkan/renderers/RenderDeviceVulkan.h"
 #include "graphics/framework/vulkan/core/VulkanSwapChain.h"
+#include "graphics/framework/vulkan/core/VulkanUtils.h"
 #include "IndexBufferVulkan.h"
 #include "VertexBufferVulkan.h"
 #include "UniformBufferVulkan.h"
+#include "StorageBufferVulkan.h"
 #include "BufferVulkan.h"
 
-BufferManagerVulkan::BufferManagerVulkan()
+BufferManagerVulkan::BufferManagerVulkan(std::string serviceName)
+	: BufferManager(serviceName)
 {
 }
 
@@ -152,7 +155,11 @@ uint32_t BufferManagerVulkan::createVertexBuffer(const Vertex* vertices, int siz
 	vkDestroyBuffer(renderDeviceVulkan->device, stagingBuffer, nullptr);
 	vkFreeMemory(renderDeviceVulkan->device, stagingBufferMemory, nullptr);
 
-	buffers[m_ids] = std::make_shared<VertexBufferVulkan>(m_ids ,vertexBuffer, vertexBufferMemory);
+	buffers[m_ids] = std::make_shared<VertexBufferVulkan>(
+		m_ids,
+		vertexBuffer,
+		vertexBufferMemory
+	);
 
 	return _assignID();
 }
@@ -197,8 +204,10 @@ uint32_t BufferManagerVulkan::createIndexBuffer(const uint16_t* indices, int siz
 	return _assignID();
 }
 
-void BufferManagerVulkan::createUniformBuffers(std::vector<UniformBufferVulkan*>& uniformBuffers, size_t bufferSize)
-{
+void BufferManagerVulkan::createUniformBuffers(
+	std::vector<UniformBufferVulkan*>& uniformBuffers,
+	size_t bufferSize
+){
 	VkBuffer uniformBuffer;
 	VkDeviceMemory uniformBufferMemory;
 
@@ -206,12 +215,15 @@ void BufferManagerVulkan::createUniformBuffers(std::vector<UniformBufferVulkan*>
 
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
 		uint32_t id = createUniformBuffer(uniformBuffer, uniformBufferMemory, bufferSize);
-		uniformBuffers[i] = (UniformBufferVulkan*)getBuffer(id);
+		uniformBuffers[i] = static_cast<UniformBufferVulkan*>(getBuffer(id));
 	}
 }
 
-uint32_t BufferManagerVulkan::createUniformBuffer(VkBuffer& buffer, VkDeviceMemory& buffersMemory, size_t bufferSize)
-{
+uint32_t BufferManagerVulkan::createUniformBuffer(
+	VkBuffer& buffer, 
+	VkDeviceMemory& buffersMemory, 
+	size_t bufferSize
+){
 	createBuffer(
 		bufferSize,
 		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -228,19 +240,72 @@ uint32_t BufferManagerVulkan::createUniformBuffer(VkBuffer& buffer, VkDeviceMemo
 	return _assignID();
 }
 
+void BufferManagerVulkan::createStorageBuffers(std::vector<StorageBufferVulkan*>& storageBuffers, size_t bufferSize)
+{
+	VkBuffer storageBuffer;
+	VkDeviceMemory storageBufferMemory;
+
+	storageBuffers.resize(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
+		uint32_t id = createStorageBuffer(storageBuffer, storageBufferMemory, bufferSize);
+		storageBuffers[i] = static_cast<StorageBufferVulkan*>(getBuffer(id));
+	}
+}
+
+uint32_t BufferManagerVulkan::createStorageBuffer(VkBuffer& buffer, VkDeviceMemory& buffersMemory, size_t bufferSize)
+{
+	createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		buffer,
+		buffersMemory
+    );
+
+    buffers[m_ids] = std::make_shared<StorageBufferVulkan>(m_ids, buffer, buffersMemory, bufferSize);
+	StorageBufferVulkan* ref = static_cast<StorageBufferVulkan*>(buffers[m_ids].get());
+
+	vkMapMemory(renderDeviceVulkan->device, buffersMemory, 0, bufferSize, 0, &ref->bufferMapped);
+
+	return _assignID();
+}
 
 void BufferManagerVulkan::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
 	VkCommandBuffer commandBuffer = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 
 	VkBufferCopy copyRegion{};
-	copyRegion.srcOffset = 0; // Optional
-	copyRegion.dstOffset = 0; // Optional
+	copyRegion.srcOffset = 0;
+	copyRegion.dstOffset = 0;
 	copyRegion.size = size;
 	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
 	renderDeviceVulkan->commandPool.endSingleTimeCommand(commandBuffer);
 }
+
+void BufferManagerVulkan::copyBuffer(
+    VkBuffer srcBuffer,
+    VkBuffer dstBuffer,
+    VkDeviceSize size,
+    VkDeviceSize srcOffset,
+    VkDeviceSize dstOffset
+) {
+    VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+
+    VkBufferCopy copyRegion{};
+    copyRegion.srcOffset = srcOffset;
+    copyRegion.dstOffset = dstOffset;
+    copyRegion.size = size;
+
+    vkCmdCopyBuffer(cmd, srcBuffer, dstBuffer, 1, &copyRegion);
+
+	// need to synchonize better if the ssbo is large
+	// current solution wait and submit queue which stall the gpu
+	// pipeline barrier?
+    renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+}
+
 
 const uint32_t& BufferManagerVulkan::_assignID()
 {

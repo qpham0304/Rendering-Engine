@@ -21,12 +21,6 @@ public:
 	std::unordered_map<std::string, std::shared_ptr<ModelOpenGL>> models;
 	std::unordered_map<std::string, std::shared_ptr<Animation>> animations;
 
-	TextureOpenGL defaultAlbedo;
-	TextureOpenGL defaultNormal;
-	TextureOpenGL defaultMetallic;
-	TextureOpenGL defaultRoughness;
-	TextureOpenGL defaultAO;
-
 	static Camera* cameraController;
 
 

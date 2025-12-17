@@ -11,6 +11,7 @@
 #include <core/resources/managers/MeshManager.h>
 #include <core/resources/managers/ModelManager.h>
 #include <core/resources/managers/DescriptorManager.h>
+#include <core/resources/managers/MaterialManager.h>
 #include <graphics/renderers/Renderer.h>
 #include <services/Service.h>
 
@@ -47,6 +48,7 @@ private:
     std::unique_ptr<MeshManager> meshManager;
     std::unique_ptr<ModelManager> modelManager;
     std::unique_ptr<DescriptorManager> descriptorManager;
+    std::unique_ptr<MaterialManager> materialManager;
     std::unique_ptr<Renderer> renderer;
 
 private:

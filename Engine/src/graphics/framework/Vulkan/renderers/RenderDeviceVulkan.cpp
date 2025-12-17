@@ -69,17 +69,17 @@ void RenderDeviceVulkan::endFrame()
 	currentFrame = (currentFrame + 1) % VulkanSwapChain::MAX_FRAMES_IN_FLIGHT;
 }
 
-void RenderDeviceVulkan::draw(uint32_t numIndicies, uint32_t numInstances)
+void RenderDeviceVulkan::draw(uint32_t numIndicies, uint32_t numInstances, uint32_t offset)
 {
 	if (numInstances < 1) {
 		return;
 	}
 
 	if (numInstances == 1) {
-		commandPool.drawIndexed(numIndicies);
+		commandPool.drawIndexed(numIndicies, offset);
 	}
 	else {
-		commandPool.drawInstanced(numIndicies, numInstances);
+		commandPool.drawInstanced(numIndicies, numInstances, offset);
 	}
 }
 

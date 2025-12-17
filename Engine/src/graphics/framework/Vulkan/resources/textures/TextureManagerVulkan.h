@@ -10,8 +10,7 @@ class BufferManagerVulkan;
 class TextureManagerVulkan : public TextureManager
 {
 public:
-	// ideally service name should be "TextureManagerVulkan" but then client need to check for platform specific
-	TextureManagerVulkan(std::string serviceName = "TextureManager");	
+	TextureManagerVulkan(std::string serviceName = "TextureManagerVulkan");	
 	~TextureManagerVulkan();
 
 	virtual int init(WindowConfig config) override;

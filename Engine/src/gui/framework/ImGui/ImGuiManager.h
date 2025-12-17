@@ -62,8 +62,8 @@ private:
 
 	ImGuizmo::OPERATION GuizmoType = ImGuizmo::OPERATION::TRANSLATE;
 	
-	ImGuiLeftSidebarWidget leftSidebar;
-	ImGuiRightSidebarWidget rightSidebar;
-	ImGuiConsoleLogWidget console;
-	ImGuiMenuWidget menu;
+	// ImGuiLeftSidebarWidget leftSidebar;
+	// ImGuiRightSidebarWidget rightSidebar;
+	// ImGuiConsoleLogWidget console;
+	// ImGuiMenuWidget menu;
 };

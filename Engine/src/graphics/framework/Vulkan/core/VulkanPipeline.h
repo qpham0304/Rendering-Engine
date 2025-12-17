@@ -21,14 +21,6 @@ struct PipelineConfigInfo {
 class VulkanPipeline
 {
 public:
-	struct Pipeline {
-		VkPipelineLayout pipelineLayout;
-		VkPipeline pipeline;
-	};
-
-	std::unordered_map<uint32_t, Pipeline> pipelines;
-
-
 	VkPipelineLayout pipelineLayout;
 	VkPipeline pipeline;
 
@@ -41,7 +33,7 @@ public:
 	void bind(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint);
 
 	void createGraphicsPipeline(
-		VkDescriptorSetLayout descriptorSetLayout,
+		const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
 		VkRenderPass renderPass,
 		size_t pushConstantSize = 0
 	);

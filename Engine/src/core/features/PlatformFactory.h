@@ -17,6 +17,7 @@
 #include "core/resources/managers/TextureManager.h"
 #include "core/resources/managers/BufferManager.h"
 #include "core/resources/managers/DescriptorManager.h"
+#include "core/resources/managers/MaterialManager.h"
 
 // one single file to register and create all subsystems and services
 // might separate into files per subsystem but good enough for now
@@ -61,6 +62,7 @@ public:
 	std::unique_ptr<TextureManager> createTextureManager(RenderPlatform platform);
 	std::unique_ptr<BufferManager> createBufferManager(RenderPlatform platform);
 	std::unique_ptr<DescriptorManager> createDescriptorManager(RenderPlatform platform);
+	std::unique_ptr<MaterialManager> createMaterialManager(RenderPlatform platform);
 
 
 private:
@@ -86,4 +88,5 @@ private:
 	ConstructorRegistry<TextureManager, RenderPlatform> textureManagerRegistry;
 	ConstructorRegistry<BufferManager, RenderPlatform> bufferManagerRegistry;
 	ConstructorRegistry<DescriptorManager, RenderPlatform> descriptorManagerRegistry;
+	ConstructorRegistry<MaterialManager, RenderPlatform> materialManagerRegistry;
 };

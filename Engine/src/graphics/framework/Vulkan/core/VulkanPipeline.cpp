@@ -26,12 +26,11 @@ void VulkanPipeline::destroy()
 void VulkanPipeline::bind(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint)
 {
 	vkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
-
 }
 
 
 void VulkanPipeline::createGraphicsPipeline(
-	VkDescriptorSetLayout descriptorSetLayout, 
+	const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, 
 	VkRenderPass renderPass,
 	size_t pushConstantSize
 ) {
@@ -97,7 +96,8 @@ void VulkanPipeline::createGraphicsPipeline(
 	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | 
+		VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	colorBlendAttachment.blendEnable = VK_TRUE;
 	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -105,8 +105,8 @@ void VulkanPipeline::createGraphicsPipeline(
 	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-		VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | 
+		VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
 	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -147,8 +147,8 @@ void VulkanPipeline::createGraphicsPipeline(
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+	pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size();
+	pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
 	pipelineLayoutInfo.pushConstantRangeCount = 1;
 	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 

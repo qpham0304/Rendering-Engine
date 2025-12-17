@@ -364,7 +364,9 @@ FodyWeavers.xsd
 
 Models
 Editor/assets
-Sandbox/assets
+Sandbox/assets/Models
+Sandbox/assets/Textures
+*.spv
 build
 bin
 out

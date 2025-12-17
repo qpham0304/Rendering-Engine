@@ -84,8 +84,12 @@ int ImGuiManager::init(WindowConfig config)
 	style.TabRounding = 8;
 	style.GrabMinSize = 15;
 
-	std::unique_ptr<ImGuiMenuWidget> menu = std::make_unique<ImGuiMenuWidget>();
-	widgets.push_back(std::move(menu));
+
+	widgets.push_back(std::make_unique<ImGuiMenuWidget>());
+	widgets.push_back(std::make_unique<ImGuiLeftSidebarWidget>());
+	widgets.push_back(std::make_unique<ImGuiRightSidebarWidget>());
+	widgets.push_back(std::make_unique<ImGuiConsoleLogWidget>());
+	widgets.push_back(std::make_unique<ImGuiMenuWidget>());
 	useDarkTheme();
 
 	// Gamma correct swapchain current use SRGB output
@@ -256,10 +260,10 @@ void ImGuiManager::render(void* handle)
 	for (const auto& widget : widgets) {
 		widget->render();
 	}
-	menu.render();
-	leftSidebar.render();
-	rightSidebar.render();
-	console.render();
+	// menu.render();
+	// leftSidebar.render();
+	// rightSidebar.render();
+	// console.render();
 	//debugWindow();
 	//applicationWindow();
 

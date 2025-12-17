@@ -6,6 +6,7 @@
 #include "core/features/ServiceLocator.h"
 #include "core/features/Timer.h"
 #include "core/features/Mesh.h"
+#include "core/features/Material.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -27,9 +28,11 @@ int ModelManager::init(WindowConfig config)
     Service::init(config);
 
     m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
-    textureManager = &ServiceLocator::GetService<TextureManager>("TextureManager");
+    textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-    if (!(m_logger && textureManager && meshManager)) {
+    materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
+    
+    if (!(m_logger && textureManager && meshManager && materialManager)) {
         return -1;
     }
     return 0;
@@ -53,6 +56,15 @@ void ModelManager::destroy(uint32_t id)
     m_models.erase(id);
 }
 
+std::vector<uint32_t> ModelManager::listIDs() const
+{
+    std::vector<uint32_t> list;
+    for(const auto& [id, texture] : m_models) {
+        list.emplace_back(id);
+    }
+    return list;
+}
+
 uint32_t ModelManager::loadModel(std::string_view path)
 {
     _loadModel(path);
@@ -60,12 +72,12 @@ uint32_t ModelManager::loadModel(std::string_view path)
     return _assignID();
 }
 
-Model* ModelManager::getModel(uint32_t id)
+const Model* ModelManager::getModel(uint32_t id) const
 {
     if (m_models.find(id) == m_models.end()) {
         return nullptr;
     }
-    return m_models[id].get();
+    return m_models.at(id).get();
 }
 
 void ModelManager::_loadModel(std::string_view path) 
@@ -122,7 +134,6 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
 {
     std::vector<Vertex> vertices;
     std::vector<uint16_t> indices;
-    std::vector<uint8_t> textures;
 
     // process vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
@@ -135,9 +146,11 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         vertex.normal = AssimpGLMHelpers::GetGLMVec(mesh->mNormals[i]);
 
         // does the mesh contain texture coordinates?
-        // a vertex can contain up to 8 different texture coordinates. We thus make the assumption that we won't 
-        // use models where a vertex can have multiple texture coordinates so we always take the first set (0).
-        if (mesh->mTextureCoords[0]){
+        // a vertex can contain up to 8 different texture coordinates.
+        // We thus make the assumption that we won't 
+        // use models where a vertex can have multiple texture coordinates
+        // so we always take the first set (0).
+        if (mesh->mTextureCoords[0]) {
             glm::vec2 vec;
             vec.x = mesh->mTextureCoords[0][i].x;
             vec.y = mesh->mTextureCoords[0][i].y;
@@ -167,83 +180,56 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     }
 
     // process material
-    if (mesh->mMaterialIndex >= 0)
-    {
+    MaterialDesc materialDesc{};
+
+    if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-        std::vector<uint8_t> albedoMaps;
-        std::vector<uint8_t> normalMaps;
-        std::vector<uint8_t> metalnessMaps;
-        std::vector<uint8_t> roughnessMaps;
-        std::vector<uint8_t> aoMaps;
-        std::vector<uint8_t> emissiveMaps;
+        
+        materialDesc.albedoIDs = _loadMaterial(material, aiTextureType_BASE_COLOR, "albedoMap", directory);
+        materialDesc.normalIDs = _loadMaterial(material, aiTextureType_NORMALS, "normalMap", directory);
+        materialDesc.metallicIDs = _loadMaterial(material, aiTextureType_METALNESS, "metallicMap", directory);
+        materialDesc.roughnessIDs = _loadMaterial(material, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", directory);
+        materialDesc.aoIDs = _loadMaterial(material, aiTextureType_LIGHTMAP, "aoMap", directory);
+        materialDesc.emissiveIDs = _loadMaterial(material, aiTextureType_EMISSIVE, "emissiveMap", directory);
 
-        //TODO: find a better way to support materials PBR or not might need different descriptors
-        std::string extension = ".gltf";    
-        if (extension == ".gltf") {
-           albedoMaps = _loadMaterialTextures(material, aiTextureType_BASE_COLOR, "albedoMap", directory);
-           textures.insert(textures.end(), albedoMaps.begin(), albedoMaps.end());
-
-           normalMaps = _loadMaterialTextures(material, aiTextureType_NORMALS, "normalMap", directory);
-           textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-
-           metalnessMaps = _loadMaterialTextures(material, aiTextureType_METALNESS, "metallicMap", directory);
-           textures.insert(textures.end(), metalnessMaps.begin(), metalnessMaps.end());
-
-           roughnessMaps = _loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", directory);
-           textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
-
-           aoMaps = _loadMaterialTextures(material, aiTextureType_LIGHTMAP, "aoMap", directory);
-           textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
-
-           emissiveMaps = _loadMaterialTextures(material, aiTextureType_EMISSIVE, "emissiveMap", directory);
-           textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
+        // try find other non compatible materials, if still fail...
+        // give up and let material manager use fallback materials
+        if(materialDesc.metallicIDs.empty()) {  //TODO: need adjustment as this is not the correct pbr fallback
+            materialDesc.metallicIDs = _loadMaterial(material, aiTextureType_SPECULAR, "metallicMap", directory);
         }
-
-        // try to set up as much materials as possible (might look wrong in PBR shading)
-        else {
-            albedoMaps = _loadMaterialTextures(material, aiTextureType_DIFFUSE, "albedoMap", directory);
-            textures.insert(textures.end(), albedoMaps.begin(), albedoMaps.end());
-
-            normalMaps = _loadMaterialTextures(material, aiTextureType_NORMALS, "normalMap", directory);
-            textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-
-            roughnessMaps = _loadMaterialTextures(material, aiTextureType_SPECULAR, "metallicMap", directory);
-            textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
-
-            roughnessMaps = _loadMaterialTextures(material, aiTextureType_SHININESS, "roughnessMap", directory);
-            textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
-
-            aoMaps = _loadMaterialTextures(material, aiTextureType_AMBIENT, "aoMap", directory);
-            textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
-
-            emissiveMaps = _loadMaterialTextures(material, aiTextureType_EMISSIVE, "emissiveMap", directory);
-            textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
+        if(materialDesc.albedoIDs.empty()){
+            materialDesc.albedoIDs = _loadMaterial(material, aiTextureType_DIFFUSE, "albedoMap", directory);
+        }
+        if(materialDesc.roughnessIDs.empty()) {
+            materialDesc.roughnessIDs = _loadMaterial(material, aiTextureType_SHININESS, "roughnessMap", directory);
+        }
+        if(materialDesc.aoIDs.empty()) {
+            materialDesc.aoIDs = _loadMaterial(material, aiTextureType_AMBIENT, "aoMap", directory);
         }
     }
 
     //ExtractBoneWeightForVertices(vertices, mesh, scene);
-
+    
     Mesh m;
     m.vertices = vertices;
     m.indices = indices;
-    m.materialIDs = textures;
+    m.materialID = materialManager->createMaterial(materialDesc);
     
     return meshManager->loadMesh(m);
 }
 
-std::vector<uint8_t> ModelManager::_loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName, std::string_view directory)
+std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, aiTextureType type, std::string typeName, std::string_view directory)
 {
-    std::vector<uint8_t> textureIDs;
+    std::vector<uint32_t> textureIDs;
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
     {
         aiString str;
         mat->GetTexture(type, i, &str);
 
         std::string path = std::string(directory) + '/' + std::string(str.C_Str());
-        uint8_t textureID = textureManager->loadTexture(path.data());
+        uint32_t textureID = textureManager->loadTexture(path.data());
         textureIDs.push_back(textureID);
     }
-
 
     return textureIDs;
 }

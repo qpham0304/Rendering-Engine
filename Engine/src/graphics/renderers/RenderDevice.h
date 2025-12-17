@@ -42,7 +42,7 @@ public:
 	virtual void beginFrame() = 0;
 	virtual void endFrame() = 0;
 	virtual void render() = 0;
-	virtual void draw(uint32_t indicies = 0, uint32_t numInstances = 0) = 0;
+	virtual void draw(uint32_t numIndicies = 0, uint32_t numInstances = 1, uint32_t offset = 0) = 0;
 
 	virtual void* getNativeInstance() = 0;
 	virtual void* getNativeDevice() = 0;

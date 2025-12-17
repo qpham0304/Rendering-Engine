@@ -13,6 +13,13 @@ public:
 	virtual int init(WindowConfig config) = 0;
 	virtual int onClose() = 0;
 	virtual void destroy(uint32_t id) = 0;
+	virtual std::vector<uint32_t> listIDs() const override {
+		std::vector<uint32_t> list;
+		for(const auto& [id, texture] : m_textures) {
+			list.emplace_back(id);
+		}
+		return list;
+	}
 	virtual uint32_t loadTexture(std::string_view path) = 0;
 	virtual uint32_t createDepthTexture() = 0;
 	virtual Texture* getTexture(uint32_t id) {

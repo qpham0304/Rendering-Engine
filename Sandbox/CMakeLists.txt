@@ -10,6 +10,12 @@ file(GLOB_RECURSE SANDBOX_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
 )
 
+file(GLOB_RECURSE SHADER_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.vert
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.frag
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.comp
+)
+
 add_executable(${PROJECT_NAME} ${SANDBOX_SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE MyGraphicsEngine)

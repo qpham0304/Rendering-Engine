@@ -16,6 +16,7 @@ class BufferManager;
 class RenderDeviceVulkan;
 class TextureVulkan;
 class DescriptorManagerVulkan;
+class MaterialManager;
 
 class RendererVulkan : public Renderer, protected VkWrap
 {
@@ -34,8 +35,12 @@ private:
 		glm::mat4 proj;
 	};
 
+	struct StorageBufferObject {
+		glm::mat4 model;
+	};
+
 public:
-	RendererVulkan();
+	RendererVulkan(std::string serviceName = "RendererVulkan");
 
 	virtual ~RendererVulkan() override;
 
@@ -52,8 +57,6 @@ public:
 	void endRecording(void* cmdBuffer);
 
 public:
-	//TODO: does not have factory to register yet so make public so client can access it for now
-    BufferManager* bufferManager { nullptr };
 	
 private:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
@@ -62,36 +65,36 @@ private:
 	void _createDescriptorSetLayout();
 	void _createDescriptorPool();
 	void _createDescriptorSets();
-	void _createTextureViewDescriptorSet();
+	//void _createSSBO();
 
 private:
+	const int numInstances = 1;
 	bool showGui{ true };
+	PushConstantData pushConstantData{};
+
 	Logger* m_logger{ nullptr };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
-	TextureManager* textureManager{ nullptr };
 	MeshManager* meshManager{ nullptr };
 	ModelManager* modelManager{ nullptr };
 	GuiManager* guiManager{ nullptr };
-	TextureVulkan* texture{ nullptr };
-
-	PushConstantData pushConstantData{};
-	uint32_t modelID;
-
-    std::vector<UniformBufferVulkan*> uniformbuffersList;
-
-	VkDescriptorSetLayout descriptorSetLayout;
-	uint32_t layoutID;
-	VkDescriptorPool descriptorPool;
-	uint32_t poolID;
-	std::vector<VkDescriptorSet> descriptorSets;
-	uint32_t setsID;
-
-	VkDescriptorSetLayout imguiDescriptorSetLayout;
-	VkDescriptorPool imguiDescriptorPool;
-	VkDescriptorSet imguiTextureDescriptorSet;
-
+	TextureManager* textureManager{ nullptr };
+	MaterialManager* materialManager{ nullptr };
+    BufferManager* bufferManager{ nullptr };
 	BufferManagerVulkan* bufferManagerVulkan{ nullptr };
 	DescriptorManagerVulkan* descriptorManagerVulkan{ nullptr };
 
+	std::vector<UniformBufferVulkan*> uniformbuffersList;
+	std::vector<StorageBufferVulkan*> storagebuffersList;
+	std::vector<StorageBufferObject> instanceData;
+
+	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorPool descriptorPool;
+	std::vector<VkDescriptorSet> descriptorSets;
+	uint32_t layoutID;
+	uint32_t poolID;
+	uint32_t setsID;
+
+
+	uint32_t storageBufferID;
 };
 

@@ -58,15 +58,14 @@ void VulkanCommandPool::draw(uint32_t verticesCount)
 	vkCmdDraw(currentBuffer(), static_cast<uint32_t>(verticesCount), 1, 0, 0);
 }
 
-void VulkanCommandPool::drawIndexed(uint32_t indexCount)
+void VulkanCommandPool::drawIndexed(uint32_t indexCount, uint32_t firstInstance)
 {
-	vkCmdDrawIndexed(currentBuffer(), static_cast<uint32_t>(indexCount), 1, 0, 0, 0);
+	vkCmdDrawIndexed(currentBuffer(), indexCount, 1, 0, 0, firstInstance);
 }
 
-void VulkanCommandPool::drawInstanced(uint32_t indexCount, uint32_t instanceCount)
+void VulkanCommandPool::drawInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t firstInstance)
 {
-	Logger& logger = ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
-	logger.warn("Draw Instance is not supported yet");
+	vkCmdDrawIndexed(currentBuffer(), indexCount, instanceCount, 0, 0, firstInstance);
 }
 
 VkCommandBuffer VulkanCommandPool::currentBuffer()

@@ -17,7 +17,7 @@ public:
 	virtual void beginFrame() override;
 	virtual void render() override;
 	virtual void endFrame() override;
-	virtual void draw(uint32_t indicies = 0, uint32_t numInstances = 0) override;
+	virtual void draw(uint32_t numIndicies = 0, uint32_t numInstances = 1, uint32_t offset = 0) override;
 
 
 	virtual void* getNativeInstance() override { return nullptr; };

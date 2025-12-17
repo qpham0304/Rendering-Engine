@@ -40,6 +40,7 @@ void Sandbox::init(WindowConfig config)
 	textureManager = platformFactory.createTextureManager(windowConfig.renderPlatform);
 	bufferManager = platformFactory.createBufferManager(windowConfig.renderPlatform);
 	descriptorManager = platformFactory.createDescriptorManager(windowConfig.renderPlatform);
+	materialManager = platformFactory.createMaterialManager(windowConfig.renderPlatform);
 
 	meshManager = std::make_unique<MeshManager>();
 	modelManager = std::make_unique<ModelManager>();
@@ -64,11 +65,12 @@ void Sandbox::init(WindowConfig config)
 	services.push_back(renderDevice.get());
 	services.push_back(bufferManager.get());
 	services.push_back(descriptorManager.get());
-	services.push_back(renderer.get());
-	services.push_back(guiManager.get());
 	services.push_back(textureManager.get());
+	services.push_back(materialManager.get());
+	services.push_back(renderer.get());
 	services.push_back(meshManager.get());
 	services.push_back(modelManager.get());
+	services.push_back(guiManager.get());
 }
 
 void Sandbox::start()
@@ -76,35 +78,39 @@ void Sandbox::start()
 	for (Service*& service : services) {
 		service->init(windowConfig);
 	}
-	// renderer->addModel("assets/models/aru/aru.gltf");
-	renderer->addModel("assets/models/cube/cube-notex.gltf");
+	renderer->addModel("assets/models/aru/aru.gltf");
+	//renderer->addModel("assets/models/DamagedHelmet/gltf/DamagedHelmet.gltf");
+	//renderer->addModel("assets/models/sponza/sponza.obj");
+	//renderer->addModel("assets/models/cube/cube-notex.gltf");
 
-	camera.init(AppWindow::getWidth(), AppWindow::getHeight(),
-		glm::vec3(2.0f, 2.0f, 2.0f),
-		glm::normalize(glm::vec3(0.0f, 0.0f, 0.0f) - glm::vec3(2.0f, 2.0f, 2.0f))
+
+	camera.init(
+		AppWindow::getWidth(), 
+		AppWindow::getHeight(),
+		glm::vec3(5.0, 0.0, 0.0),
+		glm::normalize(glm::vec3(-5.0, -0.0, -0.0))
 	);
 
 
 	EventManager::getInstance().subscribe(EventType::WindowResize, [this](Event& event) {
 		WindowResizeEvent& windowResizeEvent = static_cast<WindowResizeEvent&>(event);
 		camera.updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
-		});
+	});
 
 	EventManager& eventManager = EventManager::getInstance();
 	eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
 		camera.scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
-		});
+	});
 
 	eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 		camera.processInput();
-		});
-
+	});
 
 	EventManager::getInstance().subscribe(EventType::WindowClose, [this](Event& event) {
 		isRunning = false;
-		});
+	});
 
 	//editorLayer->init(guiManager.get());
 }
@@ -114,6 +120,7 @@ void Sandbox::run() {
 	//pushLayer(editorLayer);
 
 	while (isRunning) {
+		Timer("Render loop time", true);
 		appWindow->onUpdate();
 		float dt = appWindow->getTime();
 		eventManager.onUpdate();
@@ -130,6 +137,7 @@ void Sandbox::run() {
 void Sandbox::end()
 {
 	renderDevice->onClose();
+	bufferManager->onClose();
 	renderer->onClose();
 	guiManager->onClose();
 	textureManager->onClose();

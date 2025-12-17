@@ -18,7 +18,7 @@ int MeshManager::init(WindowConfig config)
     Service::init(config);
 
     m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
-    m_bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManager");
+    m_bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
     if (!(m_logger && m_bufferManager)) {
         return - 1;
     }
@@ -40,28 +40,39 @@ void MeshManager::destroy(uint32_t id)
 
 }
 
-
+std::vector<uint32_t> MeshManager::listIDs() const
+{
+    std::vector<uint32_t> list;
+    for(const auto& [id, texture] : m_meshes) {
+        list.emplace_back(id);
+    }
+    return list;
+}
 
 uint32_t MeshManager::loadMesh(const Mesh& mesh)
 {
-    m_meshes[m_ids] = std::make_shared<Mesh>(mesh);
+    m_meshes[m_ids] = std::make_shared<Mesh>(std::move(mesh));
     
     MeshData meshData{};
-    meshData.vertexBufferID = m_bufferManager->createVertexBuffer(m_meshes[m_ids]->vertices.data(), m_meshes[m_ids]->vertices.size());
-    meshData.indexBufferID = m_bufferManager->createIndexBuffer(m_meshes[m_ids]->indices.data(), m_meshes[m_ids]->indices.size());
+    meshData.vertexBufferID = m_bufferManager->createVertexBuffer(
+        m_meshes[m_ids]->vertices.data(), m_meshes[m_ids]->vertices.size()
+    );
+    meshData.indexBufferID = m_bufferManager->createIndexBuffer(
+        m_meshes[m_ids]->indices.data(), m_meshes[m_ids]->indices.size()
+    );
     
-    m_meshesData[m_ids] = meshData;
+    m_meshesData[m_ids] = std::move(meshData);
 
     return _assignID();
 }
 
 
-const Mesh* MeshManager::getMesh(uint32_t id)
+const Mesh* MeshManager::getMesh(uint32_t id) const
 {
     if (m_meshes.find(id) == m_meshes.end()) {
         return nullptr;
     }
-    return m_meshes[id].get();
+    return m_meshes.at(id).get();
 }
 
 void MeshManager::bindMesh(uint32_t id)

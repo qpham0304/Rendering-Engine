@@ -14,12 +14,12 @@ public:
 	virtual void bind(void* commandBuffer) override;
 
 	template<typename T>
-	void updateUniformBuffer(T ubo) {
+	void update(T ubo) {
 		memcpy(uniformBufferMapped, &ubo, sizeof(T));
 	}
 
 private:
-	void* uniformBufferMapped;
+	void* uniformBufferMapped;	// mapped with bufferManager's gpu buffer
 
 };
 

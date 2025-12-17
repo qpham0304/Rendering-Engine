@@ -18,8 +18,8 @@ public:
     void endSingleTimeCommand(VkCommandBuffer commandBuffer);
 
     void draw(uint32_t verticesCount);
-    void drawIndexed(uint32_t indexCount);
-    void drawInstanced(uint32_t indexCount, uint32_t instanceCount);
+    void drawIndexed(uint32_t indexCount, uint32_t firstInstance = 0);
+    void drawInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t firstInstance = 0);
     VkCommandBuffer currentBuffer();
 
 private:

@@ -8,6 +8,7 @@
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
 #include "graphics/framework/Vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h"
+#include "graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h"
 
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)
@@ -47,15 +48,20 @@ PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
         RegisterConstructor<TextureManager, TextureManagerVulkan>("TextureManagerVulkan")
     );
 
-     bufferManagerRegistry.Register(
-         RenderPlatform::VULKAN,
-         RegisterConstructor<BufferManager, BufferManagerVulkan>("BufferManagerVulkan")
-     );
+    bufferManagerRegistry.Register(
+        RenderPlatform::VULKAN,
+        RegisterConstructor<BufferManager, BufferManagerVulkan>("BufferManagerVulkan")
+    );
 
     descriptorManagerRegistry.Register(
-         RenderPlatform::VULKAN,
-         RegisterConstructor<DescriptorManager, DescriptorManagerVulkan>("DescriptorManagerVulkan")
-     );
+        RenderPlatform::VULKAN,
+        RegisterConstructor<DescriptorManager, DescriptorManagerVulkan>("DescriptorManagerVulkan")
+    );
+
+    materialManagerRegistry.Register(
+        RenderPlatform::VULKAN,
+        RegisterConstructor<MaterialManager, MaterialManagerVulkan>("MaterialManagerVulkan")
+    );
     
 }
 
@@ -96,5 +102,10 @@ std::unique_ptr<BufferManager> PlatformFactory::createBufferManager(RenderPlatfo
 std::unique_ptr<DescriptorManager> PlatformFactory::createDescriptorManager(RenderPlatform platform)
 {
     return descriptorManagerRegistry.Create(platform);
+}
+
+std::unique_ptr<MaterialManager> PlatformFactory::createMaterialManager(RenderPlatform platform)
+{
+    return materialManagerRegistry.Create(platform);
 }
 

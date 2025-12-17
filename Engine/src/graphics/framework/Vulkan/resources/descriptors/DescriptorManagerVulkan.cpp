@@ -54,9 +54,31 @@ void DescriptorManagerVulkan::destroy(uint32_t)
 
 }
 
-void DescriptorManagerVulkan::bind(uint32_t)
+std::vector<uint32_t> DescriptorManagerVulkan::listIDs() const
 {
+	std::vector<uint32_t> list;
+	for (const auto& [id, descriptorSet] : descriptorSets) {
+		list.emplace_back(id);
+	}
+	return list;
+}
 
+std::vector<uint32_t> DescriptorManagerVulkan::listLayoutIDs() const
+{
+	std::vector<uint32_t> list;
+	for (const auto& [id, descriptorSetLayout] : descriptorSetLayouts) {
+		list.emplace_back(id);
+	}
+	return list;
+}
+
+std::vector<uint32_t> DescriptorManagerVulkan::listPoolIDs() const
+{
+	std::vector<uint32_t> list;
+	for (const auto& [id, descriptorPool] : descriptorPools) {
+		list.emplace_back(id);
+	}
+	return list;
 }
 
 uint32_t DescriptorManagerVulkan::createLayout(std::vector<VkDescriptorSetLayoutBinding> bindings)
@@ -65,6 +87,7 @@ uint32_t DescriptorManagerVulkan::createLayout(std::vector<VkDescriptorSetLayout
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 	layoutInfo.pBindings = bindings.data();
+	//layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
 
 	descriptorSetLayouts[m_ids] = VkDescriptorSetLayout();
 
@@ -104,19 +127,28 @@ uint32_t DescriptorManagerVulkan::createSets(uint32_t layoutID, uint32_t poolID,
 
 	descriptorSets[m_ids] = std::vector<VkDescriptorSet>(setsCount);
 
-	if (vkAllocateDescriptorSets(renderDeviceVulkan->device, &allocInfo, descriptorSets[m_ids].data()) != VK_SUCCESS) {
+	VkResult result = vkAllocateDescriptorSets(renderDeviceVulkan->device, &allocInfo, descriptorSets[m_ids].data());
+	if (result == VK_ERROR_OUT_OF_POOL_MEMORY) {
+		std::cerr << "Descriptor pool memory exhausted!" << std::endl;
+	}
+	if (result != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate descriptor sets!");
 	}
 
 	return _assignID();
 }
 
-void DescriptorManagerVulkan::writeUniform(std::vector<VkWriteDescriptorSet>* writes, VkDescriptorSet& dstSet, const VkDescriptorBufferInfo& bufferInfo)
-{
+void DescriptorManagerVulkan::writeUniform(
+	std::vector<VkWriteDescriptorSet>* writes,
+	const VkDescriptorSet& dstSet,
+		uint32_t binding,
+	const VkDescriptorBufferInfo& bufferInfo
+) {
+
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.dstSet = dstSet;
-	write.dstBinding = 0;
+	write.dstBinding = binding;
 	write.dstArrayElement = 0;
 	write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	write.descriptorCount = 1;
@@ -125,12 +157,16 @@ void DescriptorManagerVulkan::writeUniform(std::vector<VkWriteDescriptorSet>* wr
 	writes->push_back(write);
 }
 
-void DescriptorManagerVulkan::writeImage(std::vector<VkWriteDescriptorSet>* writes, VkDescriptorSet& dstSet, const VkDescriptorImageInfo& imageInfo)
-{
+void DescriptorManagerVulkan::writeImage(
+	std::vector<VkWriteDescriptorSet>* writes,
+	const VkDescriptorSet& dstSet,
+	uint32_t binding,
+	const VkDescriptorImageInfo& imageInfo
+) {
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.dstSet = dstSet;
-	write.dstBinding = 1;
+	write.dstBinding = binding;
 	write.dstArrayElement = 0;
 	write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	write.descriptorCount = 1;
@@ -138,6 +174,26 @@ void DescriptorManagerVulkan::writeImage(std::vector<VkWriteDescriptorSet>* writ
 
 	writes->push_back(write);
 }
+
+void DescriptorManagerVulkan::writeStorage(
+	std::vector<VkWriteDescriptorSet>* writes,
+	const VkDescriptorSet& dstSet,
+	uint32_t binding,
+	const VkDescriptorBufferInfo& bufferInfo
+) {
+
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = dstSet;
+	write.dstBinding = binding;
+	write.dstArrayElement = 0;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	write.descriptorCount = 1;
+	write.pBufferInfo = &bufferInfo;
+
+	writes->push_back(write);
+}
+
 
 void DescriptorManagerVulkan::updateDescriptorSets(const std::vector<VkWriteDescriptorSet>* writes)
 {
