@@ -25,9 +25,9 @@ protected:
 	GuiManager(std::string serviceName = "GuiManager") : Service(serviceName) {};
 
 public:
-	virtual int init(WindowConfig config) override { return 0; };
+	virtual bool init(WindowConfig config) override { return true; };
+	virtual bool onClose() override { return true; };
 	virtual void onUpdate() override {};
-	virtual int onClose() override { return 0; };
 	
 	virtual void start(void* handle = nullptr) = 0;
 	virtual void render(void* handle = nullptr) = 0;

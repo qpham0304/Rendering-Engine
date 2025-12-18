@@ -17,7 +17,7 @@ MaterialManagerVulkan::~MaterialManagerVulkan()
 
 }
 
-int MaterialManagerVulkan::init(WindowConfig config)
+bool MaterialManagerVulkan::init(WindowConfig config)
 {
     Service::init(config);
 
@@ -33,7 +33,7 @@ int MaterialManagerVulkan::init(WindowConfig config)
 	descriptorManagerVulkan = dynamic_cast<DescriptorManagerVulkan*>(&descriptorManager);
 
 	if (!(renderDeviceVulkan && textureManagerVulkan && descriptorManagerVulkan)) {
-		return -1;
+		return false;
 	}
 
 	fallback_albedoID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/albedo.png");
@@ -45,12 +45,12 @@ int MaterialManagerVulkan::init(WindowConfig config)
 
 	_createMaterialDescriptorSet();
 
-    return 0;
+    return true;
 }
 
-int MaterialManagerVulkan::onClose()
+bool MaterialManagerVulkan::onClose()
 {
-    return 0;
+    return true;
 }
 
 void MaterialManagerVulkan::destroy(uint32_t id)

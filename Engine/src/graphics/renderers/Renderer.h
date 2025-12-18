@@ -18,8 +18,8 @@ public:
 	Renderer& operator=(const Renderer& other) = delete;
 	Renderer& operator=(const Renderer&& other) = delete;
 
-	virtual int init(WindowConfig config) = 0;
-	virtual int onClose() = 0;
+	virtual bool init(WindowConfig config) = 0;
+	virtual bool onClose() = 0;
 	virtual void onUpdate() = 0;
 	virtual void beginFrame() = 0;
 	virtual void endFrame() = 0;

@@ -27,8 +27,8 @@ public:
 	RenderDeviceVulkan();
 	virtual ~RenderDeviceVulkan() override;
 
-	virtual int init(WindowConfig platform) override;
-	virtual int onClose() override;
+	virtual bool init(WindowConfig platform) override;
+	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void beginFrame() override;
 	virtual void render() override;

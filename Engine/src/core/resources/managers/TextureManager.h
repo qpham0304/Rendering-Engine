@@ -10,8 +10,8 @@ public:
 	TextureManager(std::string serviceName = "TextureManager") : Manager(serviceName) {};
 	virtual ~TextureManager() = default;
 
-	virtual int init(WindowConfig config) = 0;
-	virtual int onClose() = 0;
+	virtual bool init(WindowConfig config) = 0;
+	virtual bool onClose() = 0;
 	virtual void destroy(uint32_t id) = 0;
 	virtual std::vector<uint32_t> listIDs() const override {
 		std::vector<uint32_t> list;

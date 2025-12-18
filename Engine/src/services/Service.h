@@ -10,8 +10,8 @@ public:
 
 	const std::string& getServiceName() const;
 
-	virtual int init(WindowConfig config);
-	virtual int onClose() { return 0; }
+	virtual bool init(WindowConfig config);
+	virtual bool onClose() { return true; }
 	virtual void onUpdate() {}
 
 protected:

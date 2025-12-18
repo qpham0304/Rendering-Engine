@@ -44,8 +44,8 @@ public:
 
 	virtual ~RendererVulkan() override;
 
-	virtual int init(WindowConfig config) override;
-	virtual int onClose() override;
+	virtual bool init(WindowConfig config) override;
+	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void beginFrame() override;
 	virtual void endFrame() override;

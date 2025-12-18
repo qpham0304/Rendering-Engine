@@ -12,10 +12,11 @@
 #include "Scene.h"
 #include "animation/Animator.h"	//animation dependency
 #include "graphics/framework/OpenGL/core/TextureOpenGL.h"
+#include "core/resources/managers/Manager.h"
 
 class Camera;
 
-class SceneManager 
+class SceneManager : public Manager
 {
 public:
 	std::unordered_map<std::string, std::shared_ptr<ModelOpenGL>> models;
@@ -29,14 +30,17 @@ public:
 
 	static SceneManager& getInstance();
 
+	bool init(WindowConfig config) override;
+	bool onClose() override;
+	void onUpdate() override;
+
 	bool addScene(const std::string& name);
 	bool addScene(std::unique_ptr<Scene> scene);
 	Scene* getScene(const std::string& name);
 	Scene* getActiveScene();
 	void setActiveScene(const std::string& name);
 	bool removeScene(const std::string& name);
-	void onUpdate(const float& deltaTime);
-	void onGuiUpdate(const float deltaTime);
+	void onGuiUpdate();
 	std::string addModel(const std::string& path);
 	std::string addModelFromMeshes(std::vector<MeshOpenGL>& meshes);
 	bool removeModel(const std::string& path);
@@ -45,6 +49,10 @@ public:
 
 private:
 	SceneManager();
+
+
+	virtual std::vector<uint32_t> listIDs() const { return {}; };
+	virtual void destroy(uint32_t id) override {};
 
 private:
 	static std::unordered_map<std::string, std::unique_ptr<ShaderOpenGL>> shaders;

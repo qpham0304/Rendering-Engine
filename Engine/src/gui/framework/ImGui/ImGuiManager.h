@@ -26,9 +26,9 @@ public:
 
 	~ImGuiManager();
 
-	int init(WindowConfig config) override;
+	bool init(WindowConfig config) override;
 	void onUpdate() override;
-	int onClose() override;
+	bool onClose() override;
 	void start(void* handle = nullptr) override;
 	void render(void* handle = nullptr) override;
 	void end(void* handle = nullptr) override;

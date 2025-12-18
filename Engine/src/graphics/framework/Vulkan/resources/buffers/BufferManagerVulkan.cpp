@@ -24,7 +24,7 @@ BufferManagerVulkan::~BufferManagerVulkan()
 
 }
 
-int BufferManagerVulkan::init(WindowConfig config)
+bool BufferManagerVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
@@ -33,10 +33,10 @@ int BufferManagerVulkan::init(WindowConfig config)
 	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
 
 	if (!(renderDeviceVulkan && m_logger)) {
-		return -1;
+		return false;
 	}
 
-	return 0;
+	return true;
 }
 
 uint32_t BufferManagerVulkan::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -52,13 +52,13 @@ uint32_t BufferManagerVulkan::findMemoryType(uint32_t typeFilter, VkMemoryProper
 	throw std::runtime_error("failed to find suitable memory type!");
 }
 
-int BufferManagerVulkan::onClose()
+bool BufferManagerVulkan::onClose()
 {
 	for (auto& [id, buffer] : buffers) {
 		buffer->destroy(renderDeviceVulkan->device);
 	}
 	buffers.clear();
-	return 0;
+	return true;
 }
 
 void BufferManagerVulkan::destroy(uint32_t id)
@@ -68,6 +68,15 @@ void BufferManagerVulkan::destroy(uint32_t id)
 	}
 	buffers[id]->destroy(renderDeviceVulkan->device);
 	buffers.erase(id);
+}
+
+std::vector<uint32_t> BufferManagerVulkan::listIDs() const
+{
+	std::vector<uint32_t> list;
+	for (const auto& [id, buffer] : buffers) {
+		list.emplace_back(id);
+	}
+	return list;
 }
 
 void BufferManagerVulkan::bind(uint32_t id)

@@ -15,9 +15,9 @@ public:
 	~AppWindowGLFW();
 
 
-	virtual int init(WindowConfig platform) override;		// set up and init the graphics api depending on the platform
+	virtual bool init(WindowConfig platform) override;		// set up and init the graphics api depending on the platform
 	virtual void onUpdate() override;
-	virtual int onClose() override;							// close and terminate the program
+	virtual bool onClose() override;							// close and terminate the program
 
 protected:
 	void* _getWindow() override;
@@ -33,12 +33,12 @@ protected:
 	//Ideally want to have glue files for each platform
 	//but no more than 3 graphics and 3 window api
 	//are supported so these are enough
-	int _initOpenGL();
-	void _onCloseOpenGL();
+	bool _initOpenGL();
+	bool _onCloseOpenGL();
 	void _onUpdateOpenGL();
 
-	int _initVulkan();
-	void _onCloseVulkan();
+	bool _initVulkan();
+	bool _onCloseVulkan();
 	void _onUpdateVulkan();
 
 };

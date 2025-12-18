@@ -16,8 +16,8 @@ class Manager : public Service
 public:
 	virtual ~Manager() = default;
 
-	virtual int init(WindowConfig config) = 0;
-	virtual int onClose() = 0;
+	virtual bool init(WindowConfig config) override = 0;
+	virtual bool onClose() override = 0;
 	virtual void destroy(uint32_t id) = 0;
 	virtual std::vector<uint32_t> listIDs() const = 0;
 

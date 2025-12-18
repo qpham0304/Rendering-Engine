@@ -18,14 +18,13 @@
 class Sandbox
 {
 public:
-    Sandbox() = default;
+    Sandbox(WindowConfig config);
 
     void pushLayer(Layer* layer);
-    void init(WindowConfig config);
+    void init();
     void start();
     void run();
-    void end();
-    void onClose();
+    void close();
 
 
 private:
@@ -52,7 +51,6 @@ private:
     std::unique_ptr<Renderer> renderer;
 
 private:
-    EditorLayer* editorLayer;
     Camera camera;
     std::vector<Service*> services;
 
@@ -60,7 +58,4 @@ private:
     uint32_t reimuID;
     std::pair<std::vector<uint32_t>, std::vector<uint32_t>> aruMeshIDs;
     std::pair<std::vector<uint32_t>, std::vector<uint32_t>> reimuMeshIDs;
-
-    void render();
-    void renderGui(void* commandBuffer);
 };

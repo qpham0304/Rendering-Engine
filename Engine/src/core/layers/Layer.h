@@ -11,7 +11,7 @@ public:
 	bool m_Enabled;
 
 public:
-	virtual int init() = 0;
+	virtual bool init() = 0;
 	virtual void onAttach(LayerManager* manager);
 	virtual void onDetach() = 0;
 	virtual void onUpdate() = 0;
@@ -21,6 +21,8 @@ public:
 	const std::string& getName() const;
 
 protected:
+	friend class LayerManager;
+
 	std::string m_LayerName;
 	LayerManager* m_Manager;
 
@@ -37,6 +39,6 @@ protected:
 
 private:
 	Logger* m_Logger;
-
+	uint32_t m_id;
 };
 

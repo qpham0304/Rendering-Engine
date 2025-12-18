@@ -16,16 +16,10 @@ public:
     BufferManagerVulkan(std::string serviceName = "BufferManagerVulkan");
     ~BufferManagerVulkan();
 
-    virtual int init(WindowConfig config) override;
-    virtual int onClose() override;
+    virtual bool init(WindowConfig config) override;
+    virtual bool onClose() override;
     virtual void destroy(uint32_t id) override;
-    virtual std::vector<uint32_t> listIDs() const override {
-		std::vector<uint32_t> list;
-		for(const auto& [id, buffer] : buffers) {
-			list.emplace_back(id);
-		}
-		return list;
-	}
+    virtual std::vector<uint32_t> listIDs() const override;
     virtual void bind(uint32_t id) override;
     virtual uint32_t createVertexBuffer(const Vertex* vertices, int size) override;
     virtual uint32_t createIndexBuffer(const uint16_t* indices, int size) override;

@@ -36,8 +36,8 @@ public:
 	RenderDevice& operator=(const RenderDevice& other) = delete;
 	RenderDevice& operator=(const RenderDevice&& other) = delete;
 
-	virtual int init(WindowConfig platform) override = 0;
-	virtual int onClose() override = 0;
+	virtual bool init(WindowConfig platform) override = 0;
+	virtual bool onClose() override = 0;
 	virtual void onUpdate() override = 0;
 	virtual void beginFrame() = 0;
 	virtual void endFrame() = 0;

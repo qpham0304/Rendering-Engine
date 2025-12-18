@@ -14,6 +14,7 @@
 
 
 ModelManager::ModelManager()
+    :   Manager("ModelManager")
 {
 
 }
@@ -23,7 +24,7 @@ ModelManager::~ModelManager()
 
 }
 
-int ModelManager::init(WindowConfig config)
+bool ModelManager::init(WindowConfig config)
 {
     Service::init(config);
 
@@ -33,18 +34,18 @@ int ModelManager::init(WindowConfig config)
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
     
     if (!(m_logger && textureManager && meshManager && materialManager)) {
-        return -1;
+        return false;
     }
-    return 0;
+    return true;
 }
 
-int ModelManager::onClose()
+bool ModelManager::onClose()
 {
     WriteLock lock = _lockWrite();
     m_models.clear();
     m_modelData.clear();
 
-    return 0;
+    return true;
 }
 
 void ModelManager::destroy(uint32_t id)
@@ -82,6 +83,10 @@ const Model* ModelManager::getModel(uint32_t id) const
 
 void ModelManager::_loadModel(std::string_view path) 
 {
+    // if (m_modelData.find(path.data()) != m_modelData.end()) {
+    //     return;
+    // }
+
     std::string loadTimer = std::string("Model loading ") + path.data();
     Timer(loadTimer.c_str());
 
@@ -115,7 +120,6 @@ void ModelManager::_loadModel(std::string_view path)
     for (const auto& mesh : meshes) {
         m_models[m_ids]->meshIDs.push_back(mesh);
     }
-
 }
 
 void ModelManager::_processNode(aiNode* node, const aiScene* scene, std::vector<uint32_t>& meshes, std::string_view directory)

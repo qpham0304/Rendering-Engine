@@ -1,6 +1,7 @@
 #include "Sandbox.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
+#include <ranges>
 #include "window/AppWindow.h"
 #include "core/events/EventManager.h"
 
@@ -21,12 +22,7 @@
 //	4, 5, 6, 6, 7, 4
 //};
 
-void Sandbox::pushLayer(Layer* layer)
-{
-	layerManager->addLayer(layer);
-}
-
-void Sandbox::init(WindowConfig config)
+Sandbox::Sandbox(WindowConfig config)
 {
 	windowConfig = config;
 
@@ -34,31 +30,25 @@ void Sandbox::init(WindowConfig config)
 	engineLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Engine");
 	clientLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Client");
 	appWindow = platformFactory.createWindow(windowConfig.windowPlatform);
-	renderer = platformFactory.createRenderer(windowConfig.renderPlatform);
 	renderDevice = platformFactory.createRenderDevice(windowConfig.renderPlatform);
-	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
-	textureManager = platformFactory.createTextureManager(windowConfig.renderPlatform);
 	bufferManager = platformFactory.createBufferManager(windowConfig.renderPlatform);
 	descriptorManager = platformFactory.createDescriptorManager(windowConfig.renderPlatform);
+	textureManager = platformFactory.createTextureManager(windowConfig.renderPlatform);
 	materialManager = platformFactory.createMaterialManager(windowConfig.renderPlatform);
-
+	
 	meshManager = std::make_unique<MeshManager>();
 	modelManager = std::make_unique<ModelManager>();
-	layerManager = std::make_unique<LayerManager>(serviceLocator);
-
+	layerManager = std::make_unique<LayerManager>();
 	serviceLocator.Register<MeshManager>("MeshManager", *meshManager);
 	serviceLocator.Register<ModelManager>("ModelManager", *modelManager);
 	serviceLocator.Register<LayerManager>("LayerManager", *layerManager);
 
+	renderer = platformFactory.createRenderer(windowConfig.renderPlatform);
+	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
 
-	engineLogger->setLevel(LogLevel::Debug);
-	ServiceLocator::supportingServices();
-
-
-	editorLayer = new EditorLayer("EditorLayer", *guiManager);
-
-
-	//NOTE: setup order of adding is important!
+	//NOTE: setup order is important!
+	services.push_back(&eventManager);
+	services.push_back(&sceneManager);
 	services.push_back(engineLogger.get());
 	services.push_back(clientLogger.get());
 	services.push_back(appWindow.get());
@@ -67,37 +57,53 @@ void Sandbox::init(WindowConfig config)
 	services.push_back(descriptorManager.get());
 	services.push_back(textureManager.get());
 	services.push_back(materialManager.get());
-	services.push_back(renderer.get());
 	services.push_back(meshManager.get());
 	services.push_back(modelManager.get());
+	services.push_back(layerManager.get());
 	services.push_back(guiManager.get());
+	services.push_back(renderer.get());
+}
+
+void Sandbox::pushLayer(Layer *layer)
+{
+	layerManager->addLayer(layer);
+}
+
+void Sandbox::init()
+{
+	engineLogger->setLevel(LogLevel::Debug);
+	
+	// pushLayer(new EditorLayer("EditorLayer", *guiManager));
+
+	for (Service*& service : services) {
+		if(!service->init(windowConfig)) {	// assuming logger is always success
+			engineLogger->critical("Service Initilize failed: {}", service->getServiceName());
+		} else {
+			engineLogger->info("Initilize Service: {}", service->getServiceName());
+		}
+	}
 }
 
 void Sandbox::start()
 {
-	for (Service*& service : services) {
-		service->init(windowConfig);
-	}
 	renderer->addModel("assets/models/aru/aru.gltf");
 	//renderer->addModel("assets/models/DamagedHelmet/gltf/DamagedHelmet.gltf");
 	//renderer->addModel("assets/models/sponza/sponza.obj");
 	//renderer->addModel("assets/models/cube/cube-notex.gltf");
 
-
 	camera.init(
 		AppWindow::getWidth(), 
 		AppWindow::getHeight(),
-		glm::vec3(5.0, 0.0, 0.0),
-		glm::normalize(glm::vec3(-5.0, -0.0, -0.0))
+		glm::vec3(3.0f),
+		glm::normalize(glm::vec3(-3.0f))
 	);
 
 
-	EventManager::getInstance().subscribe(EventType::WindowResize, [this](Event& event) {
+	eventManager.subscribe(EventType::WindowResize, [this](Event& event) {
 		WindowResizeEvent& windowResizeEvent = static_cast<WindowResizeEvent&>(event);
 		camera.updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
 	});
 
-	EventManager& eventManager = EventManager::getInstance();
 	eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
 		camera.scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
@@ -108,45 +114,34 @@ void Sandbox::start()
 		camera.processInput();
 	});
 
-	EventManager::getInstance().subscribe(EventType::WindowClose, [this](Event& event) {
+	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		isRunning = false;
 	});
 
-	//editorLayer->init(guiManager.get());
 }
 
 
 void Sandbox::run() {
-	//pushLayer(editorLayer);
-
 	while (isRunning) {
-		Timer("Render loop time", true);
-		appWindow->onUpdate();
-		float dt = appWindow->getTime();
-		eventManager.onUpdate();
-		sceneManager.onUpdate(dt);
-		layerManager->onUpdate();
+		for (Service*& service : services) {
+			service->onUpdate();
+		}
 
 		camera.onUpdate();
 		camera.processInput();
 
-		render();
+		Scene* scene = sceneManager.getActiveScene();
+		renderer->render(camera, scene);
 	}
 }
 
-void Sandbox::end()
+void Sandbox::close()
 {
-	renderDevice->onClose();
-	bufferManager->onClose();
-	renderer->onClose();
-	guiManager->onClose();
-	textureManager->onClose();
-	descriptorManager->onClose();
-	appWindow->onClose();
-}
-
-void Sandbox::render()
-{
-	Scene* scene = sceneManager.getActiveScene();
-	renderer->render(camera, scene);
+	for (Service*& service : std::views::reverse(services)) {
+		if(!service->onClose()) {	// assuming logger is always success
+			engineLogger->critical("Service Close failed: {}", service->getServiceName());
+		} else {
+			engineLogger->info("Closing Service: {}", service->getServiceName());
+		}
+	}
 }

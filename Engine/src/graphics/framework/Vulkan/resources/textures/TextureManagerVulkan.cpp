@@ -17,7 +17,7 @@ TextureManagerVulkan::~TextureManagerVulkan()
 
 }
 
-int TextureManagerVulkan::init(WindowConfig config)
+bool TextureManagerVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
@@ -28,18 +28,24 @@ int TextureManagerVulkan::init(WindowConfig config)
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
 	vulkanBufferManager = static_cast<BufferManagerVulkan*>(&bufferManager);
 
-	return 0;
+	if(!(renderDeviceVulkan && vulkanBufferManager)){
+		return false;
+	}
+
+	return true;
 }
 
-int TextureManagerVulkan::onClose()
+bool TextureManagerVulkan::onClose()
 {
     WriteLock lock = _lockWrite();
 	for (auto& [id, texture] : m_textures) {
 		static_cast<TextureVulkan*>(texture.get())->destroy(renderDeviceVulkan->device);
 	}
+	
 	m_textures.clear();
 	m_textureData.clear();
-	return 0;
+
+	return true;
 }
 
 void TextureManagerVulkan::destroy(uint32_t id)

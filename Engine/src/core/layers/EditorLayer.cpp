@@ -52,21 +52,16 @@ EditorLayer::EditorLayer(const std::string& name, GuiManager& controller)
 
 }
 
-int EditorLayer::init()
+bool EditorLayer::init()
 {
 	guiController.useDarkTheme();
 	sceneManager.addScene("default");
-	modelShader.Init("assets/Shaders/model.vert", "assets/Shaders/model.frag");
-
-	return 0;
+	return true;
 }
 
 void EditorLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);
-
-	//manager->addLayer(new DeferredIBLDemo("demo"));
-	//app.pushLayer(new ParticleDemo("particle demo"));
 
 	if (!SceneManager::cameraController) {
 		editorCamera = new Camera();
@@ -77,7 +72,7 @@ void EditorLayer::onAttach(LayerManager* manager)
 		editorCamera = SceneManager::cameraController;
 	}
 
-	EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [](Event& event) {
+	eventManager.subscribe(EventType::ModelLoadEvent, [](Event& event) {
 		ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
 		if (!e.entity.hasComponent<ModelComponent>()) {
 			e.entity.addComponent<ModelComponent>();
@@ -98,7 +93,7 @@ void EditorLayer::onAttach(LayerManager* manager)
 		}
 	});
 
-	EventManager::getInstance().subscribe(EventType::AnimationLoadEvent, [](Event& event) {
+	eventManager.subscribe(EventType::AnimationLoadEvent, [](Event& event) {
 		AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
 		if (!e.entity.hasComponent<AnimationComponent>()) {
 			e.entity.addComponent<AnimationComponent>();
@@ -122,7 +117,7 @@ void EditorLayer::onAttach(LayerManager* manager)
 	});
 
 
-	EventManager::getInstance().subscribe(EventType::MouseMoved, [&](Event& event) {
+	eventManager.subscribe(EventType::MouseMoved, [&](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 
 		if (GuizmoActive && editorActive) {
@@ -130,7 +125,7 @@ void EditorLayer::onAttach(LayerManager* manager)
 		}
 	});
 
-	keyEventID = EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
+	keyEventID = eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (GuizmoActive || editorActive) {
 			handleKeyPressed(keyPressedEvent.keyCode);
@@ -149,51 +144,23 @@ void EditorLayer::onDetach()
 void EditorLayer::onUpdate()
 {
 	editorCamera->onUpdate();
-	auto framebuffer = LayerManager::getFrameBuffer("DeferredIBLDemo");
 	
 	Scene& scene = *SceneManager::getInstance().getActiveScene();
 
-	modelShader.Activate();
-	modelShader.setInt("diffuse", 0);
+	for (auto& [id, entity] : scene.entities) {
+		if (entity.hasComponent<CameraComponent>()) {
+			ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
+			TransformComponent& transform = entity.getComponent<TransformComponent>();
+			glm::mat4 viewMatrix = SceneManager::cameraController->getViewMatrix();
+			const glm::mat4& modelMatrix = transform.getModelMatrix();
+			std::shared_ptr<ModelOpenGL> model = modelComponent.model.lock();
 
-
-	if (framebuffer) {
-		framebuffer->Bind();
-
-		for (auto& [id, entity] : scene.entities) {
-			if (entity.hasComponent<CameraComponent>()) {
-
-				ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
-				TransformComponent& transform = entity.getComponent<TransformComponent>();
-				glm::mat4 viewMatrix = SceneManager::cameraController->getViewMatrix();
-				const glm::mat4& modelMatrix = transform.getModelMatrix();
-				std::shared_ptr<ModelOpenGL> model = modelComponent.model.lock();
-
-				if (model != nullptr) {
-					if (SceneManager::cameraController) {
-						modelShader.setMat4("mvp", SceneManager::cameraController->getMVP());
-					}
-
-					if (faceCamera) {
-						modelShader.setMat4(
-							"matrix", 
-							Utils::ViewTransform::faceCameraBillboard(modelMatrix, viewMatrix)
-						);
-					}
-					else {
-						modelShader.setMat4("matrix", modelMatrix);
-					}
-					modelShader.setBool("flipUV", flipUV);
-					model->Draw(modelShader);
-				}
-				else {
-					modelComponent.reset();
-				}
+			if (model != nullptr) {
+				
 			}
 		}
-
-		framebuffer->Unbind();
 	}
+
 }
 
 void EditorLayer::onGuiUpdate()
@@ -214,22 +181,16 @@ void EditorLayer::onGuiUpdate()
 	std::string id;
 	ImGui::Begin("Layers");
 	Scene* scene = sceneManager.getActiveScene();
-	//LayerManager& layerManager = *Application::getInstance().layerManager;
+	
 	if (ImGui::Button("add demo layer")) {
-		//id = "demo " + std::to_string(layerManager.size());
-		//scene->addLayer(new ParticleDemo(id.c_str()));
-		//layerManager.addLayer(new ParticleDemo(id.c_str()));
 
 	}
+	
 	if (ImGui::Button("add bloom layer")) {
-		//id = "bloom " + std::to_string(layerManager.size());
-		//scene->addLayer(new BloomLayer(id.c_str()));
-		//layerManager.addLayer(new BloomLayer(id.c_str()));
 
 	}
-	if (ImGui::Button("remove layer")) {	//TODO: should be able to delete selected layers
-		//scene->removeLayer(1);
-		//layerManager.removeLayer(1);
+
+	if (ImGui::Button("remove layer")) {
 
 	}
 	ImGui::End();
@@ -242,23 +203,18 @@ void EditorLayer::onEvent(Event& event)
 
 void EditorLayer::handleKeyPressed(int keycode)
 {
-	if (keycode == KEY_T) {
-		guiController.guizmoTranslate();
-	}
-	if (keycode == KEY_R) {
-		guiController.guizmoRotate();
-	}
-	if (keycode == KEY_Z) {
-		guiController.guizmoScale();
-	}
-	if (keycode == KEY_DELETE) {
-		Scene* scene = SceneManager::getInstance().getActiveScene();
-		std::vector<Entity> selectedEntities = scene->getSelectedEntities();
-		if (!selectedEntities.empty()) {
-			scene->removeEntity(selectedEntities[0].getID());
+	switch (keycode) {
+		case KEY_T:	guiController.guizmoTranslate(); break;
+		case KEY_R:	guiController.guizmoRotate(); break;
+		case KEY_Z:	guiController.guizmoScale(); break;
+		case KEY_DELETE: {
+			Scene* scene = SceneManager::getInstance().getActiveScene();
+			std::vector<Entity> selectedEntities = scene->getSelectedEntities();
+			if (!selectedEntities.empty()) {
+				scene->removeEntity(selectedEntities[0].getID());
+			}
+			break;
 		}
-	}
-	if (keycode == KEY_G) {
-		EventManager::getInstance().unsubscribe(EventType::KeyPressed, keyEventID);
+		case KEY_G:	eventManager.unsubscribe(EventType::KeyPressed, keyEventID); break;
 	}
 }

@@ -12,10 +12,8 @@ bool LayerManager::boundCheck(const int& index) const {
 	return !(index < 0 || index >= m_Layers.size());
 }
 
-LayerManager::LayerManager(ServiceLocator& serviceLocator)
-	:	appWindow(serviceLocator.Get<AppWindow>("AppWindow")),
-		serviceLocator(serviceLocator),
-		m_SelectedLayer(-1)
+LayerManager::LayerManager()
+	: m_SelectedLayer(-1), Manager("LayerManager")
 {
 }
 
@@ -62,15 +60,17 @@ std::shared_ptr<FrameBuffer> LayerManager::getFrameBuffer(const std::string name
 bool LayerManager::addLayer(Layer* layer)
 {
 	layer->onAttach(this);
+	layer->m_id = _assignID();
 	m_Layers.push_back(layer);
 	return true;
 }
 
-bool LayerManager::removeLayer(const int index)
+bool LayerManager::removeLayer(const int& index)
 {
 	if (!boundCheck(index)) {
 		return false;
 	}
+	
 	m_Layers[index]->onDetach();
 	delete m_Layers[index];
 
@@ -78,7 +78,7 @@ bool LayerManager::removeLayer(const int index)
 	return true;
 }
 
-void LayerManager::EnableLayer(const int index)
+void LayerManager::enableLayer(const int& index)
 {
 	if (!boundCheck(index)) {
 		OUT_OF_BOUND_ERROR(index);
@@ -86,7 +86,7 @@ void LayerManager::EnableLayer(const int index)
 	m_Layers[index]->m_Enabled = true;
 }
 
-void LayerManager::DisableLayer(const int index)
+void LayerManager::disableLayer(const int& index)
 {
 	if (!boundCheck(index)) {
 		OUT_OF_BOUND_ERROR(index);
@@ -104,15 +104,42 @@ const std::string& LayerManager::CurrentLayer()
 	return m_Layers[m_SelectedLayer]->getName();
 }
 
-int LayerManager::init() {
+bool LayerManager::init(WindowConfig config) 
+{
+	Service::init(config);
+
 	for (auto& layer : m_Layers) {
-		layer->init();
+		if (!layer->init()) {
+			return false;
+		}
 	}
-	return 0;
+	return true;
+}
+
+bool LayerManager::onClose()
+{
+	return true;
+}
+
+void LayerManager::destroy(uint32_t id)
+{
+	bool res = removeLayer(id);
+	if (!res) {
+		OUT_OF_BOUND_ERROR(id);
+	}
+}
+
+std::vector<uint32_t> LayerManager::listIDs() const
+{
+	std::vector<uint32_t> list;
+	for (const auto& layer : m_Layers) {
+		list.emplace_back(layer->m_id);
+	}
+	return list;
 }
 
 
-void LayerManager::onUpdate() 
+void LayerManager::onUpdate()
 {
 	for (const auto& layer : m_Layers) {
 		if (!layer->m_Enabled) {
@@ -122,6 +149,7 @@ void LayerManager::onUpdate()
 	}
 }
 
+
 void LayerManager::onGuiUpdate() 
 {
 	for (auto& layer : m_Layers) {
@@ -130,6 +158,7 @@ void LayerManager::onGuiUpdate()
 		}
 		layer->onGuiUpdate();
 	}
+
 	for (auto& layer : m_Layers) {
 		// ImGui::Begin("Layers");
 		// ImGui::Checkbox(layer->getName().c_str(), &layer->m_Enabled);

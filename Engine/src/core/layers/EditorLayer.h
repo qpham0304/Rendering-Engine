@@ -19,7 +19,6 @@ private:
 	bool editorActive = true;
 	bool flipUV = true;
 	bool faceCamera = false;
-	ShaderOpenGL modelShader;
 	uint32_t keyEventID;
 
 	void mockThreadTasks();
@@ -29,7 +28,7 @@ public:
 	EditorLayer(const std::string& name, GuiManager& controller);
 	~EditorLayer() = default;
 
-	int init() override;
+	bool init() override;
 	void onAttach(LayerManager* manager) override;
 	void onDetach() override;
 	void onUpdate() override;

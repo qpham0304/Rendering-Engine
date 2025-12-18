@@ -25,7 +25,7 @@ class PlatformFactory
 {
 	// generic constructor function for each service interface
 	template<typename Interface, typename PlatformEnum, typename... Args>
-	class ConstructorRegistry {
+	class Factory {
 	public:
 		using Constructor = std::function<std::unique_ptr<Interface>(Args...)>;
 		std::unordered_map<PlatformEnum, Constructor> constructors;
@@ -38,7 +38,7 @@ class PlatformFactory
 		std::unique_ptr<Interface> Create(PlatformEnum platform, CallArgs&&... args) {
 			auto it = constructors.find(platform);
 			if (it == constructors.end()) {
-				throw std::runtime_error("No constructor registered for the given platform.");
+				throw std::runtime_error("Given Platform has no registered constructor");
 			}
 			return it->second(std::forward<CallArgs>(args)...);
 		}
@@ -68,10 +68,11 @@ public:
 private:
 	template<typename Interface, typename Concrete, typename... Args>
 		requires std::derived_from<Interface, Service>
-	auto RegisterConstructor(std::string_view serviceName) {
-		return [this, serviceName](Args&&... args) -> std::unique_ptr<Interface> {
+	auto RegisterConstructor(std::string_view customName = "") {
+		return [this, customName](Args&&... args) -> std::unique_ptr<Interface> {
 			std::unique_ptr<Interface> instance = std::make_unique<Concrete>(std::forward<Args>(args)...);
-			serviceLocator.Register<Interface>(instance->getServiceName(), *instance);
+			std::string serviceName = customName.empty() ? instance->getServiceName() : customName.data();
+			serviceLocator.Register<Interface>(serviceName, *instance);
 			return instance;
 		};
 	}
@@ -80,13 +81,13 @@ private:
 private:
 	ServiceLocator& serviceLocator;
 
-	ConstructorRegistry<Logger, LoggerPlatform, std::string> loggerRegistry;
-	ConstructorRegistry<AppWindow, WindowPlatform> windowRegistry;
-	ConstructorRegistry<GuiManager, GuiPlatform> guiRegistry;
-	ConstructorRegistry<Renderer, RenderPlatform> rendererRegistry;
-	ConstructorRegistry<RenderDevice, RenderPlatform> renderDeviceRegistry;
-	ConstructorRegistry<TextureManager, RenderPlatform> textureManagerRegistry;
-	ConstructorRegistry<BufferManager, RenderPlatform> bufferManagerRegistry;
-	ConstructorRegistry<DescriptorManager, RenderPlatform> descriptorManagerRegistry;
-	ConstructorRegistry<MaterialManager, RenderPlatform> materialManagerRegistry;
+	Factory<Logger, LoggerPlatform, std::string> loggerFactory;
+	Factory<AppWindow, WindowPlatform> windowFactory;
+	Factory<GuiManager, GuiPlatform> guiFactory;
+	Factory<Renderer, RenderPlatform> rendererFactory;
+	Factory<RenderDevice, RenderPlatform> renderDeviceFactory;
+	Factory<TextureManager, RenderPlatform> textureManagerFactory;
+	Factory<BufferManager, RenderPlatform> bufferManagerFactory;
+	Factory<DescriptorManager, RenderPlatform> descriptorManagerFactory;
+	Factory<MaterialManager, RenderPlatform> materialManagerFactory;
 };

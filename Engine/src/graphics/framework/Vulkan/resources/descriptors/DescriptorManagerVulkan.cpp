@@ -16,7 +16,7 @@ DescriptorManagerVulkan::~DescriptorManagerVulkan()
 
 }
 
-int DescriptorManagerVulkan::init(WindowConfig config)
+bool DescriptorManagerVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
@@ -24,13 +24,13 @@ int DescriptorManagerVulkan::init(WindowConfig config)
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&device);
 
 	if (!renderDeviceVulkan) {
-		return -1;
+		return false;
 	}
 
-	return 0;
+	return true;
 }
 
-int DescriptorManagerVulkan::onClose()
+bool DescriptorManagerVulkan::onClose()
 {
 	WriteLock lock = _lockWrite();
 	for (auto [id, layout] : descriptorSetLayouts) {
@@ -46,7 +46,7 @@ int DescriptorManagerVulkan::onClose()
 	
 	descriptorSets.clear();
 
-	return 0;
+	return true;
 }
 
 void DescriptorManagerVulkan::destroy(uint32_t)

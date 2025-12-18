@@ -11,8 +11,9 @@
 #include "Event.h"
 #include "EventListener.h"
 #include "core/features/Timer.h"
+#include "core/resources/managers/Manager.h"
 
-class EventManager
+class EventManager : public Manager
 {
 public:
 	using EventCallback = std::function<void(Event&)>;
@@ -40,13 +41,18 @@ public:
 	void unsubscribe(EventType eventType, uint32_t cbID);
 	void publish(Event& event);
 	void queue(AsyncEvent event, AsyncCallback callback);
-	void onUpdate();
-	void onClose();
+	
+	bool init(WindowConfig config) override;
+	bool onClose() override;
+	void onUpdate() override;
 
 private:
-	EventManager() = default;
+	EventManager() : Manager("EventManager") {};
 	void publishAsync(EventListener& eventListener);
 	void cleanUpThread();
+
+	virtual std::vector<uint32_t> listIDs() const { return {}; };
+	virtual void destroy(uint32_t id) override { };
 
 private:
 	std::atomic<int> runningTasks{ 0 };

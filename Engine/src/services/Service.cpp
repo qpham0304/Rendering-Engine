@@ -1,10 +1,10 @@
 #include "Service.h"
 
-int Service::init(WindowConfig config)
+bool Service::init(WindowConfig config)
 {
 	m_config = config;
 	
-	return 0;
+	return true;
 }
 
 const std::string& Service::getServiceName() const

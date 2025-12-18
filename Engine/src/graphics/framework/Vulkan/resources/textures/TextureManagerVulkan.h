@@ -13,8 +13,8 @@ public:
 	TextureManagerVulkan(std::string serviceName = "TextureManagerVulkan");	
 	~TextureManagerVulkan();
 
-	virtual int init(WindowConfig config) override;
-	virtual int onClose() override;
+	virtual bool init(WindowConfig config) override;
+	virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual uint32_t loadTexture(std::string_view path) override;
 	virtual uint32_t createDepthTexture() override;

@@ -10,8 +10,8 @@ class BufferManager : public Manager
 public:
     virtual ~BufferManager() = default;
 
-    virtual int init(WindowConfig config) = 0;
-    virtual int onClose() = 0;
+    virtual bool init(WindowConfig config) = 0;
+    virtual bool onClose() = 0;
     virtual void destroy(uint32_t id) = 0;
     virtual std::vector<uint32_t> listIDs() const = 0;
 

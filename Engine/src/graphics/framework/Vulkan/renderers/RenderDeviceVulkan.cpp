@@ -20,7 +20,7 @@ RenderDeviceVulkan::~RenderDeviceVulkan()
 }
 
 
-int RenderDeviceVulkan::init(WindowConfig config)
+bool RenderDeviceVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
@@ -34,19 +34,19 @@ int RenderDeviceVulkan::init(WindowConfig config)
 	createDepthResources();
 	swapchain.createFramebuffers();
 
-	return 0;
+	return true;
 }
 
 // wait for other vulkan resources to be destroyed before device cleanup
-int RenderDeviceVulkan::onClose()
+bool RenderDeviceVulkan::onClose()
 {
 	waitIdle();
-	return 0;
+	return true;
 }
 
 void RenderDeviceVulkan::onUpdate()
 {
-	throw std::runtime_error("beginFrame not implemented");
+	
 }
 
 void RenderDeviceVulkan::beginFrame()

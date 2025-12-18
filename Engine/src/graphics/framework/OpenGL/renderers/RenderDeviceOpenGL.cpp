@@ -9,17 +9,17 @@ RenderDeviceOpenGL::RenderDeviceOpenGL()
 
 }
 
-int RenderDeviceOpenGL::init(WindowConfig config)
+bool RenderDeviceOpenGL::init(WindowConfig config)
 {
 	Service::init(config);
 
 	m_logger = &ServiceLocator::GetService<Logger>("Client_LoggerPSD");
 	Log().info("[{}] {}", m_ServiceName, "Render Device initialized");
 
-	return 0;
+	return true;
 }
 
-int RenderDeviceOpenGL::onClose()
+bool RenderDeviceOpenGL::onClose()
 {
 	throw std::runtime_error("RenderDeviceOpenGL beginFrame not implemented");
 }

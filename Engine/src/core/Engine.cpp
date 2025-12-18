@@ -20,7 +20,7 @@ Engine::Engine(WindowConfig windowConfig)
 	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
 
 	//engine specific features
-	layerManager = std::make_unique<LayerManager>(serviceLocator);
+	layerManager = std::make_unique<LayerManager>();
 
 
 	services.push_back(appWindow.get());
@@ -44,7 +44,7 @@ void Engine::init()
 {
 	appWindow->init(windowConfig);
 	guiManager->init(windowConfig);
-	layerManager->init();
+	layerManager->init(windowConfig);
 	editorLayer->init();
 }
 
@@ -71,16 +71,15 @@ void Engine::run() {	// must be the last to be added to layer stack
 	while (isRunning) {
 		// Application
 		appWindow->onUpdate();
-		float dt = appWindow->getTime();
 		eventManager.onUpdate();
-		sceneManager.onUpdate(dt);
+		sceneManager.onUpdate();
 		layerManager->onUpdate();
 
 		bool useEditor = true;
 		if (useEditor) {
 			//TODO GUI should be done by the guiController
 			guiManager->start();
-			sceneManager.onGuiUpdate(dt);
+			sceneManager.onGuiUpdate();
 			layerManager->onGuiUpdate();
 			guiManager->end();
 		}

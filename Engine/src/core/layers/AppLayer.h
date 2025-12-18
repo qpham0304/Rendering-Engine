@@ -27,7 +27,7 @@ public:
 	AppLayer(const std::string& name);
 	~AppLayer();
 
-	int init() override;
+	bool init() override;
 	void onAttach(LayerManager* manager) override;
 	void onDetach() override;
 	void onUpdate() override;

@@ -25,8 +25,8 @@ public:
 	MaterialManagerVulkan(std::string serviceName = "MaterialManagerVulkan");
 	~MaterialManagerVulkan();
 
-	virtual int init(WindowConfig config) override;
-	virtual int onClose() override;
+	virtual bool init(WindowConfig config) override;
+	virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
 	virtual uint32_t createMaterial(const MaterialDesc& materialDesc) override;

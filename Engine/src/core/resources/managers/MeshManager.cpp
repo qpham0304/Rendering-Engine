@@ -5,6 +5,7 @@
 #include "BufferManager.h"
 
 MeshManager::MeshManager()
+    :   Manager("MeshManager")
 {
 
 }
@@ -13,7 +14,7 @@ MeshManager::~MeshManager()
 {
 
 }
-int MeshManager::init(WindowConfig config)
+bool MeshManager::init(WindowConfig config)
 {
     Service::init(config);
 
@@ -23,16 +24,16 @@ int MeshManager::init(WindowConfig config)
         return - 1;
     }
     
-    return 0;
+    return true;
 }
 
-int MeshManager::onClose()
+bool MeshManager::onClose()
 {
     WriteLock lock = _lockWrite();
     m_meshes.clear();
     m_meshesData.clear();
 
-    return 0;
+    return true;
 }
 
 void MeshManager::destroy(uint32_t id)

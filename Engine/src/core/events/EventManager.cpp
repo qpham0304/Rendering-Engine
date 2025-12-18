@@ -84,6 +84,15 @@ void EventManager::subscribe(const std::string& event, EventListener& listener) 
 	}
 }
 
+bool EventManager::init(WindowConfig config)
+{
+	Service::init(config);
+
+	return true;
+}
+
+
+
 //TODO: use semaphore instead for running tasks instead of manual primitive
 //instead of joining threads per completed task, just keep them alive then clean all up on close
 //tldr: just use async instead
@@ -112,7 +121,9 @@ void EventManager::onUpdate()
 	}
 }
 
-void EventManager::onClose()
+bool EventManager::onClose()
 {
 	cleanUpThread();
+
+	return true;
 }

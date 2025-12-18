@@ -30,12 +30,13 @@ RendererVulkan::~RendererVulkan()
 
 }
 
-int RendererVulkan::init(WindowConfig config)
+bool RendererVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
 	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
 	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
+	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
 
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
 	bufferManagerVulkan = &static_cast<BufferManagerVulkan&>(bufferManager);
@@ -47,11 +48,18 @@ int RendererVulkan::init(WindowConfig config)
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
 	modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
 	guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");
-	
-	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
-	if (!renderDeviceVulkan) {
-		throw std::runtime_error("Failed to accquire render device");
-		return -1;
+
+	if(!(
+		renderDeviceVulkan &&
+		bufferManagerVulkan &&
+		descriptorManagerVulkan &&
+		textureManager &&
+		meshManager &&
+		materialManager &&
+		modelManager &&
+		guiManager
+	)) {
+		return false;
 	}
 
 	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
@@ -106,14 +114,15 @@ int RendererVulkan::init(WindowConfig config)
 	
 	_createDescriptorSets();
 
-	return 0;
+	return true;
 }
 
-int RendererVulkan::onClose()
+bool RendererVulkan::onClose()
 {
+	renderDeviceVulkan->waitIdle();
 	renderDeviceVulkan->pipeline.destroy();
 
-	return 0;
+	return true;
 }
 
 void RendererVulkan::onUpdate()

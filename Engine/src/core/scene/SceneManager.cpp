@@ -3,18 +3,42 @@
 #include "animation/Animation.h"
 #include "core/features/Camera.h"
 #include "graphics/framework/OpenGL/core/ModelOpenGL.h"
+#include "window/AppWindow.h"
 
 std::unordered_map<std::string, std::unique_ptr<ShaderOpenGL>> SceneManager::shaders = {};
 Camera* SceneManager::cameraController = nullptr;
 std::string SceneManager::selectedID = "";
 
-SceneManager::SceneManager() {
+SceneManager::SceneManager() 
+	: Manager("SceneManager")
+{
 	
 }
 
 SceneManager::~SceneManager()
 {
 
+}
+
+bool SceneManager::init(WindowConfig config)
+{
+	return true;
+
+}
+
+bool SceneManager::onClose()
+{
+	return true;
+}
+
+void SceneManager::onUpdate()
+{
+	for (auto& [name, scene] : scenes) {
+		if (!scene->isEnabled) {
+			continue;
+		}
+		scene->onUpdate(AppWindow::getTime());
+	}
 }
 
 SceneManager& SceneManager::getInstance()
@@ -83,20 +107,10 @@ bool SceneManager::removeScene(const std::string& name)
 	}
 }
 
-void SceneManager::onUpdate(const float& deltaTime)
+void SceneManager::onGuiUpdate()
 {
 	for (auto& [name, scene] : scenes) {
-		if(!scene->isEnabled) {
-			continue;
-		}
-		scene->onUpdate(deltaTime);
-	}
-}
-
-void SceneManager::onGuiUpdate(const float deltaTime)
-{
-	for (auto& [name, scene] : scenes) {
-		scene->onGuiUpdate(deltaTime);
+		scene->onGuiUpdate(AppWindow::getTime());
 	}
 }
 

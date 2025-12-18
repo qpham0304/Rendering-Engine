@@ -30,7 +30,7 @@ AppWindowGLFW::~AppWindowGLFW()
 }
 
 
-int AppWindowGLFW::init(WindowConfig config) 
+bool AppWindowGLFW::init(WindowConfig config) 
 {
 	Service::init(config);
 
@@ -57,17 +57,17 @@ int AppWindowGLFW::init(WindowConfig config)
 
 	glfwSwapInterval(m_config.vsync);
 
-	return 0;
+	return true;
 }
 
 
-int AppWindowGLFW::onClose() {
+bool AppWindowGLFW::onClose() {
 	switch (m_config.renderPlatform) {
 		case RenderPlatform::OPENGL: _onCloseOpenGL(); break;
 		case RenderPlatform::VULKAN: _onCloseVulkan(); break;
 		default: throw std::runtime_error("Platform not supported for onClose"); break;
 	}
-	return 0;
+	return true;
 }
 
 
@@ -193,7 +193,7 @@ void AppWindowGLFW::_setEventCallback()
 	OpenGL specfic implementations
 */
 
-int AppWindowGLFW::_initOpenGL()
+bool AppWindowGLFW::_initOpenGL()
 {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
@@ -201,14 +201,14 @@ int AppWindowGLFW::_initOpenGL()
 
 	// Initialize GLFW
 	if (!glfwInit())
-		return -1;
+		return false;
 
 	// Get primary monitor
 	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 	if (!monitor) {
 		throw std::runtime_error("Failed to get primary monitor");
 		glfwTerminate();
-		return -1;
+		return false;
 	}
 
 	// Get monitor video mode
@@ -216,7 +216,7 @@ int AppWindowGLFW::_initOpenGL()
 	if (!mode) {
 		throw std::runtime_error("Failed to get video mode");
 		glfwTerminate();
-		return -1;
+		return false;
 	}
 
 	// force window to always proportional to what every user's screen has
@@ -229,7 +229,7 @@ int AppWindowGLFW::_initOpenGL()
 	if (m_sharedWindowHandle == NULL) {
 		throw std::runtime_error("Failed to create shared GLFW window");
 		glfwTerminate();
-		return -1;
+		return false;
 	}
 
 	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
@@ -240,7 +240,7 @@ int AppWindowGLFW::_initOpenGL()
 	if (m_windowHandle == NULL) {
 		throw std::runtime_error("Failed to create GLFW window");
 		glfwTerminate();
-		return -1;
+		return false;
 	}
 	glfwMakeContextCurrent(m_windowHandle);
 
@@ -248,18 +248,20 @@ int AppWindowGLFW::_initOpenGL()
 		throw std::runtime_error("Failed to initialize GLAD for main context");
 		glfwDestroyWindow(m_windowHandle);
 		glfwTerminate();
-		return -1;
+		return false;
 	}
 
-	return 0;
+	return true;
 }
 
-void AppWindowGLFW::_onCloseOpenGL()
+bool AppWindowGLFW::_onCloseOpenGL()
 {
 	glfwMakeContextCurrent(nullptr);
 	glfwDestroyWindow(m_windowHandle);
 	glfwDestroyWindow(m_sharedWindowHandle);
 	glfwTerminate();
+
+	return true;
 }
 
 void AppWindowGLFW::_onUpdateOpenGL()
@@ -276,7 +278,7 @@ void AppWindowGLFW::_onUpdateOpenGL()
 	Vulkan specfic implementations
 */
 
-int AppWindowGLFW::_initVulkan()
+bool AppWindowGLFW::_initVulkan()
 {
 	glfwInit();
 
@@ -286,13 +288,15 @@ int AppWindowGLFW::_initVulkan()
 	m_windowHandle = glfwCreateWindow(m_width, m_height, m_config.title.c_str(), nullptr, nullptr);
 	glfwSetWindowUserPointer(m_windowHandle, this);
 
-	return 0;
+	return true;
 }
 
-void AppWindowGLFW::_onCloseVulkan()
+bool AppWindowGLFW::_onCloseVulkan()
 {
 	glfwDestroyWindow(m_windowHandle);
 	glfwTerminate();
+	
+	return true;
 }
 
 void AppWindowGLFW::_onUpdateVulkan()

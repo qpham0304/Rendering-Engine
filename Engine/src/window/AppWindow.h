@@ -17,9 +17,9 @@ public:
 public:
 	virtual ~AppWindow() = default;
 
-	virtual int init(WindowConfig config) = 0;
+	virtual bool init(WindowConfig config) = 0;
 	virtual void onUpdate() = 0;
-	virtual int onClose() = 0;
+	virtual bool onClose() = 0;
 
 	static const WindowConfig& getWindowConfig();
 	static bool isMousePressed(MouseCodes mouseCode);
