@@ -3,6 +3,9 @@
 #include "../../../widgets/LeftSidebarWidget.h"
 #include <imgui.h>
 
+class Logger;
+class ModelManager;
+
 class ImGuiLeftSidebarWidget : public LeftSidebarWidget
 {
 public:
@@ -14,6 +17,12 @@ public:
 	virtual void LightTab();
 	virtual void EntityTab();
 	virtual void ModelsTab();
+	virtual void MeshesTab();
+	virtual void ScenesTab();
 	virtual void render() override;
+
+private:
+	Logger* m_logger;
+	ModelManager* modelManager;
 };
 

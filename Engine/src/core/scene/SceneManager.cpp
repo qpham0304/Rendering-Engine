@@ -4,8 +4,8 @@
 #include "core/features/Camera.h"
 #include "graphics/framework/OpenGL/core/ModelOpenGL.h"
 #include "window/AppWindow.h"
+#include "core/events/EventManager.h"
 
-std::unordered_map<std::string, std::unique_ptr<ShaderOpenGL>> SceneManager::shaders = {};
 Camera* SceneManager::cameraController = nullptr;
 std::string SceneManager::selectedID = "";
 
@@ -22,8 +22,23 @@ SceneManager::~SceneManager()
 
 bool SceneManager::init(WindowConfig config)
 {
-	return true;
+	EventManager& eventManager = EventManager::getInstance();
+	eventManager.subscribe(EventType::WindowResize, [this](Event& event) {
+		WindowResizeEvent& windowResizeEvent = static_cast<WindowResizeEvent&>(event);
+		cameraController->updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
+	});
 
+	eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
+		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
+		cameraController->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
+	});
+
+	eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
+		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
+		cameraController->processInput();
+	});
+
+	return true;
 }
 
 bool SceneManager::onClose()
@@ -39,6 +54,11 @@ void SceneManager::onUpdate()
 		}
 		scene->onUpdate(AppWindow::getTime());
 	}
+
+	if(cameraController){
+		cameraController->onUpdate();
+		cameraController->processInput();
+	}
 }
 
 SceneManager& SceneManager::getInstance()
@@ -51,6 +71,7 @@ bool SceneManager::addScene(const std::string& name)
 {
 	if (scenes.find(name) == scenes.end()) {
 		scenes[name].reset(new Scene(name));
+		scenes[name]->id = _assignID();
 		activeScene = name;
 		return true;
 	}
@@ -63,6 +84,7 @@ bool SceneManager::addScene(std::unique_ptr<Scene> scene)
 {
 	if (scenes.find(scene->getName()) == scenes.end()) {
 		scenes[scene->getName()] = std::move(scene);
+		scenes[scene->getName()]->id = _assignID();
 		return true;
 	}
 	else {
@@ -77,6 +99,17 @@ Scene* SceneManager::getScene(const std::string& name)
 	}
 	return nullptr;
 }
+
+Scene* SceneManager::getScene(const uint32_t& id)
+{
+	for(auto& [name, scene] : scenes) {
+		if(scene->id == id){
+			return scene.get();
+		}
+	}
+	return nullptr;
+}
+
 
 Scene* SceneManager::getActiveScene()
 {
@@ -107,6 +140,11 @@ bool SceneManager::removeScene(const std::string& name)
 	}
 }
 
+bool SceneManager::empty()
+{
+    return scenes.empty();
+}
+
 void SceneManager::onGuiUpdate()
 {
 	for (auto& [name, scene] : scenes) {
@@ -114,68 +152,11 @@ void SceneManager::onGuiUpdate()
 	}
 }
 
-std::string SceneManager::addModel(const std::string& path)
+std::vector<uint32_t> SceneManager::listIDs() const
 {
-	try {
-		std::string uuid = Utils::uuid::get_uuid();
-		std::scoped_lock<std::mutex> lock(modelsLock);
-		if (models.find(uuid) == models.end()) {
-			models[uuid] = std::make_shared<ModelOpenGL>(path.c_str());
-		}
-		//TODO: might want to manual increase reference counter for instanced drawing
-		return uuid;
+	std::vector<uint32_t> list;
+	for (const auto& [name, scene] : scenes) {
+		list.emplace_back(scene->id);
 	}
-	catch (std::runtime_error) {
-		return "";
-	}
-}
-
-std::string SceneManager::addModelFromMeshes(std::vector<MeshOpenGL>& meshes)
-{
-	try {
-		std::string uuid = Utils::uuid::get_uuid();
-		std::scoped_lock<std::mutex> lock(modelsLock);
-		if (models.find(uuid) == models.end()) {
-			models[uuid] = std::make_shared<ModelOpenGL>(meshes, uuid);
-		}
-		//TODO: might want to manual increase reference counter for instanced drawing
-		return uuid;
-	}
-	catch (std::runtime_error) {
-		return "";
-	}
-}
-
-bool SceneManager::removeModel(const std::string& path)
-{
-	std::scoped_lock<std::mutex> lock(modelsLock);
-	if (models.find(path) != models.end()) {
-		models.erase(path);
-		return true;
-	}
-	return false;
-}
-
-std::string SceneManager::addAnimation(const std::string& path, ModelOpenGL* model)
-{
-	std::string uuid = Utils::uuid::get_uuid();
-	std::scoped_lock<std::mutex> lock(animationsLock);
-	if (animations.find(uuid) == animations.end()) {
-		animations[uuid] = std::make_shared<Animation>(path, model);
-		return uuid;
-	}
-	else {
-		throw::std::runtime_error ("failed to load model");
-		return "";
-	}
-}
-
-bool SceneManager::removeAnimation(const std::string& path)
-{
-	std::scoped_lock<std::mutex> lock(animationsLock);
-	if (animations.find(path) != animations.end()) {
-		animations.erase(path);
-		return true;
-	}
-	return false;
+	return list;
 }

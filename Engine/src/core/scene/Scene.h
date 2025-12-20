@@ -2,24 +2,30 @@
 
 #include <glm/glm.hpp>
 #include "entt.hpp"
-#include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
 #include "core/entities/Entity.h"
+
+class SceneManager;
 
 class Scene
 {
 public:
 	bool isEnabled;
-	std::unordered_map<uint32_t, Entity> entities;
 
 public:
-	Scene(const std::string name);
+	Scene(std::string name);
 	~Scene() = default;
+
+    Scene(const Scene& other) = delete;
+    Scene& operator=(const Scene& other) = delete;
+    Scene(Scene&& other) = delete;
+    Scene& operator=(Scene&& other) = delete;
 
 	uint32_t addEntity(const std::string& name = "Entity");
 	bool removeEntity(const uint32_t& uuid);
 	bool hasEntity(const uint32_t& id);
 	Entity getEntity(const uint32_t& id);
 	void selectEntities(std::vector<Entity> entities);
+	void selectMesh(const uint32_t& meshID);
 
 	template<typename... Components>
 	bool hasComponent(entt::entity entity) {
@@ -45,11 +51,8 @@ public:
 	}
 
 	const std::vector<Entity>& getSelectedEntities();
-	bool addShader(const std::string& name, ShaderOpenGL& shader);
-	bool addShader(const std::string& name, const std::string& vertPath, const std::string& fragPath);
-	std::shared_ptr<ShaderOpenGL> getShader(const std::string& name);
-	bool removeShader(const std::string& name);
-
+	const uint32_t getSelectedMeshID() const;
+	
 	void onStart();
 	void onStop();
 	void onUpdate(const float& deltaTime);
@@ -57,9 +60,13 @@ public:
 	const std::string& getName() const;
 
 private:
+	friend class SceneManager;
+
+	uint32_t id;
 	std::string sceneName;
 	entt::registry registry;
 	std::vector<Entity> selectedEntities;
-	std::unordered_map <std::string, std::shared_ptr<ShaderOpenGL>> shaders;
+	uint32_t selectedMesh;
+	std::unordered_map<uint32_t, Entity> entities;	//TODO: eventually move to private
 };
 

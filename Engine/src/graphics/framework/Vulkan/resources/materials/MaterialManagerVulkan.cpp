@@ -103,7 +103,7 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 	//	imageInfos[i].imageView = texture->textureImageView;
 	//	imageInfos[i].sampler = texture->textureSampler;
 
-	//	descriptorManagerVulkan->writeImage(&writes, materialSet, writes.size(), imageInfos[i++]);
+	//	descriptorManagerVulkan->writeImage(&writes, materialSet, i, imageInfos[i++]);
 	//}
 
 	auto writeMaterial = [&](uint32_t binding, uint32_t materialID) {
@@ -187,12 +187,10 @@ void MaterialManagerVulkan::_createMaterialDescriptorSet()
 		{ 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 	};
 	materialLayoutID = descriptorManagerVulkan->createLayout(bindings);
-	m_logger->warn("material layout ID: {}", materialLayoutID);
 
 	uint32_t maxMaterial = 1024;
 	std::vector<VkDescriptorPoolSize> poolSizes = {
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6 * maxMaterial },
 	};
 	materialPoolID = descriptorManagerVulkan->createPool(poolSizes, maxMaterial);
-	m_logger->warn("material pool ID: {}", materialPoolID);
 }

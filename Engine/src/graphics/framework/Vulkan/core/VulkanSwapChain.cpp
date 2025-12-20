@@ -2,6 +2,7 @@
 #include "window/AppWindow.h"
 #include "Logging/Logger.h"
 #include "../renderers/RenderDeviceVulkan.h"
+#include "../resources/textures/TextureManagerVulkan.h"
 
 VulkanSwapChain::VulkanSwapChain(VulkanDevice& deviceRef, RenderDeviceVulkan& renderDeviceRef)
 	: device(deviceRef), renderDevice(renderDeviceRef)
@@ -20,6 +21,7 @@ void VulkanSwapChain::create()
 	createImageViews();
 	createRenderPass();
 	createSyncObject();
+	createDepthResources();
 }
 
 void VulkanSwapChain::destroy()
@@ -153,7 +155,7 @@ void VulkanSwapChain::createFramebuffers()
 	for (size_t i = 0; i < swapChainImageViews.size(); i++) {
 		std::array<VkImageView, 2> attachments = {
 			swapChainImageViews[i],
-			renderDevice.depthImageView
+			depthImageView
 		};
 
 		VkFramebufferCreateInfo framebufferInfo{};
@@ -188,7 +190,7 @@ void VulkanSwapChain::createRenderPass()
 	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription depthAttachment{};
-	depthAttachment.format = renderDevice.findDepthFormat();
+	depthAttachment.format = TextureManagerVulkan::findDepthFormat(device);
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -247,7 +249,7 @@ void VulkanSwapChain::recreateSwapchain()
 
 	createSwapChain();
 	createImageViews();
-	renderDevice.createDepthResources();
+	createDepthResources();
 	createFramebuffers();
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -308,9 +310,9 @@ VkExtent2D VulkanSwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& cap
 
 void VulkanSwapChain::cleanupSwapChain()
 {
-	vkDestroyImageView(device, renderDevice.depthImageView, nullptr);
-	vkDestroyImage(device, renderDevice.depthImage, nullptr);
-	vkFreeMemory(device, renderDevice.depthImageMemory, nullptr);
+	vkDestroyImageView(device, depthImageView, nullptr);
+	vkDestroyImage(device, depthImage, nullptr);
+	vkFreeMemory(device, depthImageMemory, nullptr);
 
 	for (auto framebuffer : swapChainFramebuffers) {
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -391,3 +393,47 @@ const uint32_t& VulkanSwapChain::getImageIndex() const
 {
 	return imageIndex;
 }
+
+const VkFramebuffer &VulkanSwapChain::currentFrameBuffer() const
+{
+	return swapChainFramebuffers[imageIndex];
+}
+
+VkImageView VulkanSwapChain::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
+	VkImageViewCreateInfo viewInfo{};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = image;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = format;
+	viewInfo.subresourceRange.aspectMask = aspectFlags;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+
+	VkImageView imageView;
+	if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create image view!");
+	}
+
+	return imageView;
+}
+
+void VulkanSwapChain::createDepthResources()
+{
+	VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(device);
+
+	TextureManagerVulkan::createImage(
+		swapChainExtent.width,
+		swapChainExtent.height,
+		depthFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		depthImage,
+		depthImageMemory,
+		device
+	);
+	depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+}
+

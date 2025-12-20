@@ -16,6 +16,9 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
+#include <core/scene/SceneManager.h>
+#include <vulkan/vulkan.h>
+
 
 #include "imgui.h" // TODO: remove it once done
 
@@ -96,17 +99,21 @@ bool RendererVulkan::init(WindowConfig config)
 		renderDeviceVulkan->swapchain.renderPass, 
 		sizeof(PushConstantData)
 	);
+	
 
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
-	instanceData.reserve(numInstances);
 
-	glm::mat4 modelMat(1.0);
-	for (uint32_t i = 0; i < numInstances; i++) {
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(i * 2.0f, 0.0f, 0.0f));
-
-		instanceData.push_back({ model });
+	SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	if(!scene){
+		m_logger->critical("No scene to render");
+	}
+	
+	instanceData.reserve(numInstances);	// reserve the ssbo size
+	for(auto& entity : scene->getEntitiesWith<TransformComponent>()) {
+		TransformComponent transform = entity.getComponent<TransformComponent>();
+		instanceData.push_back({ transform.getModelMatrix() });
 	}
 
 	size_t bufferSize = instanceData.size() * sizeof(StorageBufferObject);
@@ -127,7 +134,7 @@ bool RendererVulkan::onClose()
 
 void RendererVulkan::onUpdate()
 {
-
+	render(*SceneManager::cameraController);
 }
 
 
@@ -141,16 +148,10 @@ void RendererVulkan::endFrame()
 	renderDeviceVulkan->endFrame();
 }
 
-void RendererVulkan::render(Camera& camera, Scene* scene)
+void RendererVulkan::render(Camera& camera)
 {
-	Timer("Render time per frame", true);
-	static auto startTime = std::chrono::high_resolution_clock::now();
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
 	UniformBufferObject ubo{};
 	ubo.model = glm::mat4(1.0);
-	//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.6f, 1.0f, 0.2f));
 	ubo.model = glm::scale(ubo.model, glm::vec3(0.5f, 0.5f, 0.5f));
 	ubo.view = camera.getViewMatrix();
 	ubo.proj = camera.getProjectionMatrix();
@@ -171,28 +172,91 @@ void RendererVulkan::render(Camera& camera, Scene* scene)
 	endFrame();
 }
 
-void RendererVulkan::addMesh()
-{
 
+
+void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+{
+	Timer("CPU render submission time", true);
+
+	uint32_t imageIndex = renderDeviceVulkan->getImageIndex();
+	beginRecording(
+		commandBuffer,
+		renderDeviceVulkan->swapchain.renderPass,
+		renderDeviceVulkan->swapchain.currentFrameBuffer()
+	);
+
+	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+	vkCmdBindDescriptorSets(
+		commandBuffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		renderDeviceVulkan->pipeline.pipelineLayout,
+		0,
+		1,
+		&descriptorSets[currentFrame],
+		0,
+		nullptr
+	);
+
+	vkCmdPushConstants(
+		commandBuffer,
+		renderDeviceVulkan->pipeline.pipelineLayout,
+		VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		sizeof(PushConstantData),
+		&pushConstantData
+	);
+
+
+	SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	if (!scene) {
+		m_logger->critical("No scene to render");
+	}
+
+	int index = 0;
+	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
+		if(!entity.hasComponent<ModelComponent>()) {
+			continue;
+		}
+		
+		uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
+		const Model* model = modelManager->getModel(modelID);
+		
+		glm::mat4 entityTransform = entity.getComponent<TransformComponent>().getModelMatrix();
+		// TODO: copy the transform to ssbo is slow so find a better solution
+		if (instanceData[index].model != entityTransform) {
+			instanceData[index].model = entityTransform;
+		}
+
+		for (uint32_t meshID : model->meshIDs) {
+			const Mesh* mesh = meshManager->getMesh(meshID);
+			materialManager->bindMaterial(mesh->materialID, commandBuffer);
+			meshManager->bindMesh(meshID);
+
+			uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+			renderDeviceVulkan->draw(indexCount, numInstances, index);
+		}
+		index++;
+	}
+
+	renderGui(commandBuffer);
+
+	endRecording(commandBuffer);
 }
 
-void RendererVulkan::addModel(std::string_view path)
-{
-	modelManager->loadModel(path);
-}
-
-void RendererVulkan::beginRecording(void* cmdBuffer)
+void RendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer)
 {
 	uint32_t imageIndex = renderDeviceVulkan->getImageIndex();
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
+	VkRenderPass vulkanRenderPass = static_cast<VkRenderPass>(renderPass);
+	VkFrameBuffer vulkanFrameBuffer = static_cast<VkFrameBuffer>(frameBuffer);
 
 	renderDeviceVulkan->commandPool.beginBuffer();
-	assert(imageIndex < renderDeviceVulkan->swapchain.swapChainFramebuffers.size() && "imageIndex out of range of framebuffers");
 
 	VkRenderPassBeginInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = renderDeviceVulkan->swapchain.renderPass;
-	renderPassInfo.framebuffer = renderDeviceVulkan->swapchain.swapChainFramebuffers[imageIndex];
+	renderPassInfo.renderPass = vulkanRenderPass;
+	renderPassInfo.framebuffer = vulkanFrameBuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent = renderDeviceVulkan->swapchain.swapChainExtent;
 
@@ -221,51 +285,6 @@ void RendererVulkan::endRecording(void* cmdBuffer)
 	vkCmdEndRenderPass(commandBuffer);
 
 	renderDeviceVulkan->commandPool.endBuffer();
-}
-
-void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
-{
-	beginRecording(commandBuffer);
-
-	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	vkCmdBindDescriptorSets(
-		commandBuffer,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		renderDeviceVulkan->pipeline.pipelineLayout,
-		0,
-		1,
-		&descriptorSets[currentFrame],
-		0,
-		nullptr
-	);
-
-	vkCmdPushConstants(
-		commandBuffer,
-		renderDeviceVulkan->pipeline.pipelineLayout,
-		VK_SHADER_STAGE_FRAGMENT_BIT,
-		0,
-		sizeof(PushConstantData),
-		&pushConstantData
-	);
-
-
-	int index = 0;
-	for(auto& modelID : modelManager->listIDs()) {
-		const Model* model = modelManager->getModel(modelID);
-		for (uint32_t meshID : model->meshIDs) {
-			const Mesh* mesh = meshManager->getMesh(meshID);
-			materialManager->bindMaterial(mesh->materialID, commandBuffer);
-			meshManager->bindMesh(meshID);
-
-			uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-			renderDeviceVulkan->draw(indexCount, numInstances, index);
-		}
-		index += numInstances;
-	}
-
-	renderGui(commandBuffer);
-
-	endRecording(commandBuffer);
 }
 
 void RendererVulkan::renderGui(void* commandBuffer)

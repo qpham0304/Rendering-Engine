@@ -33,7 +33,7 @@ protected:
 	WriteLock _lockWrite() { return WriteLock(m_resourceLock); }
 
 protected:
-	std::atomic<uint32_t> m_ids;
+	std::atomic<uint32_t> m_ids { 1 };
 	std::shared_mutex m_resourceLock;
 	Logger* m_logger { nullptr };
 };

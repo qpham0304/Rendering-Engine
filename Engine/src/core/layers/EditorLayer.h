@@ -10,10 +10,10 @@ class GuiManager;
 class EditorLayer : public Layer
 {
 private:
-	Camera* editorCamera;
 	SceneManager& sceneManager = SceneManager::getInstance();
 	EventManager& eventManager = EventManager::getInstance();
 	GuiManager& guiController;
+	Camera* editorCamera;
 	bool GuizmoActive = false;
 	bool drawGrid = false;
 	bool editorActive = true;
@@ -26,7 +26,7 @@ private:
 
 public:
 	EditorLayer(const std::string& name, GuiManager& controller);
-	~EditorLayer() = default;
+	~EditorLayer();
 
 	bool init() override;
 	void onAttach(LayerManager* manager) override;

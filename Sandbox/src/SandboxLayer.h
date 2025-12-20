@@ -2,6 +2,7 @@
 
 #include <core/layers/Layer.h>
 
+class Camera;
 class SandBoxLayer : public Layer
 {
 public:
@@ -16,5 +17,6 @@ public:
 	void onEvent(Event& event) override;
 
 private:
-
+	std::unique_ptr<Camera> camera;
+	
 };

@@ -10,7 +10,8 @@ enum class EventType
 	WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved, WindowUpdate,
 	KeyPressed, KeyReleased, KeyTyped,
 	MousePressed, MouseReleased, MouseMoved, MouseScrolled,
-	AsyncEvent, ModelLoadEvent, AnimationLoadEvent
+	AsyncEvent, ModelLoadEvent, AnimationLoadEvent,
+	GuiMessageEvent, 
 };
 
 class Event
@@ -252,4 +253,29 @@ public:
 	std::string ToString() const override {
 		return "AnimationLoadEvent";
 	}
+};
+
+class GuiMessageEvent : public Event
+{
+public:
+	std::string message = "None";
+
+	GuiMessageEvent() = default;
+	GuiMessageEvent(std::string_view msg) : message(msg)
+	{
+
+	};
+
+	EventType GetEventType() const override {
+		return EventType::GuiMessageEvent;
+	}
+
+	const char* GetName() const override {
+		return "GuiMessageEvent";
+	};
+
+	std::string ToString() const override {
+		return "GuiMessageEvent";
+	}
+
 };

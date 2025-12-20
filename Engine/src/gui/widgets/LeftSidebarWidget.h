@@ -27,6 +27,7 @@ public:
 	virtual void LightTab() = 0;
 	virtual void EntityTab() = 0;
 	virtual void ModelsTab() = 0;
+	virtual void MeshesTab() = 0;
 	virtual void render() override = 0;
 };
 

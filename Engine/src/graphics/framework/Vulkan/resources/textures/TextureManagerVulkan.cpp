@@ -3,6 +3,8 @@
 #include <vulkan/vulkan.h>
 #include "core/features/ServiceLocator.h"
 #include "graphics/framework/vulkan/renderers/RenderDeviceVulkan.h"
+#include "graphics/framework/vulkan/core/VulkanDevice.h"
+#include "graphics/framework/vulkan/core/VulkanUtils.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "logging/Logger.h"
 
@@ -92,6 +94,7 @@ uint32_t TextureManagerVulkan::loadTexture(std::string_view path)
 
 	
 	std::shared_ptr<TextureVulkan> texture = std::make_shared<TextureVulkan>(m_ids);
+	texture->m_path = path;
 	m_textures[m_ids] = texture;
 	m_textureData[path.data()] = m_ids;
 
@@ -103,18 +106,19 @@ uint32_t TextureManagerVulkan::loadTexture(std::string_view path)
 		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		texture->textureImage,
-		texture->textureImageMemory
+		texture->textureImageMemory,
+		renderDeviceVulkan->device
 	);
 
-	transitionImageLayout(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(stagingBuffer, texture->textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-	transitionImageLayout(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transitionImageLayout(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, renderDeviceVulkan);
+	copyBufferToImage(stagingBuffer, texture->textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), renderDeviceVulkan);
+	transitionImageLayout(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, renderDeviceVulkan);
 
 	vkDestroyBuffer(renderDeviceVulkan->device, stagingBuffer, nullptr);
 	vkFreeMemory(renderDeviceVulkan->device, stagingBufferMemory, nullptr);
 
-	texture->textureImageView = createImageView(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-	createTextureSampler(texture->textureSampler);
+	texture->textureImageView = createImageView(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, renderDeviceVulkan);
+	TextureManagerVulkan::createTextureSampler(texture->textureSampler, renderDeviceVulkan);
 	m_logger->debug("Texture loaded {}, id: {}", path.data(), static_cast<uint32_t>(m_ids.load()));
 
 	return _assignID();
@@ -133,7 +137,8 @@ void TextureManagerVulkan::createImage(
 	VkImageUsageFlags usage, 
 	VkMemoryPropertyFlags properties, 
 	VkImage& image, 
-	VkDeviceMemory& imageMemory
+	VkDeviceMemory& imageMemory,
+	const VulkanDevice& device
 ) {
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -150,27 +155,27 @@ void TextureManagerVulkan::createImage(
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	if (vkCreateImage(renderDeviceVulkan->device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+	if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create image!");
 	}
 
 
 	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(renderDeviceVulkan->device, image, &memRequirements);
+	vkGetImageMemoryRequirements(device, image, &memRequirements);
 
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = vulkanBufferManager->findMemoryType(memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = VulkanUtils::findMemoryType(device.physicalDevice, memRequirements.memoryTypeBits, properties);
 
-	if (vkAllocateMemory(renderDeviceVulkan->device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate image memory!");
 	}
 
-	vkBindImageMemory(renderDeviceVulkan->device, image, imageMemory, 0);
+	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
-VkImageView TextureManagerVulkan::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+VkImageView TextureManagerVulkan::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, RenderDeviceVulkan* renderDeviceVulkan)
 {
 	VkImageViewCreateInfo viewInfo{};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -191,7 +196,7 @@ VkImageView TextureManagerVulkan::createImageView(VkImage image, VkFormat format
 	return imageView;
 }
 
-void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler)
+void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, RenderDeviceVulkan* renderDeviceVulkan)
 {
 	VkPhysicalDeviceProperties properties{};
 	vkGetPhysicalDeviceProperties(renderDeviceVulkan->device.physicalDevice, &properties);
@@ -219,7 +224,7 @@ void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler)
 	}
 }
 
-void TextureManagerVulkan::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+void TextureManagerVulkan::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, RenderDeviceVulkan* renderDeviceVulkan)
 {
 	VkCommandBuffer commandBuffer = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 
@@ -275,7 +280,7 @@ void TextureManagerVulkan::transitionImageLayout(VkImage image, VkFormat format,
 	renderDeviceVulkan->commandPool.endSingleTimeCommand(commandBuffer);
 }
 
-void TextureManagerVulkan::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+void TextureManagerVulkan::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, RenderDeviceVulkan* renderDeviceVulkan) {
 	VkCommandBuffer commandBuffer = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 
 	VkBufferImageCopy region{};
@@ -308,36 +313,38 @@ uint32_t TextureManagerVulkan::createDepthTexture() {
 	std::shared_ptr<TextureVulkan> texture = std::make_shared<TextureVulkan>(m_ids);
 	m_textures[m_ids] = texture;
 
-	VkFormat depthFormat = findDepthFormat();
+	VkFormat depthFormat = findDepthFormat(renderDeviceVulkan->device);
 
-	createImage(
+	TextureManagerVulkan::createImage(
 		renderDeviceVulkan->swapchain.swapChainExtent.width, 
 		renderDeviceVulkan->swapchain.swapChainExtent.height, 
 		depthFormat, VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		texture->textureImage,
-		texture->textureImageMemory
+		texture->textureImageMemory,
+		renderDeviceVulkan->device
 	);
 
-	texture->textureImageView = createImageView(texture->textureImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+	texture->textureImageView = createImageView(texture->textureImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, renderDeviceVulkan);
 
 	return _assignID();
 }
 
 
-VkFormat TextureManagerVulkan::findDepthFormat() {
-	return findSupportedFormat(
+VkFormat TextureManagerVulkan::findDepthFormat(const VulkanDevice& device) {
+	return TextureManagerVulkan::findSupportedFormat(
 		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
 		VK_IMAGE_TILING_OPTIMAL,
-		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		device
 	);
 }
 
-VkFormat TextureManagerVulkan::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
+VkFormat TextureManagerVulkan::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features, const VulkanDevice& device) {
 	for (VkFormat format : candidates) {
 		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(renderDeviceVulkan->device.physicalDevice, format, &props);
+		vkGetPhysicalDeviceFormatProperties(device.physicalDevice, format, &props);
 
 		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
 			return format;

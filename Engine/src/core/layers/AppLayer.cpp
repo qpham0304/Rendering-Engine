@@ -5,6 +5,7 @@
 #include "core/features/Camera.h"
 #include "core/layers/layerManager.h"
 #include "core/features/ServiceLocator.h"
+#include <core/resources/managers/ModelManager.h>
 #include "logging/Logger.h"
 #include "Imgui.h"  //TODO: remove when there's no ui dependency
 
@@ -57,6 +58,8 @@ AppLayer::~AppLayer()
 
 bool AppLayer::init()
 {
+	modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+
 	return true;
 }
 
@@ -85,7 +88,7 @@ void AppLayer::onAttach(LayerManager* manager)
 	);
 	skybox.reset(new SkyboxRenderer());
 	
-	EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [](Event& event) {
+	EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [this](Event& event) {
 		ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
 		if (!e.entity.hasComponent<ModelComponent>()) {
 			e.entity.addComponent<ModelComponent>();
@@ -93,10 +96,8 @@ void AppLayer::onAttach(LayerManager* manager)
 
 		ModelComponent& component = e.entity.getComponent<ModelComponent>();
 		component.path = "Loading...";
-		std::string uuid = SceneManager::getInstance().addModel(e.path.c_str());
-
-		if (component.path != e.path && !uuid.empty()) {
-			component.model = SceneManager::getInstance().models[uuid];
+		uint32_t id = modelManager->loadModel(e.path.c_str());
+		if (component.path != e.path && id != -1) {
 			component.path = e.path;
 		}
 
@@ -104,7 +105,7 @@ void AppLayer::onAttach(LayerManager* manager)
 			ImGui::OpenPopup("Failed to load file, please check the format");
 			component.reset();
 		}
-		});
+	});
 
 	EventManager::getInstance().subscribe(EventType::AnimationLoadEvent, [](Event& event) {
 		AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
@@ -115,19 +116,19 @@ void AppLayer::onAttach(LayerManager* manager)
 		AnimationComponent& animationComponent = e.entity.getComponent<AnimationComponent>();
 		ModelComponent& modelComponent = e.entity.getComponent<ModelComponent>();
 		animationComponent.path = "Loading...";
-		std::string uuid = SceneManager::getInstance().addAnimation(e.path.c_str(), modelComponent.model.lock().get());
+		//std::string uuid = SceneManager::getInstance().addAnimation(e.path.c_str(), modelComponent.model.lock().get());
 
-		if (animationComponent.path != e.path && !uuid.empty()) {
-			animationComponent.animation = SceneManager::getInstance().animations[uuid];
-			animationComponent.animator.Init(SceneManager::getInstance().animations[uuid].get());
-			animationComponent.path = e.path;
-		}
+		//if (animationComponent.path != e.path && !uuid.empty()) {
+		//	animationComponent.animation = SceneManager::getInstance().animations[uuid];
+		//	animationComponent.animator.Init(SceneManager::getInstance().animations[uuid].get());
+		//	animationComponent.path = e.path;
+		//}
 
-		else {
-			ImGui::OpenPopup("Failed to load file, please check the format");
-			animationComponent.reset();
-		}
-		});
+		//else {
+		//	ImGui::OpenPopup("Failed to load file, please check the format");
+		//	animationComponent.reset();
+		//}
+	});
 
 
 	EventManager& eventManager = EventManager::getInstance();

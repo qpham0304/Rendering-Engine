@@ -2,10 +2,8 @@
 
 #include <glm/glm.hpp>
 #include <string>
-#include "../../graphics/utils/Utils.h"
 #include "animation/Animation.h"
 #include "animation/Animator.h"
-#include "graphics/framework/OpenGL/core/ModelOpenGL.h"
 
 class Component {
 public:
@@ -90,16 +88,13 @@ public:
 struct ModelComponent {
 public:
 	std::string path = "None";
-	std::weak_ptr<ModelOpenGL> model;
-	uint32_t modelID = -1;
+	uint32_t modelID = 0;
 
 	ModelComponent() = default;
-	ModelComponent(std::string&& path, std::shared_ptr<ModelOpenGL> model) : path(path), model(model) {};
-	ModelComponent(std::string&& path) : path(path) {};
+	ModelComponent(std::string_view path) : path(path) {};
 
 	void reset() {
 		path = "None";
-		model.reset();
 	}
 };
 

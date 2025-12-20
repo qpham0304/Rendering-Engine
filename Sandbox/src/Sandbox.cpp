@@ -5,23 +5,6 @@
 #include "window/AppWindow.h"
 #include "core/events/EventManager.h"
 
-//const std::vector<Vertex> vertices = {
-//    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-//    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-//    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-//    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-//
-//    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-//    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-//    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-//    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-//};
-//
-//std::vector<uint16_t> indices = {
-//	0, 1, 2, 2, 3, 0,
-//	4, 5, 6, 6, 7, 4
-//};
-
 Sandbox::Sandbox(WindowConfig config)
 {
 	windowConfig = config;
@@ -43,8 +26,8 @@ Sandbox::Sandbox(WindowConfig config)
 	serviceLocator.Register<ModelManager>("ModelManager", *modelManager);
 	serviceLocator.Register<LayerManager>("LayerManager", *layerManager);
 
-	renderer = platformFactory.createRenderer(windowConfig.renderPlatform);
 	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
+	renderer = platformFactory.createRenderer(windowConfig.renderPlatform);
 
 	//NOTE: setup order is important!
 	services.push_back(&eventManager);
@@ -73,7 +56,7 @@ void Sandbox::init()
 {
 	engineLogger->setLevel(LogLevel::Debug);
 	
-	// pushLayer(new EditorLayer("EditorLayer", *guiManager));
+	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 
 	for (Service*& service : services) {
 		if(!service->init(windowConfig)) {	// assuming logger is always success
@@ -86,38 +69,9 @@ void Sandbox::init()
 
 void Sandbox::start()
 {
-	renderer->addModel("assets/models/aru/aru.gltf");
-	//renderer->addModel("assets/models/DamagedHelmet/gltf/DamagedHelmet.gltf");
-	//renderer->addModel("assets/models/sponza/sponza.obj");
-	//renderer->addModel("assets/models/cube/cube-notex.gltf");
-
-	camera.init(
-		AppWindow::getWidth(), 
-		AppWindow::getHeight(),
-		glm::vec3(3.0f),
-		glm::normalize(glm::vec3(-3.0f))
-	);
-
-
-	eventManager.subscribe(EventType::WindowResize, [this](Event& event) {
-		WindowResizeEvent& windowResizeEvent = static_cast<WindowResizeEvent&>(event);
-		camera.updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
-	});
-
-	eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
-		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
-		camera.scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
-	});
-
-	eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
-		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
-		camera.processInput();
-	});
-
 	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		isRunning = false;
 	});
-
 }
 
 
@@ -126,12 +80,6 @@ void Sandbox::run() {
 		for (Service*& service : services) {
 			service->onUpdate();
 		}
-
-		camera.onUpdate();
-		camera.processInput();
-
-		Scene* scene = sceneManager.getActiveScene();
-		renderer->render(camera, scene);
 	}
 }
 

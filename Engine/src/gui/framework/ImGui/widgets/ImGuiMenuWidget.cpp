@@ -1,6 +1,7 @@
 #include "ImGuiMenuWidget.h"
 
-ImGuiMenuWidget::ImGuiMenuWidget() : MenuWidget()
+ImGuiMenuWidget::ImGuiMenuWidget() 
+	: MenuWidget()
 {
 
 }

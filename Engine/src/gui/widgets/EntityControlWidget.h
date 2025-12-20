@@ -10,7 +10,8 @@ private:
 	int id;
 
 public:
-	EntityControlWidget();
+	EntityControlWidget() : Widget() {}
+
 	void render() override = 0;
 
 	virtual void scale(glm::mat4& scaleMatrix) = 0;

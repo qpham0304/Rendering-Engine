@@ -25,7 +25,7 @@ void VulkanCommandPool::create()
 void VulkanCommandPool::destroy()
 {
 	if (!commandBuffers.empty()) {
-		vkFreeCommandBuffers(device.device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		vkFreeCommandBuffers(device.device, commandPool, commandBuffers.size(), commandBuffers.data());
 	}
 	if (commandPool != VK_NULL_HANDLE) {
 		vkDestroyCommandPool(device.device, commandPool, nullptr);
@@ -55,7 +55,7 @@ void VulkanCommandPool::endBuffer()
 
 void VulkanCommandPool::draw(uint32_t verticesCount)
 {
-	vkCmdDraw(currentBuffer(), static_cast<uint32_t>(verticesCount), 1, 0, 0);
+	vkCmdDraw(currentBuffer(), verticesCount, 1, 0, 0);
 }
 
 void VulkanCommandPool::drawIndexed(uint32_t indexCount, uint32_t firstInstance)

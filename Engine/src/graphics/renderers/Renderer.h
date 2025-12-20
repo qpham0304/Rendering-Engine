@@ -23,12 +23,10 @@ public:
 	virtual void onUpdate() = 0;
 	virtual void beginFrame() = 0;
 	virtual void endFrame() = 0;
-	virtual void render(Camera& camera, Scene* scene) = 0;
-	virtual void addMesh() = 0;
-	virtual void addModel(std:: string_view path) = 0;
+	virtual void render(Camera& camera) = 0;
 
 protected:
-	Renderer(std::string name = "RenderDevice") : Service(name) {};
+	Renderer(std::string name = "Renderer") : Service(name) {};
 
 	std::unique_ptr<RenderDevice> renderDevice;
 };

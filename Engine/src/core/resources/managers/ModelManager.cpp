@@ -11,7 +11,8 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp_glm_helpers.h>
-
+#include "core/events/EventManager.h"
+#include "core/events/Event.h"
 
 ModelManager::ModelManager()
     :   Manager("ModelManager")
@@ -36,6 +37,35 @@ bool ModelManager::init(WindowConfig config)
     if (!(m_logger && textureManager && meshManager && materialManager)) {
         return false;
     }
+
+    EventManager& eventManager = EventManager::getInstance();
+    eventManager.subscribe(EventType::ModelLoadEvent, [&] (Event& event) {
+        ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
+
+        if (!e.entity.hasComponent<ModelComponent>()) {
+			e.entity.addComponent<ModelComponent>();
+		}
+		
+		ModelComponent& component = e.entity.getComponent<ModelComponent>();
+		component.path = "Loading...";
+        uint32_t modelID = loadModel(e.path);
+
+		if (component.path != e.path && modelID != 0) {
+			component.path = e.path;
+            component.modelID = modelID;
+		}
+		
+		else {
+            //TODO: imgui or a widget register an event to popup a warning message
+            //ideally editor handle it or supress it for run time version
+            std::string message = "Failed to load Model from path: " + e.path;
+            m_logger->critical(message);
+
+            GuiMessageEvent failEvent(message);
+            eventManager.publish(failEvent);
+		}
+    });
+
     return true;
 }
 
@@ -138,7 +168,7 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
 {
     std::vector<Vertex> vertices;
     std::vector<uint16_t> indices;
-
+    
     // process vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
         Vertex vertex;

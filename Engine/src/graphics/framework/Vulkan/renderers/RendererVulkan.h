@@ -20,6 +20,15 @@ class MaterialManager;
 
 class RendererVulkan : public Renderer, protected VkWrap
 {
+public:
+	struct RenderTarget {
+		VkRenderPass renderPass;
+		std::vector<VkFramebuffer> framebuffers;
+		std::vector<VkImage> colorImages;
+		std::vector<VkImageView> colorViews;
+		std::vector<VkImage> depthImages;
+	};
+
 private:
     struct PushConstantData {
         alignas(16) glm::vec3 color;
@@ -49,11 +58,9 @@ public:
 	virtual void onUpdate() override;
 	virtual void beginFrame() override;
 	virtual void endFrame() override;
-	virtual void render(Camera& camera, Scene* scene) override;
-	virtual void addMesh() override;
-	virtual void addModel(std::string_view path) override;
+	virtual void render(Camera& camera) override;
 
-	void beginRecording(void* cmdBuffer);
+	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer);
 	void endRecording(void* cmdBuffer);
 
 public:
@@ -93,7 +100,6 @@ private:
 	uint32_t layoutID;
 	uint32_t poolID;
 	uint32_t setsID;
-
 
 	uint32_t storageBufferID;
 };

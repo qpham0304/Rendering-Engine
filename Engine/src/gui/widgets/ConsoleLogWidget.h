@@ -5,7 +5,7 @@
 class ConsoleLogWidget : public Widget
 {
 protected:
-	ConsoleLogWidget() = default;
+	ConsoleLogWidget() : Widget() {}
 
 public:
 

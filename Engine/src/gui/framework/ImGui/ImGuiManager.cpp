@@ -85,11 +85,12 @@ bool ImGuiManager::init(WindowConfig config)
 	style.GrabMinSize = 15;
 
 
-	widgets.push_back(std::make_unique<ImGuiMenuWidget>());
-	widgets.push_back(std::make_unique<ImGuiLeftSidebarWidget>());
-	widgets.push_back(std::make_unique<ImGuiRightSidebarWidget>());
-	widgets.push_back(std::make_unique<ImGuiConsoleLogWidget>());
-	widgets.push_back(std::make_unique<ImGuiMenuWidget>());
+	addWidget(std::make_unique<ImGuiMenuWidget>());
+	addWidget(std::make_unique<ImGuiLeftSidebarWidget>());
+	addWidget(std::make_unique<ImGuiRightSidebarWidget>());
+	addWidget(std::make_unique<ImGuiConsoleLogWidget>());
+	addWidget(std::make_unique<ImGuiMenuWidget>());
+
 	useDarkTheme();
 
 	// Gamma correct swapchain current use SRGB output
@@ -220,52 +221,23 @@ void ImGuiManager::applicationWindow()
 
 void ImGuiManager::render(void* handle)
 {
-	//ImGui_ImplVulkan_NewFrame();
-	//ImGui_ImplGlfw_NewFrame();
-	//ImGui::NewFrame();
-
-	//// --- Dockspace setup ---
-	//ImGuiViewport* viewport = ImGui::GetMainViewport();
-	//ImGui::SetNextWindowPos(viewport->WorkPos);
-	//ImGui::SetNextWindowSize(viewport->WorkSize);
-	//ImGui::SetNextWindowViewport(viewport->ID);
-
-	//ImGuiWindowFlags host_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-	//	ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-	//	ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus |
-	//	ImGuiWindowFlags_NoNavFocus;
-
-	//ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-	//ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-	//ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-	//ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0)); // transparent
-
-	//ImGui::Begin("MainDockSpace", nullptr, host_window_flags);
-	//ImGui::PopStyleColor();
-	//ImGui::PopStyleVar(3);
-
-	//ImGuiID dockspace_id = ImGui::GetID("MainDockSpaceID");
-	//ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
-	//ImGui::End();
-	// --- End Dockspace setup ---
-
-	// Demo windows
-	//ImGui::ShowDemoWindow(&show_demo_window);
-
-	//ImGui::Begin("Demo");
-	//ImGui::Text("Hello Vulkan!");
-	//ImGui::End();
-
-
+	// applicationWindow();
 	for (const auto& widget : widgets) {
 		widget->render();
 	}
-	// menu.render();
-	// leftSidebar.render();
-	// rightSidebar.render();
-	// console.render();
-	//debugWindow();
-	//applicationWindow();
+
+	//TODO: once vulkan renderer supports render to imgui texture
+	// set up and call guizmo rendering in a separate widget's render
+	SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	if(scene){
+		const std::vector<Entity>& entities = scene->getSelectedEntities();
+		if(!entities.empty()) {
+			const Entity& entity = entities[0];
+			TransformComponent transform = entity.getComponent<TransformComponent>();
+			renderGuizmo(transform);
+		}
+	}
 
 	ImGui::Render();
 	switch (m_config.renderPlatform) {
@@ -383,6 +355,7 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 
 	ImGuizmo::SetOrthographic(false);
 	ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+	// ImGuizmo::SetDrawlist(ImGui::GetBackgroundDrawList());
 	float wd = (float)ImGui::GetWindowWidth();
 	float wh = (float)ImGui::GetWindowHeight();
 

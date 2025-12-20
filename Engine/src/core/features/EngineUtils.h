@@ -16,6 +16,7 @@
 #include <set>
 #include <glm/glm.hpp>
 #include <array>
+#include <random>
 
 namespace FileReader {
 
@@ -39,8 +40,16 @@ namespace FileReader {
 
 }
 
-class EngineUtils
+inline uint64_t genUUID() {
+    static std::random_device rd;
+    static std::mt19937_64 gen(rd());
+    static std::uniform_int_distribution<uint64_t> dist;
+    return dist(gen);
+}
+
+namespace EngineUtils
 {
+	
 
 };
 

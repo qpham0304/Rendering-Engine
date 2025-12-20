@@ -7,11 +7,15 @@
 #include "graphics/renderers/SkyboxRenderer.h"
 #include "graphics/framework/OpenGL/renderers/FrameBuffer.h"
 
+class ModelManager;
+
 class AppLayer : public Layer
 {
 private:
 	using Layer::setLogScopeEngine;
 	using Layer::setLogScopeClient;
+
+	ModelManager* modelManager;
 
 protected:
 	FrameBuffer applicationFBO;

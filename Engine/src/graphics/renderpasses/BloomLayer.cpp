@@ -3,6 +3,7 @@
 #include "core/layers/layerManager.h"
 #include "core/scene/SceneManager.h"// this should be gone once ECS is done setting up
 #include "window/appwindow.h"
+#include "../../graphics/utils/Utils.h"
 
 BloomPass::BloomPass(const std::string& name) : Layer(name), VAO(0), VBO(0)
 {

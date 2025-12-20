@@ -3,16 +3,17 @@
 #include "../entities/Entity.h"
 #include "../components/MComponent.h"
 
-Scene::Scene(const std::string name) : sceneName(name), isEnabled(true)
+Scene::Scene(std::string name) : sceneName(name), isEnabled(true), selectedMesh(0)
 {
 
 }
 
 uint32_t Scene::addEntity(const std::string& name)
 {
+	this->getName();
 	entt::entity e = registry.create();
 	//std::string uuid = Utils::uuid::get_uuid();
-	uint32_t uuid = (uint32_t)e;
+	uint32_t uuid = entt::to_integral(e);
 	if (entities.find(uuid) != entities.end()) {
 		return -1;	//MAX_VALUE of uint32_t
 	}
@@ -59,45 +60,21 @@ void Scene::selectEntities(std::vector<Entity> entities)
 	selectedEntities = entities;
 }
 
+void Scene::selectMesh(const uint32_t &meshID)
+{
+	selectedMesh = meshID;
+}
+
 const std::vector<Entity>& Scene::getSelectedEntities()
 {
-	return selectedEntities;
+    return selectedEntities;
 }
 
-bool Scene::addShader(const std::string& name, ShaderOpenGL& shader)
+const uint32_t Scene::getSelectedMeshID() const
 {
-	if (shaders.find(name) == shaders.end()) {
-		shaders[name] = std::make_shared<ShaderOpenGL>(std::move(shader));
-		return true;
-	}
-	return false;
+    return selectedMesh;
 }
 
-bool Scene::addShader(const std::string& name, const std::string& vertPath, const std::string& fragPath)
-{
-	//if (shaders.find(name) == shaders.end()) {
-		shaders[name] = std::make_shared<ShaderOpenGL>(vertPath.c_str(), fragPath.c_str());
-		return true;
-	//}
-	//return false;
-}
-
-std::shared_ptr<ShaderOpenGL> Scene::getShader(const std::string& name)
-{
-	if (shaders.find(name) != shaders.end()) {
-		return shaders[name];
-	}
-	return nullptr;
-}
-
-bool Scene::removeShader(const std::string& name)
-{
-	if (shaders.find(name) != shaders.end()) {
-		shaders.erase(name);
-		return true;
-	}
-	return false;
-}
 
 void Scene::onUpdate(const float& deltaTime)
 {

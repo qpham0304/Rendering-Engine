@@ -10,6 +10,7 @@
 #include "widgets/ImGuiRightSidebarWidget.h"
 #include "widgets/ImGuiMenuWidget.h"
 #include "gui/GuiManager.h"
+#include "widgets/ImGuiLogger.h"
 
 class ImGuiManager : public GuiManager 
 {
@@ -26,9 +27,9 @@ public:
 
 	~ImGuiManager();
 
-	bool init(WindowConfig config) override;
-	void onUpdate() override;
-	bool onClose() override;
+	virtual bool init(WindowConfig config) override;
+	virtual void onUpdate() override;
+	virtual bool onClose() override;
 	void start(void* handle = nullptr) override;
 	void render(void* handle = nullptr) override;
 	void end(void* handle = nullptr) override;
@@ -62,8 +63,5 @@ private:
 
 	ImGuizmo::OPERATION GuizmoType = ImGuizmo::OPERATION::TRANSLATE;
 	
-	// ImGuiLeftSidebarWidget leftSidebar;
-	// ImGuiRightSidebarWidget rightSidebar;
-	// ImGuiConsoleLogWidget console;
-	// ImGuiMenuWidget menu;
+	ImGuiInternalLogger imguiLogger;
 };

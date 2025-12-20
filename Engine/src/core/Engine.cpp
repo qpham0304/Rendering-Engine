@@ -72,7 +72,7 @@ void Engine::run() {	// must be the last to be added to layer stack
 		// Application
 		appWindow->onUpdate();
 		eventManager.onUpdate();
-		sceneManager.onUpdate();
+		static_cast<Service&>(sceneManager).onUpdate();
 		layerManager->onUpdate();
 
 		bool useEditor = true;

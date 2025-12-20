@@ -9,7 +9,7 @@
 #include "core/layers/layerManager.h"
 #include "gui/GuiManager.h"
 #include "core/features/Camera.h"
-#include "imgui.h"	// TODO: remove dependency with imgui once gui interface is setup
+#include "imgui.h"
 
 void EditorLayer::mockThreadTasks()
 {
@@ -52,10 +52,14 @@ EditorLayer::EditorLayer(const std::string& name, GuiManager& controller)
 
 }
 
+EditorLayer::~EditorLayer()
+{
+	
+}
+
 bool EditorLayer::init()
 {
 	guiController.useDarkTheme();
-	sceneManager.addScene("default");
 	return true;
 }
 
@@ -64,34 +68,10 @@ void EditorLayer::onAttach(LayerManager* manager)
 	Layer::onAttach(manager);
 
 	if (!SceneManager::cameraController) {
-		editorCamera = new Camera();
-		editorCamera->init(AppWindow::getWidth(), AppWindow::getHeight(), glm::vec3(1.0, 0.0, 0.0), glm::vec3(1.0));
-		SceneManager::cameraController = editorCamera;
-	}
-	else {
-		editorCamera = SceneManager::cameraController;
+		return;
 	}
 
-	eventManager.subscribe(EventType::ModelLoadEvent, [](Event& event) {
-		ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
-		if (!e.entity.hasComponent<ModelComponent>()) {
-			e.entity.addComponent<ModelComponent>();
-		}
-		
-		ModelComponent& component = e.entity.getComponent<ModelComponent>();
-		component.path = "Loading...";
-		std::string uuid = SceneManager::getInstance().addModel(e.path.c_str());
-		
-		if (component.path != e.path && !uuid.empty()) {
-			component.model = SceneManager::getInstance().models[uuid];
-			component.path = e.path;
-		}
-		
-		else {
-			ImGui::OpenPopup("Failed to load file, please check the format");
-			component.reset();
-		}
-	});
+	editorCamera = SceneManager::cameraController;
 
 	eventManager.subscribe(EventType::AnimationLoadEvent, [](Event& event) {
 		AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
@@ -102,18 +82,18 @@ void EditorLayer::onAttach(LayerManager* manager)
 		AnimationComponent& animationComponent = e.entity.getComponent<AnimationComponent>();
 		ModelComponent& modelComponent = e.entity.getComponent<ModelComponent>();
 		animationComponent.path = "Loading...";
-		std::string uuid = SceneManager::getInstance().addAnimation(e.path.c_str(), modelComponent.model.lock().get());
+		//std::string uuid = SceneManager::getInstance().addAnimation(e.path.c_str(), modelComponent.model.lock().get());
 
-		if (animationComponent.path != e.path && !uuid.empty()) {
-			animationComponent.animation = SceneManager::getInstance().animations[uuid];
-			animationComponent.animator.Init(SceneManager::getInstance().animations[uuid].get());
-			animationComponent.path = e.path;
-		}
+		//if (animationComponent.path != e.path && !uuid.empty()) {
+		//	animationComponent.animation = SceneManager::getInstance().animations[uuid];
+		//	animationComponent.animator.Init(SceneManager::getInstance().animations[uuid].get());
+		//	animationComponent.path = e.path;
+		//}
 
-		else {
-			ImGui::OpenPopup("Failed to load file, please check the format");
-			animationComponent.reset();
-		}
+		//else {
+		//	ImGui::OpenPopup("Failed to load file, please check the format");
+		//	animationComponent.reset();
+		//}
 	});
 
 
@@ -132,8 +112,6 @@ void EditorLayer::onAttach(LayerManager* manager)
 			keyPressedEvent.Handled = true;	// block keyboard event from other layers
 		}
 	});
-
-
 }
 
 void EditorLayer::onDetach()
@@ -143,57 +121,12 @@ void EditorLayer::onDetach()
 
 void EditorLayer::onUpdate()
 {
-	editorCamera->onUpdate();
 	
-	Scene& scene = *SceneManager::getInstance().getActiveScene();
-
-	for (auto& [id, entity] : scene.entities) {
-		if (entity.hasComponent<CameraComponent>()) {
-			ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
-			TransformComponent& transform = entity.getComponent<TransformComponent>();
-			glm::mat4 viewMatrix = SceneManager::cameraController->getViewMatrix();
-			const glm::mat4& modelMatrix = transform.getModelMatrix();
-			std::shared_ptr<ModelOpenGL> model = modelComponent.model.lock();
-
-			if (model != nullptr) {
-				
-			}
-		}
-	}
-
 }
 
 void EditorLayer::onGuiUpdate()
 {
-	guiController.render();
-	//if(ImGui::Button("addmock data")){
-	//	mockThreadTasks();
-	//}
-
-	if (ImGui::Begin("Application window")) {
-		ImGui::BeginChild("Child");
-		ImGui::SetNextItemAllowOverlap();
-		renderGuizmo();
-		ImGui::EndChild();
-		ImGui::End();
-	}
-
-	std::string id;
-	ImGui::Begin("Layers");
-	Scene* scene = sceneManager.getActiveScene();
 	
-	if (ImGui::Button("add demo layer")) {
-
-	}
-	
-	if (ImGui::Button("add bloom layer")) {
-
-	}
-
-	if (ImGui::Button("remove layer")) {
-
-	}
-	ImGui::End();
 }
 
 void EditorLayer::onEvent(Event& event)

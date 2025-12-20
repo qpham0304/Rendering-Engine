@@ -18,6 +18,7 @@ struct VkImageAspectFlags_T;
 
 struct VkCommandBuffer_T;
 
+
 class VkWrap {
 protected:
 	typedef VkBuffer_T* VkBuffer;

@@ -21,3 +21,13 @@ glm::mat4 CameraComponent::view()
 {
     return camera->getViewMatrix();
 }
+
+glm::mat4 CameraComponent::invView()
+{
+    return camera->getInViewMatrix();
+}
+
+glm::mat4 CameraComponent::invProjection()
+{
+    return camera->getInProjectionMatrix();
+}

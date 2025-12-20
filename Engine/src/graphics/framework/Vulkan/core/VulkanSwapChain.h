@@ -12,13 +12,17 @@ public:
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
     VkSwapchainKHR swapChain;
-    std::vector<VkImage> swapChainImages;
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
+    std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkRenderPass renderPass;
     bool framebufferResized = false;
+
+	VkImage depthImage;
+	VkDeviceMemory depthImageMemory;
+	VkImageView depthImageView;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -38,7 +42,13 @@ public:
 
     void accquireNextImage(const uint32_t& currentFrame);
     void submitAndPresent(const uint32_t& currentFrame, const VkCommandBuffer& commandBuffer);
-    virtual const uint32_t& getImageIndex() const;
+    const uint32_t& getImageIndex() const;
+    const VkFramebuffer& currentFrameBuffer() const;
+    
+	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+	
+	void createDepthResources();
+
 
 private:
     VulkanSwapChain(const VulkanSwapChain& other) = delete;

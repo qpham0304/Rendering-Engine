@@ -51,7 +51,6 @@ private:
     std::unique_ptr<Renderer> renderer;
 
 private:
-    Camera camera;
     std::vector<Service*> services;
 
     uint32_t aruID;

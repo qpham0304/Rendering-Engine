@@ -9,10 +9,9 @@
 class TransformComponent;
 
 class GuiManager : public Service {
-private:
-
 protected:
 	std::vector<std::unique_ptr<Widget>> widgets;
+
 	bool darkTheme = false;
 	bool closeable = true;
 	int width = 0;
@@ -25,9 +24,9 @@ protected:
 	GuiManager(std::string serviceName = "GuiManager") : Service(serviceName) {};
 
 public:
-	virtual bool init(WindowConfig config) override { return true; };
-	virtual bool onClose() override { return true; };
-	virtual void onUpdate() override {};
+	virtual bool init(WindowConfig config) override = 0;
+	virtual bool onClose() override = 0;
+	virtual void onUpdate() override = 0;
 	
 	virtual void start(void* handle = nullptr) = 0;
 	virtual void render(void* handle = nullptr) = 0;
@@ -41,7 +40,10 @@ public:
 	virtual void guizmoTranslate() = 0;
 	virtual void guizmoRotate() = 0;
 	virtual void guizmoScale() = 0;
-public:
+
+	virtual void addWidget(std::unique_ptr<Widget> widget) {
+		widgets.push_back(std::move(widget));
+	};
 
 };
 

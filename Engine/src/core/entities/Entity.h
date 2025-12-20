@@ -24,7 +24,7 @@ public:
 	}
 
 	template<typename... T>
-	bool hasComponent() {
+	bool hasComponent() const {
 		return registry->all_of<T...>(entity);
 	}
 
@@ -38,7 +38,7 @@ public:
 	}
 
 	template<typename T>
-	T& getComponent() {
+	T& getComponent() const {
 		if (hasComponent<T>()) {
 			return registry->get<T>(entity);
 		}
@@ -46,7 +46,7 @@ public:
 	}
 
 	template<typename ...T>
-	std::tuple<T&...> getComponents() {
+	std::tuple<T&...> getComponents() const {
 		if (registry->all_of<T...>(entity)) {
 			return registry->get<T...>(entity);
 		}
@@ -56,5 +56,6 @@ public:
 	uint32_t getID() const;
 
 	void onCameraComponentAdded();
+	void onModelComponentAdded();
 };
 

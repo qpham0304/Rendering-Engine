@@ -6,20 +6,6 @@
 #include <vector>
 #include "services/Service.h"
 
-// Core logging macros
-#define ENGINE_CORE_TRACE(...)    ::Engine::Log::CoreLogger()->trace(__VA_ARGS__)
-#define ENGINE_CORE_INFO(...)     ::Engine::Log::CoreLogger()->info(__VA_ARGS__)
-#define ENGINE_CORE_WARN(...)     ::Engine::Log::CoreLogger()->warn(__VA_ARGS__)
-#define ENGINE_CORE_ERROR(...)    ::Engine::Log::CoreLogger()->error(__VA_ARGS__)
-#define ENGINE_CORE_CRITICAL(...) ::Engine::Log::CoreLogger()->critical(__VA_ARGS__)
-
-// Client/game logging macros
-#define APP_TRACE(...)    ::Engine::Log::ClientLogger()->trace(__VA_ARGS__)
-#define APP_INFO(...)     ::Engine::Log::ClientLogger()->info(__VA_ARGS__)
-#define APP_WARN(...)     ::Engine::Log::ClientLogger()->warn(__VA_ARGS__)
-#define APP_ERROR(...)    ::Engine::Log::ClientLogger()->error(__VA_ARGS__)
-#define APP_CRITICAL(...) ::Engine::Log::ClientLogger()->critical(__VA_ARGS__)
-
 enum class LogLevel {
     Trace,
     Info,
