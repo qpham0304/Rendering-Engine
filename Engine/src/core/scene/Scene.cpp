@@ -26,8 +26,9 @@ Scene::Scene(std::string name)
 
 		if(keyCode == KEY_S) {
 			if(controlPressed){
-				std::string path = "C:/Users/tomor/Desktop/Projects/C++/OpenGL-projs/MyGraphicsEngine/Sandbox/assets/data/Level1-test.json";
-				saveScene(path);
+				//TODO: resolve write got overwritten on next build artifact
+				std::string directory = "../../";
+				saveScene(directory + "assets/data/Level1-test.json");
 				controlPressed = false;
 			}
 		}
@@ -118,10 +119,14 @@ const std::string& Scene::getName() const
 
 bool Scene::saveScene(std::string_view filePath)
 {
+    std::filesystem::path path(filePath);
+
+    // Ensure the parent directories exist
+    std::filesystem::create_directories(path.parent_path());
     processing = true;
     nlohmann::json sceneJson;
 
-	sceneJson["scene_name"] = sceneName;
+    sceneJson["scene_name"] = sceneName;
     
     for(auto& [id, entity] : entities) {
         bool hasParent = false;
@@ -134,8 +139,8 @@ bool Scene::saveScene(std::string_view filePath)
         }
     }
 
-	std::ofstream out(filePath.data(), std::ios::out | std::ios::trunc);
-    
+    // Use the filesystem path directly
+    std::ofstream out(path, std::ios::out | std::ios::trunc);
     if (!out) {
         m_logger.error("Stream error: Could not open file at {}", filePath);
         processing = false;
@@ -143,16 +148,14 @@ bool Scene::saveScene(std::string_view filePath)
     }
 
     try {
-		out << sceneJson.dump(2) << std::endl;
+        out << sceneJson.dump(2) << std::endl;
         out.flush();
-        
         if (out.fail()) {
             m_logger.error("Failed writing data to disk for {}", filePath);
         }
-
         out.close();
     } 
-	catch (const std::exception& e) {
+    catch (const std::exception& e) {
         m_logger.error("JSON/File error: {}", e.what());
     }
 
@@ -160,6 +163,7 @@ bool Scene::saveScene(std::string_view filePath)
     processing = false;
     return true;
 }
+
 
 bool Scene::loadScene(std::string_view filePath) 
 {

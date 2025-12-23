@@ -45,7 +45,7 @@ bool SandBoxLayer::init()
     }
 
     setLogScopeEngine();
-    std::string path = "C:/Users/tomor/Desktop/Projects/C++/OpenGL-projs/MyGraphicsEngine/Sandbox/assets/data/Level1-test.json";
+    std::string path = "assets/data/Level1-test.json";
     // path = "assets/data/Level1.json";
     scene->loadScene(path);
 
