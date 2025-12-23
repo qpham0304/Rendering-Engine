@@ -1,0 +1,11 @@
+{
+  "components": {
+    "NameComponent": { "name": "Hero Ship" },
+    "TransformComponent": {
+      "translateVec": [0.0, 0.0, 0.0],
+      "rotateVec": [0.0, 0.0, 0.0],
+      "scaleVec": [1.0, 1.0, 1.0]
+    },
+    "ModelComponent": { "path": "assets/models/aru/aru.gltf" }
+  }
+}

@@ -59,7 +59,7 @@ bool ModelManager::init(WindowConfig config)
             //TODO: imgui or a widget register an event to popup a warning message
             //ideally editor handle it or supress it for run time version
             std::string message = "Failed to load Model from path: " + e.path;
-            m_logger->critical(message);
+            m_logger->error(message);
 
             GuiMessageEvent failEvent(message);
             eventManager.publish(failEvent);

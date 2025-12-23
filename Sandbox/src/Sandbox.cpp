@@ -5,10 +5,23 @@
 #include "window/AppWindow.h"
 #include "core/events/EventManager.h"
 
-Sandbox::Sandbox(WindowConfig config)
-{
-	windowConfig = config;
 
+#include <core/layers/EditorLayer.h>
+#include <core/layers/LayerManager.h>
+#include <core/scene/SceneManager.h>
+#include <core/resources/managers/TextureManager.h>
+#include <core/resources/managers/BufferManager.h>
+#include <core/resources/managers/MeshManager.h>
+#include <core/resources/managers/ModelManager.h>
+#include <core/resources/managers/DescriptorManager.h>
+#include <core/resources/managers/MaterialManager.h>
+#include <graphics/renderers/Renderer.h>
+
+Sandbox::Sandbox(WindowConfig config)
+	:	windowConfig(config),
+		sceneManager(SceneManager::getInstance()),
+		eventManager(EventManager::getInstance())
+{
 	ServiceLocator::setContext(&serviceLocator);
 	engineLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Engine");
 	clientLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Client");
@@ -60,7 +73,7 @@ void Sandbox::init()
 
 	for (Service*& service : services) {
 		if(!service->init(windowConfig)) {	// assuming logger is always success
-			engineLogger->critical("Service Initilize failed: {}", service->getServiceName());
+			engineLogger->error("Service Initilize failed: {}", service->getServiceName());
 		} else {
 			engineLogger->info("Initilize Service: {}", service->getServiceName());
 		}
@@ -69,11 +82,13 @@ void Sandbox::init()
 
 void Sandbox::start()
 {
-	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
-		isRunning = false;
+	eventManager.subscribe(EventType::KeyPressed, [this](Event& event) {
+		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
+		if(keyPressedEvent.keyCode == KEY_ESCAPE){
+			isRunning = false;
+		}
 	});
 }
-
 
 void Sandbox::run() {
 	while (isRunning) {
@@ -87,7 +102,7 @@ void Sandbox::close()
 {
 	for (Service*& service : std::views::reverse(services)) {
 		if(!service->onClose()) {	// assuming logger is always success
-			engineLogger->critical("Service Close failed: {}", service->getServiceName());
+			engineLogger->error("Service Close failed: {}", service->getServiceName());
 		} else {
 			engineLogger->info("Closing Service: {}", service->getServiceName());
 		}

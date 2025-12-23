@@ -31,6 +31,8 @@ struct WindowConfig {
 	int width = 1280;
 	int height = 720;
 	bool vsync = true;
+	std::string WorkDir = "./src";
+	std::string AssetsDir = "./assets";
 };
 
 struct AppConfig {

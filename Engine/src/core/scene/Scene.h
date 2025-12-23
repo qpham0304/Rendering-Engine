@@ -1,11 +1,14 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <iomanip>
+#include <fstream>
 #include "entt.hpp"
 #include "core/entities/Entity.h"
+#include "Serializer.h"
 
 class SceneManager;
-
+class Logger;
 class Scene
 {
 public:
@@ -56,8 +59,10 @@ public:
 	void onStart();
 	void onStop();
 	void onUpdate(const float& deltaTime);
-	void onGuiUpdate(const float& deltaTime);
 	const std::string& getName() const;
+	bool saveScene(std::string_view path);
+	bool loadScene(std::string_view path);
+
 
 private:
 	friend class SceneManager;
@@ -68,5 +73,10 @@ private:
 	std::vector<Entity> selectedEntities;
 	uint32_t selectedMesh;
 	std::unordered_map<uint32_t, Entity> entities;	//TODO: eventually move to private
+	Logger& m_logger;
+	Serializer m_serializer;
+
+	bool controlPressed = false;
+	bool processing = false;
 };
 

@@ -24,7 +24,8 @@ int main()
     }
     catch (const std::runtime_error& e) {
         std::cerr << "Exception caught by main: " << e.what() << std::endl;
-    } catch (...) {
+    } 
+    catch (...) {
         std::cerr << "Unknown exception caught by main" << std::endl;
     }
 }

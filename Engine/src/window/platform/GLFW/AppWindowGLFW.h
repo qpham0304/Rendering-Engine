@@ -15,9 +15,9 @@ public:
 	~AppWindowGLFW();
 
 
-	virtual bool init(WindowConfig platform) override;		// set up and init the graphics api depending on the platform
+	virtual bool init(WindowConfig platform) override;
 	virtual void onUpdate() override;
-	virtual bool onClose() override;							// close and terminate the program
+	virtual bool onClose() override;
 
 protected:
 	void* _getWindow() override;

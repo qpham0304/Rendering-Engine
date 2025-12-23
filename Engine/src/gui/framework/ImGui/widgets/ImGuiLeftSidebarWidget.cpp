@@ -275,10 +275,11 @@ void ImGuiLeftSidebarWidget::EntityTab() {
                 ImGui::EndDisabled();
 
                 if (ImGui::MenuItem("Add Light")) {
-                    auto& light = entity.addComponent<MLightComponent>();
-                    light.color = glm::vec3(500, 500, 400);
-                    light.position = entity.getComponent<TransformComponent>().translateVec;
-                    entity.getComponent<NameComponent>().name = "light";
+                    //auto& light = entity.addComponent<MLightComponent>();
+                    //light.color = glm::vec3(500, 500, 400);
+                    //light.position = entity.getComponent<TransformComponent>().translateVec;
+                    //entity.getComponent<NameComponent>().name = "light";
+                    m_logger->warn("add light not implemented yet");
                 }
 
                 if (ImGui::MenuItem("Add Camera")) {
@@ -293,6 +294,7 @@ void ImGuiLeftSidebarWidget::EntityTab() {
                     //    glm::vec3(0.5, -0.2, -1.0f)
                     //);
                     //entity.onCameraComponentAdded();    // have entity subscribe to a component added event
+                    m_logger->warn("add camera not implemented yet");
                 }
 
                 ImGui::BeginDisabled(!entity.hasComponent<ModelComponent>());
@@ -452,7 +454,6 @@ void ImGuiLeftSidebarWidget::MeshesTab()
 
 void ImGuiLeftSidebarWidget::ScenesTab()
 {
-    
     ImGui::Begin("Scenes");
     for(uint32_t id : SceneManager::getInstance().listIDs()) {
         const Scene* scene = SceneManager::getInstance().getScene(id);

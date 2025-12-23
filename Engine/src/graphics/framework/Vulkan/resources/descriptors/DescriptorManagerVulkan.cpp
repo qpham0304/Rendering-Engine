@@ -4,6 +4,7 @@
 #include "../../core/VulkanSwapChain.h"
 #include "../../renderers/RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
+#include "Logging/logger.h"
 
 DescriptorManagerVulkan::DescriptorManagerVulkan(std::string serviceName)
 	: DescriptorManager(serviceName)
@@ -129,7 +130,7 @@ uint32_t DescriptorManagerVulkan::createSets(uint32_t layoutID, uint32_t poolID,
 
 	VkResult result = vkAllocateDescriptorSets(renderDeviceVulkan->device, &allocInfo, descriptorSets[m_ids].data());
 	if (result == VK_ERROR_OUT_OF_POOL_MEMORY) {
-		std::cerr << "Descriptor pool memory exhausted!" << std::endl;
+		throw std::runtime_error("Descriptor memory exhausted!");
 	}
 	if (result != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate descriptor sets!");

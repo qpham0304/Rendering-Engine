@@ -1,0 +1,88 @@
+{
+  "entities": [
+    {
+      "components": {
+        "ModelComponent": {
+          "path": "assets/models/reimu/reimu.obj"
+        },
+        "NameComponent": {
+          "name": "reimu"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            0.10000000149011612,
+            0.10000000149011612,
+            0.10000000149011612
+          ],
+          "translateVec": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "overrides": {
+        "components": {
+          "TransformComponent": {
+            "rotateVec": [
+              0.0,
+              45.0,
+              0.0
+            ],
+            "scaleVec": [
+              3.0,
+              3.0,
+              3.0
+            ],
+            "translateVec": [
+              10.0,
+              2.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "prefab_ref": "assets/data/prefabs/player.json"
+    },
+    {
+      "overrides": {
+        "components": {
+          "NameComponent": {
+            "name": "Big Asteroid"
+          },
+          "TransformComponent": {
+            "scaleVec": [
+              5.0,
+              5.0,
+              5.0
+            ],
+            "translateVec": [
+              -50.0,
+              10.0,
+              20.0
+            ]
+          }
+        }
+      },
+      "prefab_ref": "assets/data/prefabs/asteroid.json"
+    },
+    {
+      "overrides": {
+        "components": {
+          "NameComponent": {
+            "name": "Big Asteroid 2"
+          }
+        }
+      },
+      "prefab_ref": "assets/data/prefabs/asteroid.json"
+    }
+  ],
+  "scene_name": "Level1"
+}

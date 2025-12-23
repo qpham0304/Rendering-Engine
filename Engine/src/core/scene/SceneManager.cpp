@@ -70,21 +70,9 @@ SceneManager& SceneManager::getInstance()
 bool SceneManager::addScene(const std::string& name)
 {
 	if (scenes.find(name) == scenes.end()) {
-		scenes[name].reset(new Scene(name));
+		scenes[name] = std::make_unique<Scene>(name);
 		scenes[name]->id = _assignID();
 		activeScene = name;
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-bool SceneManager::addScene(std::unique_ptr<Scene> scene)
-{
-	if (scenes.find(scene->getName()) == scenes.end()) {
-		scenes[scene->getName()] = std::move(scene);
-		scenes[scene->getName()]->id = _assignID();
 		return true;
 	}
 	else {
@@ -143,13 +131,6 @@ bool SceneManager::removeScene(const std::string& name)
 bool SceneManager::empty()
 {
     return scenes.empty();
-}
-
-void SceneManager::onGuiUpdate()
-{
-	for (auto& [name, scene] : scenes) {
-		scene->onGuiUpdate(AppWindow::getTime());
-	}
 }
 
 std::vector<uint32_t> SceneManager::listIDs() const

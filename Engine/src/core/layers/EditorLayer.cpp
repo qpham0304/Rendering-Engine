@@ -73,15 +73,15 @@ void EditorLayer::onAttach(LayerManager* manager)
 
 	editorCamera = SceneManager::cameraController;
 
-	eventManager.subscribe(EventType::AnimationLoadEvent, [](Event& event) {
-		AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
-		if (!e.entity.hasComponent<AnimationComponent>()) {
-			e.entity.addComponent<AnimationComponent>();
-		}
+	//eventManager.subscribe(EventType::AnimationLoadEvent, [](Event& event) {
+	//	AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
+	//	if (!e.entity.hasComponent<AnimationComponent>()) {
+	//		e.entity.addComponent<AnimationComponent>();
+	//	}
 
-		AnimationComponent& animationComponent = e.entity.getComponent<AnimationComponent>();
-		ModelComponent& modelComponent = e.entity.getComponent<ModelComponent>();
-		animationComponent.path = "Loading...";
+	//	AnimationComponent& animationComponent = e.entity.getComponent<AnimationComponent>();
+	//	ModelComponent& modelComponent = e.entity.getComponent<ModelComponent>();
+	//	animationComponent.path = "Loading...";
 		//std::string uuid = SceneManager::getInstance().addAnimation(e.path.c_str(), modelComponent.model.lock().get());
 
 		//if (animationComponent.path != e.path && !uuid.empty()) {
@@ -94,7 +94,7 @@ void EditorLayer::onAttach(LayerManager* manager)
 		//	ImGui::OpenPopup("Failed to load file, please check the format");
 		//	animationComponent.reset();
 		//}
-	});
+	//});
 
 
 	eventManager.subscribe(EventType::MouseMoved, [&](Event& event) {

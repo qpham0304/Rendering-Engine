@@ -79,7 +79,6 @@ void Engine::run() {	// must be the last to be added to layer stack
 		if (useEditor) {
 			//TODO GUI should be done by the guiController
 			guiManager->start();
-			sceneManager.onGuiUpdate();
 			layerManager->onGuiUpdate();
 			guiManager->end();
 		}

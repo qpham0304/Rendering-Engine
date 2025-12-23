@@ -107,30 +107,6 @@ void AppLayer::onAttach(LayerManager* manager)
 		}
 	});
 
-	EventManager::getInstance().subscribe(EventType::AnimationLoadEvent, [](Event& event) {
-		AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
-		if (!e.entity.hasComponent<AnimationComponent>()) {
-			e.entity.addComponent<AnimationComponent>();
-		}
-
-		AnimationComponent& animationComponent = e.entity.getComponent<AnimationComponent>();
-		ModelComponent& modelComponent = e.entity.getComponent<ModelComponent>();
-		animationComponent.path = "Loading...";
-		//std::string uuid = SceneManager::getInstance().addAnimation(e.path.c_str(), modelComponent.model.lock().get());
-
-		//if (animationComponent.path != e.path && !uuid.empty()) {
-		//	animationComponent.animation = SceneManager::getInstance().animations[uuid];
-		//	animationComponent.animator.Init(SceneManager::getInstance().animations[uuid].get());
-		//	animationComponent.path = e.path;
-		//}
-
-		//else {
-		//	ImGui::OpenPopup("Failed to load file, please check the format");
-		//	animationComponent.reset();
-		//}
-	});
-
-
 	EventManager& eventManager = EventManager::getInstance();
 	eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);

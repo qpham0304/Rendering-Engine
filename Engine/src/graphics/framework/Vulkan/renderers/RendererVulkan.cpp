@@ -17,7 +17,6 @@
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
 #include <core/scene/SceneManager.h>
-#include <vulkan/vulkan.h>
 
 
 #include "imgui.h" // TODO: remove it once done
@@ -107,10 +106,12 @@ bool RendererVulkan::init(WindowConfig config)
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
 	if(!scene){
-		m_logger->critical("No scene to render");
+		m_logger->error("No scene to render");
 	}
 	
-	instanceData.reserve(numInstances);	// reserve the ssbo size
+	instanceData.reserve(numInstances);			// reserve the ssbo size
+	instanceData.push_back({ glm::mat4(1.0) });	// prevent no entity size 0
+
 	for(auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 		TransformComponent transform = entity.getComponent<TransformComponent>();
 		instanceData.push_back({ transform.getModelMatrix() });
@@ -178,7 +179,6 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 {
 	Timer("CPU render submission time", true);
 
-	uint32_t imageIndex = renderDeviceVulkan->getImageIndex();
 	beginRecording(
 		commandBuffer,
 		renderDeviceVulkan->swapchain.renderPass,
@@ -210,10 +210,10 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
 	if (!scene) {
-		m_logger->critical("No scene to render");
+		m_logger->error("No scene to render");
 	}
 
-	int index = 0;
+	int index = 1;
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 		if(!entity.hasComponent<ModelComponent>()) {
 			continue;
@@ -222,8 +222,8 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 		uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 		const Model* model = modelManager->getModel(modelID);
 		
-		glm::mat4 entityTransform = entity.getComponent<TransformComponent>().getModelMatrix();
-		// TODO: copy the transform to ssbo is slow so find a better solution
+		const glm::mat4& entityTransform = entity.getComponent<TransformComponent>().getModelMatrix();
+		// TODO: copy the multiple all transforms to ssbo would be slow
 		if (instanceData[index].model != entityTransform) {
 			instanceData[index].model = entityTransform;
 		}
@@ -249,7 +249,7 @@ void RendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* fra
 	uint32_t imageIndex = renderDeviceVulkan->getImageIndex();
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
 	VkRenderPass vulkanRenderPass = static_cast<VkRenderPass>(renderPass);
-	VkFrameBuffer vulkanFrameBuffer = static_cast<VkFrameBuffer>(frameBuffer);
+	VkFramebuffer vulkanFrameBuffer = static_cast<VkFramebuffer>(frameBuffer);
 
 	renderDeviceVulkan->commandPool.beginBuffer();
 

@@ -8,7 +8,7 @@ enum class EventType
 {
 	None = 0,
 	WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved, WindowUpdate,
-	KeyPressed, KeyReleased, KeyTyped,
+	KeyPressed, KeyCombined, KeyReleased, KeyTyped,
 	MousePressed, MouseReleased, MouseMoved, MouseScrolled,
 	AsyncEvent, ModelLoadEvent, AnimationLoadEvent,
 	GuiMessageEvent, 
@@ -87,6 +87,28 @@ public:
 		return "KeyPressedEvent";
 	}
 };
+
+
+class KeyCombinedEvent : public Event
+{
+public:
+	std::vector<int> keyCodes;
+
+	KeyCombinedEvent(std::vector<int> keys) : keyCodes(keys) {}
+
+	EventType GetEventType() const override {
+		return EventType::KeyPressed;
+	}
+
+	const char* GetName() const override {
+		return "KeyCombinedEvent";
+	};
+
+	std::string ToString() const override {
+		return "KeyCombinedEvent";
+	}
+};
+
 
 class WindowCloseEvent : public Event
 {

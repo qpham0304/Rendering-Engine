@@ -44,35 +44,10 @@ bool SandBoxLayer::init()
         return false;
     }
 
-    uint32_t aruEntityID = scene->addEntity("Aru Entity");
-    Entity aruEntity = scene->getEntity(aruEntityID);
-    aruEntity.addComponent<ModelComponent>("assets/models/aru/aru.gltf");
-    aruEntity.onModelComponentAdded();
-    aruEntity.getComponent<TransformComponent>().translate(glm::vec3(1.0));
-
-    uint32_t aruEntityID2 = scene->addEntity("Aru Entity2");
-    Entity aruEntity2 = scene->getEntity(aruEntityID2);
-    aruEntity2.addComponent<ModelComponent>("assets/models/aru/aru.gltf");
-    aruEntity2.onModelComponentAdded();
-    aruEntity2.getComponent<TransformComponent>().translate(glm::vec3(-1.0));
-
-    uint32_t helmetEntityID = scene->addEntity("Damage Helmet");
-    Entity helmetEntity = scene->getEntity(helmetEntityID);
-    helmetEntity.addComponent<ModelComponent>("assets/models/DamagedHelmet/gltf/DamagedHelmet.gltf");
-    helmetEntity.onModelComponentAdded();
-    helmetEntity.getComponent<TransformComponent>().translate(glm::vec3(2.0));
-
-    uint32_t cubEntityID = scene->addEntity("cube");
-    Entity cubeEntity = scene->getEntity(cubEntityID);
-    cubeEntity.addComponent<ModelComponent>("assets/models/cube/cube-notex.gltf");
-    cubeEntity.onModelComponentAdded();
-    cubeEntity.getComponent<TransformComponent>().translate(glm::vec3(-2.0));
-
-    uint32_t reimuID = scene->addEntity("cube");
-    Entity reimuEntity = scene->getEntity(reimuID);
-    reimuEntity.addComponent<ModelComponent>("assets/models/reimu/reimu.obj");
-    reimuEntity.onModelComponentAdded();
-    reimuEntity.getComponent<TransformComponent>().scale(glm::vec3(0.1));
+    setLogScopeEngine();
+    std::string path = "C:/Users/tomor/Desktop/Projects/C++/OpenGL-projs/MyGraphicsEngine/Sandbox/assets/data/Level1-test.json";
+    // path = "assets/data/Level1.json";
+    scene->loadScene(path);
 
 	return true;
 }

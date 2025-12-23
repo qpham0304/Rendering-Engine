@@ -1,16 +1,14 @@
 #pragma once
 
 #include <glm/glm.hpp>
-
-class Camera;
-
+#include "core/features/camera.h"
 class CameraComponent
 {
 private:
-	Camera* camera;
+	Camera camera;
 
 public:
-	CameraComponent() : camera(nullptr) {};
+	CameraComponent() : camera() {};
 	CameraComponent(int width, int height, glm::vec3 position, glm::vec3 orientation);
 	~CameraComponent();
 

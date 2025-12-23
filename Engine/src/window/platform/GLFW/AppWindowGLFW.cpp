@@ -138,47 +138,42 @@ double AppWindowGLFW::_getTime() const
 void AppWindowGLFW::_setEventCallback()
 {
 	glfwSetCursorPosCallback(m_windowHandle, [](GLFWwindow* window, double x, double y)
-		{
-			Timer timer("cursor event", true);
-			MouseMoveEvent cursorMoveEvent(x, y);
-			EventManager::getInstance().publish(cursorMoveEvent);
-		});
+	{
+		Timer timer("cursor event", true);
+		MouseMoveEvent cursorMoveEvent(x, y);
+		EventManager::getInstance().publish(cursorMoveEvent);
+	});
 
 	glfwSetScrollCallback(m_windowHandle, [](GLFWwindow* window, double x, double y)
-		{
-			Timer timer("scroll event", true);
-			MouseScrollEvent scrollEvent(x, y);
-			EventManager::getInstance().publish(scrollEvent);
-			//EventManager::getInstance().publish("mouseScrollEvent", x, y);
-		});
+	{
+		Timer timer("scroll event", true);
+		MouseScrollEvent scrollEvent(x, y);
+		EventManager::getInstance().publish(scrollEvent);
+		//EventManager::getInstance().publish("mouseScrollEvent", x, y);
+	});
 
 	glfwSetKeyCallback(m_windowHandle, [](GLFWwindow* window, int key, int scancode, int action, int mods)
-		{
-			switch (action) {
-				case GLFW_PRESS: {
-					if (key == KEY_ESCAPE) {
-						WindowCloseEvent windowCloseEvent;
-						EventManager::getInstance().publish(windowCloseEvent);
-					}
-					else {
-						KeyPressedEvent keyPressEvent(key);
-						EventManager::getInstance().publish(keyPressEvent);
-					}
-				}
+	{
+		switch (action) {
+			std::cout << "Key: " << key << ", Action: " << action << ", Mods: " << mods << std::endl;
+			case GLFW_PRESS: {
+				KeyPressedEvent keyPressEvent(key);
+				EventManager::getInstance().publish(keyPressEvent);
 			}
-		});
+		}
+	});
 
 	glfwSetWindowSizeCallback(m_windowHandle, [](GLFWwindow* window, int width, int height)
-		{
-			WindowResizeEvent resizeEvent(width, height);
-			EventManager::getInstance().publish(resizeEvent);
-		});
+	{
+		WindowResizeEvent resizeEvent(width, height);
+		EventManager::getInstance().publish(resizeEvent);
+	});
 
 	glfwSetWindowCloseCallback(m_windowHandle, [](GLFWwindow* window)
-		{
-			WindowCloseEvent closeEvent;
-			EventManager::getInstance().publish(closeEvent);
-		});
+	{
+		WindowCloseEvent closeEvent;
+		EventManager::getInstance().publish(closeEvent);
+	});
 
 	//glfwSetFramebufferSizeCallback(m_windowHandle, [](GLFWwindow* window)
 	//	{

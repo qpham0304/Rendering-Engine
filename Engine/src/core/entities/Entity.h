@@ -3,7 +3,6 @@
 
 class Entity
 {
-
 private:
 	entt::entity entity;
 	entt::registry* registry;
@@ -12,10 +11,10 @@ public:
 	Entity() = default;
 	Entity(const entt::entity& entity, entt::registry& registry);
 	Entity(const Entity& other) = default;
+	~Entity() = default;
 	bool operator==(const Entity& other) const;
 	bool operator!=(const Entity& other) const;
-	~Entity() = default;
-
+	operator entt::entity();
 
 	template<typename T, typename ...Args>
 	T& addComponent(Args&& ...args) {
@@ -57,5 +56,5 @@ public:
 
 	void onCameraComponentAdded();
 	void onModelComponentAdded();
+	void onMeshComponentAdded();
 };
-

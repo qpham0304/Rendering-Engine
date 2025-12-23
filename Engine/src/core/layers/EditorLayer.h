@@ -4,6 +4,7 @@
 #include "core/scene/SceneManager.h"
 #include "core/events/EventManager.h"
 #include "core/layers/Layer.h"
+
 class Camera;
 class GuiManager;
 

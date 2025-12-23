@@ -46,5 +46,5 @@ std::vector<char> VulkanUtils::readFile(const std::string& filename)
 
 uint32_t VulkanUtils::numFrames()
 {
-    return static_cast<uint32_t>(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT);
+    return VulkanSwapChain::MAX_FRAMES_IN_FLIGHT;
 }

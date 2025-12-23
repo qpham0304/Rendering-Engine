@@ -1,0 +1,11 @@
+{
+  "components": {
+    "NameComponent": { "name": "Asteroid" },
+    "TransformComponent": {
+      "translateVec": [1.0, 1.0, 1.0],
+      "rotateVec": [0.0, 0.0, 0.0],
+      "scaleVec": [1.0, 1.0, 1.0]
+    },
+    "ModelComponent": { "path": "assets/models/rock/rock.obj" }
+  }
+}

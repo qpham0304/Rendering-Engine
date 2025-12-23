@@ -1,19 +1,14 @@
 #pragma once
 
-#include <core/features/Camera.h>
 #include <core/features/ServiceLocator.h>
 #include <core/features/PlatformFactory.h>
-#include <core/layers/EditorLayer.h>
-#include <core/layers/LayerManager.h>
-#include <core/scene/SceneManager.h>
-#include <core/resources/managers/TextureManager.h>
-#include <core/resources/managers/BufferManager.h>
-#include <core/resources/managers/MeshManager.h>
-#include <core/resources/managers/ModelManager.h>
-#include <core/resources/managers/DescriptorManager.h>
-#include <core/resources/managers/MaterialManager.h>
-#include <graphics/renderers/Renderer.h>
 #include <services/Service.h>
+
+#include "core/scene/SceneManager.h"
+
+class Layer;
+class LayerManager;
+class EventManager;
 
 class Sandbox
 {
@@ -34,8 +29,8 @@ private:
     ServiceLocator serviceLocator;
     PlatformFactory platformFactory{ serviceLocator };
 
-    SceneManager& sceneManager = SceneManager::getInstance();
-    EventManager& eventManager = EventManager::getInstance();
+    SceneManager& sceneManager;
+    EventManager& eventManager;
     std::unique_ptr<AppWindow> appWindow;
     std::unique_ptr<LayerManager> layerManager;
     std::unique_ptr<GuiManager> guiManager;
