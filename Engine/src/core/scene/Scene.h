@@ -72,7 +72,7 @@ private:
 	entt::registry registry;
 	std::vector<Entity> selectedEntities;
 	uint32_t selectedMesh;
-	std::unordered_map<uint32_t, Entity> entities;	//TODO: eventually move to private
+	std::unordered_map<uint32_t, Entity> entities;
 	Logger& m_logger;
 	Serializer m_serializer;
 

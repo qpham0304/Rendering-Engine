@@ -80,15 +80,7 @@ void ImGuiRightSidebarWidget::textureView()
         ImVec2 wsize = ImGui::GetWindowSize();
         wsize.x /= 5;
         wsize.y = wsize.x;
-        if (entity.hasComponent<ModelComponent>()) {
-            uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-            const Model* model = modelManager->getModel(modelID);
-
-            if(scene->getSelectedMeshID() == 0){
-                continue;
-            }
-
-            // printf("selected mesh ID: %d", scene->getSelectedMeshID());
+        if (scene->getSelectedMeshID() != 0) {
             const Mesh* mesh = meshManager->getMesh(scene->getSelectedMeshID());
             MaterialDesc meshDesc = materialManager->getMaterial(mesh->materialID);
 
@@ -219,8 +211,8 @@ void ImGuiRightSidebarWidget::_listTextureManager()
 			ImGui::Text(std::to_string(id).c_str());
 			ImGui::Begin("Texture View");
 			ImGui::BeginChild("Image View");
-			VkDescriptorSet VkDescriptorSet = descriptorManagerVulkan->getDescriptorSet(textureIDs[id])[0];
-			ImGui::Image((ImTextureID)VkDescriptorSet, ImVec2(250, 250));
+			VkDescriptorSet descSet = descriptorManagerVulkan->getDescriptorSet(textureIDs[id])[0];
+			ImGui::Image(reinterpret_cast<ImTextureID>(descSet), ImVec2(250, 250));
 			ImGui::EndChild();
 			ImGui::End();
 		}

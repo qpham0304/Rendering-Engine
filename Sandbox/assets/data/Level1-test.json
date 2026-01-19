@@ -9,15 +9,10 @@
               45.0,
               0.0
             ],
-            "scaleVec": [
-              3.0,
-              3.0,
-              3.0
-            ],
             "translateVec": [
-              10.0,
-              2.0,
-              0.0
+              3.0,
+              3.0,
+              1.0
             ]
           }
         }
@@ -51,6 +46,18 @@
         "components": {
           "NameComponent": {
             "name": "Big Asteroid 2"
+          },
+          "TransformComponent": {
+            "scaleVec": [
+              0.5,
+              0.5,
+              0.5
+            ],
+            "translateVec": [
+              -1.0,
+              2.0,
+              1.0
+            ]
           }
         }
       },

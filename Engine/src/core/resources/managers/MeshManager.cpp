@@ -50,8 +50,9 @@ std::vector<uint32_t> MeshManager::listIDs() const
     return list;
 }
 
-uint32_t MeshManager::loadMesh(const Mesh& mesh)
+uint32_t MeshManager::loadMesh(Mesh& mesh)
 {
+    //TODO: implement feature to reuse identical mesh
     m_meshes[m_ids] = std::make_shared<Mesh>(std::move(mesh));
     
     MeshData meshData{};

@@ -31,11 +31,11 @@ private:
 	//void _setVertexBoneDataToDefault(MeshOpenGL::Vertex& vertex);
 	
 private:
-	std::unordered_map<uint32_t, std::shared_ptr<Model>> m_models;
-	std::unordered_map<std::string, uint32_t> m_modelData;
-	TextureManager* textureManager;
-	MeshManager* meshManager;
-	MaterialManager* materialManager;
+	std::unordered_map<uint32_t, std::shared_ptr<Model>> m_models{};
+	std::unordered_map<std::string, uint32_t> m_modelData{};
+	TextureManager* textureManager{ nullptr };
+	MeshManager* meshManager{ nullptr };
+	MaterialManager* materialManager{ nullptr };
 
 };
 

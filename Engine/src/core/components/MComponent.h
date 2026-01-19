@@ -137,12 +137,12 @@ public:
 
 struct MeshComponent {
 public:
-	uint32_t meshID = 0;
+	std::vector<uint32_t> meshIDs = {};
 
 	MeshComponent() = default;
-	MeshComponent(uint32_t id) : meshID(id) {};
+	MeshComponent(std::vector<uint32_t> ids) : meshIDs(ids) {};
 	
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(MeshComponent, meshID);
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(MeshComponent, meshIDs);
 };
 
 struct RelationshipComponent {

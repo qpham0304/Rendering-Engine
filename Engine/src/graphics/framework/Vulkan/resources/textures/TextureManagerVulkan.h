@@ -11,7 +11,6 @@ class VulkanDevice;
 class TextureManagerVulkan : public TextureManager
 {
 public:
-
 	static void createImage(
 		uint32_t width,
 		uint32_t height,
@@ -25,15 +24,16 @@ public:
 	);
 
 	static VkImageView createImageView(
-		VkImage image,
+		VkImage& image,
+		VkImageView& imageView,
 		VkFormat format,
 		VkImageAspectFlags aspectFlags,
-		RenderDeviceVulkan* renderDeviceVulkan
+		VulkanDevice& device
 	);
 
 	static void createTextureSampler(
 		VkSampler& textureSampler,
-		RenderDeviceVulkan* renderDeviceVulkan
+		VulkanDevice& device
 	);
 
 	static void transitionImageLayout(
@@ -69,13 +69,17 @@ public:
 	virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual uint32_t loadTexture(std::string_view path) override;
+	virtual uint32_t createTexture() override;
 	virtual uint32_t createDepthTexture() override;
 	virtual TextureVulkan* getTexture(uint32_t id) override;
 
 
+private:
+	void _loadTexture(std::string_view path);
 
 private:
 	RenderDeviceVulkan* renderDeviceVulkan;
 	BufferManagerVulkan* vulkanBufferManager;
+
 };
 

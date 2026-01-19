@@ -1,6 +1,6 @@
 {
   "components": {
-    "NameComponent": { "name": "Hero Ship" },
+    "NameComponent": { "name": "Aru" },
     "TransformComponent": {
       "translateVec": [0.0, 0.0, 0.0],
       "rotateVec": [0.0, 0.0, 0.0],

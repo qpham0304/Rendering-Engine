@@ -12,6 +12,7 @@ Scene::Scene(std::string name)
 	: 	sceneName(name),
 		isEnabled(true),
 		selectedMesh(0),
+		id(0),
 		m_logger(ServiceLocator::GetService<Logger>("Engine_LoggerPSD"))
 {
 	EventManager& eventManager = EventManager::getInstance();
@@ -26,7 +27,6 @@ Scene::Scene(std::string name)
 
 		if(keyCode == KEY_S) {
 			if(controlPressed){
-				//TODO: resolve write got overwritten on next build artifact
 				std::string directory = "../../";
 				saveScene(directory + "assets/data/Level1-test.json");
 				controlPressed = false;

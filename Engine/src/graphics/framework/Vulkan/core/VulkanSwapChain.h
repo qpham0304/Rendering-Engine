@@ -45,8 +45,6 @@ public:
     const uint32_t& getImageIndex() const;
     const VkFramebuffer& currentFrameBuffer() const;
     
-	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
-	
 	void createDepthResources();
 
 

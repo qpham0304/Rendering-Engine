@@ -8,6 +8,7 @@ class TextureVulkan : public Texture, protected VkWrap
 public:
 	friend class TextureManagerVulkan;
 	
+	TextureVulkan() = default;
 	TextureVulkan(uint32_t id);
 	virtual ~TextureVulkan() override;
 

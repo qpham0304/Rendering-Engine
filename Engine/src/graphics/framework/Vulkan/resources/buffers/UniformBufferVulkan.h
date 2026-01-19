@@ -13,10 +13,7 @@ public:
 
 	virtual void bind(void* commandBuffer) override;
 
-	template<typename T>
-	void update(T ubo) {
-		memcpy(uniformBufferMapped, &ubo, sizeof(T));
-	}
+	void update(const void* data, size_t size);
 
 private:
 	void* uniformBufferMapped;	// mapped with bufferManager's gpu buffer

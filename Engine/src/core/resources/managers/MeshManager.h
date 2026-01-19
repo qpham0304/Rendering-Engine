@@ -17,7 +17,7 @@ public:
     virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
-    virtual uint32_t loadMesh(const Mesh& mesh);
+    virtual uint32_t loadMesh(Mesh& mesh);
     const Mesh* getMesh(uint32_t id) const;
     void bindMesh(uint32_t id);
 

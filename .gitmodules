@@ -17,3 +17,7 @@
 [submodule "Engine/Libraries/include/external/json"]
 	path = Engine/Libraries/include/external/json
 	url = https://github.com/nlohmann/json
+[submodule "Engine/ThirdParty/imgui"]
+	path = Engine/ThirdParty/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking

@@ -94,14 +94,14 @@ bool ImGuiManager::init(WindowConfig config)
 	useDarkTheme();
 
 	// Gamma correct swapchain current use SRGB output
-	if (m_config.renderPlatform == RenderPlatform::VULKAN) {
-		for (int i = 0; i < ImGuiCol_COUNT; i++) {
-			ImVec4 c = style.Colors[i];
-			style.Colors[i].x = pow(c.x, 2.2f);
-			style.Colors[i].y = pow(c.y, 2.2f);
-			style.Colors[i].z = pow(c.z, 2.2f);
-		}
-	}
+	// if (m_config.renderPlatform == RenderPlatform::VULKAN) {
+	// 	for (int i = 0; i < ImGuiCol_COUNT; i++) {
+	// 		ImVec4 c = style.Colors[i];
+	// 		style.Colors[i].x = pow(c.x, 2.2f);
+	// 		style.Colors[i].y = pow(c.y, 2.2f);
+	// 		style.Colors[i].z = pow(c.z, 2.2f);
+	// 	}
+	// }
 	return true;
 }
 

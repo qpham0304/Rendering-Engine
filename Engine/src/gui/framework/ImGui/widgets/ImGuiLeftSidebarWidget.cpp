@@ -207,18 +207,6 @@ void ImGuiLeftSidebarWidget::EntityTab() {
             //     name = model->path;
             // }
 
-            if(entity.hasComponent<ModelComponent>()) {
-                uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-                Model* model = const_cast<Model*>(modelManager->getModel(modelID));
-
-                for(uint32_t meshID : model->meshIDs){
-                    std::string str = "Mesh: " + std::to_string(meshID);
-                    if(ImGui::Button(str.c_str())) {
-                        scene->selectMesh(meshID);
-                    }
-                }
-            }
-
 
             std::string addModelTex = "Add Model Async(unavailable on current platform)";
 
@@ -323,14 +311,34 @@ void ImGuiLeftSidebarWidget::EntityTab() {
 
                 ImGui::Text(std::string("id: " + std::to_string(entity.getID())).c_str());
 
+
+                if(entity.hasComponent<ModelComponent>()) {
+                    uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
+                    Model* model = const_cast<Model*>(modelManager->getModel(modelID));
+
+                    for(uint32_t meshID : model->meshIDs){
+                        std::string str = "Mesh: " + std::to_string(meshID);
+                        if(ImGui::Button(str.c_str())) {
+                            scene->selectMesh(meshID);
+                        }
+                    }
+                } 
+                else if (entity.hasComponent<MeshComponent>()) {
+                    for(uint32_t meshID : entity.getComponent<MeshComponent>().meshIDs){
+                        std::string str = "Mesh: " + std::to_string(meshID);
+                        if(ImGui::Button(str.c_str())) {
+                            scene->selectMesh(meshID);
+                        }
+                    }
+                }
+                
                 //ImGui::SameLine();
                 //if (ImGui::Button(addModelTex.c_str())) {
                 //    AddComponentDialog(entity);
                 //}
 
                 TransformComponent& transform = entity.getComponent<TransformComponent>();
-                glm::mat4 matrix = transform.getModelMatrix();
-                displayMatrix(matrix);
+                // displayMatrix(transform.getModelMatrix());
 
                 if (ImGui::DragFloat3("Position", glm::value_ptr(transform.translateVec), 0.2f, -20.0f, 20.0f)) {
                     transform.updateTransform();

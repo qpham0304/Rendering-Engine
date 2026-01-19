@@ -3,6 +3,10 @@
 #include <core/layers/Layer.h>
 
 class Camera;
+class MeshManager;
+class MaterialManager;
+class TextureManager;
+
 class SandBoxLayer : public Layer
 {
 public:
@@ -18,5 +22,9 @@ public:
 
 private:
 	std::unique_ptr<Camera> camera;
+
+	MeshManager* meshManager{ nullptr };
+	MaterialManager* materialManager{ nullptr };
+	TextureManager* textureManager{ nullptr };
 	
 };

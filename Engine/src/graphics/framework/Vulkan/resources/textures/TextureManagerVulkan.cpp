@@ -65,6 +65,18 @@ uint32_t TextureManagerVulkan::loadTexture(std::string_view path)
 		return m_textureData[path.data()];
 	}
 
+	_loadTexture(path);
+	return _assignID();
+}
+
+TextureVulkan* TextureManagerVulkan::getTexture(uint32_t id)
+{
+	return dynamic_cast<TextureVulkan*>(TextureManager::getTexture(id));
+}
+
+void TextureManagerVulkan::_loadTexture(std::string_view path)
+{
+
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = texWidth * texHeight * 4;
@@ -92,7 +104,7 @@ uint32_t TextureManagerVulkan::loadTexture(std::string_view path)
 
 	stbi_image_free(pixels);
 
-	
+
 	std::shared_ptr<TextureVulkan> texture = std::make_shared<TextureVulkan>(m_ids);
 	texture->m_path = path;
 	m_textures[m_ids] = texture;
@@ -110,23 +122,33 @@ uint32_t TextureManagerVulkan::loadTexture(std::string_view path)
 		renderDeviceVulkan->device
 	);
 
-	transitionImageLayout(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, renderDeviceVulkan);
-	copyBufferToImage(stagingBuffer, texture->textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), renderDeviceVulkan);
-	transitionImageLayout(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, renderDeviceVulkan);
+	transitionImageLayout(texture->textureImage,
+		VK_FORMAT_R8G8B8A8_SRGB,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		renderDeviceVulkan
+	);
+	copyBufferToImage(stagingBuffer, texture->textureImage, texWidth, texHeight, renderDeviceVulkan);
+	transitionImageLayout(texture->textureImage,
+		VK_FORMAT_R8G8B8A8_SRGB,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		renderDeviceVulkan
+	);
 
 	vkDestroyBuffer(renderDeviceVulkan->device, stagingBuffer, nullptr);
 	vkFreeMemory(renderDeviceVulkan->device, stagingBufferMemory, nullptr);
 
-	texture->textureImageView = createImageView(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, renderDeviceVulkan);
-	TextureManagerVulkan::createTextureSampler(texture->textureSampler, renderDeviceVulkan);
+	createImageView(
+		texture->textureImage,
+		texture->textureImageView,
+		VK_FORMAT_R8G8B8A8_SRGB,
+		VK_IMAGE_ASPECT_COLOR_BIT,
+		renderDeviceVulkan->device
+	);
+	createTextureSampler(texture->textureSampler, renderDeviceVulkan->device);
 	m_logger->debug("Texture loaded {}, id: {}", path.data(), static_cast<uint32_t>(m_ids.load()));
 
-	return _assignID();
-}
-
-TextureVulkan* TextureManagerVulkan::getTexture(uint32_t id)
-{
-	return dynamic_cast<TextureVulkan*>(TextureManager::getTexture(id));
 }
 
 void TextureManagerVulkan::createImage(
@@ -175,8 +197,13 @@ void TextureManagerVulkan::createImage(
 	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
-VkImageView TextureManagerVulkan::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, RenderDeviceVulkan* renderDeviceVulkan)
-{
+VkImageView TextureManagerVulkan::createImageView(
+	VkImage &image,
+	VkImageView &imageView,
+	VkFormat format,
+	VkImageAspectFlags aspectFlags,
+	VulkanDevice &device
+) {
 	VkImageViewCreateInfo viewInfo{};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	viewInfo.image = image;
@@ -188,18 +215,15 @@ VkImageView TextureManagerVulkan::createImageView(VkImage image, VkFormat format
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
 
-	VkImageView imageView;
-	if (vkCreateImageView(renderDeviceVulkan->device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+	if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create image view!");
 	}
-
-	return imageView;
 }
 
-void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, RenderDeviceVulkan* renderDeviceVulkan)
+void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, VulkanDevice& device)
 {
 	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(renderDeviceVulkan->device.physicalDevice, &properties);
+	vkGetPhysicalDeviceProperties(device.physicalDevice, &properties);
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -219,13 +243,17 @@ void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, Rende
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
 
-	if (vkCreateSampler(renderDeviceVulkan->device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+	if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
 }
 
-void TextureManagerVulkan::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, RenderDeviceVulkan* renderDeviceVulkan)
-{
+void TextureManagerVulkan::transitionImageLayout(VkImage image,
+	VkFormat format,
+	VkImageLayout oldLayout,
+	VkImageLayout newLayout,
+	RenderDeviceVulkan* renderDeviceVulkan
+){
 	VkCommandBuffer commandBuffer = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 
 	VkImageMemoryBarrier barrier{};
@@ -280,7 +308,13 @@ void TextureManagerVulkan::transitionImageLayout(VkImage image, VkFormat format,
 	renderDeviceVulkan->commandPool.endSingleTimeCommand(commandBuffer);
 }
 
-void TextureManagerVulkan::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, RenderDeviceVulkan* renderDeviceVulkan) {
+void TextureManagerVulkan::copyBufferToImage(
+	VkBuffer buffer,
+	VkImage image,
+	uint32_t width,
+	uint32_t height,
+	RenderDeviceVulkan* renderDeviceVulkan
+) {
 	VkCommandBuffer commandBuffer = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 
 	VkBufferImageCopy region{};
@@ -308,17 +342,25 @@ void TextureManagerVulkan::copyBufferToImage(VkBuffer buffer, VkImage image, uin
 	renderDeviceVulkan->commandPool.endSingleTimeCommand(commandBuffer);
 }
 
+uint32_t TextureManagerVulkan::createTexture()
+{
+	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);
+
+    return _assignID();
+}
+
 uint32_t TextureManagerVulkan::createDepthTexture() {
 	
-	std::shared_ptr<TextureVulkan> texture = std::make_shared<TextureVulkan>(m_ids);
-	m_textures[m_ids] = texture;
+	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);
+	TextureVulkan* texture = static_cast<TextureVulkan*>(m_textures[m_ids].get());
 
 	VkFormat depthFormat = findDepthFormat(renderDeviceVulkan->device);
 
 	TextureManagerVulkan::createImage(
 		renderDeviceVulkan->swapchain.swapChainExtent.width, 
 		renderDeviceVulkan->swapchain.swapChainExtent.height, 
-		depthFormat, VK_IMAGE_TILING_OPTIMAL,
+		depthFormat, 
+		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		texture->textureImage,
@@ -326,7 +368,13 @@ uint32_t TextureManagerVulkan::createDepthTexture() {
 		renderDeviceVulkan->device
 	);
 
-	texture->textureImageView = createImageView(texture->textureImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, renderDeviceVulkan);
+	texture->textureImageView = createImageView(
+		texture->textureImage,
+		texture->textureImageView,
+		depthFormat,
+		VK_IMAGE_ASPECT_DEPTH_BIT,
+		renderDeviceVulkan->device
+	);
 
 	return _assignID();
 }

@@ -28,15 +28,15 @@ bool SceneManager::init(WindowConfig config)
 		cameraController->updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
 	});
 
-	eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
-		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
-		cameraController->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
-	});
+	// eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
+	// 	MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
+	// 	cameraController->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
+	// });
 
-	eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
-		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
-		cameraController->processInput();
-	});
+	// eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
+	// 	MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
+	// 	cameraController->processInput();
+	// });
 
 	return true;
 }

@@ -98,6 +98,10 @@ std::vector<uint32_t> ModelManager::listIDs() const
 
 uint32_t ModelManager::loadModel(std::string_view path)
 {
+    if (m_modelData.find(path.data()) != m_modelData.end()) {
+        return m_modelData.at(path.data());;
+    }
+
     _loadModel(path);
 
     return _assignID();
