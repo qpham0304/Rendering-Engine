@@ -14,6 +14,8 @@ layout(location = 5) in vec2 inBitangent;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
+layout(location = 2) out vec3 fragWorldPos;
+layout(location = 3) out vec3 fragLightPos;
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 model;
@@ -26,11 +28,17 @@ layout(set = 0, binding = 1, std430) readonly buffer StorageBufferObject {
     mat4 models[];
 } ssbo;
 
+
 // uniform mat4 finalBonesMatrices[MAX_BONES];
 // layout(set = 0, binding = 1) uniform finalBonesMatrices[MAX_BONES];
 
 void main() {
-    gl_Position = ubo.proj * ubo.view * ssbo.models[gl_InstanceIndex] * vec4(inPosition, 1.0);
+    mat4 modelMatrix = ssbo.models[gl_InstanceIndex];
+    vec4 worldPos = modelMatrix * vec4(inPosition, 1.0);
+    gl_Position = ubo.proj * ubo.view * worldPos;
+
     fragColor = inColor;
     fragTexCoord = inTexCoord;
+    fragWorldPos = worldPos.xyz;
+    fragLightPos =  modelMatrix[3].xyz;
 }
