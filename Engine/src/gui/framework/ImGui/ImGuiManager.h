@@ -11,6 +11,7 @@
 #include "widgets/ImGuiMenuWidget.h"
 #include "gui/GuiManager.h"
 #include "widgets/ImGuiLogger.h"
+#include "widgets/ImGuiMathWidget.h"
 
 class ImGuiManager : public GuiManager 
 {

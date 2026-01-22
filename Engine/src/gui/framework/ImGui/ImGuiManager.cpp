@@ -90,6 +90,7 @@ bool ImGuiManager::init(WindowConfig config)
 	addWidget(std::make_unique<ImGuiRightSidebarWidget>());
 	addWidget(std::make_unique<ImGuiConsoleLogWidget>());
 	addWidget(std::make_unique<ImGuiMenuWidget>());
+	addWidget(std::make_unique<ImGuiMathWidget>());
 
 	useDarkTheme();
 
