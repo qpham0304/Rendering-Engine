@@ -54,7 +54,8 @@ uint32_t BufferManagerVulkan::findMemoryType(uint32_t typeFilter, VkMemoryProper
 
 bool BufferManagerVulkan::onClose()
 {
-	for (auto& [id, buffer] : buffers) {
+	//TODO: destroy() resizes buffers during iteration, check if this break
+	for (auto& [id, buffer] : buffers) {	
 		buffer->destroy(renderDeviceVulkan->device);
 	}
 	buffers.clear();
