@@ -369,6 +369,7 @@ void RendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* fra
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
 	VkRenderPass vulkanRenderPass = static_cast<VkRenderPass>(renderPass);
 	VkFramebuffer vulkanFrameBuffer = static_cast<VkFramebuffer>(frameBuffer);
+	VulkanPipeline* pipelinePtr = static_cast<VulkanPipeline*>(pipeline);
 
 	VkRenderPassBeginInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -388,7 +389,7 @@ void RendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* fra
 	//basic draw commands
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	offscreenPipeline->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
+	pipelinePtr->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
 	renderDeviceVulkan->setViewport();
 	renderDeviceVulkan->setScissor();
@@ -491,8 +492,7 @@ void RendererVulkan::_createOffscreenTarget()
 		TextureManagerVulkan::createImage(
 			swapchain.swapChainExtent.width,
 			swapchain.swapChainExtent.height,
-			// swapchain.swapChainImageFormat,
-			VK_FORMAT_R8G8B8A8_UNORM,
+			swapchain.swapChainImageFormat,
 			VK_IMAGE_TILING_OPTIMAL,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
