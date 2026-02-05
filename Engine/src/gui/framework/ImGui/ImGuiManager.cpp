@@ -90,7 +90,7 @@ bool ImGuiManager::init(WindowConfig config)
 	addWidget(std::make_unique<ImGuiRightSidebarWidget>());
 	addWidget(std::make_unique<ImGuiConsoleLogWidget>());
 	addWidget(std::make_unique<ImGuiMenuWidget>());
-	addWidget(std::make_unique<ImGuiMathWidget>());
+	// addWidget(std::make_unique<ImGuiMathWidget>());
 
 	useDarkTheme();
 
@@ -193,6 +193,8 @@ void ImGuiManager::debugWindow(ImTextureID texture)
 
 void ImGuiManager::applicationWindow()
 {
+	// ImGuiIO& io = ImGui::GetIO();
+
 	//start group
 	ImGui::SetCursorPos(ImVec2(10.0f, 10.0f));
 	ImGui::BeginGroup();
@@ -202,8 +204,6 @@ void ImGuiManager::applicationWindow()
 	ImGui::SameLine();
 	ImGui::Button("C");
 	ImGui::EndGroup();
-
-	ImGuiIO& io = ImGui::GetIO();
 
 	//center group
 	ImVec4 buttonActiveColor = ImVec4{ 0.0f, (float)140 / 255, (float)184 / 255, 0.8 };
@@ -223,22 +223,23 @@ void ImGuiManager::applicationWindow()
 void ImGuiManager::render(void* handle)
 {
 	// applicationWindow();
+	
 	for (const auto& widget : widgets) {
 		widget->render();
 	}
 
-	//TODO: once vulkan renderer supports render to imgui texture
-	// set up and call guizmo rendering in a separate widget's render
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if(scene){
-		const std::vector<Entity>& entities = scene->getSelectedEntities();
-		if(!entities.empty()) {
-			const Entity& entity = entities[0];
-			TransformComponent transform = entity.getComponent<TransformComponent>();
-			renderGuizmo(transform);
-		}
-	}
+	// //TODO: once vulkan renderer supports render to imgui texture
+	// // set up and call guizmo rendering in a separate widget's render
+	// SceneManager& sceneManager = SceneManager::getInstance();
+	// Scene* scene = sceneManager.getActiveScene();
+	// if(scene){
+	// 	const std::vector<Entity>& entities = scene->getSelectedEntities();
+	// 	if(!entities.empty()) {
+	// 		const Entity& entity = entities[0];
+	// 		TransformComponent& transform = entity.getComponent<TransformComponent>();
+	// 		renderGuizmo(transform);
+	// 	}
+	// }
 
 	ImGui::Render();
 	switch (m_config.renderPlatform) {
@@ -342,6 +343,8 @@ void ImGuiManager::useDarkTheme()
 
 void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 {
+	applicationWindow();
+
 	ImGuizmo::BeginFrame();
 	glm::vec3 translateVector(0.0f, 0.0f, 0.0f);
 	glm::vec3 scaleVector(1.0f, 1.0f, 1.0f);
@@ -393,7 +396,7 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 	);
 
 	if (ImGuizmo::IsUsing()) {
-		GuizmoActive = true;
+		guizmoActive = true;
 		glm::vec3 translation, rotation, scale;
 		Utils::Math::DecomposeTransform(transform, translation, rotation, scale);	// graphics utils dependency, resolve when have time
 		glm::vec3 deltaRotation = rotation - transformComponent.rotateVec;
@@ -403,7 +406,7 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 		transformComponent.scaleVec = scale;
 	}
 	else {
-		GuizmoActive = false;
+		guizmoActive = false;
 	}
 }
 

@@ -4,17 +4,16 @@
 
 // TODO this should be the param to create pipeline
 struct PipelineConfigInfo {
-	VkViewport viewport;
-	VkRect2D scissor;
 	VkPipelineViewportStateCreateInfo viewportInfo;
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
 	VkPipelineRasterizationStateCreateInfo rasterizationInfo;
 	VkPipelineMultisampleStateCreateInfo multisampleInfo;
-	VkPipelineColorBlendAttachmentState colorBlendAttachment;
+	std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
 	VkPipelineColorBlendStateCreateInfo colorBlendInfo;
 	VkPipelineDepthStencilStateCreateInfo depthStencilInfo;
-	VkPipelineLayout pipelineLayout = nullptr;
-	VkRenderPass renderPass = nullptr;
+	std::vector<VkDynamicState> dynamicStateEnables;
+    VkPipelineDynamicStateCreateInfo dynamicStateInfo;
+	VkRenderPass renderPass = VK_NULL_HANDLE;
 	uint32_t subpass = 0;
 };
 
@@ -28,6 +27,8 @@ public:
 	VulkanPipeline(VulkanDevice& deviceRef);
 	~VulkanPipeline();
 
+	static PipelineConfigInfo defaultPipelineConfigInfo(uint32_t numAttachments);
+	
 	void create();
 	void destroy();
 	void bind(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint);
@@ -38,9 +39,16 @@ public:
 		size_t pushConstantSize = 0
 	);
 
+	void createGraphicsPipeline(
+		const std::string& vertFilepath,
+		const std::string& fragFilepath,
+		const PipelineConfigInfo& configInfo,
+		const VkPipelineVertexInputStateCreateInfo& vertexInputInfo,
+		const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, 
+		uint32_t pushConstantSize
+	);
+
 	void createComputePipeline();
-
-
 
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
@@ -50,7 +58,6 @@ private:
 	VulkanPipeline(const VulkanPipeline&& other) = delete;
 	VulkanPipeline& operator=(const VulkanPipeline&& other) = delete;
 
-	static PipelineConfigInfo defaultPipelineConfigInfo(uint32_t width, uint32_t height);
 
 private:
 	VulkanDevice& device;

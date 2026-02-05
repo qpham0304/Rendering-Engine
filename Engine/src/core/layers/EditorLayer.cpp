@@ -1,15 +1,10 @@
 #include "EditorLayer.h"
 #include "window/appwindow.h"
-#include "core/features/Timer.h"
 #include "core/events/EventManager.h"
-#include "core/layers/AppLayer.h"
 #include "core/components/MComponent.h"
-#include "core/components/cameracomponent.h"
 #include "window/Input.h"
 #include "core/layers/layerManager.h"
 #include "gui/GuiManager.h"
-#include "core/features/Camera.h"
-#include "imgui.h"
 
 void EditorLayer::mockThreadTasks()
 {
@@ -67,11 +62,11 @@ void EditorLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);
 
-	if (!SceneManager::cameraController) {
-		return;
-	}
+	//if (!SceneManager::cameraController) {
+	//	return;
+	//}
 
-	editorCamera = SceneManager::cameraController;
+	//editorCamera = SceneManager::cameraController;
 
 	//eventManager.subscribe(EventType::AnimationLoadEvent, [](Event& event) {
 	//	AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
@@ -100,14 +95,14 @@ void EditorLayer::onAttach(LayerManager* manager)
 	eventManager.subscribe(EventType::MouseMoved, [&](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 
-		if (GuizmoActive && editorActive) {
+		if (guiController.guizmoActive) {
 			mouseEvent.Handled = true;	// block mouse event from other layers
 		}
 	});
 
 	keyEventID = eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
-		if (GuizmoActive || editorActive) {
+		if (guiController.guizmoActive || guiController.editorActive) {
 			handleKeyPressed(keyPressedEvent.keyCode);
 			keyPressedEvent.Handled = true;	// block keyboard event from other layers
 		}
@@ -122,6 +117,16 @@ void EditorLayer::onDetach()
 void EditorLayer::onUpdate()
 {
 	
+// 	ImGui::Begin("Application");
+// 	ImGui::BeginChild("Application View");
+// 	if (ImGui::IsItemHovered() && ImGui::IsWindowFocused()) {
+// 		editorActive = true;
+// 	} 
+// 	else{
+// 		editorActive = false;
+// 	}
+// 	ImGui::EndChild();
+// 	ImGui::End();
 }
 
 void EditorLayer::onGuiUpdate()

@@ -15,8 +15,8 @@
 
 class ImGuiManager : public GuiManager 
 {
-public:
-
+public:	
+	
 public:
 	ImGuiManager();
 	ImGuiManager(bool darkTheme);

@@ -79,7 +79,7 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 	material.aoID = _checkMaterial(materialDesc.aoIDs, fallback_aoID);
 	material.emissiveID = _checkMaterial(materialDesc.emissiveIDs, fallback_emissiveID);
 
-	//TODO: each mesh own a set now, hash to prevent duplicate material set
+	//TODO: each mesh owns a set now, hash to prevent duplicate material set
 	material.descriptorSetID = descriptorManagerVulkan->createSets(materialLayoutID, materialPoolID, 1);
 	VkDescriptorSet materialSet = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID)[0];
 
@@ -130,15 +130,19 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
     return _assignID();
 }
 
-void MaterialManagerVulkan::bindMaterial(const uint32_t &id, void* cmdBuffer)
+void MaterialManagerVulkan::bindMaterial(const uint32_t &id, void* cmdBuffer, void* p)
 {
+	assert(p, "pipeline required");
+
 	MaterialVulkan material = materials.at(id);
 	VkDescriptorSet materialSet = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID)[0];
+
+	VulkanPipeline* pipeline = static_cast<VulkanPipeline*>(p);
 
 	vkCmdBindDescriptorSets(
 		reinterpret_cast<VkCommandBuffer>(cmdBuffer),
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		renderDeviceVulkan->pipeline.pipelineLayout,
+		pipeline->pipelineLayout,
 		1,
 		1,
 		&materialSet,

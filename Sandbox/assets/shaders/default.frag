@@ -56,6 +56,12 @@ void main() {
         totalLighting += color * (intensity / (d * d + 1.0));
     }
     
-    outColor = vec4(albedo.rgb * totalLighting, albedo.a);
+    
+    if (pushConstantData.flag) {
+        outColor = vec4(albedo.rgb * totalLighting, albedo.a);
+    } else {
+        outColor = texture(normalMaps, fragTexCoord);
+    }
+    
     outColor = vec4(pow(outColor.xyz, vec3(1.0f/2.2f)), 1.0f);
 }

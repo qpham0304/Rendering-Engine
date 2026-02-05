@@ -32,11 +32,12 @@ bool SceneManager::init(WindowConfig config)
 	// 	MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
 	// 	cameraController->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
 	// });
+	
+	 eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
+	 	MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
+	 	cameraController->processMouse();
+	 });
 
-	// eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
-	// 	MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
-	// 	cameraController->processInput();
-	// });
 
 	return true;
 }
@@ -57,7 +58,7 @@ void SceneManager::onUpdate()
 
 	if(cameraController){
 		cameraController->onUpdate();
-		cameraController->processInput();
+		cameraController->processKeyboard();
 	}
 }
 

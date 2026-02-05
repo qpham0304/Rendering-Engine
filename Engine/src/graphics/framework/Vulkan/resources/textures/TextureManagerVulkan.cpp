@@ -389,8 +389,14 @@ VkFormat TextureManagerVulkan::findDepthFormat(const VulkanDevice& device) {
 	);
 }
 
-VkFormat TextureManagerVulkan::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features, const VulkanDevice& device) {
-	for (VkFormat format : candidates) {
+VkFormat TextureManagerVulkan::findSupportedFormat(
+	const std::vector<VkFormat>& candidates,
+	VkImageTiling tiling,
+	VkFormatFeatureFlags features,
+	const VulkanDevice& device
+) {
+	for (VkFormat format : candidates
+	) {
 		VkFormatProperties props;
 		vkGetPhysicalDeviceFormatProperties(device.physicalDevice, format, &props);
 

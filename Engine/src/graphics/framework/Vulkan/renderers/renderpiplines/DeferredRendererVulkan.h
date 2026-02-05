@@ -3,8 +3,6 @@
 #include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>
@@ -22,18 +20,16 @@ class DescriptorManagerVulkan;
 class MaterialManager;
 class VulkanPipeline;
 
-class RendererVulkan : public Renderer
+class DeferredRendererVulkan : public Renderer
 {
-public:
-
 private:
-    struct PushConstantData {
-        alignas(16) glm::vec3 color;
-        alignas(16) glm::vec3 range;
-        alignas(4)  bool flag;
-        alignas(4)  float data;
-    };
-	
+	struct PushConstantData {
+		alignas(16) glm::vec3 color;
+		alignas(16) glm::vec3 range;
+		alignas(4)  bool flag;
+		alignas(4)  float data;
+	};
+
 	struct UniformBufferObject {
 		glm::mat4 model;
 		glm::mat4 view;
@@ -51,39 +47,21 @@ private:
 	};
 
 public:
-	RendererVulkan(std::string serviceName = "RendererVulkan");
+    DeferredRendererVulkan();
+    virtual~DeferredRendererVulkan() override;
 
-	virtual ~RendererVulkan() override;
-
-	virtual bool init(WindowConfig config) override;
+    virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void beginFrame() override;
 	virtual void endFrame() override;
 	virtual void render(Camera& camera) override;
 
-	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline);
+	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer);
 	void endRecording(void* cmdBuffer);
-
-public:
-	
-private:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-	void recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-	void renderGui(void* commandBuffer);
 
-
-	void _createOffscreenTarget();
-
-	void _createDescriptorSetLayout();
-	void _createDescriptorPool();
-	void _createDescriptorSets();
-
-	//TODO: PRIORITY: support recreation on screen resize
-	void _createOffscreenViewDescriptorSet();
-	void _createDepthResources(VulkanDevice& device, TextureVulkan& depthTexture);
-
-private:
+public:	//TODO: make privat once done testing	
 	const int numInstances = 1;
 	const int numLights = 100;
 
@@ -107,24 +85,31 @@ private:
 	std::vector<StorageBufferObject> instanceData;
 	std::vector<LightSSBO> lights;
 
-	VkDescriptorSetLayout descriptorSetLayout;
-	VkDescriptorPool descriptorPool;
-	std::vector<VkDescriptorSet> descriptorSets;
 	uint32_t layoutID;
 	uint32_t poolID;
 	uint32_t setsID;
 
-	uint32_t storageBufferID;
+	uint32_t samplerLayoutID;
+	uint32_t samplerSetID;
+	uint32_t samplerPoolID;
 
 	VulkanRenderTarget renderTarget;
-	std::unique_ptr<VulkanPipeline> offscreenPipeline;
+	std::unique_ptr<VulkanPipeline> gPassPipeline;
+
 	uint32_t imGuilayoutID;
 	uint32_t imGuipoolID;
 	std::vector<uint32_t> imGuisetIDs;
 
-	bool isActive{ false };
+	std::unique_ptr<VulkanPipeline> lightingPipeline;
+	uint32_t lightLayoutID;
+	uint32_t lightSetsID;
 
-	DeferredRendererVulkan deferredRenderer;
-	ForwardRendererVulkan forwardRenderer;
+	void _createRenderPasses();
+	void _createFrameBuffers();
+	void _createDescriptor();
+	void _createPipelines();
+	void _createViewDescriptorSets();
+
+	void _createLightPipeline();
+	void _createLightDescriptor();
 };
-

@@ -1,7 +1,7 @@
-#include "RendererVulkan.h"
+#include "ForwardRendererVulkan.h"
 #include "core/features/ServiceLocator.h"
 #include "graphics/renderers/RenderDevice.h"
-#include "RenderDeviceVulkan.h"
+#include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
 #include "logging/Logger.h"
 #include "window/AppWindow.h"
 #include "core/events/EventManager.h"
@@ -23,18 +23,18 @@
 
 #include "imgui.h" // TODO: remove it once done
 
-RendererVulkan::RendererVulkan(std::string serviceName) 
-	:	Renderer(serviceName)
+ForwardRendererVulkan::ForwardRendererVulkan(std::string serviceName)
+	: Renderer(serviceName)
 {
 
 }
 
-RendererVulkan::~RendererVulkan()
+ForwardRendererVulkan::~ForwardRendererVulkan()
 {
 
 }
 
-bool RendererVulkan::init(WindowConfig config)
+bool ForwardRendererVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
@@ -46,14 +46,14 @@ bool RendererVulkan::init(WindowConfig config)
 	bufferManagerVulkan = &static_cast<BufferManagerVulkan&>(bufferManager);
 	DescriptorManager& descriptorManager = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
 	descriptorManagerVulkan = &static_cast<DescriptorManagerVulkan&>(descriptorManager);
-	
+
 	textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
 	meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-    materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
+	materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
 	modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
 	guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");
 
-	if(!(
+	if (!(
 		renderDeviceVulkan &&
 		bufferManagerVulkan &&
 		descriptorManagerVulkan &&
@@ -62,7 +62,7 @@ bool RendererVulkan::init(WindowConfig config)
 		materialManager &&
 		modelManager &&
 		guiManager
-	)) {
+		)) {
 		return false;
 	}
 
@@ -71,14 +71,14 @@ bool RendererVulkan::init(WindowConfig config)
 		if (keyPressedEvent.keyCode == KEY_1) {
 			pushConstantData.flag = !pushConstantData.flag;
 		}
-	});
+		});
 
 	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_2) {
 			showGui = !showGui;
 		}
-	});
+		});
 
 	pushConstantData.flag = true;
 	pushConstantData.color = glm::vec3(1.0f, 1.0f, 0.0f);
@@ -90,41 +90,41 @@ bool RendererVulkan::init(WindowConfig config)
 
 	_createDescriptorPool();
 	descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
-	
+
 	void* handle = materialManager->getMaterialLayout();
 	VkDescriptorSetLayout materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
 
 	renderDeviceVulkan->pipeline.create();
 	renderDeviceVulkan->pipeline.createGraphicsPipeline(
-		{ descriptorSetLayout, materialLayout }, 
-		renderDeviceVulkan->swapchain.renderPass, 
+		{ descriptorSetLayout, materialLayout },
+		renderDeviceVulkan->swapchain.renderPass,
 		sizeof(PushConstantData)
 	);
-	
+
 
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
 
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
-	if(!scene){
+	if (!scene) {
 		m_logger->error("No scene to render");
 	}
-	
+
 	instanceData.reserve(numInstances);			// reserve the ssbo size
 	instanceData.push_back({ glm::mat4(1.0) });	// prevent no entity size 0
 
-	for(auto& entity : scene->getEntitiesWith<TransformComponent>()) {
+	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 		TransformComponent transform = entity.getComponent<TransformComponent>();
 		instanceData.push_back({ transform.getModelMatrix() });
 	}
 
 	size_t bufferSize = instanceData.size() * sizeof(StorageBufferObject);
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
-	
+
 
 	lights.reserve(numLights);
-	lights.push_back(LightSSBO{glm::vec4(1.0, 1, 1.0, 1.0), 0, 1.0});
+	lights.push_back(LightSSBO{ glm::vec4(1.0, 1, 1.0, 1.0), 0, 1.0 });
 	lights.push_back(LightSSBO(glm::vec4(1.0, 1.0, 0.0, 1.0), 1, 5.5));
 	size_t lightBufferSize = lights.size() * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
@@ -134,12 +134,10 @@ bool RendererVulkan::init(WindowConfig config)
 	_createOffscreenTarget();
 	_createOffscreenViewDescriptorSet();
 
-	deferredRenderer.init(config);
-	
 	return true;
 }
 
-bool RendererVulkan::onClose()
+bool ForwardRendererVulkan::onClose()
 {
 
 	renderDeviceVulkan->waitIdle();
@@ -148,28 +146,26 @@ bool RendererVulkan::onClose()
 	offscreenPipeline->destroy();
 	renderTarget.destroy(renderDeviceVulkan->device);
 
-	deferredRenderer.onClose();
-	
 	return true;
 }
 
-void RendererVulkan::onUpdate()
+void ForwardRendererVulkan::onUpdate()
 {
 	render(*SceneManager::cameraController);
 }
 
 
-void RendererVulkan::beginFrame()
+void ForwardRendererVulkan::beginFrame()
 {
 	renderDeviceVulkan->beginFrame();
 }
 
-void RendererVulkan::endFrame()
+void ForwardRendererVulkan::endFrame()
 {
 	renderDeviceVulkan->endFrame();
 }
 
-void RendererVulkan::render(Camera& camera)
+void ForwardRendererVulkan::render(Camera& camera)
 {
 	UniformBufferObject ubo{};
 	ubo.model = glm::mat4(1.0);
@@ -191,30 +187,20 @@ void RendererVulkan::render(Camera& camera)
 
 	renderDeviceVulkan->render();
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	
-	
+
+
 	renderDeviceVulkan->commandPool.beginBuffer();
-
-
-
-	if(showGui) {
+	if (showGui) {
 		recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-
 	}
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-
-	deferredRenderer.uniformbuffersList[frame]->update(&ubo, sizeof(ubo));
-	deferredRenderer.storagebuffersList[frame]->update(instanceData.data(), instanceData.size() * sizeof(StorageBufferObject));
-	deferredRenderer.recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-
 	renderDeviceVulkan->commandPool.endBuffer();
-
 
 	endFrame();
 }
 
 
-void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+void ForwardRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
 	Timer("CPU render submission time", true);
 
@@ -225,9 +211,9 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 		&renderDeviceVulkan->pipeline
 	);
 
-	if(showGui){
+	if (showGui) {
 		renderGui(commandBuffer);
-	} 
+	}
 	else {
 		uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 		vkCmdBindDescriptorSets(
@@ -265,32 +251,32 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 				instanceData[index].model = entityTransform;
 			}
 
-			if(entity.hasComponent<ModelComponent>()) {
+			if (entity.hasComponent<ModelComponent>()) {
 				uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 				const Model* model = modelManager->getModel(modelID);
 
 				for (uint32_t meshID : model->meshIDs) {
 					const Mesh* mesh = meshManager->getMesh(meshID);
-					materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)&renderDeviceVulkan->pipeline);
-					meshManager->bindMesh(meshID);
-
-					uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-					renderDeviceVulkan->draw(indexCount, numInstances, index);
-				}
-			} 
-			
-			if (entity.hasComponent<MeshComponent>()) {
-				MeshComponent meshComponent = entity.getComponent<MeshComponent>();
-				for (uint32_t meshID : meshComponent.meshIDs) {
-					const Mesh* mesh = meshManager->getMesh(meshID);
-					materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)&renderDeviceVulkan->pipeline);
+					materialManager->bindMaterial(mesh->materialID, commandBuffer);
 					meshManager->bindMesh(meshID);
 
 					uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
 					renderDeviceVulkan->draw(indexCount, numInstances, index);
 				}
 			}
-			
+
+			if (entity.hasComponent<MeshComponent>()) {
+				MeshComponent meshComponent = entity.getComponent<MeshComponent>();
+				for (uint32_t meshID : meshComponent.meshIDs) {
+					const Mesh* mesh = meshManager->getMesh(meshID);
+					materialManager->bindMaterial(mesh->materialID, commandBuffer);
+					meshManager->bindMesh(meshID);
+
+					uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+					renderDeviceVulkan->draw(indexCount, numInstances, index);
+				}
+			}
+
 			index++;
 		}
 	}
@@ -298,7 +284,7 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 	endRecording(commandBuffer);
 }
 
-void RendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
 	Timer("CPU render submission time", true);
 
@@ -345,13 +331,13 @@ void RendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, u
 			instanceData[index].model = entityTransform;
 		}
 
-		if(entity.hasComponent<ModelComponent>()) {
+		if (entity.hasComponent<ModelComponent>()) {
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 			const Model* model = modelManager->getModel(modelID);
 
 			for (uint32_t meshID : model->meshIDs) {
 				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)offscreenPipeline.get());
+				materialManager->bindMaterial(mesh->materialID, commandBuffer);
 				meshManager->bindMesh(meshID);
 
 				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
@@ -363,21 +349,21 @@ void RendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, u
 			MeshComponent meshComponent = entity.getComponent<MeshComponent>();
 			for (uint32_t meshID : meshComponent.meshIDs) {
 				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)offscreenPipeline.get());
+				materialManager->bindMaterial(mesh->materialID, commandBuffer);
 				meshManager->bindMesh(meshID);
 
 				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
 				renderDeviceVulkan->draw(indexCount, numInstances, index);
 			}
 		}
-		
+
 		index++;
 	}
 
 	endRecording(commandBuffer);
 }
 
-void RendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline)
+void ForwardRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline)
 {
 	uint32_t imageIndex = renderDeviceVulkan->getImageIndex();
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
@@ -410,7 +396,7 @@ void RendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* fra
 }
 
 
-void RendererVulkan::endRecording(void* cmdBuffer)
+void ForwardRendererVulkan::endRecording(void* cmdBuffer)
 {
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
 
@@ -418,7 +404,7 @@ void RendererVulkan::endRecording(void* cmdBuffer)
 
 }
 
-void RendererVulkan::renderGui(void* commandBuffer)
+void ForwardRendererVulkan::renderGui(void* commandBuffer)
 {
 	guiManager->start();
 	ImGui::Begin("Application");
@@ -438,20 +424,20 @@ void RendererVulkan::renderGui(void* commandBuffer)
 
 	if (ImGui::IsItemHovered() && ImGui::IsWindowFocused()) {
 		guiManager->editorActive = true;
-	} 
-	else{
+	}
+	else {
 		guiManager->editorActive = false;
 	}
 
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
-	if(scene){
- 		const std::vector<Entity>& entities = scene->getSelectedEntities();
- 		if(!entities.empty()) {
- 			const Entity& entity = entities[0];
- 			TransformComponent& transform = entity.getComponent<TransformComponent>();
+	if (scene) {
+		const std::vector<Entity>& entities = scene->getSelectedEntities();
+		if (!entities.empty()) {
+			const Entity& entity = entities[0];
+			TransformComponent& transform = entity.getComponent<TransformComponent>();
 			guiManager->renderGuizmo(transform);
- 		}
+		}
 	}
 
 	ImGui::EndChild();
@@ -460,7 +446,7 @@ void RendererVulkan::renderGui(void* commandBuffer)
 	guiManager->end();
 }
 
-void RendererVulkan::_createOffscreenTarget()
+void ForwardRendererVulkan::_createOffscreenTarget()
 {
 	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
 	VkDevice device = renderDeviceVulkan->device;
@@ -518,48 +504,41 @@ void RendererVulkan::_createOffscreenTarget()
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	if(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderTarget.renderPass) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create offscreen render pass!");
-	}
+	vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderTarget.renderPass);
 
 	renderTarget.colorTextures.resize(swapchain.swapChainImages.size());
 	renderTarget.depthTextures.resize(swapchain.swapChainImages.size());
 	renderTarget.framebuffers.resize(swapchain.swapChainImageViews.size());
 
-	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
+	for (size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		uint32_t id = textureManager->createTexture();
+		auto* texture = static_cast<TextureVulkan*>(textureManager->getTexture(id));
+		renderTarget.colorTextures[i] = texture;
 
-		auto createTexture = [&] () {
-			auto* texture = static_cast<TextureVulkan*>(textureManager->getTexture(id));
-			renderTarget.colorTextures[i] = texture;
+		TextureManagerVulkan::createImage(
+			swapchain.swapChainExtent.width,
+			swapchain.swapChainExtent.height,
+			swapchain.swapChainImageFormat,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			texture->textureImage,
+			texture->textureImageMemory,
+			renderDeviceVulkan->device
+		);
 
-			TextureManagerVulkan::createImage(
-				swapchain.swapChainExtent.width,
-				swapchain.swapChainExtent.height,
-				swapchain.swapChainImageFormat,
-				VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				texture->textureImage,
-				texture->textureImageMemory,
-				renderDeviceVulkan->device
-			);
+		TextureManagerVulkan::createImageView(
+			texture->textureImage,
+			texture->textureImageView,
+			swapchain.swapChainImageFormat,
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			renderDeviceVulkan->device
+		);
 
-			TextureManagerVulkan::createImageView(
-				texture->textureImage,
-				texture->textureImageView,
-				swapchain.swapChainImageFormat,
-				VK_IMAGE_ASPECT_COLOR_BIT,
-				renderDeviceVulkan->device
-			);
-
-			TextureManagerVulkan::createTextureSampler(
-				texture->textureSampler, 
-				renderDeviceVulkan->device
-			);
-		};
-
-		createTexture();
+		TextureManagerVulkan::createTextureSampler(
+			texture->textureSampler,
+			renderDeviceVulkan->device
+		);
 
 		// _createDepthResources(renderDeviceVulkan->device, *textureTarget.depthTextures[i]);
 
@@ -588,24 +567,24 @@ void RendererVulkan::_createOffscreenTarget()
 
 	offscreenPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	offscreenPipeline->createGraphicsPipeline(
-		{ descriptorSetLayout, materialLayout }, 
-		renderTarget.renderPass, 
+		{ descriptorSetLayout, materialLayout },
+		renderTarget.renderPass,
 		sizeof(PushConstantData)
 	);
 }
 
-void RendererVulkan::_createDescriptorSetLayout()
+void ForwardRendererVulkan::_createDescriptorSetLayout()
 {
-    std::vector<VkDescriptorSetLayoutBinding> bindings = { 
+	std::vector<VkDescriptorSetLayoutBinding> bindings = {
 		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr },
 		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr },
 		{ 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, nullptr },
 	};
-	
+
 	layoutID = descriptorManagerVulkan->createLayout(bindings);
 }
 
-void RendererVulkan::_createDescriptorPool()
+void ForwardRendererVulkan::_createDescriptorPool()
 {
 	uint32_t frameCount = VulkanUtils::numFrames();
 	std::vector<VkDescriptorPoolSize> poolSizes = {
@@ -616,7 +595,7 @@ void RendererVulkan::_createDescriptorPool()
 	poolID = descriptorManagerVulkan->createPool(poolSizes, frameCount);
 }
 
-void RendererVulkan::_createDescriptorSets()
+void ForwardRendererVulkan::_createDescriptorSets()
 {
 	setsID = descriptorManagerVulkan->createSets(layoutID, poolID, VulkanUtils::numFrames());
 	descriptorSets = descriptorManagerVulkan->getDescriptorSet(setsID);
@@ -645,10 +624,10 @@ void RendererVulkan::_createDescriptorSets()
 	}
 }
 
-void RendererVulkan::_createOffscreenViewDescriptorSet()
+void ForwardRendererVulkan::_createOffscreenViewDescriptorSet()
 {
 	const uint32_t MAX_NUM_SETS = 3;				// add more if requires more
-	
+
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 	samplerLayoutBinding.binding = 0;
 	samplerLayoutBinding.descriptorCount = 1;
@@ -658,12 +637,12 @@ void RendererVulkan::_createOffscreenViewDescriptorSet()
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { samplerLayoutBinding };
 	imGuilayoutID = descriptorManagerVulkan->createLayout(bindings);
 
-	std::vector<VkDescriptorPoolSize> poolSizes = { 
-		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} 
+	std::vector<VkDescriptorPoolSize> poolSizes = {
+		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1}
 	};
 	imGuipoolID = descriptorManagerVulkan->createPool(poolSizes, MAX_NUM_SETS);
 
-	for(int i = 0; i < renderTarget.colorTextures.size(); i++) {
+	for (int i = 0; i < renderTarget.colorTextures.size(); i++) {
 		imGuisetIDs.push_back(descriptorManagerVulkan->createSets(imGuilayoutID, imGuipoolID, 1));
 		VkDescriptorSet imGuiDescriptorSet = descriptorManagerVulkan->getDescriptorSet(imGuisetIDs[i])[0];
 
@@ -678,7 +657,7 @@ void RendererVulkan::_createOffscreenViewDescriptorSet()
 	}
 }
 
-void RendererVulkan::_createDepthResources(VulkanDevice& device, TextureVulkan& depthTexture)
+void ForwardRendererVulkan::_createDepthResources(VulkanDevice& device, TextureVulkan& depthTexture)
 {
 	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
 	VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(device);

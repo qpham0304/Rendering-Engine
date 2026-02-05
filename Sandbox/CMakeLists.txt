@@ -17,15 +17,41 @@ file(GLOB_RECURSE SHADER_SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${SANDBOX_SOURCES})
-
 target_link_libraries(${PROJECT_NAME} PRIVATE MyGraphicsEngine)
+
+# Shader compilation
+# Shader compilation
+find_program(GLSLC_EXECUTABLE glslc REQUIRED)
+
+set(SPIRV_BINARY_FILES "")
+
+foreach(SHADER ${SHADER_SOURCES})
+    get_filename_component(SHADER_FILE ${SHADER} NAME)
+    set(SPIRV_OUTPUT "${SHADER}.spv")
+
+    add_custom_command(
+        OUTPUT ${SPIRV_OUTPUT}
+        # Use --target-env=vulkan explicitly
+        # -x glsl tells the compiler to treat it as GLSL regardless of extension
+        COMMAND ${GLSLC_EXECUTABLE} -x glsl --target-env=vulkan1.1 ${SHADER} -o ${SPIRV_OUTPUT}
+        DEPENDS ${SHADER}
+        MAIN_DEPENDENCY ${SHADER}
+        COMMENT "Compiling shader ${SHADER_FILE} for Vulkan"
+        VERBATIM
+    )
+
+    list(APPEND SPIRV_BINARY_FILES ${SPIRV_OUTPUT})
+endforeach()
+
+add_custom_target(Shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
+add_dependencies(${PROJECT_NAME} Shaders)
 
 # Output location
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>"
 )
 
-# Copy the 'assets' folder to the output directory after build
+# Copy assets to build folder
 add_custom_command(
     TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory

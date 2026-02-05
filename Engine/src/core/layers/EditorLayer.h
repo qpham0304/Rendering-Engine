@@ -17,7 +17,7 @@ private:
 	Camera* editorCamera;
 	bool GuizmoActive = false;
 	bool drawGrid = false;
-	bool editorActive = true;
+	bool editorActive = false;
 	bool flipUV = true;
 	bool faceCamera = false;
 	uint32_t keyEventID;

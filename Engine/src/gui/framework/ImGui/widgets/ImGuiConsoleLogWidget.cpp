@@ -38,9 +38,9 @@ void ImGuiConsoleLogWidget::render()
 	Profiler::display();
 
 
-	ImGui::Begin("console");
+	// ImGui::Begin("console");
 	ImGui::ShowDebugLogWindow();
-	ImGui::End();
+	// ImGui::End();
 
 	//ImGui::ShowDemoWindow();
 	ImGui::EndGroup();

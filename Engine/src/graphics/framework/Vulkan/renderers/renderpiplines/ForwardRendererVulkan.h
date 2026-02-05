@@ -3,8 +3,6 @@
 #include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>
@@ -22,18 +20,18 @@ class DescriptorManagerVulkan;
 class MaterialManager;
 class VulkanPipeline;
 
-class RendererVulkan : public Renderer
+class ForwardRendererVulkan : public Renderer
 {
 public:
 
 private:
-    struct PushConstantData {
-        alignas(16) glm::vec3 color;
-        alignas(16) glm::vec3 range;
-        alignas(4)  bool flag;
-        alignas(4)  float data;
-    };
-	
+	struct PushConstantData {
+		alignas(16) glm::vec3 color;
+		alignas(16) glm::vec3 range;
+		alignas(4)  bool flag;
+		alignas(4)  float data;
+	};
+
 	struct UniformBufferObject {
 		glm::mat4 model;
 		glm::mat4 view;
@@ -51,9 +49,9 @@ private:
 	};
 
 public:
-	RendererVulkan(std::string serviceName = "RendererVulkan");
+	ForwardRendererVulkan(std::string serviceName = "ForwardRendererVulkan");
 
-	virtual ~RendererVulkan() override;
+	virtual ~ForwardRendererVulkan() override;
 
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
@@ -66,7 +64,7 @@ public:
 	void endRecording(void* cmdBuffer);
 
 public:
-	
+
 private:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	void recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
@@ -97,7 +95,7 @@ private:
 	GuiManager* guiManager{ nullptr };
 	TextureManager* textureManager{ nullptr };
 	MaterialManager* materialManager{ nullptr };
-    BufferManager* bufferManager{ nullptr };
+	BufferManager* bufferManager{ nullptr };
 	BufferManagerVulkan* bufferManagerVulkan{ nullptr };
 	DescriptorManagerVulkan* descriptorManagerVulkan{ nullptr };
 
@@ -123,8 +121,5 @@ private:
 	std::vector<uint32_t> imGuisetIDs;
 
 	bool isActive{ false };
-
-	DeferredRendererVulkan deferredRenderer;
-	ForwardRendererVulkan forwardRenderer;
 };
 

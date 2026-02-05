@@ -9,6 +9,12 @@
 class TransformComponent;
 
 class GuiManager : public Service {
+
+public:
+	//TODO: move way from public member
+	bool guizmoActive = false;
+	bool editorActive = false;
+
 protected:
 	std::vector<std::unique_ptr<Widget>> widgets;
 
@@ -17,7 +23,6 @@ protected:
 	int width = 0;
 	int height = 0;
 	int count = 0;
-	bool GuizmoActive = false;
 	bool drawGrid = false;
 
 protected:
