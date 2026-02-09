@@ -129,12 +129,13 @@ bool RendererVulkan::init(WindowConfig config)
 	size_t lightBufferSize = lights.size() * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
+	deferredRenderer.init(config);
+
 	_createDescriptorSets();
 
 	_createOffscreenTarget();
 	_createOffscreenViewDescriptorSet();
 
-	deferredRenderer.init(config);
 	
 	return true;
 }
@@ -196,19 +197,14 @@ void RendererVulkan::render(Camera& camera)
 	renderDeviceVulkan->commandPool.beginBuffer();
 
 
-
 	if(showGui) {
 		recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-
 	}
+	deferredRenderer.render(camera);
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 
-	deferredRenderer.uniformbuffersList[frame]->update(&ubo, sizeof(ubo));
-	deferredRenderer.storagebuffersList[frame]->update(instanceData.data(), instanceData.size() * sizeof(StorageBufferObject));
-	deferredRenderer.recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 
 	renderDeviceVulkan->commandPool.endBuffer();
-
 
 	endFrame();
 }
@@ -428,6 +424,8 @@ void RendererVulkan::renderGui(void* commandBuffer)
 	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 	uint32_t i = renderDeviceVulkan->getImageIndex();
 	ImGui::Image(reinterpret_cast<ImTextureID>(descSet), viewportPanelSize);
+
+	deferredRenderer.renderGui();
 
 	ImVec2 wsize = ImGui::GetWindowSize();
 	int wWidth = static_cast<int>(ImGui::GetWindowWidth());
@@ -669,8 +667,15 @@ void RendererVulkan::_createOffscreenViewDescriptorSet()
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = renderTarget.colorTextures[i]->textureImageView;
-		imageInfo.sampler = renderTarget.colorTextures[i]->textureSampler;
+		//imageInfo.imageView = renderTarget.colorTextures[i]->textureImageView;
+		//imageInfo.sampler = renderTarget.colorTextures[i]->textureSampler;
+
+		/*
+		//TODO: move away from modifying deferred renderer directly
+		*/
+		imageInfo.imageView = deferredRenderer.renderTarget.colorTextures[i]->textureImageView;
+		imageInfo.sampler = deferredRenderer.renderTarget.colorTextures[i]->textureSampler;
+
 
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeImage(&writes, imGuiDescriptorSet, 0, imageInfo);

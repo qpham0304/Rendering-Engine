@@ -7,24 +7,8 @@
 #include "core/resources/managers/TextureManager.h"
 #include "core/features/ServiceLocator.h"
 #include "core/features/Mesh.h"
-
-
-const std::vector<Vertex> vertices = {
-   {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-   {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-   {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-   {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-   {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-   {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-   {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-   {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-};
-
-std::vector<uint16_t> indices = {
-	0, 1, 2, 2, 3, 0,
-	4, 5, 6, 6, 7, 4
-};
+#include "core/features/EngineUtils.h"
+#include <random>
 
 SandBoxLayer::SandBoxLayer(const std::string& name)
     : Layer(name)
@@ -63,18 +47,54 @@ bool SandBoxLayer::init()
     transform.translate(glm::vec3(2.0));
 
     MaterialDesc materialDesc;
-    materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/squish.png"));
+    materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/mobi-padoru.png"));
 
-    Mesh mesh;
-    mesh.vertices = vertices;
-    mesh.indices = indices;
+    
+    Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
     mesh.materialID = materialManager->createMaterial(materialDesc);
     
     MeshComponent m{};
     m.meshIDs.push_back(meshManager->loadMesh(mesh));
     planeEntity.addComponent<MeshComponent>(m);
+    planeEntity.addComponent<LightComponent>(glm::vec4(1.0, 0.0, 1.0, 1.0), 2.0f, 1.0f);
+
+    Entity sponza = scene->getEntity(scene->addEntity("sponza"));
+    //sponza.addComponent<ModelComponent>();
 
 
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> posDist(-10.0f, 10.0f);
+    std::uniform_real_distribution<float> colorDist(0.0f, 1.0f);
+
+    for (int i = 0; i < 20; ++i) {
+        std::string entityName = "light_sphere_" + std::to_string(i);
+        uint32_t lightID = scene->addEntity(entityName);
+        Entity lightEntity = scene->getEntity(lightID);
+
+        // Position: Random X and Z within the 5.0f range, fixed Y height
+        TransformComponent& transform = lightEntity.getComponent<TransformComponent>();
+        float xPos = posDist(gen);
+        float zPos = posDist(gen);
+        transform.translate(glm::vec3(xPos, 2.0f, zPos));
+
+        // Material setup (keeping your Padoru texture!)
+        MaterialDesc materialDesc;
+        materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/mobi-padoru.png"));
+
+        Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
+        mesh.materialID = materialManager->createMaterial(materialDesc);
+
+        MeshComponent m{};
+        m.meshIDs.push_back(meshManager->loadMesh(mesh));
+        lightEntity.addComponent<MeshComponent>(m);
+
+        // Random Color: Generate RGB, keep Alpha at 1.0
+        glm::vec4 randomColor(colorDist(gen), colorDist(gen), colorDist(gen), 1.0f);
+
+        // LightComponent(color, intensity, radius/attenuation)
+        lightEntity.addComponent<LightComponent>(randomColor, 15.0f, 1.0f);
+    }
 	return true;
 }
 

@@ -23,27 +23,26 @@ class VulkanPipeline;
 class DeferredRendererVulkan : public Renderer
 {
 private:
-	struct PushConstantData {
-		alignas(16) glm::vec3 color;
-		alignas(16) glm::vec3 range;
-		alignas(4)  bool flag;
-		alignas(4)  float data;
-	};
-
 	struct UniformBufferObject {
-		glm::mat4 model;
+		glm::mat4 invNormal;
 		glm::mat4 view;
 		glm::mat4 proj;
+		glm::vec4 cameraPos;
 	};
 
 	struct StorageBufferObject {
 		glm::mat4 model;
 	};
 
+	struct PushConstantLight {
+		alignas(4) int numLights;
+	};
+
 	struct LightSSBO {
-		glm::vec4 color = glm::vec4(1.0f);
-		int modelIndex;
-		float intensity;
+		alignas(16) glm::vec4 color;
+		alignas(16) glm::vec4 position;
+		alignas(4) float intensity;
+		alignas(4) float radius;
 	};
 
 public:
@@ -56,6 +55,7 @@ public:
 	virtual void beginFrame() override;
 	virtual void endFrame() override;
 	virtual void render(Camera& camera) override;
+	void renderGui();
 
 	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer);
 	void endRecording(void* cmdBuffer);
@@ -63,10 +63,9 @@ public:
 
 public:	//TODO: make privat once done testing	
 	const int numInstances = 1;
-	const int numLights = 100;
+	const int numLights = 1000;
 
 	bool showGui{ true };
-	PushConstantData pushConstantData{};
 
 	Logger* m_logger{ nullptr };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
@@ -81,17 +80,14 @@ public:	//TODO: make privat once done testing
 
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
-	std::vector<StorageBufferVulkan*> lightStoragebuffers;
 	std::vector<StorageBufferObject> instanceData;
+	std::vector<StorageBufferVulkan*> lightStoragebuffers;
 	std::vector<LightSSBO> lights;
+	PushConstantLight pushConstantLight;
 
 	uint32_t layoutID;
 	uint32_t poolID;
 	uint32_t setsID;
-
-	uint32_t samplerLayoutID;
-	uint32_t samplerSetID;
-	uint32_t samplerPoolID;
 
 	VulkanRenderTarget renderTarget;
 	std::unique_ptr<VulkanPipeline> gPassPipeline;
@@ -102,7 +98,10 @@ public:	//TODO: make privat once done testing
 
 	std::unique_ptr<VulkanPipeline> lightingPipeline;
 	uint32_t lightLayoutID;
+	uint32_t lightLayoutID_1;
 	uint32_t lightSetsID;
+	uint32_t lightSetsID_1;
+	UniformBufferObject ubo{};
 
 	void _createRenderPasses();
 	void _createFrameBuffers();

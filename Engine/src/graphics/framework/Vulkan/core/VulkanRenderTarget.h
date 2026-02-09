@@ -14,6 +14,7 @@ public:
     std::vector<TextureVulkan*> gBufferPos;
     std::vector<TextureVulkan*> gBufferNorm;
     std::vector<TextureVulkan*> gBufferAlbedo;
+    std::vector<TextureVulkan*> gPBR;
     std::vector<TextureVulkan*> depthTextures;
 
     void destroy(VkDevice device) {

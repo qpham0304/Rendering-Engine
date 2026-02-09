@@ -3,6 +3,7 @@
 #include "Logging/Logger.h"
 #include "../renderers/RenderDeviceVulkan.h"
 #include "../resources/textures/TextureManagerVulkan.h"
+#include <algorithm>
 
 VulkanSwapChain::VulkanSwapChain(VulkanDevice& deviceRef, RenderDeviceVulkan& renderDeviceRef)
 	: device(deviceRef), renderDevice(renderDeviceRef)

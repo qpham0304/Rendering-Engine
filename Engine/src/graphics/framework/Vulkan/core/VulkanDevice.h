@@ -3,13 +3,9 @@
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
 #include <iostream>
-#include <stdexcept>
-#include <algorithm>
 #include <vector>
 #include <optional>
-#include <set>
 #include <array>
-#include <memory>
 #include <unordered_map>
 
 #define MAX_BONE_INFLUENCE 4

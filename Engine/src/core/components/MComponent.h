@@ -145,14 +145,24 @@ public:
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(MeshComponent, meshIDs);
 };
 
+struct LightComponent {
+public:
+	glm::vec4 color;
+	float intensity;
+	float radius;
+
+	LightComponent() = default;
+	LightComponent(glm::vec4 c, float i, float r) : color(c), intensity(i), radius(r) {};
+
+	//NLOHMANN_DEFINE_TYPE_INTRUSIVE(LightComponent, meshIDs);
+};
+
 struct RelationshipComponent {
     entt::entity parent{ entt::null };
     std::vector<entt::entity> children;
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE(RelationshipComponent, parent, children)
 };
-
-#include <string>
 
 struct PrefabComponent {
     std::string prefabPath;

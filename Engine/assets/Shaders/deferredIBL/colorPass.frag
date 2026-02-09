@@ -229,7 +229,7 @@ vec4 calcLighting() {
     vec3 view = normalize(-viewSpacePosition);
     vec3 worldSpacePosition = mat3(inverseView) * viewSpacePosition;
 
-    vec3 N = mat3(inverseView) * normal;;
+    vec3 N = mat3(inverseView) * normal;
     vec3 V = normalize(-worldSpacePosition);
     vec3 R = reflect(-V, N); 
 	
