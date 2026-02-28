@@ -2,7 +2,7 @@
 
 layout(location = 0) in vec3 inNormal;
 layout(location = 1) in vec2 inTexCoord;
-layout(location = 2) in vec3 inWorldPos; // Received from Vert
+layout(location = 2) in vec3 inWorldPos;
 layout(location = 3) in mat3 inTBN;
 
 layout(location = 0) out vec4 outPos;    
@@ -17,17 +17,14 @@ layout(set = 1, binding = 3) uniform sampler2D roughnessMap;
 layout(set = 1, binding = 4) uniform sampler2D aoMap;
 
 void main() {
-    // Write World Position to G-Buffer
     outPos = vec4(inWorldPos, 1.0);
     
-    // Normal Mapping -> World Space Normal
     vec3 normal = texture(normalMap, inTexCoord).rgb;
     normal = normalize(normal * 2.0 - 1.0);
     vec3 worldNormal = normalize(inTBN * normal);
     
     outNorm = vec4(worldNormal, 1.0);
     
-    // Textures
     outAlbedo = texture(albedoSampler, inTexCoord);
     
     float ao        = texture(aoMap, inTexCoord).r;

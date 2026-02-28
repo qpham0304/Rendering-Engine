@@ -558,6 +558,7 @@ void DeferredRendererVulkan::_createFrameBuffers()
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				texture->textureImage,
 				texture->textureImageMemory,
+				1,
 				renderDeviceVulkan->device
 			);
 
@@ -566,6 +567,7 @@ void DeferredRendererVulkan::_createFrameBuffers()
 				texture->textureImageView,
 				format,
 				aspect,
+				1,
 				renderDeviceVulkan->device
 			);
 
@@ -613,6 +615,33 @@ void DeferredRendererVulkan::_createFrameBuffers()
 
 		// _createDepthResources(renderDeviceVulkan->device, *textureTarget.depthTextures[i]);
 
+		VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
+
+		uint32_t depthId = textureManager->createTexture();
+		renderTarget.depthTextures[i] = static_cast<TextureVulkan*>(textureManager->getTexture(depthId));
+
+		TextureManagerVulkan::createImage(
+			swapchain.swapChainExtent.width,
+			swapchain.swapChainExtent.height,
+			depthFormat,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			renderTarget.depthTextures[i]->textureImage,
+			renderTarget.depthTextures[i]->textureImageMemory,
+			1,
+			renderDeviceVulkan->device
+		);
+		
+		TextureManagerVulkan::createImageView(
+			renderTarget.depthTextures[i]->textureImage, 
+			renderTarget.depthTextures[i]->textureImageView, 
+			depthFormat, 
+			VK_IMAGE_ASPECT_DEPTH_BIT,
+			1,
+			renderDeviceVulkan->device
+		);
+
 		std::array<VkImageView, 6> attachments = {
 			//swapchain.swapChainImageViews[i], // TODO: move to texture image view
 			renderTarget.colorTextures[i]->textureImageView,
@@ -620,7 +649,7 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			renderTarget.gBufferNorm[i]->textureImageView,
 			renderTarget.gBufferAlbedo[i]->textureImageView,
 			renderTarget.gPBR[i]->textureImageView,
-			renderDeviceVulkan->swapchain.depthImageView	// textureTarget.depthTextures[i]->textureImageView
+			renderTarget.depthTextures[i]->textureImageView
 		};
 
 		VkFramebufferCreateInfo framebufferInfo{};

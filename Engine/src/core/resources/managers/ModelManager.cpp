@@ -265,7 +265,7 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, aiTextureType
         mat->GetTexture(type, i, &str);
 
         std::string path = std::string(directory) + '/' + std::string(str.C_Str());
-        uint32_t textureID = textureManager->loadTexture(path.data());
+        uint32_t textureID = textureManager->loadTexture(path.data(), 5);
         textureIDs.push_back(textureID);
     }
 

@@ -524,6 +524,7 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			texture->textureImage,
 			texture->textureImageMemory,
+			1,
 			renderDeviceVulkan->device
 		);
 
@@ -532,6 +533,7 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 			texture->textureImageView,
 			swapchain.swapChainImageFormat,
 			VK_IMAGE_ASPECT_COLOR_BIT,
+			1,
 			renderDeviceVulkan->device
 		);
 
@@ -671,8 +673,9 @@ void ForwardRendererVulkan::_createDepthResources(VulkanDevice& device, TextureV
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		depthTexture.textureImage,
 		depthTexture.textureImageMemory,
+		1,
 		device
 	);
 
-	TextureManagerVulkan::createImageView(depthTexture.textureImage, depthTexture.textureImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, device);
+	TextureManagerVulkan::createImageView(depthTexture.textureImage, depthTexture.textureImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1, device);
 }

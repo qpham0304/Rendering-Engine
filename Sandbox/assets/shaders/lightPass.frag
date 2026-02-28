@@ -32,7 +32,6 @@ layout (push_constant) uniform LightData {
 } pcl;
 
 void main() {
-    // 1. Sample G-Buffer as usual
     vec3 worldPos  = subpassLoad(inputPos).rgb;
     vec3 worldNorm = normalize(subpassLoad(inputNorm).rgb);
     vec4 albedo    = subpassLoad(inputAlbedo);
@@ -44,15 +43,12 @@ void main() {
     vec3 camPos     = ubo.cameraPos.xyz;
     vec3 V          = normalize(camPos - worldPos);
     
-    // --- LIGHT ACCUMULATION START ---
     vec3 accumulatedLight = vec3(0.0);
     vec3 ambient = vec3(0.03) * albedo.rgb * ao;
 
-    // Assuming you pass the number of lights via Push Constant
-    // because the SSBO doesn't inherently know its own length in all GLSL versions
     for(int i = 0; i < pcl.numLights; i++) {
         vec3 lightPos   = lightSSBO.lights[i].position.xyz;
-        vec3 lightCol   = lightSSBO.lights[i].color.rgb; // This is 'lightCol'
+        vec3 lightCol   = lightSSBO.lights[i].color.rgb;
         float intensity = lightSSBO.lights[i].intensity;
         float radius    = lightSSBO.lights[i].radius;
 

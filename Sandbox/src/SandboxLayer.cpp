@@ -61,26 +61,24 @@ bool SandBoxLayer::init()
     Entity sponza = scene->getEntity(scene->addEntity("sponza"));
     //sponza.addComponent<ModelComponent>();
 
-
+    const int numLights = 5;
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> posDist(-10.0f, 10.0f);
+    std::uniform_real_distribution<float> posDist(-numLights, numLights);
     std::uniform_real_distribution<float> colorDist(0.0f, 1.0f);
 
-    for (int i = 0; i < 20; ++i) {
+    for (int i = 0; i < numLights; ++i) {
         std::string entityName = "light_sphere_" + std::to_string(i);
         uint32_t lightID = scene->addEntity(entityName);
         Entity lightEntity = scene->getEntity(lightID);
 
-        // Position: Random X and Z within the 5.0f range, fixed Y height
         TransformComponent& transform = lightEntity.getComponent<TransformComponent>();
         float xPos = posDist(gen);
         float zPos = posDist(gen);
         transform.translate(glm::vec3(xPos, 2.0f, zPos));
 
-        // Material setup (keeping your Padoru texture!)
         MaterialDesc materialDesc;
-        materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/mobi-padoru.png"));
+        materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/mobi-padoru.png", 1));
 
         Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
         mesh.materialID = materialManager->createMaterial(materialDesc);
@@ -89,10 +87,8 @@ bool SandBoxLayer::init()
         m.meshIDs.push_back(meshManager->loadMesh(mesh));
         lightEntity.addComponent<MeshComponent>(m);
 
-        // Random Color: Generate RGB, keep Alpha at 1.0
         glm::vec4 randomColor(colorDist(gen), colorDist(gen), colorDist(gen), 1.0f);
 
-        // LightComponent(color, intensity, radius/attenuation)
         lightEntity.addComponent<LightComponent>(randomColor, 15.0f, 1.0f);
     }
 	return true;
