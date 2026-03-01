@@ -81,7 +81,6 @@ private:
 
 	//TODO: PRIORITY: support recreation on screen resize
 	void _createOffscreenViewDescriptorSet();
-	void _createDepthResources(VulkanDevice& device, TextureVulkan& depthTexture);
 
 private:
 	const int numInstances = 1;

@@ -27,9 +27,37 @@ layout(set = 1, binding = 1, std430) readonly buffer LightSSBO {
     Light lights[];
 } lightSSBO;
 
+layout(set = 1, binding = 2) uniform sampler2D shadowMap;
+
 layout (push_constant) uniform LightData {
+    mat4 sunlightMVP;
+    vec4 direction;
+    vec4 color;
     int numLights;
 } pcl;
+
+
+float calcShadow(vec3 worldPos) {
+    vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(worldPos, 1.0);
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+
+    if(projCoords.z > 1.0) return 0.0;
+
+    float shadow = 0.0;
+    // Get the size of a single shadow map pixel
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    
+    // Simple 3x3 PCF Kernel
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+            shadow += (projCoords.z - 0.002) > pcfDepth ? 1.0 : 0.0;        
+        }    
+    }
+    
+    return shadow / 9.0; // Average the 9 samples
+}
 
 void main() {
     vec3 worldPos  = subpassLoad(inputPos).rgb;
@@ -70,6 +98,12 @@ void main() {
         accumulatedLight += (albedo.rgb * diffuse * lightCol * attenuation);
     }
 
-    vec3 finalColor = ambient + accumulatedLight;
+    
+    float shadow = calcShadow(worldPos);
+    vec3 sunDir = normalize(pcl.direction.xyz); 
+    float sunDiffuse = max(dot(worldNorm, sunDir), 0.0);
+    vec3 sunlight = (1.0 - shadow) * (pcl.color.rgb * sunDiffuse * albedo.rgb);
+
+    vec3 finalColor = ambient + accumulatedLight + sunlight;
     outColor = vec4(pow(finalColor, vec3(1.0/2.2)), 1.0);
 }

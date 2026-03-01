@@ -47,6 +47,12 @@ public:
 		VulkanDevice& device
 	);
 
+	static void createTextureSampler(
+		VkSampler& textureSampler,
+		VulkanDevice& device,
+		VkSamplerCreateInfo samplerInfo
+	);
+
 	static void transitionImageLayout(
 		VkImage image,
 		VkFormat format,

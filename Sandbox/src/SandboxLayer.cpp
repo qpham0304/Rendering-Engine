@@ -61,7 +61,7 @@ bool SandBoxLayer::init()
     Entity sponza = scene->getEntity(scene->addEntity("sponza"));
     //sponza.addComponent<ModelComponent>();
 
-    const int numLights = 5;
+    const int numLights = 0;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(-numLights, numLights);

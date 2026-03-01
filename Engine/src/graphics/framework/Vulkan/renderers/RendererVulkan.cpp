@@ -19,8 +19,6 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <core/scene/SceneManager.h>
-
-
 #include "imgui.h" // TODO: remove it once done
 
 RendererVulkan::RendererVulkan(std::string serviceName) 
@@ -173,8 +171,7 @@ void RendererVulkan::endFrame()
 void RendererVulkan::render(Camera& camera)
 {
 	UniformBufferObject ubo{};
-	ubo.model = glm::mat4(1.0);
-	ubo.model = glm::scale(ubo.model, glm::vec3(0.5f, 0.5f, 0.5f));
+	ubo.model = glm::scale(glm::mat4(1.0), glm::vec3(0.5f, 0.5f, 0.5f));
 	ubo.view = camera.getViewMatrix();
 	ubo.proj = camera.getProjectionMatrix();
 	ubo.proj[1][1] *= -1;
@@ -197,9 +194,9 @@ void RendererVulkan::render(Camera& camera)
 	renderDeviceVulkan->commandPool.beginBuffer();
 
 
-	if(showGui) {
-		recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-	}
+	//if(showGui) {
+	//	recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
+	//}
 	deferredRenderer.render(camera);
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 
@@ -296,7 +293,7 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 
 void RendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
-	Timer("CPU render submission time", true);
+	Timer timer("CPU render submission time", true);
 
 	beginRecording(
 		commandBuffer,
@@ -411,7 +408,6 @@ void RendererVulkan::endRecording(void* cmdBuffer)
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
 
 	vkCmdEndRenderPass(commandBuffer);
-
 }
 
 void RendererVulkan::renderGui(void* commandBuffer)
@@ -561,12 +557,38 @@ void RendererVulkan::_createOffscreenTarget()
 
 		createTexture();
 
-		// _createDepthResources(renderDeviceVulkan->device, *textureTarget.depthTextures[i]);
+
+		VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
+
+		uint32_t depthId = textureManager->createTexture();
+		renderTarget.depthTextures[i] = static_cast<TextureVulkan*>(textureManager->getTexture(depthId));
+
+		TextureManagerVulkan::createImage(
+			swapchain.swapChainExtent.width,
+			swapchain.swapChainExtent.height,
+			depthFormat,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			renderTarget.depthTextures[i]->textureImage,
+			renderTarget.depthTextures[i]->textureImageMemory,
+			1,
+			renderDeviceVulkan->device
+		);
+
+		TextureManagerVulkan::createImageView(
+			renderTarget.depthTextures[i]->textureImage,
+			renderTarget.depthTextures[i]->textureImageView,
+			depthFormat,
+			VK_IMAGE_ASPECT_DEPTH_BIT,
+			1,
+			renderDeviceVulkan->device
+		);
+
 
 		std::array<VkImageView, 2> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,
-			// textureTarget.depthTextures[i]->textureImageView
-			renderDeviceVulkan->swapchain.depthImageView
+			renderTarget.depthTextures[i]->textureImageView
 		};
 
 		VkFramebufferCreateInfo framebufferInfo{};
@@ -683,25 +705,4 @@ void RendererVulkan::_createOffscreenViewDescriptorSet()
 		descriptorManagerVulkan->writeImage(&writes, imGuiDescriptorSet, 0, imageInfo);
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
-}
-
-void RendererVulkan::_createDepthResources(VulkanDevice& device, TextureVulkan& depthTexture)
-{
-	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-	VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(device);
-
-	TextureManagerVulkan::createImage(
-		swapchain.swapChainExtent.width,
-		swapchain.swapChainExtent.height,
-		depthFormat,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		depthTexture.textureImage,
-		depthTexture.textureImageMemory,
-		1,
-		device
-	);
-
-	TextureManagerVulkan::createImageView(depthTexture.textureImage, depthTexture.textureImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1, device);
 }

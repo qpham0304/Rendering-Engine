@@ -264,6 +264,18 @@ void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, Vulka
 	}
 }
 
+void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, VulkanDevice& device, VkSamplerCreateInfo samplerInfo)
+{
+	VkPhysicalDeviceProperties properties{};
+	vkGetPhysicalDeviceProperties(device.physicalDevice, &properties);
+
+	samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+	
+	if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create texture sampler!");
+	}
+}
+
 void TextureManagerVulkan::transitionImageLayout(
 	VkImage image,
 	VkFormat format,

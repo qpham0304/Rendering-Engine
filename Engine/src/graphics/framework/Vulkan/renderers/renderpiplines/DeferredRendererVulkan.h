@@ -3,6 +3,7 @@
 #include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
+#include "ShadowMapRendererVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>
@@ -35,7 +36,10 @@ private:
 	};
 
 	struct PushConstantLight {
-		alignas(4) int numLights;
+		alignas(64) glm::mat4 sunlightMVP;
+		alignas(16) glm::vec4 direction;
+		alignas(16) glm::vec4 color;
+		alignas(4)  int numLights;
 	};
 
 	struct LightSSBO {
@@ -61,7 +65,7 @@ public:
 	void endRecording(void* cmdBuffer);
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
-public:	//TODO: make privat once done testing	
+public:	//TODO: make private once done testing	
 	const int numInstances = 1;
 	const int numLights = 1000;
 
@@ -103,6 +107,9 @@ public:	//TODO: make privat once done testing
 	uint32_t lightSetsID_1;
 	UniformBufferObject ubo{};
 
+
+	ShadowMapRendererVulkan shadowMapRenderer;
+
 	void _createRenderPasses();
 	void _createFrameBuffers();
 	void _createDescriptor();
@@ -111,4 +118,5 @@ public:	//TODO: make privat once done testing
 
 	void _createLightPipeline();
 	void _createLightDescriptor();
+
 };
