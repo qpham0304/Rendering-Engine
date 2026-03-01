@@ -296,6 +296,9 @@ void DeferredRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, ui
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 			const Model* model = modelManager->getModel(modelID);
 
+			if (!model) {
+				continue;
+			}
 			for (uint32_t meshID : model->meshIDs) {
 				const Mesh* mesh = meshManager->getMesh(meshID);
 				materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)gPassPipeline.get());

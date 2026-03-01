@@ -6,12 +6,12 @@
           "TransformComponent": {
             "rotateVec": [
               0.0,
-              45.0,
+              1.0177029371261597,
               0.0
             ],
             "translateVec": [
               3.0,
-              3.0,
+              2.1670148372650146,
               1.0
             ]
           }
@@ -49,14 +49,14 @@
           },
           "TransformComponent": {
             "scaleVec": [
-              0.5,
-              0.5,
-              0.5
+              2.4628589153289795,
+              2.4628589153289795,
+              2.4628589153289795
             ],
             "translateVec": [
-              -1.0,
-              2.0,
-              1.0
+              1.4733302593231201,
+              -2.534714698791504,
+              -0.7150759100914001
             ]
           }
         }
@@ -66,10 +66,12 @@
     {
       "overrides": {
         "components": {
-          "NameComponent": {
-            "name": "Helmet"
-          },
           "TransformComponent": {
+            "rotateVec": [
+              3.1415927410125732,
+              0.08679908514022827,
+              3.1415927410125732
+            ],
             "scaleVec": [
               0.5,
               0.5,
@@ -84,6 +86,54 @@
         }
       },
       "prefab_ref": "assets/data/prefabs/helmet.json"
+    },
+    {
+      "components": {
+        "NameComponent": {
+          "name": "plane"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.7952001094818115,
+            1.7952001094818115,
+            1.7952001094818115
+          ],
+          "translateVec": [
+            1.843266487121582,
+            5.003331184387207,
+            0.06613948941230774
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "NameComponent": {
+          "name": "sponza"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translateVec": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      }
     }
   ],
   "scene_name": "Level1"

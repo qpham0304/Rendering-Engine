@@ -5,6 +5,8 @@
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
 #include "core/resources/managers/TextureManager.h"
+#include "core/resources/managers/ModelManager.h"
+#include "core/events/EventManager.h"
 #include "core/features/ServiceLocator.h"
 #include "core/features/Mesh.h"
 #include "core/features/EngineUtils.h"
@@ -58,8 +60,16 @@ bool SandBoxLayer::init()
     planeEntity.addComponent<MeshComponent>(m);
     planeEntity.addComponent<LightComponent>(glm::vec4(1.0, 0.0, 1.0, 1.0), 2.0f, 1.0f);
 
+	EventManager& eventManager = EventManager::getInstance();
+
     Entity sponza = scene->getEntity(scene->addEntity("sponza"));
-    //sponza.addComponent<ModelComponent>();
+    sponza.addComponent<ModelComponent>();
+
+  //  eventManager.queue(AsyncEvent("sponza load"), [&] (AsyncEvent& e) {
+  //      ModelManager* modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+		//modelManager->loadModel("assets/models/sponza/sponza.obj");
+  //  });
+
 
     const int numLights = 0;
     std::random_device rd;

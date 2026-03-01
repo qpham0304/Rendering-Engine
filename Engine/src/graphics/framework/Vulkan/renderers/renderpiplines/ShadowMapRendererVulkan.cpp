@@ -114,8 +114,7 @@ void ShadowMapRendererVulkan::render(Camera& camera)
 
 	lightView = glm::lookAt(lightPos, lookAtTarget, glm::vec3(0.0f, 1.0f, 0.0f));
 
-	float s = 25.0f;
-	//glm::mat4 lightProjection = glm::ortho(-s, s, -s, s, 0.1f, 500.0f);
+	float s = 35.0f;
 	glm::mat4 lightProjection = glm::ortho(-s, s, -s, s, -250.0f, 250.0f);
 	lightProjection[1][1] *= -1;
 
@@ -199,6 +198,10 @@ void ShadowMapRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, u
 		);
 
 		const Model* model = modelManager->getModel(modelComp.modelID);
+		if (!model) {
+			continue;
+		}
+		
 		for (uint32_t meshID : model->meshIDs) {
 			const Mesh* mesh = meshManager->getMesh(meshID);
 			meshManager->bindMesh(meshID); // Bind vertex/index buffers
