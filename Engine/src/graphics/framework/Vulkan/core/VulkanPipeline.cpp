@@ -250,6 +250,50 @@ void VulkanPipeline::createGraphicsPipeline(
     vkDestroyShaderModule(device.device, fragShaderModule, nullptr);
 }
 
+void VulkanPipeline::createComputePipeline(
+	const std::string& compFilepath,
+	const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
+	uint32_t pushConstantSize
+) {
+	auto compShaderCode = VulkanUtils::readFile(compFilepath);
+	VkShaderModule compShaderModule = createShaderModule(compShaderCode);
+
+	VkPipelineShaderStageCreateInfo shaderStage{};
+	shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shaderStage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	shaderStage.module = compShaderModule;
+	shaderStage.pName = "main";
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
+	pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
+
+	VkPushConstantRange pushConstant{};
+	if (pushConstantSize > 0) {
+		pushConstant.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		pushConstant.offset = 0;
+		pushConstant.size = pushConstantSize;
+		pipelineLayoutInfo.pushConstantRangeCount = 1;
+		pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
+	}
+
+	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create compute pipeline layout!");
+	}
+
+	VkComputePipelineCreateInfo pipelineInfo{};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.stage = shaderStage;
+
+	if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create compute pipeline!");
+	}
+
+	vkDestroyShaderModule(device, compShaderModule, nullptr);
+}
+
 VkShaderModule VulkanPipeline::createShaderModule(const std::vector<char>& code)
 {
 	VkShaderModuleCreateInfo createInfo{};

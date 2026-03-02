@@ -167,7 +167,6 @@ void DeferredRendererVulkan::render(Camera& camera)
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 
-
 }
 
 void DeferredRendererVulkan::renderGui()
@@ -1010,8 +1009,8 @@ void DeferredRendererVulkan::_createLightDescriptor()
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = shadowMapRenderer.depthMap->textureImageView;
-		imageInfo.sampler = shadowMapRenderer.depthMap->textureSampler;
+		imageInfo.imageView = shadowMapRenderer.momentImage->textureImageView;
+		imageInfo.sampler = shadowMapRenderer.momentImage->textureSampler;
 
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);

@@ -212,7 +212,7 @@ void TextureManagerVulkan::createImage(
 	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
-VkImageView TextureManagerVulkan::createImageView(
+void TextureManagerVulkan::createImageView(
 	VkImage &image,
 	VkImageView &imageView,
 	VkFormat format,
@@ -569,4 +569,39 @@ void TextureManagerVulkan::generateMipmaps(
 	);
 
     renderDeviceVulkan->commandPool.endSingleTimeCommand(commandBuffer);
+}
+
+void TextureManagerVulkan::createBarrier(
+	VkCommandBuffer cmd,
+	VkImage image,
+	VkAccessFlags srcAccess,
+	VkAccessFlags dstAccess,
+	VkImageLayout oldLayout,
+	VkImageLayout newLayout,
+	VkPipelineStageFlags srcStage,
+	VkPipelineStageFlags dstStage
+) {
+	VkImageMemoryBarrier barrier{};
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.oldLayout = oldLayout;
+	barrier.newLayout = newLayout;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.image = image;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.srcAccessMask = srcAccess;
+	barrier.dstAccessMask = dstAccess;
+
+	vkCmdPipelineBarrier(
+		cmd,
+		srcStage, dstStage,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &barrier
+	);
 }

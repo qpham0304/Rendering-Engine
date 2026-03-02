@@ -118,7 +118,7 @@ uint32_t DescriptorManagerVulkan::createPool(std::vector<VkDescriptorPoolSize> p
 
 uint32_t DescriptorManagerVulkan::createSets(uint32_t layoutID, uint32_t poolID, uint32_t setsCount)
 {
-	std::vector<VkDescriptorSetLayout> layouts(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT, getDescriptorLayout(layoutID));
+	std::vector<VkDescriptorSetLayout> layouts(setsCount, getDescriptorLayout(layoutID));
 
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;

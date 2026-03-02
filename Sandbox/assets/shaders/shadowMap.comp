@@ -1,0 +1,29 @@
+#version 450
+layout(local_size_x = 16, local_size_y = 16) in; // 2D block for simplicity
+
+layout(binding = 0, rgba32f) uniform readonly image2D inputImage;
+layout(binding = 1, rgba32f) uniform writeonly image2D outputImage;
+
+layout(push_constant) uniform BlurControl {
+    uint isVertical;
+} ctrl;
+
+void main() {
+    ivec2 gPos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(inputImage);
+
+    // Boundary check
+    if (gPos.x >= size.x || gPos.y >= size.y) return;
+
+    float weights[5] = { 0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216 };
+    vec4 result = imageLoad(inputImage, gPos) * weights[0];
+
+    ivec2 direction = (ctrl.isVertical == 1) ? ivec2(0, 1) : ivec2(1, 0);
+
+    for(int i = 1; i < 5; ++i) {
+        result += imageLoad(inputImage, gPos + direction * i) * weights[i];
+        result += imageLoad(inputImage, gPos - direction * i) * weights[i];
+    }
+
+    imageStore(outputImage, gPos, result);
+}

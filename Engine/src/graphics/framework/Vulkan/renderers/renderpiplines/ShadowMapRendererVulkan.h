@@ -29,6 +29,10 @@ private:
 		glm::mat4 lightMVP;
 	};
 
+	struct ComputePushConstant {
+		uint32_t isVertical;	// 0 for horizontal, 1 for vertical
+	};
+
 public:
 	ShadowMapRendererVulkan();
 	virtual~ShadowMapRendererVulkan() override;
@@ -43,6 +47,7 @@ public:
 	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline);
 	void endRecording(void* cmdBuffer);
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+	void dispatchBlur(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 public:	//TODO: make private once done testing	
 	Logger* m_logger{ nullptr };
@@ -58,19 +63,28 @@ public:	//TODO: make private once done testing
 
 
 	std::unique_ptr<VulkanPipeline> shadowPipeline;
-	uint32_t shadowLayoutID;
-	uint32_t shadowPoolID;
-	uint32_t shadowSetsID;
+	//uint32_t shadowLayoutID;
+	//uint32_t shadowPoolID;
+	//uint32_t shadowSetsID;
 	TextureVulkan* depthMap;
+	TextureVulkan* momentImage;
+	TextureVulkan* tempMomentImage;
 	VkRenderPass shadowRenderPass;
 	VkFramebuffer shadowFramebuffer;
 
+	//TODO: allow client spcify the shadow map size
 	uint32_t width = 4096;
 	uint32_t height = 4096;
 
 	glm::mat4 lightSpaceMatrix;
 	glm::vec3 lightPos;
 	glm::mat4 lightView;
+
+	std::unique_ptr<VulkanPipeline> computePipeline;
+	uint32_t compDescriptorLayoutID;
+	uint32_t compDescriptorPoolID;
+	uint32_t compDescSetMtoT_ID;
+	uint32_t compDescSetTtoM_ID;
 
 	uint32_t imGuilayoutID;
 	uint32_t imGuipoolID;
@@ -82,8 +96,8 @@ private:
 	void _createShadowPipeline();
 	void _createShadowRenderPass();
 	void _createShadowFrameBuffer();
-
-
+	void _createMomentImage();
+	void _createMomentDescriptor();
     void _createOffscreenViewDescriptorSet();
-
+	void _createComputePipeline();
 };

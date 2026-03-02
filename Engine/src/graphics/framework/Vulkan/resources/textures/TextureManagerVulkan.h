@@ -33,7 +33,7 @@ public:
 		const VulkanDevice& device
 	);
 
-	static VkImageView createImageView(
+	static void createImageView(
 		VkImage& image,
 		VkImageView& imageView,
 		VkFormat format,
@@ -86,6 +86,17 @@ public:
 		int32_t texHeight,
 		uint32_t mipLevels,
 		RenderDeviceVulkan* renderDeviceVulkan
+	);
+
+	static void createBarrier(
+		VkCommandBuffer cmd,
+		VkImage image,
+		VkAccessFlags srcAccess,
+		VkAccessFlags dstAccess,
+		VkImageLayout oldLayout,
+		VkImageLayout newLayout,
+		VkPipelineStageFlags srcStage,
+		VkPipelineStageFlags dstStage
 	);
 
 public:

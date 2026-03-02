@@ -20,23 +20,34 @@ add_executable(${PROJECT_NAME} ${SANDBOX_SOURCES})
 target_link_libraries(${PROJECT_NAME} PRIVATE MyGraphicsEngine)
 
 # Shader compilation
-# Shader compilation
 find_program(GLSLC_EXECUTABLE glslc REQUIRED)
 
 set(SPIRV_BINARY_FILES "")
 
 foreach(SHADER ${SHADER_SOURCES})
     get_filename_component(SHADER_FILE ${SHADER} NAME)
+    get_filename_component(SHADER_EXT ${SHADER} LAST_EXT) # Get .vert, .frag, or .comp
+    
+    # Map extensions to glslc stage flags
+    if(SHADER_EXT STREQUAL ".vert")
+        set(STAGE_FLAG "-fshader-stage=vertex")
+    elseif(SHADER_EXT STREQUAL ".frag")
+        set(STAGE_FLAG "-fshader-stage=fragment")
+    elseif(SHADER_EXT STREQUAL ".comp")
+        set(STAGE_FLAG "-fshader-stage=compute")
+    else()
+        set(STAGE_FLAG "") # Fallback to glslc default detection
+    endif()
+
     set(SPIRV_OUTPUT "${SHADER}.spv")
 
     add_custom_command(
         OUTPUT ${SPIRV_OUTPUT}
-        # Use --target-env=vulkan explicitly
-        # -x glsl tells the compiler to treat it as GLSL regardless of extension
-        COMMAND ${GLSLC_EXECUTABLE} -x glsl --target-env=vulkan1.1 ${SHADER} -o ${SPIRV_OUTPUT}
+        # Add ${STAGE_FLAG} to the command
+        COMMAND ${GLSLC_EXECUTABLE} ${STAGE_FLAG} -x glsl --target-env=vulkan1.1 ${SHADER} -o ${SPIRV_OUTPUT}
         DEPENDS ${SHADER}
         MAIN_DEPENDENCY ${SHADER}
-        COMMENT "Compiling shader ${SHADER_FILE} for Vulkan"
+        COMMENT "Compiling ${SHADER_FILE} (${SHADER_EXT}) for Vulkan"
         VERBATIM
     )
 

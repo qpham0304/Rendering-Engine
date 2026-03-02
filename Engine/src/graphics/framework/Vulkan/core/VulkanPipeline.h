@@ -48,7 +48,11 @@ public:
 		uint32_t pushConstantSize
 	);
 
-	void createComputePipeline();
+	void createComputePipeline(
+		const std::string& compFilepath,
+		const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
+		uint32_t pushConstantSize
+	);
 
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
