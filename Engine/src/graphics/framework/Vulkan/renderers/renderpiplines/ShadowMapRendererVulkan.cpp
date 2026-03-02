@@ -1,12 +1,4 @@
 #include "ShadowMapRendererVulkan.h"
-#include "ShadowMapRendererVulkan.h"
-#include "ShadowMapRendererVulkan.h"
-#include "ShadowMapRendererVulkan.h"
-#include "ShadowMapRendererVulkan.h"
-#include "ShadowMapRendererVulkan.h"
-#include "ShadowMapRendererVulkan.h"
-#include "ShadowMapRendererVulkan.h"
-#include "ShadowMapRendererVulkan.h"
 #include "core/features/ServiceLocator.h"
 #include "graphics/renderers/RenderDevice.h"
 #include "logging/Logger.h"
@@ -223,14 +215,13 @@ void ShadowMapRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, u
 	endRecording(commandBuffer);
 }
 
-void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIndex) {
-	// 1. Transition images to GENERAL for Compute
+void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIndex) 
+{
 	TextureManagerVulkan::createBarrier(cmd, momentImage->textureImage,
 		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
 		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-	// Ensure Temp Image is also in GENERAL (only needs to happen once or if layout changed)
 	TextureManagerVulkan::createBarrier(cmd, tempMomentImage->textureImage,
 		0, VK_ACCESS_SHADER_WRITE_BIT,
 		VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
@@ -238,12 +229,11 @@ void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIn
 
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipeline);
 
-	// --- PASS 1: HORIZONTAL (Moment -> Temp) ---
+	// horizontal pass moment -> temp
 	ComputePushConstant push{};
 	push.isVertical = 0;
 	vkCmdPushConstants(cmd, computePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ComputePushConstant), &push);
 
-	//uint32_t safeIndex = frameIndex % static_cast<uint32_t>(setsH.size());
 	auto& setsH = descriptorManagerVulkan->getDescriptorSet(compDescSetMtoT_ID);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipelineLayout, 0, 1, &setsH[0], 0, nullptr);
 
@@ -251,7 +241,6 @@ void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIn
 	uint32_t groupsX = (width + 15) / 16;
 	uint32_t groupsY = (height + 15) / 16;
 
-	// Dispatch enough groups to cover the width
 	//vkCmdDispatch(cmd, (width + 127) / 128, height, 1);
 	//vkCmdDispatch(cmd, width, (height + 127) / 128, 1);
 	vkCmdDispatch(cmd, groupsX, groupsY, 1);
@@ -262,18 +251,16 @@ void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIn
 		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
 		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-	// --- PASS 2: VERTICAL (Temp -> Moment) ---
+	// verticle pass tmp -> moment
 	push.isVertical = 1;
 	vkCmdPushConstants(cmd, computePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ComputePushConstant), &push);
 
 	auto& setsV = descriptorManagerVulkan->getDescriptorSet(compDescSetTtoM_ID);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipelineLayout, 0, 1, &setsV[0], 0, nullptr);
 
-	// Dispatch enough groups to cover the height
 	//vkCmdDispatch(cmd, width, (height + 127) / 128, 1);
 	vkCmdDispatch(cmd, groupsX, groupsY, 1);
 
-	// 3. Final Transition: Back to SHADER_READ_ONLY_OPTIMAL for the Lighting Shader
 	TextureManagerVulkan::createBarrier(cmd, momentImage->textureImage,
 		VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

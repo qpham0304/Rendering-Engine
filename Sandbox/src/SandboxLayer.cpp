@@ -43,7 +43,7 @@ bool SandBoxLayer::init()
     setLogScopeEngine();
     scene->loadScene("assets/data/Level1-test.json");
 
-    uint32_t planeID = scene->addEntity("plane");
+    uint32_t planeID = scene->addEntity("light");
     Entity planeEntity = scene->getEntity(planeID);
     TransformComponent& transform = planeEntity.getComponent<TransformComponent>();
     transform.translate(glm::vec3(2.0));
@@ -62,8 +62,8 @@ bool SandBoxLayer::init()
 
 	EventManager& eventManager = EventManager::getInstance();
 
-    Entity sponza = scene->getEntity(scene->addEntity("sponza"));
-    sponza.addComponent<ModelComponent>();
+    //Entity sponza = scene->getEntity(scene->addEntity("sponza"));
+    //sponza.addComponent<ModelComponent>();
 
   //  eventManager.queue(AsyncEvent("sponza load"), [&] (AsyncEvent& e) {
   //      ModelManager* modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");

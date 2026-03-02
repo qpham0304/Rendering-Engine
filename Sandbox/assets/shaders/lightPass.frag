@@ -59,24 +59,33 @@ float calcShadow(vec3 worldPos) {
     return shadow / 9.0; // Average the 9 samples
 }
 
-// Updated Shadow Calculation for MSM
+
+float linstep(float low, float high, float v) {
+    return clamp((v - low) / (high - low), 0.0, 1.0);
+}
+
 float calcMSMShadow(vec3 worldPos) {
     vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(worldPos, 1.0);
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords.xy = projCoords.xy * 0.5 + 0.5;
 
-    // Out of bounds check
     if(projCoords.z > 1.0 || projCoords.z < 0.0) return 0.0;
 
-    // 1. Single sample of the 4 moments (RGBA32F)
     vec4 b = texture(shadowMap, projCoords.xy);
     
-    // 2. Numerical stability bias (prevents Cholesky breakdown)
-    float alpha = 0.00001; 
+    // Increase alpha slightly to 0.0001 for smoother transitions in flat areas
+    float alpha = 0.0001; 
     vec4 m = (1.0 - alpha) * b + alpha * vec4(0.5, 0.5, 0.5, 0.5);
 
-    // 3. Resolve the Hamburger Moment Problem (Simplified Cholesky)
     float d = projCoords.z;
+    
+    // BALANCE POINT 1: The "Self-Shadow" Bias
+    // If you see a "glow" around feet, increase 0.0005. 
+    // If shadows "detach" from feet, decrease it.
+    if (d <= m.x + 0.0005) {
+        return 0.0;
+    }
+
     float L21 = m.y - m.x * m.x;
     float L31 = m.z - m.y * m.x;
     float L32 = m.w - m.y * m.y - (L31 * L31) / L21;
@@ -87,17 +96,19 @@ float calcMSMShadow(vec3 worldPos) {
     float c1 = f1 / L21;
     float c2 = (f2 - L31 * c1) / L32;
     
-    // 4. Compute the upper bound (probability)
-    float p = (c2 * (d * d) + c1 * d + 1.0); // Simplified check
+    float p = (c2 * f2 + c1 * f1);
+    float shadow = p / (1.0 + p);
+
+    // BALANCE POINT 2: Bleed Reduction
+    // 0.2 is a safe "industry" starting point. 
+    // Lower (0.1) = softer but more bleed. Higher (0.4) = darker but harsher edges.
+    shadow = linstep(0.2, 1.0, shadow);
     
-    // Return shadow (1.0 = fully in shadow, 0.0 = fully lit)
-    // We use a simple Chebychev-style bound for stability
-    float variance = max(m.y - (m.x * m.x), 0.0001);
-    float d_m = d - m.x;
-    float p_max = variance / (variance + d_m * d_m);
-    
-    // If current depth is less than average, it's lit
-    return (d <= m.x) ? 0.0 : 1.0 - p_max;
+    // Pushing the power to 2.0 makes the contact point feel more "solid"
+    shadow = pow(shadow, 2.0); 
+    shadow = clamp(shadow * 1.5 - 0.1, 0.0, 1.0);
+
+    return shadow;
 }
 
 void main() {
@@ -141,7 +152,9 @@ void main() {
 
     
     // float shadow = calcShadow(worldPos);
-    float shadow = calcMSMShadow(worldPos);
+    vec3 biasedPos = worldPos + worldNorm * 0.01; 
+    float shadow = calcMSMShadow(biasedPos);
+    
     vec3 sunDir = normalize(pcl.direction.xyz); 
     float sunDiffuse = max(dot(worldNorm, sunDir), 0.0);
     vec3 sunlight = (1.0 - shadow) * (pcl.color.rgb * sunDiffuse * albedo.rgb);
