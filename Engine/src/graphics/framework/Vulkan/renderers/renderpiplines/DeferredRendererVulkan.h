@@ -39,7 +39,11 @@ private:
 		alignas(64) glm::mat4 sunlightMVP;
 		alignas(16) glm::vec4 direction;
 		alignas(16) glm::vec4 color;
-		alignas(4)  int numLights;
+		alignas(4)  float bias;
+		alignas(4)  float alpha;
+		alignas(4)  float lintstepLow;
+		alignas(4)  float linstepHigh;
+		alignas(4)  float litBias;
 	};
 
 	struct LightSSBO {

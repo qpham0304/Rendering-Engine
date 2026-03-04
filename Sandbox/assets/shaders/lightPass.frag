@@ -33,7 +33,11 @@ layout (push_constant) uniform LightData {
     mat4 sunlightMVP;
     vec4 direction;
     vec4 color;
-    int numLights;
+    float bias;
+    float alpha;
+    float lintstepLow;
+    float linstepHigh;
+    float litBias;
 } pcl;
 
 
@@ -48,7 +52,7 @@ float calcShadow(vec3 worldPos) {
     // Get the size of a single shadow map pixel
     vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
     
-    // Simple 3x3 PCF Kernel
+    // 3x3 PCF Kernel
     for(int x = -1; x <= 1; ++x) {
         for(int y = -1; y <= 1; ++y) {
             float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
@@ -56,7 +60,7 @@ float calcShadow(vec3 worldPos) {
         }    
     }
     
-    return shadow / 9.0; // Average the 9 samples
+    return shadow / 9.0;
 }
 
 
@@ -73,16 +77,13 @@ float calcMSMShadow(vec3 worldPos) {
 
     vec4 b = texture(shadowMap, projCoords.xy);
     
-    // Increase alpha slightly to 0.0001 for smoother transitions in flat areas
-    float alpha = 0.0001; 
-    vec4 m = (1.0 - alpha) * b + alpha * vec4(0.5, 0.5, 0.5, 0.5);
+    vec4 m = (1.0 - pcl.alpha) * b + pcl.alpha * vec4(0.5, 0.5, 0.5, 0.5);
 
     float d = projCoords.z;
+    // float d = projCoords.z * 2.0 - 1.0;
     
-    // BALANCE POINT 1: The "Self-Shadow" Bias
-    // If you see a "glow" around feet, increase 0.0005. 
-    // If shadows "detach" from feet, decrease it.
-    if (d <= m.x + 0.0005) {
+    
+    if (d <= m.x + pcl.litBias) { //self shadow bias
         return 0.0;
     }
 
@@ -99,14 +100,9 @@ float calcMSMShadow(vec3 worldPos) {
     float p = (c2 * f2 + c1 * f1);
     float shadow = p / (1.0 + p);
 
-    // BALANCE POINT 2: Bleed Reduction
-    // 0.2 is a safe "industry" starting point. 
-    // Lower (0.1) = softer but more bleed. Higher (0.4) = darker but harsher edges.
-    shadow = linstep(0.2, 1.0, shadow);
-    
-    // Pushing the power to 2.0 makes the contact point feel more "solid"
-    shadow = pow(shadow, 2.0); 
-    shadow = clamp(shadow * 1.5 - 0.1, 0.0, 1.0);
+    shadow = linstep(pcl.lintstepLow, pcl.linstepHigh, shadow);
+    // shadow = pow(shadow, 2.0); 
+    // shadow = clamp(shadow * 1.5 - 0.1, 0.0, 1.0);
 
     return shadow;
 }
@@ -126,7 +122,7 @@ void main() {
     vec3 accumulatedLight = vec3(0.0);
     vec3 ambient = vec3(0.03) * albedo.rgb * ao;
 
-    for(int i = 0; i < pcl.numLights; i++) {
+    for(int i = 0; i < lightSSBO.lights.length() ; i++) {
         vec3 lightPos   = lightSSBO.lights[i].position.xyz;
         vec3 lightCol   = lightSSBO.lights[i].color.rgb;
         float intensity = lightSSBO.lights[i].intensity;
@@ -139,7 +135,6 @@ void main() {
             continue;
         }
 
-        // Standard attenuation
         float attenuation = intensity / (dist * dist + 0.01);
 
         float factor = dist / radius;
@@ -152,7 +147,7 @@ void main() {
 
     
     // float shadow = calcShadow(worldPos);
-    vec3 biasedPos = worldPos + worldNorm * 0.01; 
+    vec3 biasedPos = worldPos + worldNorm * pcl.bias; 
     float shadow = calcMSMShadow(biasedPos);
     
     vec3 sunDir = normalize(pcl.direction.xyz); 

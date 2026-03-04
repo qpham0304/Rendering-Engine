@@ -95,6 +95,11 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	size_t lightBufferSize = lights.size() * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
+	pushConstantLight.bias = 0.001f;
+	pushConstantLight.alpha = 0.0001f;
+    pushConstantLight.lintstepLow = 0.2f;
+    pushConstantLight.linstepHigh = 1.0f;
+    pushConstantLight.litBias = 0.0005f;
 
 	_createDescriptor();
 	_createPipelines();
@@ -144,16 +149,8 @@ void DeferredRendererVulkan::render(Camera& camera)
 	ubo.proj[1][1] *= -1;
 	
 	pushConstantLight.color = glm::vec4(1.0f, 0.95f, 0.8f, 1.0f);
-	pushConstantLight.numLights = static_cast<int>(lights.size());
-
-	glm::vec3 lPos = glm::vec3(100.0f, 100.0f, 100.0f);
-	glm::vec3 lTarget = glm::vec3(0.0f, 0.0f, -25.0f);
-
-	glm::vec3 lightDir = glm::normalize(lTarget - lPos);
-
-	pushConstantLight.direction = glm::vec4(-lightDir, 0.0f);
+	pushConstantLight.direction = glm::vec4(shadowMapRenderer.lightDir, 0.0f);
 	pushConstantLight.sunlightMVP = shadowMapRenderer.lightSpaceMatrix;
-
 
 	uint32_t frame = renderDeviceVulkan->getCurrentFrameIndex();
 	uniformbuffersList[frame]->update(&ubo, sizeof(ubo));
@@ -179,7 +176,14 @@ void DeferredRendererVulkan::renderGui()
 
 	auto entities = scene->getEntitiesWith<LightComponent>();
 
+	
 	ImGui::Begin("Lights Control");
+	ImGui::SliderFloat("Shadow Bias", &pushConstantLight.bias, 0.001f, 0.1f);
+	ImGui::SliderFloat("Shadow Alpha", &pushConstantLight.alpha, 0.0001f, 0.01f);
+	ImGui::SliderFloat("Shadow Lintstep Low", &pushConstantLight.lintstepLow, 0.01f, 1.0f);
+	ImGui::SliderFloat("Shadow Lintstep High", &pushConstantLight.linstepHigh, 0.01f, 2.0f);
+	ImGui::SliderFloat("Shadow Lit Bias", &pushConstantLight.litBias, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags_Logarithmic);
+
 	int i = 0;
 	for (auto& entity : entities) {
 		TransformComponent& transform = entity.getComponent<TransformComponent>();

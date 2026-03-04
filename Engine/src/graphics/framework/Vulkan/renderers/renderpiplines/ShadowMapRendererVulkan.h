@@ -78,6 +78,7 @@ public:	//TODO: make private once done testing
 
 	glm::mat4 lightSpaceMatrix;
 	glm::vec3 lightPos;
+	glm::vec3 lightDir;
 	glm::mat4 lightView;
 
 	std::unique_ptr<VulkanPipeline> computePipeline;

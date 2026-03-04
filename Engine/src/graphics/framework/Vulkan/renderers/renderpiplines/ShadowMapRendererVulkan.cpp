@@ -104,24 +104,38 @@ void ShadowMapRendererVulkan::endFrame()
 
 void ShadowMapRendererVulkan::render(Camera& camera)
 {
-	glm::vec3 lightPos = glm::vec3(5.0f);
+	lightPos = glm::vec3(5.0f);
+	lightDir = glm::normalize(glm::vec3(1.0f));
 	glm::vec3 orientation = glm::vec3(-5.0f);
 	lightView = glm::lookAt(lightPos, lightPos + orientation, glm::vec3(0.0f, 1.0f, 0.0f));
 	glm::mat4 lightProjection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 25.0f);
+
+	// lightDir = glm::normalize(glm::vec3(1.0f));
+	// lightPos = lightDir * 100.0f;
+	// lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	// float s = 15.0f;
+	// float zNear = 15.0f;
+	// float zFar = 150.0f;
+	// glm::mat4 lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
+
+	// glm::vec3 followTarget = camera.getPosition();
+	// float s = 5.0f;
+	// float zNear = 15.0f;
+	// float zFar = 150.0f;
+	// float worldUnitsPerTexel = (2.0f * s) / width;
+	// followTarget.x = std::floor(followTarget.x / worldUnitsPerTexel) * worldUnitsPerTexel;
+	// followTarget.y = std::floor(followTarget.y / worldUnitsPerTexel) * worldUnitsPerTexel;
+	// followTarget.z = std::floor(followTarget.z / worldUnitsPerTexel) * worldUnitsPerTexel;
+	// lightDir = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
+	// lightPos = followTarget + (lightDir * 100.0f);
+	// lightView = glm::lookAt(lightPos, followTarget, glm::vec3(0.0f, 1.0f, 0.0f));
+	// glm::mat4 lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
+
 	lightProjection[1][1] *= -1;
-
-	//lightPos = glm::vec3(100.0f, 100.0f, 100.0f);
-	//glm::vec3 lookAtTarget = glm::vec3(0.0f, 0.0f, -25.0f);
-	//lightView = glm::lookAt(lightPos, lookAtTarget, glm::vec3(0.0f, 1.0f, 0.0f));
-	//float s = 35.0f;
-	//glm::mat4 lightProjection = glm::ortho(-s, s, -s, s, -250.0f, 250.0f);
-	//lightProjection[1][1] *= -1;
-
 	lightSpaceMatrix = lightProjection * lightView;
+
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-
 	dispatchBlur(cmdBuffer, renderDeviceVulkan->getImageIndex());
 }
 
