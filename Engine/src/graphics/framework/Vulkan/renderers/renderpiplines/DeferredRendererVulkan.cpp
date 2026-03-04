@@ -178,11 +178,12 @@ void DeferredRendererVulkan::renderGui()
 
 	
 	ImGui::Begin("Lights Control");
-	ImGui::SliderFloat("Shadow Bias", &pushConstantLight.bias, 0.001f, 0.1f);
-	ImGui::SliderFloat("Shadow Alpha", &pushConstantLight.alpha, 0.0001f, 0.01f);
-	ImGui::SliderFloat("Shadow Lintstep Low", &pushConstantLight.lintstepLow, 0.01f, 1.0f);
-	ImGui::SliderFloat("Shadow Lintstep High", &pushConstantLight.linstepHigh, 0.01f, 2.0f);
-	ImGui::SliderFloat("Shadow Lit Bias", &pushConstantLight.litBias, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags_Logarithmic);
+	ImGui::Checkbox("Light Perspective", &shadowMapRenderer.useOrtho);
+	ImGui::SliderFloat("Bias", &pushConstantLight.bias, 0.001f, 0.1f);
+	ImGui::SliderFloat("Alpha", &pushConstantLight.alpha, 0.0001f, 0.01f);
+	ImGui::SliderFloat("Lintstep Low", &pushConstantLight.lintstepLow, 0.01f, 1.0f);
+	ImGui::SliderFloat("Lintstep High", &pushConstantLight.linstepHigh, 0.01f, 2.0f);
+	ImGui::SliderFloat("Lit Bias", &pushConstantLight.litBias, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags_Logarithmic);
 
 	int i = 0;
 	for (auto& entity : entities) {

@@ -104,32 +104,36 @@ void ShadowMapRendererVulkan::endFrame()
 
 void ShadowMapRendererVulkan::render(Camera& camera)
 {
-	lightPos = glm::vec3(5.0f);
-	lightDir = glm::normalize(glm::vec3(1.0f));
-	glm::vec3 orientation = glm::vec3(-5.0f);
-	lightView = glm::lookAt(lightPos, lightPos + orientation, glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 lightProjection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 25.0f);
+	glm::mat4 lightProjection;
 
-	// lightDir = glm::normalize(glm::vec3(1.0f));
-	// lightPos = lightDir * 100.0f;
-	// lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	// float s = 15.0f;
-	// float zNear = 15.0f;
-	// float zFar = 150.0f;
-	// glm::mat4 lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
+	if(!useOrtho) {
+		lightPos = glm::vec3(5.0f);
+		lightDir = glm::normalize(glm::vec3(1.0f));
+		glm::vec3 orientation = glm::vec3(-5.0f);
+		lightView = glm::lookAt(lightPos, lightPos + orientation, glm::vec3(0.0f, 1.0f, 0.0f));
+		lightProjection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 25.0f);
+	} else {
+		lightDir = glm::normalize(glm::vec3(1.0f));
+		lightPos = lightDir * 100.0f;
+		lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		float s = 15.0f;
+		float zNear = 15.0f;
+		float zFar = 150.0f;
+		lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
 
-	// glm::vec3 followTarget = camera.getPosition();
-	// float s = 5.0f;
-	// float zNear = 15.0f;
-	// float zFar = 150.0f;
-	// float worldUnitsPerTexel = (2.0f * s) / width;
-	// followTarget.x = std::floor(followTarget.x / worldUnitsPerTexel) * worldUnitsPerTexel;
-	// followTarget.y = std::floor(followTarget.y / worldUnitsPerTexel) * worldUnitsPerTexel;
-	// followTarget.z = std::floor(followTarget.z / worldUnitsPerTexel) * worldUnitsPerTexel;
-	// lightDir = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
-	// lightPos = followTarget + (lightDir * 100.0f);
-	// lightView = glm::lookAt(lightPos, followTarget, glm::vec3(0.0f, 1.0f, 0.0f));
-	// glm::mat4 lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
+		// glm::vec3 followTarget = camera.getPosition();
+		// float s = 5.0f;
+		// float zNear = 15.0f;
+		// float zFar = 150.0f;
+		// float worldUnitsPerTexel = (2.0f * s) / width;
+		// followTarget.x = std::floor(followTarget.x / worldUnitsPerTexel) * worldUnitsPerTexel;
+		// followTarget.y = std::floor(followTarget.y / worldUnitsPerTexel) * worldUnitsPerTexel;
+		// followTarget.z = std::floor(followTarget.z / worldUnitsPerTexel) * worldUnitsPerTexel;
+		// lightDir = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
+		// lightPos = followTarget + (lightDir * 100.0f);
+		// lightView = glm::lookAt(lightPos, followTarget, glm::vec3(0.0f, 1.0f, 0.0f));
+		// glm::mat4 lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
+	}
 
 	lightProjection[1][1] *= -1;
 	lightSpaceMatrix = lightProjection * lightView;
@@ -251,13 +255,8 @@ void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIn
 	auto& setsH = descriptorManagerVulkan->getDescriptorSet(compDescSetMtoT_ID);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipelineLayout, 0, 1, &setsH[0], 0, nullptr);
 
-
-	uint32_t groupsX = (width + 15) / 16;
-	uint32_t groupsY = (height + 15) / 16;
-
-	//vkCmdDispatch(cmd, (width + 127) / 128, height, 1);
-	//vkCmdDispatch(cmd, width, (height + 127) / 128, 1);
-	vkCmdDispatch(cmd, groupsX, groupsY, 1);
+	uint32_t groupsAlongWidth = (width + 127) / 128;
+    vkCmdDispatch(cmd, groupsAlongWidth, height, 1);
 
 	// 2. BARRIER: Wait for Horizontal to finish before Vertical starts
 	TextureManagerVulkan::createBarrier(cmd, tempMomentImage->textureImage,
@@ -272,8 +271,8 @@ void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIn
 	auto& setsV = descriptorManagerVulkan->getDescriptorSet(compDescSetTtoM_ID);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipelineLayout, 0, 1, &setsV[0], 0, nullptr);
 
-	//vkCmdDispatch(cmd, width, (height + 127) / 128, 1);
-	vkCmdDispatch(cmd, groupsX, groupsY, 1);
+	uint32_t groupsAlongHeight = (height + 127) / 128;
+    vkCmdDispatch(cmd, width, groupsAlongHeight, 1);
 
 	TextureManagerVulkan::createBarrier(cmd, momentImage->textureImage,
 		VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,

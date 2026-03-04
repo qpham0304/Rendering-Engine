@@ -1,4 +1,67 @@
 #version 450
+layout(local_size_x = 128, local_size_y = 1) in;
+
+layout(binding = 0, rgba32f) uniform readonly image2D inputImage;
+layout(binding = 1, rgba32f) uniform writeonly image2D outputImage;
+
+layout(push_constant) uniform BlurControl {
+    uint isVertical;
+} ctrl;
+
+// 128 threads + 4 pixels of "apron" on each side = 136 total
+shared vec4 cache[128 + 8];
+
+void main() {
+    uint lIdx = gl_LocalInvocationIndex;
+    ivec2 size = imageSize(inputImage);
+    ivec2 gPos;
+    ivec2 direction;
+
+    if (ctrl.isVertical == 0) {
+        // Horizontal Pass: WorkGroupID.x is the "which block" in the row
+        // WorkGroupID.y is "which row"
+        gPos = ivec2(int(gl_WorkGroupID.x * 128 + lIdx), int(gl_WorkGroupID.y));
+        direction = ivec2(1, 0);
+    } else {
+        // Vertical Pass: WorkGroupID.x is "which column"
+        // WorkGroupID.y is "which block" in the column
+        gPos = ivec2(int(gl_WorkGroupID.x), int(gl_WorkGroupID.y * 128 + lIdx));
+        direction = ivec2(0, 1);
+    }
+
+    // Boundary check: don't process pixels outside the image
+    if (gPos.x >= size.x || gPos.y >= size.y) {
+        return;
+    }
+
+    // Load into cache (Apron = 4 pixels)
+    cache[lIdx + 4] = imageLoad(inputImage, gPos);
+
+    if (lIdx < 4) {
+        cache[lIdx] = imageLoad(inputImage, gPos - direction * 4);
+    }
+    if (lIdx >= 124) {
+        cache[lIdx + 8] = imageLoad(inputImage, gPos + direction * 4);
+    }
+
+    memoryBarrierShared();
+    barrier();
+
+    // 3. Gaussian Math (using our 9-tap weights)
+    float weights[5] = { 0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216 };
+    vec4 result = cache[lIdx + 4] * weights[0];
+
+    for(int i = 1; i <= 4; ++i) {
+        result += cache[lIdx + 4 + i] * weights[i];
+        result += cache[lIdx + 4 - i] * weights[i];
+    }
+
+    imageStore(outputImage, gPos, result);
+}
+
+/*
+
+#version 450
 layout(local_size_x = 16, local_size_y = 16) in; // 2D block for simplicity
 
 layout(binding = 0, rgba32f) uniform readonly image2D inputImage;
@@ -29,3 +92,5 @@ void main() {
 
     imageStore(outputImage, gPos, result);
 }
+
+*/
