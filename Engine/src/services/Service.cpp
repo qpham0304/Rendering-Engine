@@ -16,7 +16,6 @@ bool Service::init(WindowConfig config)
 	m_config = config;
 			
 	m_logger = make_unique<LoggerSpd>(m_serviceName);
-	m_logger->error("service: {}", m_serviceName);
 
 	return true;
 }

@@ -104,11 +104,6 @@ void* RenderDeviceVulkan::getPhysicalDevice()
 	return static_cast<void*>(device.physicalDevice);
 }
 
-Logger& RenderDeviceVulkan::Log() const
-{
-	return *m_logger;
-}
-
 uint16_t RenderDeviceVulkan::_assignID()
 {
 	return m_ids.fetch_add(1, std::memory_order_relaxed);

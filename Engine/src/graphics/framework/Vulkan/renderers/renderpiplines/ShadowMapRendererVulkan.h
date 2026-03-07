@@ -63,9 +63,6 @@ public:	//TODO: make private once done testing
 
 
 	std::unique_ptr<VulkanPipeline> shadowPipeline;
-	//uint32_t shadowLayoutID;
-	//uint32_t shadowPoolID;
-	//uint32_t shadowSetsID;
 	TextureVulkan* depthMap;
 	TextureVulkan* momentImage;
 	TextureVulkan* tempMomentImage;

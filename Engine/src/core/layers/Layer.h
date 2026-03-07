@@ -4,7 +4,6 @@
 #include "Logging/Logger.h"
 
 class LayerManager;
-// class Logger;
 
 class Layer
 {

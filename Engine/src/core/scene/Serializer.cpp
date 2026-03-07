@@ -27,9 +27,17 @@ Serializer::~Serializer()
 nlohmann::json Serializer::loadJson(const std::string &path)
 {
     std::ifstream file(path);
-    nlohmann::json j;
-    file >> j;
-    return j;
+    if (!file.is_open()) {
+        m_logger->error("Failed to parse json: {}", path);
+        return nlohmann::json();
+    }
+
+    try {
+        return nlohmann::json::parse(file);
+    } catch (nlohmann::json::parse_error& e) {
+        m_logger->error("Failed to parse json: {}", e.what());
+        return nlohmann::json();
+    }
 }
 
 

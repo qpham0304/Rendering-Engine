@@ -1,6 +1,5 @@
 #include "VulkanDevice.h"
 #include "core/features/ServiceLocator.h"
-#include "Logging/Logger.h"
 //#define GLFW_INCLUDE_VULKAN
 //#include <GLFW/glfw3.h>
 #include "../../../../window/AppWindow.h"
@@ -30,7 +29,7 @@ VulkanDevice::VulkanDevice()
 		physicalDevice(VK_NULL_HANDLE),
 		device(VK_NULL_HANDLE)
 {
-
+	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 }
 
 VulkanDevice::operator VkDevice() const noexcept
@@ -71,9 +70,9 @@ void VulkanDevice::createInstance()
 
 	VkApplicationInfo appInfo{};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Hello Triangle";
+	appInfo.pApplicationName = "Vulkan Application";
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.pEngineName = "No Engine";
+	appInfo.pEngineName = "MyGraphicsEngine";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.apiVersion = VK_API_VERSION_1_0;
 
@@ -344,4 +343,5 @@ void VulkanDevice::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateI
 	createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 	createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	createInfo.pfnUserCallback = debugCallback;
+	createInfo.pUserData = this;
 }

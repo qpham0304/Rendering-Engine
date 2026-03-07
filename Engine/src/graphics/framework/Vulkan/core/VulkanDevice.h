@@ -11,19 +11,36 @@
 #define MAX_BONE_INFLUENCE 4
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	VkDebugUtilsMessageTypeFlagsEXT messageType,
-	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-	void* pUserData) {
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData
+) {
+    const char* RED     = "\033[31m";
+    const char* YELLOW  = "\033[33m";
+    const char* WHITE   = "\033[37m";
+    const char* RESET   = "\033[0m";
+    const char* BOLD    = "\033[1m";
 
-	std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    std::cerr << "[Validation Layer] ";
 
-	return VK_FALSE;
+    if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+        std::cerr << BOLD << RED;
+    } else if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+        std::cerr << YELLOW;
+    } else {
+        std::cerr << WHITE;
+    }
+
+    std::cerr << pCallbackData->pMessage << RESET << std::endl;
+
+    return VK_FALSE;
 }
 
 class VulkanDevice
 {
-
+	class Logger;
+	
 public:
 	VulkanDevice();
 	operator VkDevice() const noexcept;
@@ -162,7 +179,7 @@ public:
 #endif
 
 private:
-
+	Logger* m_logger;
 
 };
 

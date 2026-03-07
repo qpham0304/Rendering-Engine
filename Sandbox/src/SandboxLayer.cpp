@@ -40,7 +40,7 @@ bool SandBoxLayer::init()
         return false;
     }
     
-    //setLogScopeEngine();
+    setLogScopeEngine();
     scene->loadScene("assets/data/Level1-test.json");
 
     uint32_t planeID = scene->addEntity("light");

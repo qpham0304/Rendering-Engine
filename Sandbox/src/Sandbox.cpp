@@ -69,7 +69,7 @@ void Sandbox::init()
 	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 
 	for (Service*& service : services) {
-		if(!service->init(windowConfig)) {	// assuming logger is always success
+		if(!service->init(windowConfig)) {
 			engineLogger->error("Service Initilize failed: {}", service->getServiceName());
 		} else {
 			engineLogger->info("Initilize Service: {}", service->getServiceName());
@@ -102,7 +102,7 @@ void Sandbox::run() {
 void Sandbox::close()
 {
 	for (Service*& service : std::views::reverse(services)) {
-		if(!service->onClose()) {	// assuming logger is always success
+		if(!service->onClose()) {
 			engineLogger->error("Service Close failed: {}", service->getServiceName());
 		} else {
 			engineLogger->info("Closing Service: {}", service->getServiceName());

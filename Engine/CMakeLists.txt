@@ -43,6 +43,38 @@ add_library(${PROJECT_NAME} STATIC
     ${IMGUI_SOURCES}
 )
 
+# precompile headers
+target_precompile_headers(${PROJECT_NAME} PRIVATE
+    <string>
+    <sstream>
+    <iostream>
+    <algorithm>
+    <memory>
+    <unordered_map>
+    <unordered_set>
+    <set>
+    <future>
+    <mutex>
+    <shared_mutex>
+    <thread>
+    <atomic>
+    <cstring>
+    <fstream>
+    <stdexcept>
+    <vector>
+    <array>
+    <cstdint>
+    <limits>
+    <optional>
+    <variant>
+    <any>
+    <functional>
+    <glm/glm.hpp>
+    <imgui.h>
+    <vulkan/vulkan.h>
+    <nlohmann/json.hpp>
+)
+
 # Output folders (optional)
 set_target_properties(${PROJECT_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>"
@@ -88,6 +120,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     glfw
     opengl32
 )
+
+target_compile_definitions(${PROJECT_NAME} PUBLIC IMGUI_DEFINE_MATH_OPERATORS)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC
     IMGUI_IMPL_OPENGL_LOADER_GLAD
