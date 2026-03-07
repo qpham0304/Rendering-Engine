@@ -25,7 +25,7 @@ bool TextureManagerVulkan::init(WindowConfig config)
 
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = static_cast<RenderDeviceVulkan*>(&device);
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
 	vulkanBufferManager = static_cast<BufferManagerVulkan*>(&bufferManager);
@@ -551,8 +551,13 @@ void TextureManagerVulkan::generateMipmaps(
             0, nullptr, 0, nullptr, 1, &barrier
 		);
 
-        if (mipWidth > 1) mipWidth /= 2;
-        if (mipHeight > 1) mipHeight /= 2;
+        if (mipWidth > 1) {
+			mipWidth /= 2;
+		}
+		
+        if (mipHeight > 1) {
+			mipHeight /= 2;
+		}
     }
 
     // transition the last mip level

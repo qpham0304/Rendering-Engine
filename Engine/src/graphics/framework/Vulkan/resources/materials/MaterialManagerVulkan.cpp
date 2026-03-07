@@ -21,7 +21,7 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 {
     Service::init(config);
 
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&device);

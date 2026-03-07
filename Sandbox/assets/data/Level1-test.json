@@ -90,7 +90,7 @@
     {
       "components": {
         "ModelComponent": {
-          "path": "C:/Users/tomor/Desktop/Projects/C++/MyGraphicsEngine/Sandbox/assets/models/cube/cube-notex.gltf"
+          "path": "assets/models/cube/cube-notex.gltf"
         },
         "NameComponent": {
           "name": "plane"

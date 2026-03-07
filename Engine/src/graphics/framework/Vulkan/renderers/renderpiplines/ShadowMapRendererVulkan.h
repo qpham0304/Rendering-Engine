@@ -73,8 +73,8 @@ public:	//TODO: make private once done testing
 	VkFramebuffer shadowFramebuffer;
 
 	//TODO: allow client spcify the shadow map size
-	uint32_t width = 4096;
-	uint32_t height = 4096;
+	uint32_t width = 2048;
+	uint32_t height = 2048;
 
 	glm::mat4 lightSpaceMatrix;
 	glm::vec3 lightPos;

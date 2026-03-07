@@ -49,20 +49,12 @@ public:
 	PlatformFactory(ServiceLocator& serviceLocator);
 	~PlatformFactory() = default;
 
-	template<typename Interface, typename Concrete, typename... Args>
-	std::unique_ptr<Interface> create(WindowPlatform config, Args... args) {
-
+	template<typename Interface, typename PlatformEnum, typename... Args>
+	std::unique_ptr<Interface> Create(PlatformEnum platform, Args&&... args) {
+		return GetFactory<Interface, PlatformEnum, Args...>().Create(platform, std::forward<Args>(args)...);
 	}
 
-	std::unique_ptr<Logger> createLogger(LoggerPlatform platform, std::string_view name);
-	std::unique_ptr<AppWindow> createWindow(WindowPlatform config);
-	std::unique_ptr<GuiManager> createGuiManager(GuiPlatform config);
-	std::unique_ptr<Renderer> createRenderer(RenderPlatform platform);
-	std::unique_ptr<RenderDevice> createRenderDevice(RenderPlatform platform);
-	std::unique_ptr<TextureManager> createTextureManager(RenderPlatform platform);
-	std::unique_ptr<BufferManager> createBufferManager(RenderPlatform platform);
-	std::unique_ptr<DescriptorManager> createDescriptorManager(RenderPlatform platform);
-	std::unique_ptr<MaterialManager> createMaterialManager(RenderPlatform platform);
+	std::unique_ptr<Logger> Create(LoggerPlatform platform, std::string name);
 
 
 private:
@@ -77,17 +69,23 @@ private:
 		};
 	}
 
+	template<typename Interface, typename PlatformEnum, typename... Args>
+	auto& GetFactory() {
+		return std::get<Factory<Interface, PlatformEnum, Args...>>(factories);
+	}
+
 
 private:
 	ServiceLocator& serviceLocator;
-
-	Factory<Logger, LoggerPlatform, std::string> loggerFactory;
-	Factory<AppWindow, WindowPlatform> windowFactory;
-	Factory<GuiManager, GuiPlatform> guiFactory;
-	Factory<Renderer, RenderPlatform> rendererFactory;
-	Factory<RenderDevice, RenderPlatform> renderDeviceFactory;
-	Factory<TextureManager, RenderPlatform> textureManagerFactory;
-	Factory<BufferManager, RenderPlatform> bufferManagerFactory;
-	Factory<DescriptorManager, RenderPlatform> descriptorManagerFactory;
-	Factory<MaterialManager, RenderPlatform> materialManagerFactory;
+	
+	std::tuple<
+		Factory<AppWindow, WindowPlatform>,
+		Factory<GuiManager, GuiPlatform>,
+		Factory<Renderer, RenderPlatform>,
+		Factory<RenderDevice, RenderPlatform>,
+		Factory<TextureManager, RenderPlatform>,
+		Factory<BufferManager, RenderPlatform>,
+		Factory<DescriptorManager, RenderPlatform>,
+		Factory<MaterialManager, RenderPlatform>
+	> factories;
 };

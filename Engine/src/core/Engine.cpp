@@ -1,99 +1,112 @@
 #include "Engine.h"
-#include <FileWatch.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/glm.hpp>
+#include <ranges>
 #include "window/AppWindow.h"
-#include "core/features/Timer.h"
-#include "core/layers/AppLayer.h"
-#include "core/features/Profiler.h"
-#include "window/platform/GLFW/AppWindowGLFW.h"
+#include "core/events/EventManager.h"
 
 
-Engine::Engine(WindowConfig windowConfig) 
-	: isRunning(false), windowConfig(windowConfig)
+#include <core/layers/EditorLayer.h>
+#include <core/layers/LayerManager.h>
+#include <core/scene/SceneManager.h>
+#include <core/resources/managers/TextureManager.h>
+#include <core/resources/managers/BufferManager.h>
+#include <core/resources/managers/MeshManager.h>
+#include <core/resources/managers/ModelManager.h>
+#include <core/resources/managers/DescriptorManager.h>
+#include <core/resources/managers/MaterialManager.h>
+#include <graphics/renderers/Renderer.h>
+
+Engine::Engine(WindowConfig config)
+	:	windowConfig(config),
+		sceneManager(SceneManager::getInstance()),
+		eventManager(EventManager::getInstance())
 {
 	ServiceLocator::setContext(&serviceLocator);
-
-	//separate service modules
-	engineLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Engine");
-	clientLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Client");
-	appWindow = platformFactory.createWindow(windowConfig.windowPlatform);
-	renderDevice = platformFactory.createRenderDevice(windowConfig.renderPlatform);
-	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
-
-	//engine specific features
+	engineLogger = platformFactory.Create(LoggerPlatform::SPDLOG, "Engine");
+	clientLogger = platformFactory.Create(LoggerPlatform::SPDLOG, "Client");
+	appWindow = platformFactory.Create<AppWindow>(windowConfig.windowPlatform);
+	renderDevice = platformFactory.Create<RenderDevice>(windowConfig.renderPlatform);
+	bufferManager = platformFactory.Create<BufferManager>(windowConfig.renderPlatform);
+	descriptorManager = platformFactory.Create<DescriptorManager>(windowConfig.renderPlatform);
+	textureManager = platformFactory.Create<TextureManager>(windowConfig.renderPlatform);
+	materialManager = platformFactory.Create<MaterialManager>(windowConfig.renderPlatform);
+	
+	meshManager = std::make_unique<MeshManager>();
+	modelManager = std::make_unique<ModelManager>();
 	layerManager = std::make_unique<LayerManager>();
+	serviceLocator.Register<MeshManager>("MeshManager", *meshManager);
+	serviceLocator.Register<ModelManager>("ModelManager", *modelManager);
+	serviceLocator.Register<LayerManager>("LayerManager", *layerManager);
 
+	guiManager = platformFactory.Create<GuiManager>(windowConfig.guiPlatform);
+	renderer = platformFactory.Create<Renderer>(windowConfig.renderPlatform);
 
+	//NOTE: setup order is important!
+	services.push_back(&eventManager);
+	services.push_back(&sceneManager);
 	services.push_back(appWindow.get());
+	services.push_back(renderDevice.get());
+	services.push_back(bufferManager.get());
+	services.push_back(descriptorManager.get());
+	services.push_back(textureManager.get());
+	services.push_back(materialManager.get());
+	services.push_back(meshManager.get());
+	services.push_back(modelManager.get());
+	services.push_back(layerManager.get());
 	services.push_back(guiManager.get());
-	services.push_back(engineLogger.get());
-	services.push_back(clientLogger.get());
-
-	ServiceLocator::supportingServices();
-
-	renderDevice->init(windowConfig);
-	clientLogger->setLevel(LogLevel::Debug); // Set *global* log level to debug
-
-	editorLayer = new EditorLayer("EditorLayer", *guiManager);
+	services.push_back(renderer.get());
 }
 
-void Engine::pushLayer(Layer* layer) {
+void Engine::pushLayer(Layer *layer)
+{
 	layerManager->addLayer(layer);
 }
 
 void Engine::init()
 {
-	appWindow->init(windowConfig);
-	guiManager->init(windowConfig);
-	layerManager->init(windowConfig);
-	editorLayer->init();
-}
+	engineLogger->setLevel(LogLevel::Debug);
+	
+	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 
-void Engine::start()
-{
-	pushLayer(editorLayer);
-	isRunning = true;
-
-	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
-		onClose();
-	});
-
-	//TODO: experimenting with file watcher for now
-	std::unique_ptr<filewatch::FileWatch<std::string>> fileWatcher;
-	fileWatcher.reset(new filewatch::FileWatch<std::string>(
-		"./Shaders",
-		[](const std::string& m_path, const filewatch::Event change_type) {
-			std::cout << m_path << "-" << (int)change_type << "\n";
-		}
-	));
-}
-
-void Engine::run() {	// must be the last to be added to layer stack
-	while (isRunning) {
-		// Application
-		appWindow->onUpdate();
-		eventManager.onUpdate();
-		static_cast<Service&>(sceneManager).onUpdate();
-		layerManager->onUpdate();
-
-		bool useEditor = true;
-		if (useEditor) {
-			//TODO GUI should be done by the guiController
-			guiManager->start();
-			layerManager->onGuiUpdate();
-			guiManager->end();
+	for (Service*& service : services) {
+		if(!service->init(windowConfig)) {	// assuming logger is always success
+			engineLogger->error("Service Initilize failed: {}", service->getServiceName());
+		} else {
+			engineLogger->info("Initilize Service: {}", service->getServiceName());
 		}
 	}
 }
 
-
-void Engine::end()
+void Engine::start()
 {
-	guiManager->onClose();
-	appWindow->onClose();
+	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
+		isRunning = false;
+	});
+
+	eventManager.subscribe(EventType::KeyPressed, [this](Event& event) {
+		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
+		if(keyPressedEvent.keyCode == KEY_ESCAPE){
+			isRunning = false;
+		}
+	});
 }
 
-void Engine::onClose()
+void Engine::run() {
+	while (isRunning) {
+		for (Service*& service : services) {
+			service->onUpdate();
+		}
+	}
+}
+
+void Engine::close()
 {
-	EventManager::getInstance().onClose();
-	isRunning = false;
+	for (Service*& service : std::views::reverse(services)) {
+		if(!service->onClose()) {	// assuming logger is always success
+			engineLogger->error("Service Close failed: {}", service->getServiceName());
+		} else {
+			engineLogger->info("Closing Service: {}", service->getServiceName());
+		}
+	}
 }

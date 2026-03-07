@@ -18,7 +18,7 @@ void ServiceLocator::setContext(ServiceLocator* other)
 
 void ServiceLocator::listServices()
 {
-	Logger& logger = Get<Logger>("Engine_LoggerPSD");
+	Logger& logger = Get<Logger>("Engine_LoggerSPD");
 	for (const auto& [name, service] : services) {
 		logger.info("Service: [{}, Address: {}]", name, service);
 	}

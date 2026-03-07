@@ -1,3 +1,65 @@
+// /*
+#version 450
+layout(local_size_x = 128, local_size_y = 1) in;
+
+layout(binding = 0, rgba32f) uniform readonly image2D src;
+layout(binding = 1, rgba32f) uniform writeonly image2D dst;
+
+layout(push_constant) uniform BlurControl {
+    uint isVertical;
+} ctrl;
+
+// 128 threads + 100 extra pixels (2*w) = 228
+shared vec4 v[228];
+
+void main() {
+    const int w = 50;
+    ivec2 bufferSize = imageSize(src);
+    uint lpos = gl_LocalInvocationIndex;
+
+    // Reconstruct gpos based on direction
+    ivec2 gpos;
+    ivec2 dir;
+    if (ctrl.isVertical == 0) {
+        gpos = ivec2(int(gl_WorkGroupID.x * 128 + lpos), int(gl_WorkGroupID.y));
+        dir = ivec2(1, 0);
+    } else {
+        gpos = ivec2(int(gl_WorkGroupID.x), int(gl_WorkGroupID.y * 128 + lpos));
+        dir = ivec2(0, 1);
+    }
+
+    // every thread reads one pixel (gpos - w) this fills v[0] to v[127]
+    ivec2 readPos1 = gpos - (dir * w);
+    v[lpos] = imageLoad(src, clamp(readPos1, ivec2(0), bufferSize - 1));
+
+    // first 2w (100) threads load the "tail" fills v[128] to v[227]
+    if (lpos < 100) {
+        ivec2 readPos2 = gpos + (dir * (128 - w));
+        v[lpos + 128] = imageLoad(src, clamp(readPos2, ivec2(0), bufferSize - 1));
+    }
+
+    barrier();
+
+    // the window for thread 'lpos' starts at v[lpos], ends at v[lpos + 100]
+    vec4 sum = vec4(0.0);
+    float totalWeight = 0.0;
+    
+    for(int j = 0; j <= 100; j++) {
+        float x = float(j - w);
+        float sigma = 15.0; // Lower sigma (15 instead of 25) helps keep detail
+        float weight = exp(-(x * x) / (2.0 * sigma * sigma));
+        
+        sum += v[lpos + j] * weight;
+        totalWeight += weight;
+    }
+
+    if (gpos.x < bufferSize.x && gpos.y < bufferSize.y) {
+        imageStore(dst, gpos, sum / totalWeight);
+    }
+}
+// */
+
+/*
 #version 450
 layout(local_size_x = 128, local_size_y = 1) in;
 
@@ -58,6 +120,7 @@ void main() {
 
     imageStore(outputImage, gPos, result);
 }
+*/
 
 /*
 

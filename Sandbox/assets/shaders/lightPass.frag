@@ -46,14 +46,14 @@ float calcShadow(vec3 worldPos) {
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords.xy = projCoords.xy * 0.5 + 0.5;
 
-    if(projCoords.z > 1.0) return 0.0;
+    if(projCoords.z > 1.0){
+        return 0.0;
+    }
 
     float shadow = 0.0;
-    // Get the size of a single shadow map pixel
     vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
     
-    // 3x3 PCF Kernel
-    for(int x = -1; x <= 1; ++x) {
+    for(int x = -1; x <= 1; ++x) {  // 3x3 PCF Kernel
         for(int y = -1; y <= 1; ++y) {
             float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
             shadow += (projCoords.z - 0.002) > pcfDepth ? 1.0 : 0.0;        
@@ -67,6 +67,7 @@ float calcShadow(vec3 worldPos) {
 float linstep(float low, float high, float v) {
     return clamp((v - low) / (high - low), 0.0, 1.0);
 }
+
 
 float calcMSMShadow(vec3 worldPos) {
     vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(worldPos, 1.0);
@@ -144,7 +145,6 @@ void main() {
 
         accumulatedLight += (albedo.rgb * diffuse * lightCol * attenuation);
     }
-
     
     // float shadow = calcShadow(worldPos);
     vec3 biasedPos = worldPos + worldNorm * pcl.bias; 

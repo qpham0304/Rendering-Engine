@@ -86,7 +86,7 @@ static void DrawVec3Control(const std::string& label, glm::vec3& values, float r
 
 ImGuiLeftSidebarWidget::ImGuiLeftSidebarWidget() : LeftSidebarWidget()
 {
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
     modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
 }
 

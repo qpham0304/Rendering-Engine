@@ -35,7 +35,7 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
 

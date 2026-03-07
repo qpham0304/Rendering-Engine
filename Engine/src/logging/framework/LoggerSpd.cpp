@@ -1,6 +1,9 @@
+#include "pch.h"
 #include "LoggerSpd.h"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include "Core/Events/EventManager.h"
+
 
 struct LoggerSpd::SpdLogHandle {
     std::shared_ptr<spdlog::logger> logger;
@@ -9,12 +12,12 @@ struct LoggerSpd::SpdLogHandle {
 static inline spdlog::level::level_enum toSpdLevel(LogLevel level)
 {
     switch (level) {
-        case LogLevel::Trace:    return spdlog::level::trace;
-        case LogLevel::Info:     return spdlog::level::info;
-        case LogLevel::Warn:     return spdlog::level::warn;
-        case LogLevel::Error:    return spdlog::level::err;
-        case LogLevel::Critical: return spdlog::level::critical;
-        case LogLevel::Debug:    return spdlog::level::debug;
+    case LogLevel::Trace:    return spdlog::level::trace;
+    case LogLevel::Info:     return spdlog::level::info;
+    case LogLevel::Warn:     return spdlog::level::warn;
+    case LogLevel::Error:    return spdlog::level::err;
+    case LogLevel::Critical: return spdlog::level::critical;
+    case LogLevel::Debug:    return spdlog::level::debug;
     }
     return spdlog::level::info;
 
@@ -24,20 +27,36 @@ static inline spdlog::level::level_enum toSpdLevel(LogLevel level)
 }
 
 LoggerSpd::LoggerSpd(std::string name)
-    :   Logger(name + std::string("_LoggerPSD")), 
-        m_Logger(std::make_unique<SpdLogHandle>()) 
+    :   Logger("LoggerSPD", name + std::string("_LoggerSPD")),
+        m_logger(std::make_unique<SpdLogHandle>())        
 {
-    m_Logger->logger = spdlog::stdout_color_mt(name.data());
-    m_Logger->logger->set_pattern("%^[%H:%M:%S %z] [%n] [%l] [thread %t] %v%$");
+    m_logger->logger = spdlog::stdout_color_mt(name.data());
+    m_logger->logger->set_pattern("%^[%H:%M:%S %z] [%n] [%l] [thread %t] %v%$");
+    m_name = name + std::string("_LoggerSPD");
+}
+
+LoggerSpd::~LoggerSpd()
+{
+
+}
+
+LoggerSpd::LoggerSpd() : Logger("LoggerSPD")
+{
 
 }
 
 void LoggerSpd::logMessage(LogLevel level, const std::string& message)
 {
-    m_Logger->logger->log(toSpdLevel(level), message);
+    m_logger->logger->log(toSpdLevel(level), message);
+
+    //if (m_publishLog) {
+    //    GuiMessageEvent* messageEvent = new GuiMessageEvent(message);
+    //    messageEvent->logLevel = level;
+    //    EventManager::getInstance()->publish(messageEvent);
+    //}
 }
 
 void LoggerSpd::setLevel(LogLevel level)
 {
-    m_Logger->logger->set_level(toSpdLevel(level));
+    m_logger->logger->set_level(toSpdLevel(level));
 }

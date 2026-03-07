@@ -29,7 +29,7 @@ bool ModelManager::init(WindowConfig config)
 {
     Service::init(config);
 
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");

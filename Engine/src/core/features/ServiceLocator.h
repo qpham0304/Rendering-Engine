@@ -40,6 +40,7 @@ public:
         if (it != services.end()) {
             return *static_cast<T*>(it->second);
         }
+        printf("service not found name: %s", serviceName.data());
         throw std::runtime_error("Service not found: " + std::string(serviceName));
     }
 

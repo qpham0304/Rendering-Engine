@@ -36,7 +36,7 @@ bool ShadowMapRendererVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
 
@@ -85,6 +85,9 @@ bool ShadowMapRendererVulkan::onClose()
 	vkDestroyFramebuffer(renderDeviceVulkan->device, shadowFramebuffer, nullptr);
 	vkDestroyRenderPass(renderDeviceVulkan->device, shadowRenderPass, nullptr);
 
+	computePipeline->destroy();
+
+	
 	return false;
 }
 
@@ -257,8 +260,11 @@ void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIn
 
 	uint32_t groupsAlongWidth = (width + 127) / 128;
     vkCmdDispatch(cmd, groupsAlongWidth, height, 1);
+	uint32_t groupsX = (width + 127) / 128;
+	uint32_t groupsY = height; 
+	vkCmdDispatch(cmd, groupsX, groupsY, 1);
 
-	// 2. BARRIER: Wait for Horizontal to finish before Vertical starts
+	// wait for Horizontal to finish before Vertical starts
 	TextureManagerVulkan::createBarrier(cmd, tempMomentImage->textureImage,
 		VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,

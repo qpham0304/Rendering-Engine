@@ -13,7 +13,7 @@ Scene::Scene(std::string name)
 		isEnabled(true),
 		selectedMesh(0),
 		id(0),
-		m_logger(ServiceLocator::GetService<Logger>("Engine_LoggerPSD"))
+		m_logger(ServiceLocator::GetService<Logger>("Engine_LoggerSPD"))
 {
 	EventManager& eventManager = EventManager::getInstance();
 	eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {

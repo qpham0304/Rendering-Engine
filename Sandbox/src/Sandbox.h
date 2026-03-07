@@ -3,11 +3,11 @@
 #include <core/features/ServiceLocator.h>
 #include <core/features/PlatformFactory.h>
 #include <services/Service.h>
+#include <core/layers/LayerManager.h>
 
 #include "core/scene/SceneManager.h"
 
 class Layer;
-class LayerManager;
 class EventManager;
 
 class Sandbox

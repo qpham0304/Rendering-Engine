@@ -7,7 +7,6 @@
 
 
 #include <core/layers/EditorLayer.h>
-#include <core/layers/LayerManager.h>
 #include <core/scene/SceneManager.h>
 #include <core/resources/managers/TextureManager.h>
 #include <core/resources/managers/BufferManager.h>
@@ -23,14 +22,14 @@ Sandbox::Sandbox(WindowConfig config)
 		eventManager(EventManager::getInstance())
 {
 	ServiceLocator::setContext(&serviceLocator);
-	engineLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Engine");
-	clientLogger = platformFactory.createLogger(LoggerPlatform::SPDLOG, "Client");
-	appWindow = platformFactory.createWindow(windowConfig.windowPlatform);
-	renderDevice = platformFactory.createRenderDevice(windowConfig.renderPlatform);
-	bufferManager = platformFactory.createBufferManager(windowConfig.renderPlatform);
-	descriptorManager = platformFactory.createDescriptorManager(windowConfig.renderPlatform);
-	textureManager = platformFactory.createTextureManager(windowConfig.renderPlatform);
-	materialManager = platformFactory.createMaterialManager(windowConfig.renderPlatform);
+	engineLogger = platformFactory.Create(LoggerPlatform::SPDLOG, "Engine");
+	clientLogger = platformFactory.Create(LoggerPlatform::SPDLOG, "Client");
+	appWindow = platformFactory.Create<AppWindow>(windowConfig.windowPlatform);
+	renderDevice = platformFactory.Create<RenderDevice>(windowConfig.renderPlatform);
+	bufferManager = platformFactory.Create<BufferManager>(windowConfig.renderPlatform);
+	descriptorManager = platformFactory.Create<DescriptorManager>(windowConfig.renderPlatform);
+	textureManager = platformFactory.Create<TextureManager>(windowConfig.renderPlatform);
+	materialManager = platformFactory.Create<MaterialManager>(windowConfig.renderPlatform);
 	
 	meshManager = std::make_unique<MeshManager>();
 	modelManager = std::make_unique<ModelManager>();
@@ -39,14 +38,12 @@ Sandbox::Sandbox(WindowConfig config)
 	serviceLocator.Register<ModelManager>("ModelManager", *modelManager);
 	serviceLocator.Register<LayerManager>("LayerManager", *layerManager);
 
-	guiManager = platformFactory.createGuiManager(windowConfig.guiPlatform);
-	renderer = platformFactory.createRenderer(windowConfig.renderPlatform);
+	guiManager = platformFactory.Create<GuiManager>(windowConfig.guiPlatform);
+	renderer = platformFactory.Create<Renderer>(windowConfig.renderPlatform);
 
 	//NOTE: setup order is important!
 	services.push_back(&eventManager);
 	services.push_back(&sceneManager);
-	services.push_back(engineLogger.get());
-	services.push_back(clientLogger.get());
 	services.push_back(appWindow.get());
 	services.push_back(renderDevice.get());
 	services.push_back(bufferManager.get());

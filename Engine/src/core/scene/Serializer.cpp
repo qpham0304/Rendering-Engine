@@ -7,7 +7,7 @@ using namespace entt::literals;
 
 Serializer::Serializer()
 {
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
     REGISTER_COMPONENT(NameComponent, "NameComponent");
     REGISTER_COMPONENT(TransformComponent, "TransformComponent");
