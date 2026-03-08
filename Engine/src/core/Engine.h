@@ -3,11 +3,11 @@
 #include <core/features/ServiceLocator.h>
 #include <core/features/PlatformFactory.h>
 #include <services/Service.h>
+#include <core/layers/LayerManager.h>
 
 #include "core/scene/SceneManager.h"
 
 class Layer;
-class LayerManager;
 class EventManager;
 
 class Engine
@@ -44,6 +44,7 @@ private:
     std::unique_ptr<DescriptorManager> descriptorManager;
     std::unique_ptr<MaterialManager> materialManager;
     std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<RendererManager> rendererManager;
 
 private:
     std::vector<Service*> services;

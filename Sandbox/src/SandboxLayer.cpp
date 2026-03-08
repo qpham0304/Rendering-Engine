@@ -71,7 +71,7 @@ bool SandBoxLayer::init()
   //  });
 
 
-    const int numLights = 100;
+    const int numLights = 0;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(-numLights, numLights);

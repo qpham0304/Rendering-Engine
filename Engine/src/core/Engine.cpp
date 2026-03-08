@@ -7,7 +7,6 @@
 
 
 #include <core/layers/EditorLayer.h>
-#include <core/layers/LayerManager.h>
 #include <core/scene/SceneManager.h>
 #include <core/resources/managers/TextureManager.h>
 #include <core/resources/managers/BufferManager.h>
@@ -18,9 +17,9 @@
 #include <graphics/renderers/Renderer.h>
 
 Engine::Engine(WindowConfig config)
-	:	windowConfig(config),
-		sceneManager(SceneManager::getInstance()),
-		eventManager(EventManager::getInstance())
+	: windowConfig(config),
+	sceneManager(SceneManager::getInstance()),
+	eventManager(EventManager::getInstance())
 {
 	ServiceLocator::setContext(&serviceLocator);
 	engineLogger = platformFactory.Create(LoggerPlatform::SPDLOG, "Engine");
@@ -31,7 +30,7 @@ Engine::Engine(WindowConfig config)
 	descriptorManager = platformFactory.Create<DescriptorManager>(windowConfig.renderPlatform);
 	textureManager = platformFactory.Create<TextureManager>(windowConfig.renderPlatform);
 	materialManager = platformFactory.Create<MaterialManager>(windowConfig.renderPlatform);
-	
+
 	meshManager = std::make_unique<MeshManager>();
 	modelManager = std::make_unique<ModelManager>();
 	layerManager = std::make_unique<LayerManager>();
@@ -41,6 +40,7 @@ Engine::Engine(WindowConfig config)
 
 	guiManager = platformFactory.Create<GuiManager>(windowConfig.guiPlatform);
 	renderer = platformFactory.Create<Renderer>(windowConfig.renderPlatform);
+	rendererManager = platformFactory.Create<RendererManager>(windowConfig.renderPlatform);
 
 	//NOTE: setup order is important!
 	services.push_back(&eventManager);
@@ -56,9 +56,10 @@ Engine::Engine(WindowConfig config)
 	services.push_back(layerManager.get());
 	services.push_back(guiManager.get());
 	services.push_back(renderer.get());
+	services.push_back(rendererManager.get());
 }
 
-void Engine::pushLayer(Layer *layer)
+void Engine::pushLayer(Layer* layer)
 {
 	layerManager->addLayer(layer);
 }
@@ -66,13 +67,14 @@ void Engine::pushLayer(Layer *layer)
 void Engine::init()
 {
 	engineLogger->setLevel(LogLevel::Debug);
-	
+
 	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 
 	for (Service*& service : services) {
-		if(!service->init(windowConfig)) {	// assuming logger is always success
+		if (!service->init(windowConfig)) {
 			engineLogger->error("Service Initilize failed: {}", service->getServiceName());
-		} else {
+		}
+		else {
 			engineLogger->info("Initilize Service: {}", service->getServiceName());
 		}
 	}
@@ -82,14 +84,14 @@ void Engine::start()
 {
 	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		isRunning = false;
-	});
+		});
 
 	eventManager.subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
-		if(keyPressedEvent.keyCode == KEY_ESCAPE){
+		if (keyPressedEvent.keyCode == KEY_ESCAPE) {
 			isRunning = false;
 		}
-	});
+		});
 }
 
 void Engine::run() {
@@ -103,9 +105,10 @@ void Engine::run() {
 void Engine::close()
 {
 	for (Service*& service : std::views::reverse(services)) {
-		if(!service->onClose()) {	// assuming logger is always success
+		if (!service->onClose()) {
 			engineLogger->error("Service Close failed: {}", service->getServiceName());
-		} else {
+		}
+		else {
 			engineLogger->info("Closing Service: {}", service->getServiceName());
 		}
 	}

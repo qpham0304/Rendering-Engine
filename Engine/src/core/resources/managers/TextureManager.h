@@ -20,7 +20,7 @@ public:
 		}
 		return list;
 	}
-	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels = 1) = 0;
+	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels = 1, bool isDataTexture = false) = 0;
 	virtual uint32_t createTexture() = 0;
 	virtual uint32_t createDepthTexture(uint32_t width, uint32_t height, uint32_t mipLevels = 1) = 0;
 	virtual Texture* getTexture(uint32_t id) {

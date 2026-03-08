@@ -44,7 +44,7 @@ add_library(${PROJECT_NAME} STATIC
 )
 
 # precompile headers
-target_precompile_headers(${PROJECT_NAME} PRIVATE
+set(PCH_HEADERS
     <string>
     <sstream>
     <iostream>
@@ -74,6 +74,14 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
     <vulkan/vulkan.h>
     <nlohmann/json.hpp>
 )
+
+if(WIN32)
+    # Use definitions to keep windows.h from breaking things
+    target_compile_definitions(${PROJECT_NAME} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    list(APPEND PCH_HEADERS <windows.h>)
+endif()
+
+target_precompile_headers(${PROJECT_NAME} PRIVATE ${PCH_HEADERS})
 
 # Output folders (optional)
 set_target_properties(${PROJECT_NAME} PROPERTIES

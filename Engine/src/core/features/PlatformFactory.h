@@ -18,6 +18,7 @@
 #include "core/resources/managers/BufferManager.h"
 #include "core/resources/managers/DescriptorManager.h"
 #include "core/resources/managers/MaterialManager.h"
+#include "core/resources/managers/RendererManager.h"
 
 // one single file to register and create all subsystems and services
 // might separate into files per subsystem but good enough for now
@@ -86,6 +87,7 @@ private:
 		Factory<TextureManager, RenderPlatform>,
 		Factory<BufferManager, RenderPlatform>,
 		Factory<DescriptorManager, RenderPlatform>,
-		Factory<MaterialManager, RenderPlatform>
+		Factory<MaterialManager, RenderPlatform>,
+		Factory<RendererManager, RenderPlatform>
 	> factories;
 };

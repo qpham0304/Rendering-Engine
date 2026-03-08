@@ -28,6 +28,7 @@ layout(set = 1, binding = 1, std430) readonly buffer LightSSBO {
 } lightSSBO;
 
 layout(set = 1, binding = 2) uniform sampler2D shadowMap;
+layout(set = 1, binding = 3) uniform sampler2D blueNoise;
 
 layout (push_constant) uniform LightData {
     mat4 sunlightMVP;
@@ -38,6 +39,7 @@ layout (push_constant) uniform LightData {
     float lintstepLow;
     float linstepHigh;
     float litBias;
+    float time;
 } pcl;
 
 
@@ -108,6 +110,94 @@ float calcMSMShadow(vec3 worldPos) {
     return shadow;
 }
 
+float random(vec3 seed) {
+    return fract(sin(dot(seed, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
+}
+
+float calcPCSS(vec3 worldPos) {
+    vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(worldPos, 1.0);
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    float currentDepth = projCoords.z;
+
+    if(projCoords.z > 1.0) return 0.0;
+
+    // --- STEP 1: BLOCKER SEARCH ---
+    float avgBlockerDepth = 0.0;
+    int blockers = 0;
+    
+    // LIGHT_SIZE_UV: How big is the light source? 
+    // Increase this to 0.1 or 0.2 to force a massive, obvious blur for testing.
+    const float LIGHT_SIZE_UV = 0.05; 
+    
+    // We need a wide search to find blockers that are far away
+    float searchRegion = LIGHT_SIZE_UV * (currentDepth); 
+
+    // Use a small grid for blocker search
+    for(int i = -2; i <= 2; ++i) {
+        for(int j = -2; j <= 2; ++j) {
+            vec2 offset = vec2(i, j) * (searchRegion / 5.0);
+            vec3 L = normalize(pcl.direction.xyz);
+            vec3 worldNorm = normalize(subpassLoad(inputNorm).rgb);
+            float bias = max(0.005 * (1.0 - dot(worldNorm, L)), 0.0005);
+            float depth = texture(shadowMap, projCoords.xy + offset).r;
+            if(depth < currentDepth - bias) { 
+                avgBlockerDepth += depth;
+                blockers++;
+            }
+        }
+    }
+
+    if(blockers == 0) {
+        return 0.0; 
+    }
+    avgBlockerDepth /= float(blockers);
+
+    // --- STEP 2: PENUMBRA ESTIMATION ---
+    // The ratio of (Receiver - Blocker) / Blocker
+    // float penumbra = (currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV / avgBlockerDepth;
+    float penumbra = (currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV;
+    
+    // CLAMP: Ensure it doesn't get so big that the shadow disappears into noise
+    penumbra = clamp(penumbra, 0.0, 0.02); 
+
+    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
+    noiseUV += vec2(pcl.time * 0.1337, pcl.time * 0.4337);
+    float noiseValue = texture(blueNoise, noiseUV).r;
+    // float noiseValue = random(worldPos + vec3(pcl.time));
+
+    // --- STEP 3: FILTERING (PCF) ---
+    // Generate a random angle based on pixel position
+    float angle = noiseValue * 6.283185;
+    float s = sin(angle);
+    float c = cos(angle);
+    mat2 rotation = mat2(c, -s, s, c);
+
+    const vec2 poissonDisk32[16] = vec2[](
+        vec2( -0.94201624, -0.39906216 ), vec2( 0.94558609, -0.76890725 ), 
+        vec2( -0.094184101, -0.92938870 ), vec2( 0.34495938, 0.29387760 ), 
+        vec2( -0.91588581, 0.45771432 ), vec2( -0.81544232, -0.87912464 ), 
+        vec2( -0.38277543, 0.27676845 ), vec2( 0.97484398, 0.75648379 ), 
+        vec2( 0.44323325, -0.97511554 ), vec2( 0.53742981, -0.47373420 ), 
+        vec2( -0.65433973, 0.025204695 ), vec2( -0.43765828, -0.46990421 ), 
+        vec2( 0.35489357, -0.27411318 ), vec2( -0.21171454, -0.11072331 ), 
+        vec2( 0.73039985, -0.23011690 ), vec2( 0.51726257, 0.43840042 )
+    );
+
+    float shadow = 0.0;
+    // hard comparison to stop bleeding
+    for (int i = 0; i < 16; i++) {
+        vec2 offset = (rotation * poissonDisk32[i]) * penumbra;
+        float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
+        
+        // Strict comparison = No bleeding
+        if (currentDepth - 0.0015 > pcfDepth) {
+            shadow += 1.0;
+        }
+    }
+    return shadow / 16.0;
+}
+
 void main() {
     vec3 worldPos  = subpassLoad(inputPos).rgb;
     vec3 worldNorm = normalize(subpassLoad(inputNorm).rgb);
@@ -147,8 +237,8 @@ void main() {
     }
     
     // float shadow = calcShadow(worldPos);
-    vec3 biasedPos = worldPos + worldNorm * pcl.bias; 
-    float shadow = calcMSMShadow(biasedPos);
+    // float shadow = calcMSMShadow(worldPos + worldNorm * pcl.bias);
+    float shadow = calcPCSS(worldPos);
     
     vec3 sunDir = normalize(pcl.direction.xyz); 
     float sunDiffuse = max(dot(worldNorm, sunDir), 0.0);

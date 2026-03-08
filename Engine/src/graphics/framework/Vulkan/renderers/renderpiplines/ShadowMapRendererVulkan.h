@@ -66,6 +66,7 @@ public:	//TODO: make private once done testing
 	TextureVulkan* depthMap;
 	TextureVulkan* momentImage;
 	TextureVulkan* tempMomentImage;
+	TextureVulkan* blueNoiseImage;
 	VkRenderPass shadowRenderPass;
 	VkFramebuffer shadowFramebuffer;
 

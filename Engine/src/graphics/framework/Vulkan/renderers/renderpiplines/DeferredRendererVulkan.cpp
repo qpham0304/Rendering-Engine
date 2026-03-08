@@ -141,6 +141,7 @@ void DeferredRendererVulkan::endFrame()
 
 void DeferredRendererVulkan::render(Camera& camera)
 {
+    pushConstantLight.time = AppWindow::getTime();
 	shadowMapRenderer.render(camera);
 
 	ubo.view = camera.getViewMatrix();
@@ -884,14 +885,11 @@ void DeferredRendererVulkan::_createViewDescriptorSets()
 
 void DeferredRendererVulkan::_createLightPipeline()
 {
-	// 1. Prepare the Layouts (The one we made with 3 Input Attachments)
 	auto lightDescriptorLayout = descriptorManagerVulkan->getDescriptorLayout(lightLayoutID);
-
 	auto lightDescriptorLayout_1 = descriptorManagerVulkan->getDescriptorLayout(lightLayoutID_1);
-
 	std::vector<VkDescriptorSetLayout> lightLayouts = { lightDescriptorLayout, lightDescriptorLayout_1 };
 
-	// 2. Prepare empty Vertex Input (No vertex buffer used)
+	// Prepare empty Vertex Input (No vertex buffer used)
 	VkPipelineVertexInputStateCreateInfo emptyVertexInput{};
 	emptyVertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	emptyVertexInput.vertexAttributeDescriptionCount = 0;
@@ -899,14 +897,13 @@ void DeferredRendererVulkan::_createLightPipeline()
 	emptyVertexInput.vertexBindingDescriptionCount = 0;
 	emptyVertexInput.pVertexBindingDescriptions = nullptr;
 
-	// 3. Configure the PipelineInfo (Subpass 1, 1 Attachment, No Depth)
+	// Configure the PipelineInfo (Subpass 1, 1 Attachment, No Depth)
 	PipelineConfigInfo lightConfig = VulkanPipeline::defaultPipelineConfigInfo(1);
 	lightConfig.renderPass = renderTarget.renderPass;
 	lightConfig.subpass = 1; // CRITICAL: Target the second subpass
 	lightConfig.depthStencilInfo.depthTestEnable = VK_FALSE;
 	lightConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
-	// 4. Create it!
 	lightingPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	lightingPipeline->createGraphicsPipeline(
 		"assets/shaders/lightPass.vert.spv",
@@ -916,8 +913,6 @@ void DeferredRendererVulkan::_createLightPipeline()
 		lightLayouts,
 		sizeof(PushConstantLight)
 	);
-	m_logger->error("layout: {:p}", (void*)gPassPipeline->pipelineLayout);
-	m_logger->error("layout: 0x{:x}", reinterpret_cast<uint64_t>(gPassPipeline->pipelineLayout));
 }
 
 void DeferredRendererVulkan::_createLightDescriptor()
@@ -987,13 +982,14 @@ void DeferredRendererVulkan::_createLightDescriptor()
 		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 		{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+		{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 	});
 
 	uint32_t poolIDLayout_1 = descriptorManagerVulkan->createPool(
 		{
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount },
 			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount },
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 2 },
 		},
 		frameCount
 	);
@@ -1014,13 +1010,21 @@ void DeferredRendererVulkan::_createLightDescriptor()
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = shadowMapRenderer.momentImage->textureImageView;
-		imageInfo.sampler = shadowMapRenderer.momentImage->textureSampler;
+		imageInfo.imageView = shadowMapRenderer.depthMap->textureImageView;
+		imageInfo.sampler = shadowMapRenderer.depthMap->textureSampler;
+		// imageInfo.imageView = shadowMapRenderer.momentImage->textureImageView;
+		// imageInfo.sampler = shadowMapRenderer.momentImage->textureSampler;
+
+		VkDescriptorImageInfo noiseImageInfo{};
+		noiseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		noiseImageInfo.imageView = shadowMapRenderer.blueNoiseImage->textureImageView;
+		noiseImageInfo.sampler = shadowMapRenderer.blueNoiseImage->textureSampler;
 
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
 		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 1, ssboInfo);
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 2, imageInfo);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 3, noiseImageInfo);
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 }

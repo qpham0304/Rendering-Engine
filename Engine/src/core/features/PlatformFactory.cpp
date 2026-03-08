@@ -9,6 +9,8 @@
 #include "graphics/framework/Vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h"
 #include "graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h"
+#include "graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h"
+#include "graphics/framework/Vulkan/renderers/RendererManagerVulkan.h"
 
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)
@@ -56,6 +58,11 @@ PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     GetFactory<MaterialManager, RenderPlatform>().Register(
         RenderPlatform::VULKAN,
         RegisterConstructor<MaterialManager, MaterialManagerVulkan>()
+    );
+
+    GetFactory<RendererManager, RenderPlatform>().Register(
+        RenderPlatform::VULKAN,
+        RegisterConstructor<RendererManager, RendererManagerVulkan>()
     );
     
 }

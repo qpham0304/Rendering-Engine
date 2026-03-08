@@ -24,5 +24,8 @@ public:
 private:
 	Logger* m_logger;
 	ModelManager* modelManager;
+
+	void _EntityTabMenu();
+	void _EntityContent();
 };
 

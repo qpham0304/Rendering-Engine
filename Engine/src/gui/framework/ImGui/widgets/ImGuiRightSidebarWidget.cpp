@@ -19,6 +19,7 @@ ImGuiRightSidebarWidget::ImGuiRightSidebarWidget()
 	DescriptorManager& descriptorManager = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
 	descriptorManagerVulkan = &static_cast<DescriptorManagerVulkan&>(descriptorManager);	//TODO: move to use glue file
 
+    //TODO: this should be the job of the texturemanager to populate and expose the descriptor set for viewing
 	if(AppWindow::getWindowConfig().renderPlatform == RenderPlatform::VULKAN) {
 		_createViewDescriptorBind();	// texture view layout and pool
 	}
@@ -217,28 +218,7 @@ void ImGuiRightSidebarWidget::_listTextureManager()
 			ImGui::End();
 		}
 	}
-	
-	std::vector<uint32_t> ids = materialManager->listIDs();
-	for(auto& id : ids){
-	//	ImGui::Text(std::to_string(id).c_str());
-	//	MaterialDesc material = materialManager->getMaterial(id);
-	//	ImGui::Begin("Texture View");
-	//	ImGui::BeginChild("Image View");
-	//	ImGui::Image((ImTextureID)material.albedoIDs[0], ImVec2(250, 250));
-	//	ImGui::Text(std::to_string(material.albedoIDs[0]).c_str());
-	//	ImGui::Image((ImTextureID)material.normalIDs[0], ImVec2(250, 250));
-	//	ImGui::Text(std::to_string(material.normalIDs[0]).c_str());
-	//	ImGui::Image((ImTextureID)material.metallicIDs[0], ImVec2(250, 250));
-	//	ImGui::Text(std::to_string(material.metallicIDs[0]).c_str());
-	//	ImGui::Image((ImTextureID)material.roughnessIDs[0], ImVec2(250, 250));
-	//	ImGui::Text(std::to_string(material.roughnessIDs[0]).c_str());
-	//	ImGui::Image((ImTextureID)material.aoIDs[0], ImVec2(250, 250));
-	//	ImGui::Text(std::to_string(material.aoIDs[0]).c_str());
-	//	ImGui::Image((ImTextureID)material.emissiveIDs[0], ImVec2(250, 250));
-	//	ImGui::Text(std::to_string(material.emissiveIDs[0]).c_str());
-	//	ImGui::EndChild();
-	//	ImGui::End();
-	}
+
 	ImGui::End();
 }
 

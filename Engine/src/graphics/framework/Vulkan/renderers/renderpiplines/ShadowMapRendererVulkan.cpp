@@ -64,6 +64,9 @@ bool ShadowMapRendererVulkan::init(WindowConfig config)
 		return false;
 	}
 
+	uint32_t imageID = textureManager->loadTexture("assets/textures/obluenoise256.png", true);
+	blueNoiseImage = dynamic_cast<TextureVulkan*>(textureManager->getTexture(imageID));
+
 	_createDepthMap();
 	_createShadowRenderPass();
 	_createShadowPipeline();

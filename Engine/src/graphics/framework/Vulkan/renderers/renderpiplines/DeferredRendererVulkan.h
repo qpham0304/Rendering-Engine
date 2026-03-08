@@ -44,6 +44,7 @@ private:
 		alignas(4)  float lintstepLow;
 		alignas(4)  float linstepHigh;
 		alignas(4)  float litBias;
+		alignas(4)  float time;
 	};
 
 	struct LightSSBO {

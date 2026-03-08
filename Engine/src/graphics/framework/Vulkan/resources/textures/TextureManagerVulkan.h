@@ -106,7 +106,7 @@ public:
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
-	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels) override;
+	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture) override;
 	virtual uint32_t createTexture() override;
 	virtual uint32_t createTexture(TextureConfig textureConfig);
 	virtual uint32_t createDepthTexture(uint32_t width, uint32_t height, uint32_t mipLevels) override;
@@ -114,7 +114,7 @@ public:
 
 
 private:
-	void _loadTexture(std::string_view path, uint32_t mipLevels);
+	void _loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture);
 
 private:
 	RenderDeviceVulkan* renderDeviceVulkan;

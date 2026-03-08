@@ -8,7 +8,6 @@
 
 #include <glm/glm.hpp>
 #include <vector>
-#include <unordered_map>
 
 class Logger;
 class TextureManager;
@@ -79,7 +78,7 @@ private:
 	void _createDescriptorPool();
 	void _createDescriptorSets();
 
-	//TODO: PRIORITY: support recreation on screen resize
+	//TODO: support recreation on screen resize
 	void _createOffscreenViewDescriptorSet();
 
 private:

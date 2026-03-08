@@ -17,16 +17,20 @@ file(GLOB_RECURSE SHADER_SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${SANDBOX_SOURCES})
+# add_executable(${PROJECT_NAME} WIN32 ${SANDBOX_SOURCES})
+# if(MSVC)
+#     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+# endif()
+
+
 target_link_libraries(${PROJECT_NAME} PRIVATE MyGraphicsEngine)
 
 # Shader compilation
 find_program(GLSLC_EXECUTABLE glslc REQUIRED)
-
 set(SPIRV_BINARY_FILES "")
-
 foreach(SHADER ${SHADER_SOURCES})
     get_filename_component(SHADER_FILE ${SHADER} NAME)
-    get_filename_component(SHADER_EXT ${SHADER} LAST_EXT) # Get .vert, .frag, or .comp
+    get_filename_component(SHADER_EXT ${SHADER} LAST_EXT) # Get .vert, .frag, .comp
     
     # Map extensions to glslc stage flags
     if(SHADER_EXT STREQUAL ".vert")

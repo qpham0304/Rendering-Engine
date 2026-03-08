@@ -191,22 +191,44 @@ void ImGuiLeftSidebarWidget::EntityTab() {
     Scene* scene = sceneManager.getActiveScene();
 
     if (ImGui::Begin("Scenes")) {
+        static char filterBuffer[256] = "";
+        ImGui::InputTextWithHint("##Filter", "Search entities...", filterBuffer, IM_ARRAYSIZE(filterBuffer));
+        ImGui::SameLine();
         AddItemButton("+ Add Entity");
+        ImGui::Separator();
+
 
         Timer timer("component event", true);
 
         auto entities = scene->getEntitiesWith<TransformComponent>();
         for (auto& entity : entities) {
+            std::string name = entity.getComponent<NameComponent>().name;
+            std::string filterStr = filterBuffer;
+
+            if (!filterStr.empty()) {
+                auto it = std::search(
+                    name.begin(), name.end(),
+                    filterStr.begin(), filterStr.end(),
+                    [](char a, char b) { return std::tolower(a) == std::tolower(b); }
+                );
+
+                if (it == name.end()) {
+                    continue; // continue if we haven't Pushed any IDs yet
+                }
+            }
+
             ImGuiTreeNodeFlags node_flags = base_flags;
             ImGui::PushID(std::to_string(entity.getID()).c_str());
 
-            std::string name = entity.getComponent<NameComponent>().name;
             // if (entity.hasComponent<ModelComponent>() && name == "Entity") {
             //     uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
             //     Model* model = const_cast<Model*>(modelManager->getModel(modelID));
             //     name = model->path;
             // }
 
+            if (selectedEntity == &entity) {
+                node_flags |= ImGuiTreeNodeFlags_Selected;
+            }
 
             std::string addModelTex = "Add Model Async(unavailable on current platform)";
 
@@ -267,6 +289,8 @@ void ImGuiLeftSidebarWidget::EntityTab() {
                     //light.color = glm::vec3(500, 500, 400);
                     //light.position = entity.getComponent<TransformComponent>().translateVec;
                     //entity.getComponent<NameComponent>().name = "light";
+                    //entity.addComponent<LightComponent>(glm::vec4(500, 500, 400, 1.0), 15.0f, 1.0f);
+
                     m_logger->warn("add light not implemented yet");
                 }
 
@@ -482,4 +506,12 @@ void ImGuiLeftSidebarWidget::render()
         ModelsTab();
     }
     ImGui::EndGroup();
+}
+
+void ImGuiLeftSidebarWidget::_EntityTabMenu()
+{
+}
+
+void ImGuiLeftSidebarWidget::_EntityContent()
+{
 }

@@ -59,13 +59,13 @@ void TextureManagerVulkan::destroy(uint32_t id)
 	m_textures.erase(id);
 }
 
-uint32_t TextureManagerVulkan::loadTexture(std::string_view path, uint32_t mipLevels)
+uint32_t TextureManagerVulkan::loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture)
 {
 	if (m_textureData.find(path.data()) != m_textureData.end()) {
 		return m_textureData[path.data()];
 	}
 
-	_loadTexture(path, mipLevels);
+	_loadTexture(path, mipLevels, isDataTexture);
 	return _assignID();
 }
 
@@ -81,7 +81,7 @@ TextureVulkan* TextureManagerVulkan::getTexture(uint32_t id)
 	return dynamic_cast<TextureVulkan*>(TextureManager::getTexture(id));
 }
 
-void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevels)
+void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture)
 {
 
 	int texWidth, texHeight, texChannels;
@@ -160,7 +160,24 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 		mipLevels,
 		renderDeviceVulkan->device
 	);
-	createTextureSampler(texture->textureSampler, renderDeviceVulkan->device);
+
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	if (isDataTexture) {
+        samplerInfo.magFilter = VK_FILTER_NEAREST;
+        samplerInfo.minFilter = VK_FILTER_NEAREST;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST; // No blending between mips
+    } else {
+        samplerInfo.magFilter = VK_FILTER_LINEAR;
+        samplerInfo.minFilter = VK_FILTER_LINEAR;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.anisotropyEnable = VK_TRUE;
+        samplerInfo.maxAnisotropy = 16.0f;
+    }
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+	createTextureSampler(texture->textureSampler, renderDeviceVulkan->device, samplerInfo);
 	m_logger->debug("Texture loaded {}, id: {}", path.data(), static_cast<uint32_t>(m_ids.load()));
 
 }
