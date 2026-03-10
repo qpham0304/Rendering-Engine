@@ -252,11 +252,17 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 
 		int index = 1;
 		for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
+			
 			const glm::mat4& entityTransform = entity.getComponent<TransformComponent>().getModelMatrix();
 			// TODO: copy the multiple all transforms to ssbo would be slow
-			if (instanceData[index].model != entityTransform) {
-				instanceData[index].model = entityTransform;
+			if(index < instanceData.size()) {
+				if (instanceData[index].model != entityTransform) {
+					instanceData[index].model = entityTransform;
+				}
+			} else {
+				instanceData.push_back({ entityTransform });
 			}
+			
 
 			if(entity.hasComponent<ModelComponent>()) {
 				uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
@@ -334,9 +340,14 @@ void RendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, u
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 		const glm::mat4& entityTransform = entity.getComponent<TransformComponent>().getModelMatrix();
 		// TODO: copy the multiple all transforms to ssbo would be slow
-		if (instanceData[index].model != entityTransform) {
-			instanceData[index].model = entityTransform;
+		if(index < instanceData.size()) {
+			if (instanceData[index].model != entityTransform) {
+				instanceData[index].model = entityTransform;
+			}
+		} else {
+			instanceData.push_back({ entityTransform });
 		}
+		
 
 		if(entity.hasComponent<ModelComponent>()) {
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
@@ -691,8 +702,8 @@ void RendererVulkan::_createOffscreenViewDescriptorSet()
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		//imageInfo.imageView = renderTarget.colorTextures[i]->textureImageView;
-		//imageInfo.sampler = renderTarget.colorTextures[i]->textureSampler;
+		// imageInfo.imageView = renderTarget.colorTextures[i]->textureImageView;
+		// imageInfo.sampler = renderTarget.colorTextures[i]->textureSampler;
 
 		/*
 		//TODO: move away from modifying deferred renderer directly

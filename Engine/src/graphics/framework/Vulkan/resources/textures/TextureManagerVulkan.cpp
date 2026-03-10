@@ -6,6 +6,7 @@
 #include "graphics/framework/vulkan/core/VulkanDevice.h"
 #include "graphics/framework/vulkan/core/VulkanUtils.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
+#include "graphics/framework/vulkan/resources/descriptors/DescriptorManagerVulkan.h"
 #include "logging/Logger.h"
 
 TextureManagerVulkan::TextureManagerVulkan(std::string serviceName)
@@ -30,9 +31,14 @@ bool TextureManagerVulkan::init(WindowConfig config)
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
 	vulkanBufferManager = static_cast<BufferManagerVulkan*>(&bufferManager);
 
+	DescriptorManager& descriptorManager = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
+	descriptorManagerVulkan = &static_cast<DescriptorManagerVulkan&>(descriptorManager);
+
 	if(!(renderDeviceVulkan && vulkanBufferManager)){
 		return false;
 	}
+
+	_createInspectorDescriptorBind();
 
 	return true;
 }
@@ -79,6 +85,34 @@ uint32_t TextureManagerVulkan::createTexture()
 TextureVulkan* TextureManagerVulkan::getTexture(uint32_t id)
 {
 	return dynamic_cast<TextureVulkan*>(TextureManager::getTexture(id));
+}
+
+void* TextureManagerVulkan::inspectTexture(uint32_t id)
+{
+	if(textureIDs.find(id) != textureIDs.end()) {
+		return (void*)descriptorManagerVulkan->getDescriptorSet(textureIDs[id])[0];
+	}
+
+	TextureVulkan* textureVulkan = getTexture(id);
+	if(!textureVulkan){
+		throw std::runtime_error("textureVulkan inspectTexture: failed to retrieve texture");
+	}
+
+	uint32_t imguiSetID = descriptorManagerVulkan->createSets(inspectorLayoutID, inspectorPoolID, 1);
+	VkDescriptorSet imguiTextureDescriptorSet = descriptorManagerVulkan->getDescriptorSet(imguiSetID)[0];
+
+	VkDescriptorImageInfo imageInfo{};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo.imageView = textureVulkan->textureImageView;
+	imageInfo.sampler = textureVulkan->textureSampler;
+
+	std::vector<VkWriteDescriptorSet> writes{};
+	descriptorManagerVulkan->writeImage(&writes, imguiTextureDescriptorSet, writes.size(), imageInfo);
+	descriptorManagerVulkan->updateDescriptorSets(&writes);
+
+	textureIDs[id] = imguiSetID;
+
+	return (void*)imguiTextureDescriptorSet;
 }
 
 void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture)
@@ -180,6 +214,26 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 	createTextureSampler(texture->textureSampler, renderDeviceVulkan->device, samplerInfo);
 	m_logger->debug("Texture loaded {}, id: {}", path.data(), static_cast<uint32_t>(m_ids.load()));
 
+}
+
+void TextureManagerVulkan::_createInspectorDescriptorBind()
+{
+	// add more if requires more potential crash if exceed the max number
+	const uint32_t MAX_NUM_SETS = 1000;
+	
+	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+	samplerLayoutBinding.binding = 0;
+	samplerLayoutBinding.descriptorCount = 1;
+	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::vector<VkDescriptorSetLayoutBinding> bindings = { samplerLayoutBinding };
+	inspectorLayoutID = descriptorManagerVulkan->createLayout(bindings);
+
+	std::vector<VkDescriptorPoolSize> poolSizes = { 
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 } 
+	};
+	inspectorPoolID = descriptorManagerVulkan->createPool(poolSizes, MAX_NUM_SETS);
 }
 
 void TextureManagerVulkan::createImage(

@@ -116,7 +116,7 @@ public:
 	uint32_t modelID = 0;
 
 	ModelComponent() = default;
-	ModelComponent(std::string_view path) : path(path) {};
+	ModelComponent(std::string_view p) : path(p) {};
 
 	void reset() {
 		path = "None";

@@ -7,22 +7,15 @@
 #include "graphics/utils/Utils.h"
 #include "window/AppWindow.h"
 #include "logging/Logger.h"
-#include "graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h"
-#include "graphics/framework/Vulkan/resources/textures/TextureVulkan.h"
-#include "vulkan/vulkan.h" //TODO: remove dependency
+#include "core/features/ServiceLocator.h"
 
 ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
     :   RightSidebarWidget(),
         popupOpen(false),
         selectedTexture(0)
 {
-	DescriptorManager& descriptorManager = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
-	descriptorManagerVulkan = &static_cast<DescriptorManagerVulkan&>(descriptorManager);	//TODO: move to use glue file
-
-    //TODO: this should be the job of the texturemanager to populate and expose the descriptor set for viewing
-	if(AppWindow::getWindowConfig().renderPlatform == RenderPlatform::VULKAN) {
-		_createViewDescriptorBind();	// texture view layout and pool
-	}
+    scene = SceneManager::getInstance().getActiveScene();
+    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 }
 
 void ImGuiRightSidebarWidget::TextureModal(const ImTextureID& id) {
@@ -48,8 +41,7 @@ void ImGuiRightSidebarWidget::TextureModal(const ImTextureID& id) {
             displaySize.y = availableSize.x / aspectRatio;
         }
 
-        VkDescriptorSet VkDescriptorSet = descriptorManagerVulkan->getDescriptorSet(textureIDs[id])[0];
-        ImGui::Image(ImTextureID(VkDescriptorSet), displaySize);
+        ImGui::Image((ImTextureID)textureManager->inspectTexture(id), displaySize);
 
         ImGui::Separator();
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
@@ -70,12 +62,16 @@ void ImGuiRightSidebarWidget::layersControl()
     ImGui::End();
 }
 
-void ImGuiRightSidebarWidget::textureView()
+void ImGuiRightSidebarWidget::textureInspector()
 {
+    if(!scene) {
+        m_logger->warn("could not find active scene");
+        return;
+    }
+
     ImGui::Begin("Texture View");
     TextureModal((ImTextureID)selectedTexture);
 
-    Scene* scene = SceneManager::getInstance().getActiveScene();
     auto selectedEntities = scene->getSelectedEntities();
     for (auto& entity : selectedEntities) {
         ImVec2 wsize = ImGui::GetWindowSize();
@@ -95,12 +91,11 @@ void ImGuiRightSidebarWidget::textureView()
             };
 
             for (auto& id : ids) {
-                textureIDs[id] = _createViewDescriptorSet(id);
+                // textureIDs[id] = _createViewDescriptorSet(id);
                 Texture* texture = textureManager->getTexture(id);
                 ImGui::PushID(texture->path().c_str());
                 ImGui::Separator();
-                VkDescriptorSet VkDescriptorSet = descriptorManagerVulkan->getDescriptorSet(textureIDs[id])[0];
-                ImGui::Image((ImTextureID)VkDescriptorSet, wsize, ImVec2(0, 1), ImVec2(1, 0));
+                ImGui::Image((ImTextureID)textureManager->inspectTexture(id), wsize, ImVec2(0, 1), ImVec2(1, 0));
                 ImGui::PopID();
                 
                 if (ImGui::IsItemClicked()) {
@@ -119,8 +114,12 @@ void ImGuiRightSidebarWidget::textureView()
 
 void ImGuiRightSidebarWidget::environmentControl()
 {
-    Scene& scene = *SceneManager::getInstance().getActiveScene();
-    auto list = scene.getEntitiesWith<CubeMapComponent>();
+    if(!scene) {
+        m_logger->warn("could not find active scene");
+        return;
+    }
+
+    auto list = scene->getEntitiesWith<CubeMapComponent>();
     CubeMapComponent* cubeMap = nullptr;
 
     if (!list.empty() && list[0].hasComponent<CubeMapComponent>()) {
@@ -136,7 +135,7 @@ void ImGuiRightSidebarWidget::environmentControl()
     if (cubeMap) {
 
         if (ImGui::Button("Change Cubemap Texture", ImVec2(-1.0, 0.0))) {
-            auto list = scene.getEntitiesWith<CubeMapComponent>();
+            auto list = scene->getEntitiesWith<CubeMapComponent>();
 
             std::string path;
             path = Utils::fileDialog();
@@ -174,8 +173,8 @@ void ImGuiRightSidebarWidget::environmentControl()
 
     else {
         if (ImGui::Button("+ Add Cubemap", ImVec2(-1.0, 0.0))) {
-            // uint32_t cubemapID = scene.addEntity("cubemap");
-            // Entity cubemapEntity = scene.getEntity(cubemapID);
+            // uint32_t cubemapID = scene->addEntity("cubemap");
+            // Entity cubemapEntity = scene->getEntity(cubemapID);
             // std::string path = Utils::fileDialog();
             // cubemapEntity.addComponent<CubeMapComponent>(path);
             std::runtime_error("add cubemap unimplemented");
@@ -189,12 +188,11 @@ void ImGuiRightSidebarWidget::environmentControl()
 
 void ImGuiRightSidebarWidget::render()
 {
-    Scene* scene = SceneManager::getInstance().getActiveScene();
-
     ImGui::BeginGroup();
     if (scene) {
-        layersControl();
-        textureView();
+        _componentsControl();
+        // layersControl();
+        textureInspector();
         environmentControl();
     }
     ImGui::EndGroup();
@@ -208,12 +206,10 @@ void ImGuiRightSidebarWidget::_listTextureManager()
 	if(AppWindow::getWindowConfig().renderPlatform == RenderPlatform::VULKAN) {
 		std::vector<uint32_t> ids = textureManager->listIDs();
 		for (auto& id : ids) {
-			textureIDs[id] = _createViewDescriptorSet(id);
 			ImGui::Text(std::to_string(id).c_str());
 			ImGui::Begin("Texture View");
 			ImGui::BeginChild("Image View");
-			VkDescriptorSet descSet = descriptorManagerVulkan->getDescriptorSet(textureIDs[id])[0];
-			ImGui::Image(reinterpret_cast<ImTextureID>(descSet), ImVec2(250, 250));
+			ImGui::Image((ImTextureID)textureManager->inspectTexture(id), ImVec2(250, 250));
 			ImGui::EndChild();
 			ImGui::End();
 		}
@@ -222,48 +218,130 @@ void ImGuiRightSidebarWidget::_listTextureManager()
 	ImGui::End();
 }
 
-void ImGuiRightSidebarWidget::_createViewDescriptorBind()
+void ImGuiRightSidebarWidget::_componentsControl()
 {
-	const uint32_t MAX_NUM_SETS = 1000;				// add more if requires more
-	
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 0;
-	samplerLayoutBinding.descriptorCount = 1;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    if(!scene) {
+        m_logger->warn("could not find active scene");
+        return;
+    }
 
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { samplerLayoutBinding };
-	imGuilayoutID = descriptorManagerVulkan->createLayout(bindings);
+    const auto& selectedEntities = scene->getSelectedEntities();
+    if(selectedEntities.empty()) {
+        return;
+    }
 
-	std::vector<VkDescriptorPoolSize> poolSizes = { 
-		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} 
-	};
-	imGuipoolID = descriptorManagerVulkan->createPool(poolSizes, MAX_NUM_SETS);
+    const Entity& entity = selectedEntities[0];
+    ImGui::Begin("Components Inspector");
+    _nameControl(entity);
+    _transformControl(entity);
+    ImGui::End();
+    
 }
 
-uint32_t ImGuiRightSidebarWidget::_createViewDescriptorSet(uint32_t id)
+void ImGuiRightSidebarWidget::_nameControl(const Entity& entity)
 {
-	if(textureIDs.find(id) != textureIDs.end()) {
-		return textureIDs[id];
-	}
+    NameComponent& nameComponent = entity.getComponent<NameComponent>();
 
-	Texture* texture = textureManager->getTexture(id);
-	TextureVulkan* textureVulkan = dynamic_cast<TextureVulkan*>(texture);
-	if(!textureVulkan){
-		throw std::runtime_error("ImGui createViewDescriptorSet: failed to retrieve texture");
-	}
+    if (ImGui::CollapsingHeader("Name", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Columns(2);
+        ImGui::SetColumnWidth(0, 120.0f); // Match the width you used for Transform
+        
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Name");
+        
+        ImGui::NextColumn();
+        ImGui::PushItemWidth(-1);
 
-	uint32_t imguiSetID = descriptorManagerVulkan->createSets(imGuilayoutID, imGuipoolID, 1);
-	VkDescriptorSet imguiTextureDescriptorSet = descriptorManagerVulkan->getDescriptorSet(imguiSetID)[0];
+        ImGui::InputText("##NameInput", &nameComponent.name);
 
-	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = textureVulkan->textureImageView;
-	imageInfo.sampler = textureVulkan->textureSampler;
+        ImGui::PopItemWidth();
+        ImGui::Columns(1);
+    }
+}
 
-	std::vector<VkWriteDescriptorSet> writes{};
-	descriptorManagerVulkan->writeImage(&writes, imguiTextureDescriptorSet, writes.size(), imageInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writes);
+void ImGuiRightSidebarWidget::_transformControl(const Entity& entity)
+{
+    TransformComponent& transform = entity.getComponent<TransformComponent>();
 
-	return imguiSetID;
+    auto DrawVec3Control = [](const std::string& label, glm::vec3& values, float resetValue = 0.0f)
+    {
+        bool changed = false;
+        ImGui::PushID(label.c_str());
+
+        ImGui::Columns(2);
+        // 1. Increased width to prevent "Translation" from cutting off
+        ImGui::SetColumnWidth(0, 120.0f); 
+        
+        // Align text vertically with the input boxes
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("%s", label.c_str());
+        ImGui::NextColumn();
+
+        // Calculate available width for the 3 segments
+        float totalWidth = ImGui::GetContentRegionAvail().x;
+        float itemWidth = (totalWidth - (ImGui::GetStyle().ItemSpacing.x * 2.0f)) / 3.0f;
+        
+        // 2. Control Spacing: Tighten the gap between the Colored Button and the Value Box
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+        
+        auto RenderAxis = [&](const char* axisLabel, float& value, ImVec4 color, ImVec4 hoverColor, bool isLast) {
+            ImGui::PushID(axisLabel);
+            
+            // Button style
+            ImGui::PushStyleColor(ImGuiCol_Button, color);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hoverColor);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
+            
+            // The square colored button (X, Y, or Z)
+            if (ImGui::Button(axisLabel, ImVec2(25, 0))) {
+                value = resetValue;
+                changed = true;
+            }
+            ImGui::PopStyleColor(3);
+
+            ImGui::SameLine();
+            
+            // The DragFloat
+            // Subtract button width from the segment width
+            ImGui::SetNextItemWidth(itemWidth - 25.0f);
+            if (ImGui::DragFloat("##val", &value, 0.1f, 0.0f, 0.0f, "%.2f")) {
+                changed = true;
+            }
+
+            // Add a small gap between the X, Y, and Z groups, but NOT after the last one (Z)
+            if (!isLast) {
+                ImGui::SameLine();
+                ImGui::Dummy(ImVec2(5, 0)); // Spacing between groups
+                ImGui::SameLine();
+            }
+            
+            ImGui::PopID();
+        };
+
+        RenderAxis("X", values.x, { 0.8f, 0.1f, 0.15f, 1.0f }, { 0.9f, 0.2f, 0.2f, 1.0f }, false);
+        RenderAxis("Y", values.y, { 0.2f, 0.7f, 0.2f, 1.0f }, { 0.3f, 0.8f, 0.3f, 1.0f }, false);
+        RenderAxis("Z", values.z, { 0.1f, 0.25f, 0.8f, 1.0f }, { 0.2f, 0.35f, 0.9f, 1.0f }, true);
+
+        ImGui::PopStyleVar(); // Pop ItemSpacing
+        ImGui::Columns(1);
+        ImGui::PopID();
+
+        return changed;
+    };
+
+    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) 
+    {
+        glm::vec3 translation = transform.translateVec;
+        if (DrawVec3Control("Translation", translation)) 
+            transform.translate(translation);
+
+        glm::vec3 rotation = transform.rotateVec;
+        if (DrawVec3Control("Rotation", rotation)) 
+            transform.rotate(rotation);
+
+        glm::vec3 scale = transform.scaleVec;
+        if (DrawVec3Control("Scale", scale, 1.0f)) 
+            transform.scale(scale);
+    }
+
 }

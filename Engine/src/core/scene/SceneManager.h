@@ -10,7 +10,6 @@
 #include <mutex>
 #include <thread>
 #include "Scene.h"
-#include "animation/Animator.h"	//animation dependency
 #include "graphics/framework/OpenGL/core/TextureOpenGL.h"
 #include "core/resources/managers/Manager.h"
 #include "core/features/Mesh.h"

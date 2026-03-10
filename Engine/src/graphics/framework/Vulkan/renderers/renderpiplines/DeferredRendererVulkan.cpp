@@ -67,17 +67,25 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	_createRenderPasses();
 	_createFrameBuffers();
 
-	instanceData.reserve(numInstances);			// reserve the ssbo size
-	instanceData.push_back({ glm::mat4(1.0) });	// prevent no entity size 0
 
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 	
+	instanceData.resize(10000);
+	size_t bufferSize = 10000 * sizeof(StorageBufferObject);
+	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
+
+	lights.reserve(numLights);
+	size_t lightBufferSize = numLights * sizeof(LightSSBO);
+	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
+
+	/*
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
 	if(!scene){
 		m_logger->error("No scene to render");
 	}
 
+	instanceData.resize(10000);			// reserve the ssbo size
 	for(auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 		TransformComponent transform = entity.getComponent<TransformComponent>();
 		instanceData.push_back({ transform.getModelMatrix() });
@@ -94,6 +102,8 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	}
 	size_t lightBufferSize = lights.size() * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
+	*/
+
 
 	pushConstantLight.bias = 0.001f;
 	pushConstantLight.alpha = 0.0001f;
@@ -141,7 +151,28 @@ void DeferredRendererVulkan::endFrame()
 
 void DeferredRendererVulkan::render(Camera& camera)
 {
+	instanceData.clear(); 
+    lights.clear();
+
+	SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	if(!scene){
+		m_logger->error("No scene to render");
+	}
+    auto entities = scene->getEntitiesWith<TransformComponent>();
+    for (auto& entity : entities) {
+        auto& transform = entity.getComponent<TransformComponent>();
+        
+        instanceData.push_back({ transform.getModelMatrix() });
+
+        if (entity.hasComponent<LightComponent>()) {
+            auto& light = entity.getComponent<LightComponent>();
+			lights.push_back(LightSSBO(light.color, glm::vec4(transform.translateVec, 1.0), light.intensity, light.radius));
+        }
+    }
+	
     pushConstantLight.time = AppWindow::getTime();
+	pushConstantLight.numLights = lights.size();
 	shadowMapRenderer.render(camera);
 
 	ubo.view = camera.getViewMatrix();
@@ -282,11 +313,17 @@ void DeferredRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, ui
 		TransformComponent& transform = entity.getComponent<TransformComponent>();
 		const glm::mat4& entityTransform = transform.getModelMatrix();
 		glm::vec3& translation = transform.translateVec;
+		
+		if(index >= instanceData.size()) {
+			instanceData.push_back({entityTransform});
+			continue;
+		}
+
 		// TODO: copy the multiple all transforms to ssbo would be slow
 		if (instanceData[index].model != entityTransform) {
 			instanceData[index].model = entityTransform;
-			ubo.invNormal = glm::transpose(glm::inverse(glm::mat3(entityTransform)));
 		}
+		ubo.invNormal = glm::transpose(glm::inverse(glm::mat3(entityTransform)));
 
 		if (entity.hasComponent<LightComponent>()) {
 			LightComponent& lightComponent = entity.getComponent<LightComponent>();
@@ -368,7 +405,6 @@ void DeferredRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, ui
 		&pushConstantLight
 	);
 
-    // 3. Draw the full-screen triangle (3 vertices, no vertex buffer needed)
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
 	endRecording(commandBuffer);
@@ -414,6 +450,7 @@ void DeferredRendererVulkan::endRecording(void* cmdBuffer)
 	vkCmdEndRenderPass(commandBuffer);
 }
 
+#pragma region setup
 void DeferredRendererVulkan::_createRenderPasses()
 {
 	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
@@ -1028,3 +1065,4 @@ void DeferredRendererVulkan::_createLightDescriptor()
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 }
+#pragma endregion setup

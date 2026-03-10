@@ -50,7 +50,7 @@ void LoggerSpd::logMessage(LogLevel level, const std::string& message)
     m_logger->logger->log(toSpdLevel(level), message);
 
     //if (m_publishLog) {
-    //    GuiMessageEvent* messageEvent = new GuiMessageEvent(message);
+    //    GuiMessageEvent messageEvent = GuiMessageEvent(message);
     //    messageEvent->logLevel = level;
     //    EventManager::getInstance()->publish(messageEvent);
     //}

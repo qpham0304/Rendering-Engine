@@ -81,13 +81,7 @@ private:
 	//TODO: support recreation on screen resize
 	void _createOffscreenViewDescriptorSet();
 
-private:
-	const int numInstances = 1;
-	const int numLights = 100;
-
-	bool showGui{ true };
-	PushConstantData pushConstantData{};
-
+protected:
 	Logger* m_logger{ nullptr };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	MeshManager* meshManager{ nullptr };
@@ -98,6 +92,13 @@ private:
     BufferManager* bufferManager{ nullptr };
 	BufferManagerVulkan* bufferManagerVulkan{ nullptr };
 	DescriptorManagerVulkan* descriptorManagerVulkan{ nullptr };
+
+private:
+	const int numInstances = 1;
+	const int numLights = 100;
+
+	bool showGui{ true };
+	PushConstantData pushConstantData{};
 
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
@@ -123,6 +124,6 @@ private:
 	bool isActive{ false };
 
 	DeferredRendererVulkan deferredRenderer;
-	ForwardRendererVulkan forwardRenderer;
+	// ForwardRendererVulkan forwardRenderer;
 };
 

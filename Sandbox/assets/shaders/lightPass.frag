@@ -40,6 +40,7 @@ layout (push_constant) uniform LightData {
     float linstepHigh;
     float litBias;
     float time;
+    float numLights;
 } pcl;
 
 
@@ -162,7 +163,7 @@ float calcPCSS(vec3 worldPos) {
     penumbra = clamp(penumbra, 0.0, 0.02); 
 
     vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
-    noiseUV += vec2(pcl.time * 0.1337, pcl.time * 0.4337);
+    // noiseUV += vec2(pcl.time * 0.1337, pcl.time * 0.4337);
     float noiseValue = texture(blueNoise, noiseUV).r;
     // float noiseValue = random(worldPos + vec3(pcl.time));
 
@@ -213,7 +214,7 @@ void main() {
     vec3 accumulatedLight = vec3(0.0);
     vec3 ambient = vec3(0.03) * albedo.rgb * ao;
 
-    for(int i = 0; i < lightSSBO.lights.length() ; i++) {
+    for(int i = 0; i < pcl.numLights ; i++) {
         vec3 lightPos   = lightSSBO.lights[i].position.xyz;
         vec3 lightCol   = lightSSBO.lights[i].color.rgb;
         float intensity = lightSSBO.lights[i].intensity;

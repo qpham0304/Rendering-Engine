@@ -189,6 +189,10 @@ void ImGuiLeftSidebarWidget::LightTab()
 void ImGuiLeftSidebarWidget::EntityTab() {
     SceneManager& sceneManager = sceneManager.getInstance();
     Scene* scene = sceneManager.getActiveScene();
+    if(!scene) {
+        m_logger->warn("No active scene found");
+        return;
+    }
 
     if (ImGui::Begin("Scenes")) {
         static char filterBuffer[256] = "";
@@ -197,34 +201,31 @@ void ImGuiLeftSidebarWidget::EntityTab() {
         AddItemButton("+ Add Entity");
         ImGui::Separator();
 
-
-        Timer timer("component event", true);
-
         auto entities = scene->getEntitiesWith<TransformComponent>();
         for (auto& entity : entities) {
-            std::string name = entity.getComponent<NameComponent>().name;
+            NameComponent& nameComponent = entity.getComponent<NameComponent>();
             std::string filterStr = filterBuffer;
 
             if (!filterStr.empty()) {
                 auto it = std::search(
-                    name.begin(), name.end(),
+                    nameComponent.name.begin(), nameComponent.name.end(),
                     filterStr.begin(), filterStr.end(),
                     [](char a, char b) { return std::tolower(a) == std::tolower(b); }
                 );
 
-                if (it == name.end()) {
-                    continue; // continue if we haven't Pushed any IDs yet
+                if (it == nameComponent.name.end()) {
+                    continue;
                 }
             }
 
             ImGuiTreeNodeFlags node_flags = base_flags;
             ImGui::PushID(std::to_string(entity.getID()).c_str());
 
-            // if (entity.hasComponent<ModelComponent>() && name == "Entity") {
-            //     uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-            //     Model* model = const_cast<Model*>(modelManager->getModel(modelID));
-            //     name = model->path;
-            // }
+            if (entity.hasComponent<ModelComponent>() && nameComponent.name == "Entity") {
+                uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
+                Model* model = const_cast<Model*>(modelManager->getModel(modelID));
+                nameComponent.name = model->path;
+            }
 
             if (selectedEntity == &entity) {
                 node_flags |= ImGuiTreeNodeFlags_Selected;
@@ -236,18 +237,16 @@ void ImGuiLeftSidebarWidget::EntityTab() {
                 node_flags |= ImGuiTreeNodeFlags_Selected;
             }
 
-            bool open = ImGui::TreeNodeEx(name.c_str(), node_flags);
+            bool treeNodeOpen = ImGui::TreeNodeEx(nameComponent.name.c_str(), node_flags);
             bool showPopup = ImGui::BeginPopupContextItem("Add Component");
             bool showTextInput = false;
 
             if (showTextInput) {
                 ImGui::PushID(std::to_string(entity.getID()).c_str());
-                NameComponent& nameComponent = entity.getComponent<NameComponent>();
                 static char str1[128] = "";
                 //ImGui::InputTextWithHint("input text (w/ hint)", "enter text here", str1, IM_ARRAYSIZE(str1));
                 ImGui::InputText("Edit Text", str1, sizeof(str1));
                 nameComponent.name = str1;
-
                 ImGui::InputText("Edit Text", str1, sizeof(str1));
 
                 // Optionally, add a button to confirm and hide the input field
@@ -270,63 +269,17 @@ void ImGuiLeftSidebarWidget::EntityTab() {
                     showTextInput = true;
                 }
 
-                if (ImGui::MenuItem("Load Model blocking")) {
-                    std::string path = Utils::fileDialog();
-                    if (!path.empty()) {
-                        ModelLoadEvent event(path, entity);
-                        EventManager::getInstance().publish(event);
-                    }
-                }
-
-                ImGui::BeginDisabled(true);
-                if (ImGui::MenuItem(addModelTex.c_str())) {
-                    AddComponentDialog(entity);
-                }
-                ImGui::EndDisabled();
-
-                if (ImGui::MenuItem("Add Light")) {
-                    //auto& light = entity.addComponent<MLightComponent>();
-                    //light.color = glm::vec3(500, 500, 400);
-                    //light.position = entity.getComponent<TransformComponent>().translateVec;
-                    //entity.getComponent<NameComponent>().name = "light";
-                    //entity.addComponent<LightComponent>(glm::vec4(500, 500, 400, 1.0), 15.0f, 1.0f);
-
-                    m_logger->warn("add light not implemented yet");
-                }
-
-                if (ImGui::MenuItem("Add Camera")) {
-                    //light.position = transform.translateVec;
-                    //TransformComponent& transform = entity.getComponent<TransformComponent>();
-                    //NameComponent& name = entity.getComponent<NameComponent>();
-                    //name.name = "camera";
-                    //entity.addComponent<CameraComponent>(
-                    //    AppWindow::width,
-                    //    AppWindow::height,
-                    //    glm::vec3(transform.translateVec),
-                    //    glm::vec3(0.5, -0.2, -1.0f)
-                    //);
-                    //entity.onCameraComponentAdded();    // have entity subscribe to a component added event
-                    m_logger->warn("add camera not implemented yet");
-                }
-
-                ImGui::BeginDisabled(!entity.hasComponent<ModelComponent>());
-                if (ImGui::MenuItem("Load Animation")) {
-                    std::string path = Utils::fileDialog();
-                    if (!path.empty()) {
-                        AnimationLoadEvent event(path, entity);
-                        EventManager::getInstance().publish(event);
-                    }
-                }
-                ImGui::EndDisabled();
-
-                if (ImGui::MenuItem("Delete Entity")) {
-                    scene->removeEntity(entity.getID());
-                }
+                _RenameMenuItem(entity);
+                _AddModelMenuItem(entity, addModelTex);
+                _AddLightMenuItem();
+                _AddCameraMenuItem();
+                _LoadAnimationMenuItem(entity);
+                _DeleteEntityMenuItem(entity, scene);
 
                 ImGui::EndPopup();
             }
 
-            if (open) {
+            if (treeNodeOpen) {
                 if (entity.hasComponent<ModelComponent>()) {
                     addModelTex = "Change Model";
                     std::string modelPath = "Path: " + entity.getComponent<ModelComponent>().path;
@@ -356,11 +309,6 @@ void ImGuiLeftSidebarWidget::EntityTab() {
                     }
                 }
                 
-                //ImGui::SameLine();
-                //if (ImGui::Button(addModelTex.c_str())) {
-                //    AddComponentDialog(entity);
-                //}
-
                 TransformComponent& transform = entity.getComponent<TransformComponent>();
                 // displayMatrix(transform.getModelMatrix());
 
@@ -458,30 +406,6 @@ void ImGuiLeftSidebarWidget::ModelsTab()
 
 void ImGuiLeftSidebarWidget::MeshesTab()
 {
-    // SceneManager& sceneManager = sceneManager.getInstance();
-    // for (uint32_t& id : modelManager->listIDs()) {
-    //     std::string uuid = std::to_string(id);
-    //     ImGui::PushID(uuid.c_str());
-    //     ImGuiTreeNodeFlags node_flags = base_flags;
-
-    //     const Model* model = modelManager->getModel(id);
-    //     std::string displayPath = (model->path.empty() ? uuid : model->path);
-    //     bool open = (ImGui::TreeNodeEx(displayPath.c_str(), node_flags));
-    //     bool showPopup = ImGui::BeginPopupContextItem("Add Component");
-
-    //     if (open) {
-    //         ImGui::TreePop();
-    //     }
-
-    //     if (ImGui::IsItemHovered() && !showPopup) {
-    //         if (ImGui::IsAnyItemHovered()) {
-    //             ImGui::BeginTooltip();
-    //             ImGui::Text(uuid.c_str());
-    //             ImGui::EndTooltip();
-    //         }
-    //     }
-    //     ImGui::PopID();
-    // }
 }
 
 void ImGuiLeftSidebarWidget::ScenesTab()
@@ -508,6 +432,7 @@ void ImGuiLeftSidebarWidget::render()
     ImGui::EndGroup();
 }
 
+#pragma region menu
 void ImGuiLeftSidebarWidget::_EntityTabMenu()
 {
 }
@@ -515,3 +440,75 @@ void ImGuiLeftSidebarWidget::_EntityTabMenu()
 void ImGuiLeftSidebarWidget::_EntityContent()
 {
 }
+
+void ImGuiLeftSidebarWidget::_RenameMenuItem(Entity& entity)
+{
+    if (ImGui::MenuItem("Load Model blocking")) {
+        std::string path = Utils::fileDialog();
+        if (!path.empty()) {
+            ModelLoadEvent event(path, entity);
+            EventManager::getInstance().publish(event);
+        }
+    }
+}
+
+void ImGuiLeftSidebarWidget::_AddModelMenuItem(Entity& entity, std::string_view text)
+{
+    ImGui::BeginDisabled(true);
+    if (ImGui::MenuItem(text.data())) {
+        AddComponentDialog(entity);
+    }
+    ImGui::EndDisabled();
+}
+
+void ImGuiLeftSidebarWidget::_AddLightMenuItem()
+{
+    if (ImGui::MenuItem("Add Light")) {
+        //auto& light = entity.addComponent<MLightComponent>();
+        //light.color = glm::vec3(500, 500, 400);
+        //light.position = entity.getComponent<TransformComponent>().translateVec;
+        //entity.getComponent<NameComponent>().name = "light";
+        //entity.addComponent<LightComponent>(glm::vec4(500, 500, 400, 1.0), 15.0f, 1.0f);
+
+        m_logger->warn("add light not implemented yet");
+    }
+}
+
+void ImGuiLeftSidebarWidget::_AddCameraMenuItem()
+{
+    if (ImGui::MenuItem("Add Camera")) {
+        //light.position = transform.translateVec;
+        //TransformComponent& transform = entity.getComponent<TransformComponent>();
+        //NameComponent& name = entity.getComponent<NameComponent>();
+        //name.name = "camera";
+        //entity.addComponent<CameraComponent>(
+        //    AppWindow::width,
+        //    AppWindow::height,
+        //    glm::vec3(transform.translateVec),
+        //    glm::vec3(0.5, -0.2, -1.0f)
+        //);
+        //entity.onCameraComponentAdded();    // have entity subscribe to a component added event
+        m_logger->warn("add camera not implemented yet");
+    }
+}
+
+void ImGuiLeftSidebarWidget::_LoadAnimationMenuItem(Entity &entity)
+{
+    ImGui::BeginDisabled(!entity.hasComponent<ModelComponent>());
+    if (ImGui::MenuItem("Load Animation")) {
+        std::string path = Utils::fileDialog();
+        if (!path.empty()) {
+            AnimationLoadEvent event(path, entity);
+            EventManager::getInstance().publish(event);
+        }
+    }
+    ImGui::EndDisabled();
+}
+
+void ImGuiLeftSidebarWidget::_DeleteEntityMenuItem(Entity &entity, Scene* scene)
+{
+    if (ImGui::MenuItem("Delete Entity")) {
+        scene->removeEntity(entity.getID());
+    }
+}
+#pragma endregion menu

@@ -5,6 +5,7 @@
 
 class Logger;
 class ModelManager;
+class Scene;
 
 class ImGuiLeftSidebarWidget : public LeftSidebarWidget
 {
@@ -22,10 +23,19 @@ public:
 	virtual void render() override;
 
 private:
+	
 	Logger* m_logger;
 	ModelManager* modelManager;
 
 	void _EntityTabMenu();
 	void _EntityContent();
+	void _SearchFilter();
+
+	void _RenameMenuItem(Entity& entity);
+	void _AddModelMenuItem(Entity& entity, std::string_view text);
+	void _AddLightMenuItem();
+	void _AddCameraMenuItem();
+	void _LoadAnimationMenuItem(Entity& entity);
+	void _DeleteEntityMenuItem(Entity &entity, Scene* scene);
 };
 

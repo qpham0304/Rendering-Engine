@@ -29,6 +29,7 @@ set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_glfw.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_opengl3.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_vulkan.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/misc/cpp/imgui_stdlib.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImGuizmo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/GraphEditor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImCurveEdit.cpp
@@ -112,11 +113,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/FileWatch
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/misc/cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/stb
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/glm
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo
     $ENV{VULKAN_SDK}/Include
 )
+
 
 # Link dependencies (publicly)
 target_link_libraries(${PROJECT_NAME} PUBLIC

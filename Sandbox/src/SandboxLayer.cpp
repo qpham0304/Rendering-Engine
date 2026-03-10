@@ -49,7 +49,7 @@ bool SandBoxLayer::init()
     transform.translate(glm::vec3(2.0));
 
     MaterialDesc materialDesc;
-    materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/mobi-padoru.png"));
+    materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false));
 
     
     Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
@@ -62,16 +62,16 @@ bool SandBoxLayer::init()
 
 	EventManager& eventManager = EventManager::getInstance();
 
-    //Entity sponza = scene->getEntity(scene->addEntity("sponza"));
-    //sponza.addComponent<ModelComponent>();
+    // Entity sponza = scene->getEntity(scene->addEntity("sponza"));
+    // sponza.addComponent<ModelComponent>();
 
-  //  eventManager.queue(AsyncEvent("sponza load"), [&] (AsyncEvent& e) {
-  //      ModelManager* modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-		//modelManager->loadModel("assets/models/sponza/sponza.obj");
-  //  });
+    // eventManager.queue(AsyncEvent("sponza load"), [&] (AsyncEvent& e) {
+    //     ModelManager* modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+    //         modelManager->loadModel("assets/models/sponza/sponza.obj");
+    // });
 
 
-    const int numLights = 0;
+    const int numLights = 1;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(-numLights, numLights);
@@ -88,7 +88,7 @@ bool SandBoxLayer::init()
         transform.translate(glm::vec3(xPos, 2.0f, zPos));
 
         MaterialDesc materialDesc;
-        materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/mobi-padoru.png", 1));
+        materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false));
 
         Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
         mesh.materialID = materialManager->createMaterial(materialDesc);

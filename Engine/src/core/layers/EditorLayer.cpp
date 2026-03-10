@@ -28,11 +28,16 @@ void EditorLayer::mockThreadTasks()
 		//SceneManager::addComponent(reimu);
 	};
 	eventManager.queue(addComponentEvent2, func2);
+
 }
 
 void EditorLayer::renderGuizmo()
 {
 	Scene* scene = SceneManager::getInstance().getActiveScene();
+	if(!scene) {
+		Log().warn("no active scene found");
+		return;
+	}
 	std::vector<Entity> selectedEntities = scene->getSelectedEntities();
 
 	if (!selectedEntities.empty()) {

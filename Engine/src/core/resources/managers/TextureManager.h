@@ -30,10 +30,14 @@ public:
 		return m_textures[id].get();
 	}
 
+	// the input id is the id of raw texture managed by the conrete classes
+	// the returned id is the id to the inspectable texture i.e: descriptorset for vulkan
+	virtual void* inspectTexture(uint32_t id) = 0;
+
 protected:
-	// incremental resource so optimize by using with a vector for contiguous data is possible
-	// but then managing destroy of resource could be a hassle so use map for now;
+	// these are internal managed texture by the concrete classes
 	std::unordered_map<uint32_t, std::shared_ptr<Texture>> m_textures;
 	std::unordered_map<std::string, uint32_t> m_textureData;
+	std::unordered_map<uint32_t, uint32_t> textureIDs;	// this is the proxy texture to be inspected 
 };
 

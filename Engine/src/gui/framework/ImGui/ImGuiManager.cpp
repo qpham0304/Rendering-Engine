@@ -228,19 +228,6 @@ void ImGuiManager::render(void* handle)
 		widget->render();
 	}
 
-	// //TODO: once vulkan renderer supports render to imgui texture
-	// // set up and call guizmo rendering in a separate widget's render
-	// SceneManager& sceneManager = SceneManager::getInstance();
-	// Scene* scene = sceneManager.getActiveScene();
-	// if(scene){
-	// 	const std::vector<Entity>& entities = scene->getSelectedEntities();
-	// 	if(!entities.empty()) {
-	// 		const Entity& entity = entities[0];
-	// 		TransformComponent& transform = entity.getComponent<TransformComponent>();
-	// 		renderGuizmo(transform);
-	// 	}
-	// }
-
 	ImGui::Render();
 	switch (m_config.renderPlatform) {
 		case RenderPlatform::OPENGL:

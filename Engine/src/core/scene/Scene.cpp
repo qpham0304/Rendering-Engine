@@ -33,40 +33,31 @@ Scene::Scene(std::string name)
 			}
 		}
 	});
+
+	// entities.reserve(1000);
 }
 
 uint32_t Scene::addEntity(const std::string& name)
 {
-	this->getName();
 	entt::entity e = registry.create();
-	//std::string uuid = Utils::uuid::get_uuid();
-	uint32_t uuid = entt::to_integral(e);
-	if (entities.find(uuid) != entities.end()) {
-		return -1;	//MAX_VALUE of uint32_t
-	}
-	entities[uuid] = Entity(e, registry);
-	entities[uuid].addComponent<TransformComponent>();
-	entities[uuid].addComponent<NameComponent>(name);
+    uint32_t id = entt::to_integral(e);
+    
+    Entity entity(e, registry);
+    entity.addComponent<TransformComponent>();
+    entity.addComponent<NameComponent>(name);
 
-	return uuid;
+    frameNewEntities.push_back(entity); 
+    return id;
 }
 
 bool Scene::removeEntity(const uint32_t& uuid)
 {
-	if (entities.find(uuid) != entities.end()) {
-		int index = 0;
-		for (auto& entity : selectedEntities) {
-			if (uuid == entity.getID()) {
-				selectedEntities.erase(selectedEntities.begin() + index);
-			}
-			index++;
-		}
-		
-		registry.destroy(static_cast<entt::entity>(uuid));
-		entities.erase(uuid);
-		return true;
-	}
-	return false;
+	// if (entities.find(uuid) != entities.end()) {
+	// 	frameDeletedEntities.push_back(uuid);
+	// 	return true;
+	// }
+	frameDeletedEntities.push_back(uuid);
+	return true;
 }
 
 bool Scene::hasEntity(const uint32_t& uuid)
@@ -79,6 +70,13 @@ Entity Scene::getEntity(const uint32_t& uuid)
 	if (entities.find(uuid) != entities.end()) {
 		return entities[uuid];
 	}
+
+	for (auto& entity : frameNewEntities) {
+        if (entt::to_integral((entt::entity)entity) == uuid) {
+            return entity;
+        }
+    }
+	
 	throw std::runtime_error("Entity does not exist");
 }
 
@@ -105,6 +103,17 @@ const uint32_t Scene::getSelectedMeshID() const
 
 void Scene::onUpdate(const float& deltaTime)
 {
+	for(auto& uuid : frameDeletedEntities) {
+        _removeEntity(uuid);
+    }
+    frameDeletedEntities.clear();
+
+	for(auto& entity : frameNewEntities) {
+        uint32_t uuid = entity.getID();
+        entities[uuid] = entity; 
+    }
+    frameNewEntities.clear();
+
 	entt::basic_view view = registry.view<TransformComponent>();
 
 	view.each([&deltaTime](auto& trans) {
@@ -195,4 +204,28 @@ bool Scene::loadScene(std::string_view filePath)
 
     processing = false;
     return true;
+}
+
+void Scene::_addEntity(Entity& entity)
+{
+	uint32_t uuid = entt::to_integral(static_cast<entt::entity>(entity));
+	entities[uuid] = std::move(entity);
+}
+
+bool Scene::_removeEntity(const uint32_t &uuid)
+{
+	if (entities.find(uuid) != entities.end()) {
+		int index = 0;
+		for (auto& entity : selectedEntities) {
+			if (uuid == entity.getID()) {
+				selectedEntities.erase(selectedEntities.begin() + index);
+			}
+			index++;
+		}
+		
+		registry.destroy(static_cast<entt::entity>(uuid));
+		entities.erase(uuid);
+		return true;
+	}
+	return false;
 }
