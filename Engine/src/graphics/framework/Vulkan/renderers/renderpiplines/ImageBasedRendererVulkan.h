@@ -1,5 +1,8 @@
 #pragma once
-
+#include "graphics/renderers/Renderer.h"
+#include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
+#include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
+ 
 
 class Logger;
 class TextureManager;
@@ -10,21 +13,22 @@ class BufferManager;
 class RenderDeviceVulkan;
 class TextureVulkan;
 class DescriptorManagerVulkan;
-class BufferManagerVulkan;
 class MaterialManager;
 class VulkanPipeline;
 class Camera;
 
-class ImageBasedRendererVulkan
+class ImageBasedRendererVulkan : public Renderer
 {
 public:
     ImageBasedRendererVulkan();
-    ~ImageBasedRendererVulkan();
+    virtual ~ImageBasedRendererVulkan() override;
 
-	bool init();
-	bool onClose();
-	void onUpdate();
-	void render(Camera& camera);
+	virtual bool init(WindowConfig config) override;
+	virtual bool onClose() override;
+	virtual void onUpdate() override;
+	virtual void beginFrame() override {};
+	virtual void endFrame() override {};
+	virtual void render(Camera& camera) override;
 
 protected:
 	Logger* m_logger{ nullptr };

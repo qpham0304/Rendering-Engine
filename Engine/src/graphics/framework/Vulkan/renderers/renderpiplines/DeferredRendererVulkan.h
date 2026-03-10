@@ -4,6 +4,7 @@
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "ShadowMapRendererVulkan.h"
+#include "ImageBasedRendererVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>
@@ -115,6 +116,7 @@ public:	//TODO: make private once done testing
 
 
 	ShadowMapRendererVulkan shadowMapRenderer;
+	ImageBasedRendererVulkan imageBasedRenderer;
 
 	void _createRenderPasses();
 	void _createFrameBuffers();

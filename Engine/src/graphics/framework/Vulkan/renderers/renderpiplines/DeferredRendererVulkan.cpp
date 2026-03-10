@@ -64,6 +64,7 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	}
 
 	shadowMapRenderer.init(config);
+	imageBasedRenderer.init(config);
 	_createRenderPasses();
 	_createFrameBuffers();
 

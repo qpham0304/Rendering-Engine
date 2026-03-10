@@ -366,13 +366,21 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 		ImGuizmo::DrawGrid(v, p, glm::value_ptr(identity), 100.f);
 	}
 
+	ImGuizmo::OPERATION op = (ImGuizmo::OPERATION)GuizmoType;
+
+	if (op == ImGuizmo::ROTATE) {
+		op = (ImGuizmo::OPERATION)(ImGuizmo::ROTATE | ImGuizmo::ROTATE_SCREEN);
+	}
+	// op = ImGuizmo::UNIVERSAL;
+
 	bool res = ImGuizmo::Manipulate(
 		v,
 		p,
-		(ImGuizmo::OPERATION)GuizmoType,
+		op,
 		ImGuizmo::LOCAL,
 		glm::value_ptr(transform)
 	);
+	
 	viewManipulateRight = ImGui::GetWindowPos().x + wd;
 	viewManipulateTop = ImGui::GetWindowPos().y;
 	ImGuizmo::ViewManipulate(
