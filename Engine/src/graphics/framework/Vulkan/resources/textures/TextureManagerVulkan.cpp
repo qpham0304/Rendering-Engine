@@ -117,10 +117,25 @@ void* TextureManagerVulkan::inspectTexture(uint32_t id)
 
 void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture)
 {
+	stbi_set_flip_vertically_on_load(true);
+	bool isHDR = stbi_is_hdr(path.data());
+	VkFormat format;
+	uint32_t bytesPerChannel;
+	void* pixels;
 
 	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-	VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+	if (isHDR) {
+		pixels = stbi_loadf(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		bytesPerChannel = sizeof(float);
+	} else {
+		pixels = stbi_load(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		format = VK_FORMAT_R8G8B8A8_SRGB;
+		bytesPerChannel = sizeof(uint8_t);
+	}
+
+	VkDeviceSize imageSize = texWidth * texHeight * 4 * bytesPerChannel;
 
 	if (!pixels) {
 		std::string message = "TextureManagerVulkan::loadTexture: failed to load texture image ";
@@ -148,13 +163,15 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 
 	std::shared_ptr<TextureVulkan> texture = std::make_shared<TextureVulkan>(m_ids);
 	texture->m_path = path;
+	texture->m_width = texWidth;
+	texture->m_height = texHeight;
 	m_textures[m_ids] = texture;
 	m_textureData[path.data()] = m_ids;
 
 	createImage(
 		texWidth,
 		texHeight,
-		VK_FORMAT_R8G8B8A8_SRGB,
+		format,
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -166,22 +183,14 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 
 	transitionImageLayout(
 		texture->textureImage,
-		VK_FORMAT_R8G8B8A8_SRGB,
+		format,
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		mipLevels,
 		renderDeviceVulkan
 	);
 	copyBufferToImage(stagingBuffer, texture->textureImage, texWidth, texHeight, renderDeviceVulkan);
-	generateMipmaps(texture->textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels, renderDeviceVulkan);
-	// transitionImageLayout(
-	// 	texture->textureImage,
-	// 	VK_FORMAT_R8G8B8A8_SRGB,
-	// 	VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-	// 	VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-	// 	renderDeviceVulkan,
-	// 	mipLevels
-	// );
+	generateMipmaps(texture->textureImage, format, texWidth, texHeight, mipLevels, renderDeviceVulkan);
 
 	vkDestroyBuffer(renderDeviceVulkan->device, stagingBuffer, nullptr);
 	vkFreeMemory(renderDeviceVulkan->device, stagingBufferMemory, nullptr);
@@ -189,7 +198,7 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 	createImageView(
 		texture->textureImage,
 		texture->textureImageView,
-		VK_FORMAT_R8G8B8A8_SRGB,
+		format,
 		VK_IMAGE_ASPECT_COLOR_BIT,
 		mipLevels,
 		renderDeviceVulkan->device
@@ -208,9 +217,15 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 		samplerInfo.anisotropyEnable = VK_TRUE;
         samplerInfo.maxAnisotropy = 16.0f;
     }
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
+	
+	if (isHDR) {
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	} else {
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	}
 	createTextureSampler(texture->textureSampler, renderDeviceVulkan->device, samplerInfo);
 	m_logger->debug("Texture loaded {}, id: {}", path.data(), static_cast<uint32_t>(m_ids.load()));
 
@@ -392,6 +407,14 @@ void TextureManagerVulkan::transitionImageLayout(
 
 		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_GENERAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) 
+	{
+		barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+		destinationStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 	}
 	else {
 		throw std::invalid_argument("unsupported layout transition!");

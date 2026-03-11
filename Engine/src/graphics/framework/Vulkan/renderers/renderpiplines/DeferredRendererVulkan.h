@@ -30,6 +30,7 @@ private:
 		glm::mat4 view;
 		glm::mat4 proj;
 		glm::vec4 cameraPos;
+		glm::vec4 shCoeffs[9];
 	};
 
 	struct StorageBufferObject {
@@ -53,7 +54,6 @@ private:
 		alignas(16) glm::vec4 color;
 		alignas(16) glm::vec4 position;
 		alignas(4) float intensity;
-		alignas(4) float radius;
 	};
 
 public:
@@ -114,6 +114,10 @@ public:	//TODO: make private once done testing
 	uint32_t lightSetsID_1;
 	UniformBufferObject ubo{};
 
+	float sunIntensity { 10.0f };
+	glm::vec4 sunColor { 1.0 };
+
+	Camera* cam;
 
 	ShadowMapRendererVulkan shadowMapRenderer;
 	ImageBasedRendererVulkan imageBasedRenderer;

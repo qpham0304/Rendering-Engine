@@ -88,7 +88,14 @@ bool SandBoxLayer::init()
         transform.translate(glm::vec3(xPos, 2.0f, zPos));
 
         MaterialDesc materialDesc;
-        materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false));
+        materialDesc.albedoIDs.push_back(
+            textureManager->loadTexture(
+                // "assets/textures/hdr/photo_studio_loft_hall_2k.hdr", 
+                "assets/textures/mobi-padoru.png", 
+                1, 
+                false
+            )
+        );
 
         Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
         mesh.materialID = materialManager->createMaterial(materialDesc);

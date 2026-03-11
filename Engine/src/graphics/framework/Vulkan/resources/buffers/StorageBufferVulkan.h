@@ -15,6 +15,8 @@ public:
 
 	void update(const void* data, size_t size);
 
+	void* getMappedBuffer();
+
 private:
 	void* bufferMapped;
 	size_t bufferSize;

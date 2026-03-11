@@ -79,33 +79,7 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
-	/*
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if(!scene){
-		m_logger->error("No scene to render");
-	}
-
-	instanceData.resize(10000);			// reserve the ssbo size
-	for(auto& entity : scene->getEntitiesWith<TransformComponent>()) {
-		TransformComponent transform = entity.getComponent<TransformComponent>();
-		instanceData.push_back({ transform.getModelMatrix() });
-	}
-
-	size_t bufferSize = instanceData.size() * sizeof(StorageBufferObject);
-	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
-
-	lights.reserve(numLights);
-	for (auto& entity : scene->getEntitiesWith<LightComponent>()) {
-		TransformComponent transform = entity.getComponent<TransformComponent>();
-		LightComponent& light = entity.getComponent<LightComponent>();
-		lights.push_back(LightSSBO(light.color, glm::vec4(transform.translateVec, 1.0), light.intensity, light.radius));
-	}
-	size_t lightBufferSize = lights.size() * sizeof(LightSSBO);
-	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
-	*/
-
-
+	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.bias = 0.001f;
 	pushConstantLight.alpha = 0.0001f;
     pushConstantLight.lintstepLow = 0.2f;
@@ -131,6 +105,7 @@ bool DeferredRendererVulkan::onClose()
 	renderTarget.destroy(renderDeviceVulkan->device);
 	
 	shadowMapRenderer.onClose();
+	imageBasedRenderer.onClose();
 
 	return true;
 }
@@ -152,6 +127,7 @@ void DeferredRendererVulkan::endFrame()
 
 void DeferredRendererVulkan::render(Camera& camera)
 {
+	cam = &camera;
 	instanceData.clear(); 
     lights.clear();
 
@@ -168,7 +144,7 @@ void DeferredRendererVulkan::render(Camera& camera)
 
         if (entity.hasComponent<LightComponent>()) {
             auto& light = entity.getComponent<LightComponent>();
-			lights.push_back(LightSSBO(light.color, glm::vec4(transform.translateVec, 1.0), light.intensity, light.radius));
+			lights.push_back(LightSSBO(light.color, glm::vec4(transform.translateVec, 1.0), light.intensity));
         }
     }
 	
@@ -176,12 +152,21 @@ void DeferredRendererVulkan::render(Camera& camera)
 	pushConstantLight.numLights = lights.size();
 	shadowMapRenderer.render(camera);
 
+	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
+	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+	
+	// auto shData = imageBasedRenderer.finalizeSH(currentFrame);
+    // for(int i = 0; i < 9; i++) {
+	// 	ubo.shCoeffs[i] = glm::vec4(shData[i], 1.0);
+	// }
+	imageBasedRenderer.computeSH(cmdBuffer, currentFrame);
+
 	ubo.view = camera.getViewMatrix();
 	ubo.proj = camera.getProjectionMatrix();
 	ubo.cameraPos = glm::vec4(camera.getPosition(), 1.0);
 	ubo.proj[1][1] *= -1;
 	
-	pushConstantLight.color = glm::vec4(1.0f, 0.95f, 0.8f, 1.0f);
+	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.direction = glm::vec4(shadowMapRenderer.lightDir, 0.0f);
 	pushConstantLight.sunlightMVP = shadowMapRenderer.lightSpaceMatrix;
 
@@ -194,7 +179,6 @@ void DeferredRendererVulkan::render(Camera& camera)
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[frame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 
-	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 
 }
@@ -212,6 +196,8 @@ void DeferredRendererVulkan::renderGui()
 	
 	ImGui::Begin("Lights Control");
 	ImGui::Checkbox("Light Perspective", &shadowMapRenderer.useOrtho);
+	ImGui::ColorEdit4("color", &sunColor[0]);
+	ImGui::SliderFloat("intensity", &sunIntensity, 1.0f, 15.0f);
 	ImGui::SliderFloat("Bias", &pushConstantLight.bias, 0.001f, 0.1f);
 	ImGui::SliderFloat("Alpha", &pushConstantLight.alpha, 0.0001f, 0.01f);
 	ImGui::SliderFloat("Lintstep Low", &pushConstantLight.lintstepLow, 0.01f, 1.0f);
@@ -226,18 +212,11 @@ void DeferredRendererVulkan::renderGui()
 		if (ImGui::CollapsingHeader(entity.getComponent<NameComponent>().name.c_str())) {
 			ImGui::SliderFloat4("Position", &transform.translateVec[0], -50.0, 50.0);
 			ImGui::ColorEdit4("Color", &light.color[0]);
-
-			if (ImGui::SliderFloat("Radius/Scale", &transform.scaleVec.x, 0.1f, 50.0f)) {
-				transform.scaleVec.y = transform.scaleVec.x;
-				transform.scaleVec.z = transform.scaleVec.x;
-			}
-
 			ImGui::SliderFloat("Intensity Multiplier", &light.intensity, 1.0f, 1000.0f);
 		}
 
 		lights[i].color = light.color;
 		lights[i].position = glm::vec4(transform.translateVec, 1.0f);
-		lights[i].radius = transform.scaleVec.x * 5;
 		lights[i].intensity = light.intensity * transform.scaleVec.x;
 
 		i++;
@@ -246,7 +225,7 @@ void DeferredRendererVulkan::renderGui()
 
 	ImGui::Begin("G-Buffer Debug");
 	uint32_t frameIdx = renderDeviceVulkan->getImageIndex();
-	int numFrames = 3; // Must match your colorTextures.size()
+	int numFrames = 3; 
 	int numGroups = imGuisetIDs.size() / numFrames;
 
 
@@ -266,6 +245,9 @@ void DeferredRendererVulkan::renderGui()
 
 	ImGui::Text("DEPTH MAP", names[i]);
 	ImGui::Image(reinterpret_cast<ImTextureID>(shadowMapRenderer.imGuiDescriptorSet), ImVec2(256, 256));
+	
+	// void* irradianceImage = textureManager->inspectTexture(imageBasedRenderer.hdrImageID);
+	// ImGui::Image(reinterpret_cast<ImTextureID>(irradianceImage), ImVec2(256, 256));
 
 	//ImGui::SliderFloat4("Sunlight Direction", &pushConstantLight.direction[0], -1.0f, 1.0f);
 	//ImGui::SliderFloat4("Sunlight Color", &pushConstantLight.color[0], 0.0f, 1.0f);
@@ -324,13 +306,12 @@ void DeferredRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, ui
 		if (instanceData[index].model != entityTransform) {
 			instanceData[index].model = entityTransform;
 		}
-		ubo.invNormal = glm::transpose(glm::inverse(glm::mat3(entityTransform)));
+		// ubo.invNormal = glm::transpose(glm::inverse(glm::mat4(entityTransform)));
 
 		if (entity.hasComponent<LightComponent>()) {
 			LightComponent& lightComponent = entity.getComponent<LightComponent>();
 			lights[lightIndex].color = lightComponent.color;
 			lights[lightIndex].position = glm::vec4(translation, 1.0);
-			lights[lightIndex].radius = transform.scaleVec.x;
 			lights[lightIndex].intensity = transform.scaleVec.x;
 			lightIndex++;
 		}
@@ -1021,12 +1002,14 @@ void DeferredRendererVulkan::_createLightDescriptor()
 		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 		{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 		{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+		{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+
 	});
 
 	uint32_t poolIDLayout_1 = descriptorManagerVulkan->createPool(
 		{
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 2},
 			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 2 },
 		},
 		frameCount
@@ -1058,11 +1041,18 @@ void DeferredRendererVulkan::_createLightDescriptor()
 		noiseImageInfo.imageView = shadowMapRenderer.blueNoiseImage->textureImageView;
 		noiseImageInfo.sampler = shadowMapRenderer.blueNoiseImage->textureSampler;
 
+		VkDescriptorBufferInfo bufferInfoSH{};
+		bufferInfoSH.buffer = static_cast<VkBuffer>(*imageBasedRenderer.finalSumBuffers[i]);
+		bufferInfoSH.offset = 0;
+		bufferInfoSH.range = VK_WHOLE_SIZE;
+
+
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
 		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 1, ssboInfo);
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 2, imageInfo);
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 3, noiseImageInfo);
+		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 4, bufferInfoSH);
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 }

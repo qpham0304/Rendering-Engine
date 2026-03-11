@@ -17,7 +17,7 @@ void main() {
     ivec2 bufferSize = imageSize(src);
     uint lpos = gl_LocalInvocationIndex;
 
-    // Reconstruct gpos based on direction
+    // reconstruct gpos based on direction
     ivec2 gpos;
     ivec2 dir;
     if (ctrl.isVertical == 0) {
@@ -46,7 +46,7 @@ void main() {
     
     for(int j = 0; j <= 100; j++) {
         float x = float(j - w);
-        float sigma = 15.0; // Lower sigma (15 instead of 25) helps keep detail
+        float sigma = 15.0; // lower sigma (15 instead of 25) helps keep detail
         float weight = exp(-(x * x) / (2.0 * sigma * sigma));
         
         sum += v[lpos + j] * weight;

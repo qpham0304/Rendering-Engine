@@ -37,5 +37,7 @@ private:
 	void _componentsControl();
 	void _nameControl(const Entity& entity);
 	void _transformControl(const Entity& entity);
+	void _modelControl(const Entity& entity);
+	void _meshControl(const Entity& entity);
 };
 

@@ -370,3 +370,12 @@ Sandbox/assets/Textures
 build
 bin
 out
+
+# CMake build artifacts
+.vscode/VC.DB
+.vscode/ipch/
+**/*.db
+
+.clangd/
+
+compile_commands.json

@@ -196,7 +196,7 @@ void ImGuiLeftSidebarWidget::EntityTab() {
 
     if (ImGui::Begin("Scenes")) {
         static char filterBuffer[256] = "";
-        ImGui::InputTextWithHint("##Filter", "Search entities...", filterBuffer, IM_ARRAYSIZE(filterBuffer));
+        ImGui::InputTextWithHint("##Search", ICON_FA_SEARCH " Search...", filterBuffer, IM_ARRAYSIZE(filterBuffer));
         ImGui::SameLine();
         AddItemButton("+ Add Entity");
         ImGui::Separator();

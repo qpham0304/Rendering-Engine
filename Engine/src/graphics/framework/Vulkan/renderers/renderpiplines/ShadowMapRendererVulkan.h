@@ -90,7 +90,7 @@ public:	//TODO: make private once done testing
 	std::vector<uint32_t> imGuisetIDs;
 	VkDescriptorSet imGuiDescriptorSet;
 
-	bool useOrtho = false;
+	bool useOrtho = true;
 
 private:
 	void _createDepthMap();

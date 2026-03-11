@@ -161,7 +161,8 @@ void ImGuiManager::start(void* handle)
 
 void ImGuiManager::debugWindow(ImTextureID texture)
 {
-	glm::vec3 camPos = SceneManager::cameraController->getPosition();
+	Camera* camera =  SceneManager::cameraController;
+	glm::vec3 camPos = camera ? camera->getPosition() : glm::vec3(0.0); 
 	std::string x = "x: " + std::to_string(camPos.x).substr(0, 4);
 	std::string y = "y: " + std::to_string(camPos.y).substr(0, 4);
 	std::string z = "z: " + std::to_string(camPos.z).substr(0, 4);
@@ -175,11 +176,11 @@ void ImGuiManager::debugWindow(ImTextureID texture)
 		//ImGui::Text(countVertices.c_str());
 		ImGui::Text("Camera positon");
 		ImGui::SameLine();
-		ImGui::Text(x.c_str());
+		ImGui::Text("%s", x.c_str());
 		ImGui::SameLine();
-		ImGui::Text(y.c_str());
+		ImGui::Text("%s", y.c_str());
 		ImGui::SameLine();
-		ImGui::Text(z.c_str());
+		ImGui::Text("%s", z.c_str());
 		// Using a Child allow to fill all the space of the window.
 		// It also alows customization
 		ImGui::BeginChild("Debug shadow window");
@@ -222,8 +223,6 @@ void ImGuiManager::applicationWindow()
 
 void ImGuiManager::render(void* handle)
 {
-	// applicationWindow();
-	
 	for (const auto& widget : widgets) {
 		widget->render();
 	}

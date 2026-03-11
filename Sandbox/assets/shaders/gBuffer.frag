@@ -16,17 +16,36 @@ layout(set = 1, binding = 2) uniform sampler2D metallicMap;
 layout(set = 1, binding = 3) uniform sampler2D roughnessMap;
 layout(set = 1, binding = 4) uniform sampler2D aoMap;
 
+vec3 getNormalFromMap() {
+    vec3 tangentNormal = texture(normalMap, inTexCoord).rgb * 2.0 - 1.0;
+    // vec3 map = texture(normalMap, inTexCoord).rgb * 2.0 - 1.0;
+    // map.xy *= 0.5;
+    // vec3 tangentNormal = normalize(map);
+
+    vec3 N = normalize(inNormal); // This is your interpolated vertex normal
+    vec3 T = normalize(inTBN[0] - dot(inTBN[0], N) * N);
+    vec3 B = cross(N, T);
+    
+    mat3 TBN = mat3(T, B, N);
+    
+    vec3 worldNormal = normalize(TBN * tangentNormal);
+
+    if (dot(worldNormal, N) < 0.0) {
+        worldNormal = normalize(worldNormal - N * dot(worldNormal, N));
+    }
+
+    return worldNormal;
+}
+
 void main() {
     outPos = vec4(inWorldPos, 1.0);
     
-    vec3 normal = texture(normalMap, inTexCoord).rgb;
-    normal = normalize(normal * 2.0 - 1.0);
-    vec3 worldNormal = normalize(inTBN * normal);
-    
-    outNorm = vec4(worldNormal, 1.0);
+    vec3 N = getNormalFromMap();
+    outNorm = vec4(N, 1.0);
     
     outAlbedo = texture(albedoSampler, inTexCoord);
     
+    // Sampling PBR maps
     float ao        = texture(aoMap, inTexCoord).r;
     float roughness = texture(roughnessMap, inTexCoord).r;
     float metallic  = texture(metallicMap, inTexCoord).r;

@@ -9,6 +9,12 @@ layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput in
 
 layout(location = 0) out vec4 outColor;
 
+struct Light {
+    vec4 color;      
+    vec4 position;
+    float intensity;
+};
+
 layout(set = 1, binding = 0)  uniform UniformBufferObject {
     mat4 invNormal;
     mat4 view;
@@ -16,19 +22,16 @@ layout(set = 1, binding = 0)  uniform UniformBufferObject {
     vec4 cameraPos;
 } ubo;
 
-struct Light {
-    vec4 color;      
-    vec4 position;
-    float intensity;
-    float radius;
-};
-
 layout(set = 1, binding = 1, std430) readonly buffer LightSSBO {
     Light lights[];
 } lightSSBO;
 
 layout(set = 1, binding = 2) uniform sampler2D shadowMap;
 layout(set = 1, binding = 3) uniform sampler2D blueNoise;
+
+layout(set = 1, binding = 4) readonly buffer SHData {
+    vec4 shCoeffs[9];
+} sh;
 
 layout (push_constant) uniform LightData {
     mat4 sunlightMVP;
@@ -43,6 +46,20 @@ layout (push_constant) uniform LightData {
     float numLights;
 } pcl;
 
+vec3 getIrradiance(vec3 N) {
+    // These constants already include the 1/PI and Lambertian factors
+    return max(vec3(0.0),
+        0.886227 * sh.shCoeffs[0].xyz +                            // L00
+        1.023328 * sh.shCoeffs[1].xyz * N.y +                      // L1-1
+        1.023328 * sh.shCoeffs[2].xyz * N.z +                      // L10
+        1.023328 * sh.shCoeffs[3].xyz * N.x +                      // L11
+        0.858086 * sh.shCoeffs[4].xyz * N.x * N.y +                // L2-2
+        0.858086 * sh.shCoeffs[5].xyz * N.y * N.z +                // L2-1
+        0.247708 * sh.shCoeffs[6].xyz * (3.0 * N.z * N.z - 1.0) +  // L20
+        0.858086 * sh.shCoeffs[7].xyz * N.x * N.z +                // L21
+        0.429043 * sh.shCoeffs[8].xyz * (N.x * N.x - N.y * N.y)    // L22
+    );
+}
 
 float calcShadow(vec3 worldPos) {
     vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(worldPos, 1.0);
@@ -123,18 +140,16 @@ float calcPCSS(vec3 worldPos) {
 
     if(projCoords.z > 1.0) return 0.0;
 
-    // --- STEP 1: BLOCKER SEARCH ---
     float avgBlockerDepth = 0.0;
     int blockers = 0;
     
-    // LIGHT_SIZE_UV: How big is the light source? 
     // Increase this to 0.1 or 0.2 to force a massive, obvious blur for testing.
     const float LIGHT_SIZE_UV = 0.05; 
     
-    // We need a wide search to find blockers that are far away
+    // wide search to find blockers that are far away
     float searchRegion = LIGHT_SIZE_UV * (currentDepth); 
 
-    // Use a small grid for blocker search
+    // small grid for blocker search
     for(int i = -2; i <= 2; ++i) {
         for(int j = -2; j <= 2; ++j) {
             vec2 offset = vec2(i, j) * (searchRegion / 5.0);
@@ -154,12 +169,10 @@ float calcPCSS(vec3 worldPos) {
     }
     avgBlockerDepth /= float(blockers);
 
-    // --- STEP 2: PENUMBRA ESTIMATION ---
-    // The ratio of (Receiver - Blocker) / Blocker
+    // Receiver - Blocker) / Blocker
     // float penumbra = (currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV / avgBlockerDepth;
     float penumbra = (currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV;
     
-    // CLAMP: Ensure it doesn't get so big that the shadow disappears into noise
     penumbra = clamp(penumbra, 0.0, 0.02); 
 
     vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
@@ -167,8 +180,6 @@ float calcPCSS(vec3 worldPos) {
     float noiseValue = texture(blueNoise, noiseUV).r;
     // float noiseValue = random(worldPos + vec3(pcl.time));
 
-    // --- STEP 3: FILTERING (PCF) ---
-    // Generate a random angle based on pixel position
     float angle = noiseValue * 6.283185;
     float s = sin(angle);
     float c = cos(angle);
@@ -186,17 +197,81 @@ float calcPCSS(vec3 worldPos) {
     );
 
     float shadow = 0.0;
-    // hard comparison to stop bleeding
     for (int i = 0; i < 16; i++) {
         vec2 offset = (rotation * poissonDisk32[i]) * penumbra;
         float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
         
-        // Strict comparison = No bleeding
         if (currentDepth - 0.0015 > pcfDepth) {
             shadow += 1.0;
         }
     }
     return shadow / 16.0;
+}
+
+const float PI = 3.14159265359;
+
+// approximates the amount of microfacets aligned with the halfway vector (specular glints)
+float DistributionGGX(vec3 N, vec3 H, float roughness) {
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+
+    float nom   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / denom;
+}
+
+// self-shadowing approximation of the microfacets
+float GeometrySchlickGGX(float NdotV, float roughness) {
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
+
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+vec3 calcPBR(
+    vec3 L, vec3 V, vec3 N, vec3 F0, 
+    vec3 albedo, float roughness, float metallic, vec3 radiance
+) {
+    vec3 H = normalize(V + L);
+    float NdotL = max(dot(N, L), 0.0);
+    
+    float D = DistributionGGX(N, H, roughness);   
+    float G = GeometrySmith(N, V, L, roughness);      
+    vec3 F  = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3 numerator    = D * G * F; 
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3 specular = numerator / denominator;
+
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;
+
+    return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
 void main() {
@@ -205,46 +280,56 @@ void main() {
     vec4 albedo    = subpassLoad(inputAlbedo);
     vec3 pbr       = subpassLoad(inputPBR).rgb; 
 
-    if (length(worldNorm) < 0.1) discard;
+    if(length(worldNorm) < 0.1) {
+        discard;
+    }
 
     float ao        = pbr.r;
-    vec3 camPos     = ubo.cameraPos.xyz;
-    vec3 V          = normalize(camPos - worldPos);
+    float roughness = pbr.g;
+    float metallic  = pbr.b;
     
-    vec3 accumulatedLight = vec3(0.0);
-    vec3 ambient = vec3(0.03) * albedo.rgb * ao;
+    vec3 N = worldNorm;
+    vec3 V = normalize(ubo.cameraPos.xyz - worldPos);
+
+    vec3 F0 = vec3(0.04); 
+    F0 = mix(F0, albedo.rgb, metallic);
+    
+    vec3 Lo = vec3(0.0);
 
     for(int i = 0; i < pcl.numLights ; i++) {
         vec3 lightPos   = lightSSBO.lights[i].position.xyz;
         vec3 lightCol   = lightSSBO.lights[i].color.rgb;
         float intensity = lightSSBO.lights[i].intensity;
-        float radius    = lightSSBO.lights[i].radius;
 
         vec3 L = normalize(lightPos - worldPos);
-        float dist = length(lightPos - worldPos);
 
-        if (dist > radius) {
-            continue;
-        }
+        float distance    = length(lightPos - worldPos);
+        float attenuation = 1.0 / (distance * distance);
+        vec3 radiance     = lightCol * attenuation;
+        radiance = radiance * intensity;   // light control with intensity bound to uniform scale 
 
-        float attenuation = intensity / (dist * dist + 0.01);
-
-        float factor = dist / radius;
-        float smoothFactor = clamp(1.0 - factor * factor * factor * factor, 0.0, 1.0);
-        attenuation *= (smoothFactor * smoothFactor);
-        float diffuse = max(dot(worldNorm, L), 0.0);
-
-        accumulatedLight += (albedo.rgb * diffuse * lightCol * attenuation);
+        vec3 contribution = calcPBR(L, V, N, F0, albedo.rgb, roughness, metallic, radiance);
+        Lo += contribution;
     }
     
     // float shadow = calcShadow(worldPos);
     // float shadow = calcMSMShadow(worldPos + worldNorm * pcl.bias);
     float shadow = calcPCSS(worldPos);
-    
-    vec3 sunDir = normalize(pcl.direction.xyz); 
-    float sunDiffuse = max(dot(worldNorm, sunDir), 0.0);
-    vec3 sunlight = (1.0 - shadow) * (pcl.color.rgb * sunDiffuse * albedo.rgb);
+    vec3 L_sun = normalize(pcl.direction.xyz); 
+    vec3 sunRadiance = pcl.color.rgb * (1 - shadow);
+    vec3 sunlight = calcPBR(L_sun, V, N, F0, albedo.rgb, roughness, metallic, sunRadiance);
 
-    vec3 finalColor = ambient + accumulatedLight + sunlight;
-    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), 1.0);
+
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 kS = F;
+    vec3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;	  
+    
+    vec3 irradiance = getIrradiance(N); 
+    vec3 ambient = (kD * irradiance * albedo.rgb) * ao;
+    // vec3 ambient = vec3(0.03) * albedo.rgb * ao;
+    vec3 finalColor = ambient + Lo + sunlight;
+
+    finalColor = finalColor / (finalColor + vec3(1.0));     //HDR tone mapping
+    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), 1.0);   //Gamma correction
 }

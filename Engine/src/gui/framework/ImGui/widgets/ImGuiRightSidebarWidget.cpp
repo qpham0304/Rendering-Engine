@@ -8,6 +8,8 @@
 #include "window/AppWindow.h"
 #include "logging/Logger.h"
 #include "core/features/ServiceLocator.h"
+#include "core/components/MComponent.h"
+#include "core/features/EngineUtils.h"
 
 ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
     :   RightSidebarWidget(),
@@ -41,7 +43,12 @@ void ImGuiRightSidebarWidget::TextureModal(const ImTextureID& id) {
             displaySize.y = availableSize.x / aspectRatio;
         }
 
-        ImGui::Image((ImTextureID)textureManager->inspectTexture(id), displaySize);
+        ImGui::Image(
+            (ImTextureID)textureManager->inspectTexture(id), 
+            displaySize,
+            ImVec2(0, 1),
+            ImVec2(1, 0)
+        );
 
         ImGui::Separator();
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
@@ -91,11 +98,15 @@ void ImGuiRightSidebarWidget::textureInspector()
             };
 
             for (auto& id : ids) {
-                // textureIDs[id] = _createViewDescriptorSet(id);
                 Texture* texture = textureManager->getTexture(id);
                 ImGui::PushID(texture->path().c_str());
                 ImGui::Separator();
-                ImGui::Image((ImTextureID)textureManager->inspectTexture(id), wsize, ImVec2(0, 1), ImVec2(1, 0));
+                ImGui::Image(
+                    (ImTextureID)textureManager->inspectTexture(id), 
+                    wsize, 
+                    ImVec2(0, 1), 
+                    ImVec2(1, 0)
+                );
                 ImGui::PopID();
                 
                 if (ImGui::IsItemClicked()) {
@@ -230,10 +241,85 @@ void ImGuiRightSidebarWidget::_componentsControl()
         return;
     }
 
-    const Entity& entity = selectedEntities[0];
-    ImGui::Begin("Components Inspector");
+    Entity& entity = const_cast<Entity&>(selectedEntities[0]);
+    ImGui::Begin("Components");
     _nameControl(entity);
     _transformControl(entity);
+    _modelControl(entity);
+    _meshControl(entity);
+
+    ImGui::Separator();
+    if (ImGui::Button("+ Add Component", ImVec2(-1.0f, 0.0f))) {
+        ImGui::OpenPopup("AddComponentPopup"); 
+    }
+
+    float buttonWidth = ImGui::GetContentRegionAvail().x;
+    ImGui::SetNextWindowSizeConstraints(ImVec2(buttonWidth, 0.0f), ImVec2(buttonWidth, 500.0f));
+    if (ImGui::BeginPopup("AddComponentPopup")) {
+        ImGui::TextDisabled("Select Category");
+        ImGui::Separator();
+
+        if (ImGui::Selectable("Model")) { 
+            entity.addComponent<ModelComponent>();
+        }
+
+        if (ImGui::BeginMenu("Mesh")) {
+            Mesh mesh{};
+
+            auto loadMeshData = [&] (){
+                MaterialDesc materialDesc;
+                materialDesc.albedoIDs.push_back(
+                    textureManager->loadTexture(
+                    "assets/textures/mobi-padoru.png", 
+                    1, 
+                    false
+                ));
+                mesh.materialID = materialManager->createMaterial(materialDesc);
+                
+                MeshComponent m{};
+                m.meshIDs.push_back(meshManager->loadMesh(mesh));
+                entity.addComponent<MeshComponent>(m);
+            };
+
+            if (ImGui::Selectable("Quad")) { 
+                mesh = EngineUtils::drawQuad();  
+                loadMeshData();
+            }
+            if (ImGui::Selectable("Cube")) {
+                mesh = EngineUtils::drawCube(2.0f);
+                loadMeshData();
+            }
+            if (ImGui::Selectable("Sphere")) { 
+                mesh = EngineUtils::drawSphere(0.5f, 36, 36);
+                loadMeshData();
+            }
+            
+            ImGui::EndMenu();
+        }
+        // if (ImGui::Selectable("Mesh")) { 
+        //     entity.addComponent<MeshComponent>();
+        // }
+
+        if (ImGui::Selectable("Camera")) { 
+
+        }
+
+        if (ImGui::Selectable("Physics")) { 
+
+        }
+
+        if (ImGui::BeginMenu("Scripts")) {
+            if (ImGui::Selectable("PlayerController")) { 
+
+            }
+            if (ImGui::Selectable("CameraController")) { 
+
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndPopup();
+    }
     ImGui::End();
     
 }
@@ -241,20 +327,44 @@ void ImGuiRightSidebarWidget::_componentsControl()
 void ImGuiRightSidebarWidget::_nameControl(const Entity& entity)
 {
     NameComponent& nameComponent = entity.getComponent<NameComponent>();
-
     if (ImGui::CollapsingHeader("Name", ImGuiTreeNodeFlags_DefaultOpen)) {
+        static std::string buffer;
+        
         ImGui::Columns(2);
-        ImGui::SetColumnWidth(0, 120.0f); // Match the width you used for Transform
-        
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Name");
-        
+        ImGui::SetColumnWidth(0, 120.0f);
+        ImGui::Text("Entity Name");
         ImGui::NextColumn();
-        ImGui::PushItemWidth(-1);
 
-        ImGui::InputText("##NameInput", &nameComponent.name);
+        ImGuiID id = ImGui::GetID("##NameInput_State");
+        ImGuiStorage* storage = ImGui::GetStateStorage();
+        bool isEditing = storage->GetBool(id, false);
 
-        ImGui::PopItemWidth();
+        if (!isEditing) {
+            ImGui::TextUnformatted(nameComponent.name.c_str());
+            ImGui::SameLine(ImGui::GetContentRegionAvail().x - 45);
+            
+            if (ImGui::Button("Edit")) {
+                buffer = nameComponent.name; 
+                storage->SetBool(id, true);
+            }
+        } else {
+            ImGui::PushItemWidth(-1);
+            bool entered = ImGui::InputText("##NameInput", &buffer, ImGuiInputTextFlags_EnterReturnsTrue);
+            ImGui::PopItemWidth();
+
+            if (entered || ImGui::Button("Save")) {
+                const_cast<Entity&>(entity).getComponent<NameComponent>().name = buffer;
+                storage->SetBool(id, false);
+            }
+            
+            ImGui::SameLine();
+            
+            if (ImGui::Button("Cancel")) {
+                storage->SetBool(id, false);
+            }
+            
+            // ImGui::InputTextWithHint
+        }
         ImGui::Columns(1);
     }
 }
@@ -344,4 +454,28 @@ void ImGuiRightSidebarWidget::_transformControl(const Entity& entity)
             transform.scale(scale);
     }
 
+}
+
+void ImGuiRightSidebarWidget::_modelControl(const Entity& entity)
+{
+    if(!entity.hasComponent<ModelComponent>()) {
+        return;
+    }
+
+    ModelComponent& model = entity.getComponent<ModelComponent>();
+    if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+    }
+}
+
+void ImGuiRightSidebarWidget::_meshControl(const Entity& entity)
+{
+    if(!entity.hasComponent<MeshComponent>()) {
+        return;
+    }
+    
+    MeshComponent& mesh = entity.getComponent<MeshComponent>();
+    if (ImGui::CollapsingHeader("Mesh", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+    }
 }

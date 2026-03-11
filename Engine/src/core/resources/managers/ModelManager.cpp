@@ -131,7 +131,6 @@ void ModelManager::_loadModel(std::string_view path)
     unsigned int flags = aiProcess_Triangulate
         | aiProcess_GenSmoothNormals
         | aiProcess_GlobalScale
-        | aiProcess_FlipUVs
         | aiProcess_CalcTangentSpace
         | aiProcess_SplitByBoneCount
         | aiProcess_LimitBoneWeights

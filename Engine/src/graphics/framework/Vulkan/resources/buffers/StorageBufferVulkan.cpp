@@ -27,3 +27,7 @@ void StorageBufferVulkan::update(const void *data, size_t size)
 {
     memcpy(bufferMapped, data, size);
 }
+
+void* StorageBufferVulkan::getMappedBuffer() {
+    return bufferMapped;
+}
