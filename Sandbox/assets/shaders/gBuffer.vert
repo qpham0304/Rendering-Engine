@@ -28,23 +28,17 @@ void main() {
     vec4 worldPos = modelMatrix * vec4(inPosition, 1.0);
     outWorldPos = worldPos.xyz;
 
-    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
-    vec3 N = normalize(normalMatrix * inNormal);
-    vec3 tangent;
-    vec3 c1 = cross(inNormal, vec3(0.0, 0.0, 1.0));
-    vec3 c2 = cross(inNormal, vec3(0.0, 1.0, 0.0));
-    
-    if (length(c1) > length(c2)) {
-        tangent = c1;
-    } else {
-        tangent = c2;
-    }
-    
-    vec3 T = normalize(normalMatrix * tangent);
-    vec3 B = normalize(cross(N, T));
+    mat3 normalMatrix = mat3(modelMatrix); 
+    // Note: If you have non-uniform scaling, use: 
+    // mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
 
+    vec3 T = normalize(normalMatrix * inTangent);
+    vec3 B = normalize(normalMatrix * inBiTangent);
+    vec3 N = normalize(normalMatrix * inNormal);
+
+    // Pass the TBN matrix directly to Fragment Shader
     outTBN = mat3(T, B, N);
-    outTexCoord = inTexCoord;
     outNormal = N;
+    outTexCoord = inTexCoord;
     gl_Position = ubo.proj * ubo.view * worldPos;
 }

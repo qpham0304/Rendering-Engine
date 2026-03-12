@@ -109,17 +109,17 @@ public:
 			
 			attributeDescriptions[3].binding = 0;
 			attributeDescriptions[3].location = 3;
-			attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[3].offset = offsetof(VertexVulkan, normal);
 			
 			attributeDescriptions[4].binding = 0;
 			attributeDescriptions[4].location = 4;
-			attributeDescriptions[4].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[4].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[4].offset = offsetof(VertexVulkan, tangent);
 			
 			attributeDescriptions[5].binding = 0;
 			attributeDescriptions[5].location = 5;
-			attributeDescriptions[5].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[5].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[5].offset = offsetof(VertexVulkan, bitangent);
 
 			attributeDescriptions[6].binding = 0;
@@ -129,7 +129,7 @@ public:
 
 			attributeDescriptions[7].binding = 0;
 			attributeDescriptions[7].location = 7;
-			attributeDescriptions[7].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[7].format = VK_FORMAT_R32G32B32A32_SFLOAT;
 			attributeDescriptions[7].offset = offsetof(VertexVulkan, m_Weights);
 
 			return attributeDescriptions;

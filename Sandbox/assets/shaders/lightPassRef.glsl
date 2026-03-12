@@ -41,7 +41,6 @@ layout(set = 1, binding = 5) uniform sampler2D brdfLUT;
 layout(set = 1, binding = 6) uniform samplerCube prefilterMap;
 layout(set = 1, binding = 7) uniform sampler2D hdrImage;
 
-
 layout (push_constant) uniform LightData {
     mat4 sunlightMVP;
     vec4 direction;
@@ -53,7 +52,6 @@ layout (push_constant) uniform LightData {
     float litBias;
     float time;
     float numLights;
-    float skyboxDetail;
 } pcl;
 
 const float PI = 3.14159265359;
@@ -65,7 +63,6 @@ vec2 sampleSphericalMap(vec3 v) {
     uv += 0.5;
     return uv;
 }
-
 
 vec3 getIrradiance(vec3 N) {
     // These constants already include the 1/PI and Lambertian factors
@@ -307,87 +304,78 @@ void main() {
         viewPos /= viewPos.w;
 
         vec3 V_sky = mat3(ubo.invView) * normalize(viewPos.xyz);
-        vec3 V_sky_norm = normalize(V_sky);
-        vec3 lookupV = vec3(V_sky_norm.x, V_sky_norm.y, -V_sky_norm.z);
 
-        vec2 uv = sampleSphericalMap(lookupV);
-        vec3 hdrColor = texture(hdrImage, uv).rgb;
-        
-        float detail = pcl.skyboxDetail;
-        float maxLod = 7.0;
-        vec3 prefilteredColor = textureLod(prefilterMap, lookupV, detail * maxLod).rgb;
-        
-        vec3 irradiance = getIrradiance(V_sky_norm);
+        vec2 uv = sampleSphericalMap(normalize(V_sky));
+        vec3 envColor = texture(hdrImage, uv).rgb;
+        // vec3 envColor = textureLod(prefilterMap, V_sky, 0.0).rgb;
+        // vec3 envColor = getIrradiance(V_sky);
 
-        vec3 envColor;
-        if(detail < 0.5) {
-            envColor = mix(hdrColor, prefilteredColor, detail * 2.0);
-        } else {
-            float blendWeight = clamp(detail * 2.0 - 1.0, 0.0, 1.0);
-            envColor = mix(prefilteredColor, irradiance, blendWeight);
-        }
-
-        envColor = envColor / (envColor + 1.0);
+        envColor = envColor / (envColor + vec3(1.0));
         outColor = vec4(pow(envColor, vec3(1.0/2.2)), 1.0);
         return;
     }
     
-    
-    worldNorm = normalize(worldNorm);
+    // 2. Critical Re-normalization
+    // G-Buffer interpolation and precision loss can shrink these!
+    vec3 N = normalize(worldNorm);
+    vec3 V = normalize(ubo.cameraPos.xyz - worldPos);
+    float NdotV = max(dot(N, V), 0.0001); // Prevent division by zero later
 
+    // 3. PBR Setup
     float ao        = pbr.r;
     float roughness = pbr.g;
     float metallic  = pbr.b;
     
-    vec3 N = worldNorm;
-    vec3 V = normalize(ubo.cameraPos.xyz - worldPos);
-
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo.rgb, metallic);
     
     vec3 Lo = vec3(0.0);
 
-    for(int i = 0; i < pcl.numLights ; i++) {
+    // 4. Local Lights
+    for(int i = 0; i < int(pcl.numLights); i++) {
         vec3 lightPos   = lightSSBO.lights[i].position.xyz;
         vec3 lightCol   = lightSSBO.lights[i].color.rgb;
         float intensity = lightSSBO.lights[i].intensity;
 
         vec3 L = normalize(lightPos - worldPos);
-
         float distance    = length(lightPos - worldPos);
+        
+        // Physical Inverse Square Falloff
         float attenuation = 1.0 / (distance * distance);
-        vec3 radiance     = lightCol * attenuation;
-        radiance = radiance * intensity;   // light control with intensity bound to uniform scale 
+        vec3 radiance     = lightCol * intensity * attenuation;
 
-        vec3 contribution = calcPBR(L, V, N, F0, albedo.rgb, roughness, metallic, radiance);
-        Lo += contribution;
+        Lo += calcPBR(L, V, N, F0, albedo.rgb, roughness, metallic, radiance);
     }
     
-    // float shadow = calcShadow(worldPos);
-    // float shadow = calcMSMShadow(worldPos + worldNorm * pcl.bias);
-    float shadow = calcPCSS(worldPos);
+    // 5. Sunlight (Directional) with Shadow
+    float shadow = 1.0 - calcPCSS(worldPos); // PCSS returns shadow amount, we want light amount
     vec3 L_sun = normalize(pcl.direction.xyz); 
-    vec3 sunRadiance = pcl.color.rgb * (1 - shadow);
+    vec3 sunRadiance = pcl.color.rgb * shadow;
     vec3 sunlight = calcPBR(L_sun, V, N, F0, albedo.rgb, roughness, metallic, sunRadiance);
 
-    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    // 6. Ambient / IBL
+    vec3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
     vec3 kS = F;
-    vec3 kD = 1.0 - kS;
-    kD *= 1.0 - metallic;	  
+    vec3 kD = (1.0 - kS) * (1.0 - metallic);     
     
+    // Diffuse IBL
     vec3 irradiance = getIrradiance(N);
     vec3 diffuseIBL = irradiance * albedo.rgb;
 
+    // Specular IBL
     vec3 R = reflect(-V, N); 
     const float MAX_REFLECTION_LOD = 4.0; 
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
-    vec2 brdf = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
     vec3 specularIBL = prefilteredColor * (F * brdf.x + brdf.y);
 
-    // vec3 ambient = vec3(0.03) * albedo.rgb * ao;
     vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
+    
+    // 7. Final Composition
     vec3 finalColor = ambient + Lo + sunlight;
 
-    finalColor = finalColor / (finalColor + vec3(1.0));     //HDR tone mapping
-    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), 1.0);   //Gamma correction
+    // 8. Tone Mapping & Gamma (Standard Filmic ACES is usually preferred over Simple Reindhard)
+    // Simple Reinhard (what you have):
+    finalColor = finalColor / (finalColor + vec3(1.0));
+    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);
 }

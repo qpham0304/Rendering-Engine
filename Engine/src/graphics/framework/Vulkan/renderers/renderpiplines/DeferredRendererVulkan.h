@@ -30,7 +30,10 @@ private:
 		glm::mat4 view;
 		glm::mat4 proj;
 		glm::vec4 cameraPos;
-		glm::vec4 shCoeffs[9];
+		glm::mat4 invView;
+		glm::mat4 invProj;
+		float width;
+		float height;
 	};
 
 	struct StorageBufferObject {
@@ -48,6 +51,7 @@ private:
 		alignas(4)  float litBias;
 		alignas(4)  float time;
 		alignas(4)	float numLights;
+		alignas(4)	float skyboxDetail;
 	};
 
 	struct LightSSBO {

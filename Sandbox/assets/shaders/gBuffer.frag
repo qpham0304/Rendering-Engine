@@ -18,20 +18,21 @@ layout(set = 1, binding = 4) uniform sampler2D aoMap;
 
 vec3 getNormalFromMap() {
     vec3 tangentNormal = texture(normalMap, inTexCoord).rgb * 2.0 - 1.0;
-    // vec3 map = texture(normalMap, inTexCoord).rgb * 2.0 - 1.0;
-    // map.xy *= 0.5;
-    // vec3 tangentNormal = normalize(map);
 
-    vec3 N = normalize(inNormal); // This is your interpolated vertex normal
+    vec3 N = normalize(inNormal); // Geometric Normal
     vec3 T = normalize(inTBN[0] - dot(inTBN[0], N) * N);
     vec3 B = cross(N, T);
-    
     mat3 TBN = mat3(T, B, N);
     
     vec3 worldNormal = normalize(TBN * tangentNormal);
 
-    if (dot(worldNormal, N) < 0.0) {
-        worldNormal = normalize(worldNormal - N * dot(worldNormal, N));
+    // AAA FIX: The "Safe Normal"
+    // If the worldNormal is pointing "into" the surface relative to 
+    // the geometric normal, the lighting will break.
+    // We nudge the normal back toward the geometric normal.
+    vec3 geomNormal = normalize(inNormal);
+    if (dot(worldNormal, geomNormal) < 0.0) {
+        worldNormal = normalize(worldNormal - geomNormal * dot(worldNormal, geomNormal));
     }
 
     return worldNormal;
@@ -41,7 +42,8 @@ void main() {
     outPos = vec4(inWorldPos, 1.0);
     
     vec3 N = getNormalFromMap();
-    outNorm = vec4(N, 1.0);
+    // outNorm = vec4(N, 1.0);
+    outNorm = vec4(inNormal, 1.0);
     
     outAlbedo = texture(albedoSampler, inTexCoord);
     

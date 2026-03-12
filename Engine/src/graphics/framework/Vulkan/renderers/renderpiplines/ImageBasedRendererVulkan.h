@@ -31,12 +31,19 @@ public:
 	virtual void render(Camera& camera) override;
 
 	void computeSH(VkCommandBuffer cmd, uint32_t currentFrame);
-	std::vector<glm::vec3> finalizeSH(uint32_t currentFrame);
-
+	void writeBRDF();
+	void computePrefilter(VkCommandBuffer cmd, uint32_t currentFrame);
+	void loadTexture(std::string_view path);
 
 	uint32_t hdrImageID{0};
 	TextureVulkan* hdrImage{ nullptr };
+
+	uint32_t hdrImageID_temp{0};
+	TextureVulkan* hdrImage_temp{ nullptr };
+
 	std::vector<StorageBufferVulkan*> finalSumBuffers;
+	TextureVulkan* brdfLUT;
+	TextureVulkan* prefilterMap;
 	
 protected:
 	Logger* m_logger{ nullptr };
@@ -72,7 +79,30 @@ protected:
 	uint32_t groupCountY;
 	uint32_t totalWorkgroups;
 
+	
+	std::unique_ptr<VulkanPipeline> brdfLUT_pipeline;
+	uint32_t lutDescriptorLayoutID;
+	uint32_t lutDescriptorPoolID;
+	uint32_t lutDescriptorSetID;
+
+	struct PrefilterPushConstants {
+		float roughness;
+		int mipSize;
+	};
+	PrefilterPushConstants push{};
+	std::unique_ptr<VulkanPipeline> prefilter_pipeline;
+	uint32_t prefilterLayoutID;
+	uint32_t prefilterPoolID;
+	uint32_t prefilterSetID;
+
+	std::vector<VkImageView> prefilterMipViews;
+	std::vector<VkDescriptorSet> prefilterSets;
+	uint32_t mipLevels;
+	uint32_t mapSize{ 128 };
+
 private:
 	void _createDescriptorSetProjection();
 	void _createDescriptorSetGlobalSum();
+	void _createResourceLUT();
+	void _createResourcePrefilteredMap();
 };

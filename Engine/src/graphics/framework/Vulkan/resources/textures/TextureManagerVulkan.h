@@ -34,6 +34,21 @@ public:
 		const VulkanDevice& device
 	);
 
+	static void createImage(
+		uint32_t width, 
+		uint32_t height, 
+		VkFormat format, 
+		VkImageTiling tiling, 
+		VkImageUsageFlags usage, 
+		VkMemoryPropertyFlags properties, 
+		VkImage& image, 
+		VkDeviceMemory& imageMemory,
+		uint32_t mipLevels,
+		uint32_t arrayLayers,          
+		VkImageCreateFlags flags,      
+		const VulkanDevice& device
+	);
+
 	static void createImageView(
 		VkImage& image,
 		VkImageView& imageView,
@@ -41,6 +56,18 @@ public:
 		VkImageAspectFlags aspectFlags,
 		uint32_t mipLevels,
 		VulkanDevice& device
+	);
+
+	static void createImageView(
+		VkImage image, 
+		VkImageView& imageView, 
+		VkFormat format, 
+		VkImageAspectFlags aspectFlags, 
+		uint32_t mipLevels, 
+		uint32_t baseMipLevel,
+		uint32_t layerCount,
+		VkImageViewType viewType,
+		const VulkanDevice& device
 	);
 
 	static void createTextureSampler(
@@ -52,6 +79,17 @@ public:
 		VkSampler& textureSampler,
 		VulkanDevice& device,
 		VkSamplerCreateInfo samplerInfo
+	);
+
+	static void transitionImageLayout(
+		VkCommandBuffer cmd,
+		VkImage image,
+		VkFormat format,
+		VkImageLayout oldLayout,
+		VkImageLayout newLayout,
+		uint32_t mipLevels,
+		uint32_t layerCount,
+		RenderDeviceVulkan* renderDeviceVulkan
 	);
 
 	static void transitionImageLayout(

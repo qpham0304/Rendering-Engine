@@ -62,6 +62,19 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	hdrImage = dynamic_cast<TextureVulkan*>(textureManager->getTexture(hdrImageID));
 	assert(hdrImage && "Failed to cast texture to TextureVulkan");
 
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+    TextureManagerVulkan::transitionImageLayout(
+        cmd,
+        hdrImage->textureImage, 
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        VK_IMAGE_LAYOUT_UNDEFINED, 
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+        1, 
+        1,
+        renderDeviceVulkan
+    );
+    renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+
 	groupCountX = (hdrImage->width() + 15) / 16;
 	groupCountY = (hdrImage->height() + 15) / 16;
 	totalWorkgroups = groupCountX * groupCountY;
@@ -89,14 +102,42 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	);
 	
 
+	_createResourceLUT();
+	VkDescriptorSetLayout descriptorLayoutLUT = descriptorManagerVulkan->getDescriptorLayout(lutDescriptorLayoutID);
+	brdfLUT_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	brdfLUT_pipeline->createComputePipeline(
+		"assets/shaders/brdfLUT.comp.spv", 
+		{ descriptorLayoutLUT }, 
+		0
+	);
+	writeBRDF();
+
+	_createResourcePrefilteredMap();
+	VkDescriptorSetLayout descriptorLayoutPrefilter = descriptorManagerVulkan->getDescriptorLayout(prefilterLayoutID);
+	prefilter_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	prefilter_pipeline->createComputePipeline(
+		"assets/shaders/prefilter.comp.spv", 
+		{ descriptorLayoutPrefilter }, 
+		sizeof(PrefilterPushConstants)
+	);
+
     return true;
 }
 
 bool ImageBasedRendererVulkan::onClose()
 {
+	for (auto view : prefilterMipViews) {
+        if (view != VK_NULL_HANDLE) {
+            vkDestroyImageView(renderDeviceVulkan->device, view, nullptr);
+        }
+    }
+    prefilterMipViews.clear();
+	
 	projectionSH_pipeline->destroy();
 	sumSH_pipeline->destroy();
-
+	brdfLUT_pipeline->destroy();
+	prefilter_pipeline->destroy();
+	
     return true;
 }
 
@@ -199,6 +240,149 @@ void ImageBasedRendererVulkan::computeSH(VkCommandBuffer cmd, uint32_t currentFr
 	);
 
 }
+
+void ImageBasedRendererVulkan::writeBRDF() {
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+
+	TextureManagerVulkan::transitionImageLayout(
+		cmd,
+		brdfLUT->textureImage,
+		VK_FORMAT_R16G16B16A16_SFLOAT,
+		VK_IMAGE_LAYOUT_UNDEFINED, 
+		VK_IMAGE_LAYOUT_GENERAL,
+		1,
+		1,
+		renderDeviceVulkan
+	);
+
+	brdfLUT_pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+	
+	auto lutDescriptorSet = descriptorManagerVulkan->getDescriptorSet(lutDescriptorSetID)[0];
+	
+	vkCmdBindDescriptorSets(
+		cmd, 
+		VK_PIPELINE_BIND_POINT_COMPUTE, 
+		brdfLUT_pipeline->pipelineLayout, 
+		0, 
+		1, 
+		&lutDescriptorSet, 
+		0, 
+		nullptr
+	);
+	
+	vkCmdDispatch(cmd, 512 / 16, 512 / 16, 1);
+
+	TextureManagerVulkan::transitionImageLayout(
+		cmd, 
+		brdfLUT->textureImage, 
+		VK_FORMAT_R16G16B16A16_SFLOAT,
+		VK_IMAGE_LAYOUT_GENERAL, 
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+		1, 
+		1, // 1 mip, 1 layer
+		renderDeviceVulkan
+	);
+
+	renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+}
+
+void ImageBasedRendererVulkan::computePrefilter(VkCommandBuffer cmd, uint32_t currentFrame) {
+    VkImageMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;	// stay in GENERAL while write to all the mips.
+    barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.image = prefilterMap->textureImage;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = mipLevels;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 6;
+
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0, 0, nullptr, 0, nullptr, 1, &barrier
+    );
+
+    prefilter_pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+
+    for (uint32_t i = 0; i < mipLevels; i++) {
+        uint32_t mipSize = mapSize >> i;
+        
+        PrefilterPushConstants push{};
+        push.roughness = (float)i / (float)(mipLevels - 1);
+        push.mipSize = mipSize;
+        vkCmdPushConstants(cmd, prefilter_pipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(push), &push);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, prefilter_pipeline->pipelineLayout, 
+                                0, 1, &prefilterSets[i], 0, nullptr);
+
+        uint32_t groups = std::max(1u, (mipSize + 15) / 16);
+        vkCmdDispatch(cmd, groups, groups, 6); 
+    }
+
+	VkImageMemoryBarrier finalBarrier = {};
+	finalBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	finalBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL; // Where compute left it
+	finalBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // Where graphics wants it
+	finalBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; // Compute wrote it
+	finalBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;  // Fragment shader will read it
+	finalBarrier.image = prefilterMap->textureImage;
+	finalBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	finalBarrier.subresourceRange.levelCount = mipLevels;
+	finalBarrier.subresourceRange.layerCount = 6;
+
+	vkCmdPipelineBarrier(
+		cmd,
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,   // Source
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,  // Destination
+		0, 0, nullptr, 0, nullptr, 1, &finalBarrier
+	);
+}
+
+void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
+	hdrImageID_temp = textureManager->loadTexture(
+		path, 
+		1, 
+		false
+	);
+
+	hdrImage_temp = dynamic_cast<TextureVulkan*>(textureManager->getTexture(hdrImageID_temp));
+
+	if(hdrImage_temp) {
+		int32_t temp = hdrImageID;
+		hdrImage = hdrImage_temp;
+		hdrImageID = hdrImageID_temp;
+
+		// textureManager->destroy(temp);
+		
+		uint32_t frameCount = VulkanUtils::numFrames();
+		vkDeviceWaitIdle(renderDeviceVulkan->device);
+		
+		//update spherical harmonic descriptors
+		auto projectionSets = descriptorManagerVulkan->getDescriptorSet(projectionSH_descriptorSetID);
+		for (uint32_t i = 0; i < frameCount; i++) {
+			VkDescriptorImageInfo imageInfo{ hdrImage->textureSampler, hdrImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+			std::vector<VkWriteDescriptorSet> writes;
+			descriptorManagerVulkan->writeImage(&writes, projectionSets[i], 0, imageInfo);
+			descriptorManagerVulkan->updateDescriptorSets(&writes);
+		}
+
+		//update prefilter descriptors
+		for (uint32_t i = 0; i < mipLevels; i++) {
+			VkDescriptorImageInfo imageInfo{ hdrImage->textureSampler, hdrImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+			std::vector<VkWriteDescriptorSet> writes;
+			descriptorManagerVulkan->writeImage(&writes, prefilterSets[i], 0, imageInfo);
+			descriptorManagerVulkan->updateDescriptorSets(&writes);
+		}
+	}
+	
+}
+
+
 
 void ImageBasedRendererVulkan::_createDescriptorSetProjection() {
 	projectionSH_descriptorLayoutID = descriptorManagerVulkan->createLayout({
@@ -313,4 +497,206 @@ void ImageBasedRendererVulkan::_createDescriptorSetGlobalSum() {
 
 		vkUpdateDescriptorSets(renderDeviceVulkan->device, 2, writes.data(), 0, nullptr);
 	}
+}
+
+void ImageBasedRendererVulkan::_createResourceLUT() {
+	uint32_t textureID = textureManager->createTexture();
+	brdfLUT = dynamic_cast<TextureVulkan*>(textureManager->getTexture(textureID));
+
+	assert(brdfLUT && "failed to cast texture into vulkan texture");
+
+	TextureManagerVulkan::createImage(
+		512, 
+		512, 
+		VK_FORMAT_R16G16B16A16_SFLOAT, 
+		VK_IMAGE_TILING_OPTIMAL, 
+		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+		brdfLUT->textureImage, 
+		brdfLUT->textureImageMemory, 
+		1, 
+		renderDeviceVulkan->device
+	);
+
+	TextureManagerVulkan::createImageView(
+		brdfLUT->textureImage, 
+		brdfLUT->textureImageView, 
+		VK_FORMAT_R16G16B16A16_SFLOAT, 
+		VK_IMAGE_ASPECT_COLOR_BIT, 
+		1, 
+		renderDeviceVulkan->device
+	);
+
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_LINEAR;
+	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerInfo.anisotropyEnable = VK_FALSE;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.mipLodBias = 0.0f;
+	samplerInfo.minLod = 0.0f;
+	samplerInfo.maxLod = 0.0f;
+
+	TextureManagerVulkan::createTextureSampler(
+		brdfLUT->textureSampler,
+		renderDeviceVulkan->device,
+		samplerInfo
+	);
+
+	lutDescriptorLayoutID = descriptorManagerVulkan->createLayout({
+		{ 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr }
+	});
+
+	uint32_t frameCount = VulkanUtils::numFrames();
+	std::vector<VkDescriptorPoolSize> poolSizes {
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 }
+	};
+	
+	lutDescriptorPoolID = descriptorManagerVulkan->createPool(poolSizes, 1);
+
+	lutDescriptorSetID = descriptorManagerVulkan->createSets(lutDescriptorLayoutID, lutDescriptorPoolID, 1);
+	auto lutDescriptorSets = descriptorManagerVulkan->getDescriptorSet(lutDescriptorSetID);
+
+	VkDescriptorImageInfo imageInfo{};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	imageInfo.imageView = brdfLUT->textureImageView;
+	imageInfo.sampler = brdfLUT->textureSampler;
+
+	std::vector<VkWriteDescriptorSet> writes;
+	descriptorManagerVulkan->writeStorageImage(&writes, lutDescriptorSets[0], 0, imageInfo);
+	descriptorManagerVulkan->updateDescriptorSets(&writes);
+}
+
+void ImageBasedRendererVulkan::_createResourcePrefilteredMap() {
+	uint32_t textureID = textureManager->createTexture();
+	prefilterMap = dynamic_cast<TextureVulkan*>(textureManager->getTexture(textureID));
+
+	assert(prefilterMap && "failed to cast texture into vulkan texture");
+
+	mipLevels = static_cast<uint32_t>(std::floor(std::log2(mapSize))) + 1;
+
+	TextureManagerVulkan::createImage(
+		mapSize, 
+		mapSize, 
+		VK_FORMAT_R16G16B16A16_SFLOAT, 
+		VK_IMAGE_TILING_OPTIMAL, 
+		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+		prefilterMap->textureImage, 
+		prefilterMap->textureImageMemory,
+		mipLevels, 
+		6,
+		VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT,
+		renderDeviceVulkan->device
+	);
+
+	
+	TextureManagerVulkan::createImageView(
+		prefilterMap->textureImage, 
+		prefilterMap->textureImageView, 
+		VK_FORMAT_R16G16B16A16_SFLOAT, 
+		VK_IMAGE_ASPECT_COLOR_BIT, 
+		mipLevels,
+		0,
+		6,
+		VK_IMAGE_VIEW_TYPE_CUBE,
+		renderDeviceVulkan->device
+	);
+
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_LINEAR;
+	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerInfo.anisotropyEnable = VK_FALSE;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.mipLodBias = 0.0f;
+	samplerInfo.minLod = 0.0f;
+	samplerInfo.maxLod = static_cast<float>(mipLevels);
+
+	TextureManagerVulkan::createTextureSampler(
+		prefilterMap->textureSampler,
+		renderDeviceVulkan->device,
+		samplerInfo
+	);
+
+		
+	prefilterMipViews.resize(mipLevels);
+	for (uint32_t i = 0; i < mipLevels; i++) {
+		TextureManagerVulkan::createImageView(
+			prefilterMap->textureImage, 
+			prefilterMipViews[i], 
+			VK_FORMAT_R16G16B16A16_SFLOAT, 
+			VK_IMAGE_ASPECT_COLOR_BIT, 
+			1,                          	// only want to see one level
+			i,
+			6,                          // 6 faces
+			VK_IMAGE_VIEW_TYPE_2D_ARRAY, 	// compute sees cube as an array
+			renderDeviceVulkan->device
+		);
+	}
+
+	prefilterLayoutID = descriptorManagerVulkan->createLayout({
+		{ 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr } 
+	});
+
+	uint32_t frameCount = VulkanUtils::numFrames();
+	std::vector<VkDescriptorPoolSize> poolSizes {
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mipLevels * frameCount },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, mipLevels * frameCount }
+	};
+	
+	prefilterPoolID = descriptorManagerVulkan->createPool(poolSizes, mipLevels * frameCount);
+
+	uint32_t prefilterSetsID = descriptorManagerVulkan->createSets(prefilterLayoutID, prefilterPoolID, mipLevels);
+	prefilterSets = descriptorManagerVulkan->getDescriptorSet(prefilterSetsID);
+
+	for (uint32_t i = 0; i < mipLevels; i++) {
+		std::vector<VkWriteDescriptorSet> writes;
+		
+		// binding 0: The Source HDR Sky (Same for all sets)
+		VkDescriptorImageInfo sourceInfo{};
+		sourceInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		sourceInfo.imageView = hdrImage->textureImageView;
+		sourceInfo.sampler = hdrImage->textureSampler;
+
+		// binding 1: The Output Mip Level (Unique per set)
+		VkDescriptorImageInfo outputInfo{};
+		outputInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+		outputInfo.imageView = prefilterMipViews[i];
+
+		descriptorManagerVulkan->writeImage(&writes, prefilterSets[i], 0, sourceInfo);
+		descriptorManagerVulkan->writeStorageImage(&writes, prefilterSets[i], 1, outputInfo);
+		
+		descriptorManagerVulkan->updateDescriptorSets(&writes);
+	}
+
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+
+	TextureManagerVulkan::transitionImageLayout(
+		cmd,
+		prefilterMap->textureImage, 
+		VK_FORMAT_R16G16B16_SFLOAT,
+		VK_IMAGE_LAYOUT_UNDEFINED, 
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		mipLevels, 
+		6, 
+		renderDeviceVulkan
+	);
+
+	renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
 }

@@ -22,7 +22,6 @@ void ImGuiMathWidget::render()
         IM_COL32(100, 100, 100, 255), 1.0f
     );
 
-    // Vertical Start Line (t = 0 in your math)
     draw_list->AddLine(
         ImVec2(canvas_p0.x, canvas_p0.y), 
         ImVec2(canvas_p0.x, canvas_p1.y), 
@@ -66,7 +65,6 @@ void ImGuiMathWidget::render()
             float normalizedY = (canvas_p1.y - mouseY) / canvas_sz.y;
             float mathY = (normalizedY * 6.0f) - 3.0f;
             
-            // Update the coefficient (clamped to your range)
             coeffs[i] = std::clamp(mathY, -3.0f, 3.0f);
         }
         ImGui::PopID();

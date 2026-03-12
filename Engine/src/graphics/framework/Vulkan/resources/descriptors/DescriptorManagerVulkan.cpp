@@ -176,6 +176,24 @@ void DescriptorManagerVulkan::writeImage(
 	writes->push_back(write);
 }
 
+void DescriptorManagerVulkan::writeStorageImage(
+	std::vector<VkWriteDescriptorSet>* writes,
+	const VkDescriptorSet& dstSet,
+	uint32_t binding,
+	const VkDescriptorImageInfo& imageInfo
+) {
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = dstSet;
+	write.dstBinding = binding;
+	write.dstArrayElement = 0;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	write.descriptorCount = 1;
+	write.pImageInfo = &imageInfo;
+
+	writes->push_back(write);
+}
+
 void DescriptorManagerVulkan::writeStorage(
 	std::vector<VkWriteDescriptorSet>* writes,
 	const VkDescriptorSet& dstSet,

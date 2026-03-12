@@ -79,6 +79,7 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
+	pushConstantLight.skyboxDetail = 1.0f;
 	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.bias = 0.001f;
 	pushConstantLight.alpha = 0.0001f;
@@ -150,21 +151,31 @@ void DeferredRendererVulkan::render(Camera& camera)
 	
     pushConstantLight.time = AppWindow::getTime();
 	pushConstantLight.numLights = lights.size();
+	
 	shadowMapRenderer.render(camera);
 
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	
-	// auto shData = imageBasedRenderer.finalizeSH(currentFrame);
-    // for(int i = 0; i < 9; i++) {
-	// 	ubo.shCoeffs[i] = glm::vec4(shData[i], 1.0);
-	// }
 	imageBasedRenderer.computeSH(cmdBuffer, currentFrame);
+	imageBasedRenderer.computePrefilter(cmdBuffer, currentFrame);
+	// VkImageMemoryBarrier globalBarrier = {};
+	// vkCmdPipelineBarrier(
+	// 	cmdBuffer,
+	// 	VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+	// 	VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+	// 	0, 0, nullptr, 0, nullptr, 1, nullptr
+	// );
 
 	ubo.view = camera.getViewMatrix();
 	ubo.proj = camera.getProjectionMatrix();
 	ubo.cameraPos = glm::vec4(camera.getPosition(), 1.0);
 	ubo.proj[1][1] *= -1;
+	ubo.invView = camera.getInViewMatrix();
+	ubo.invProj = camera.getInProjectionMatrix();
+	ubo.invProj[1][1] *= -1;
+	ubo.width = AppWindow::getWidth();
+	ubo.height = AppWindow::getHeight();
 	
 	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.direction = glm::vec4(shadowMapRenderer.lightDir, 0.0f);
@@ -195,6 +206,12 @@ void DeferredRendererVulkan::renderGui()
 
 	
 	ImGui::Begin("Lights Control");
+	if(ImGui::Button("Chane Environment")) {
+		std::string path;
+		path = Utils::fileDialog();
+		imageBasedRenderer.loadTexture(path);
+	}
+	ImGui::SliderFloat("skybox detail", &pushConstantLight.skyboxDetail, 0.0f, 1.0f);
 	ImGui::Checkbox("Light Perspective", &shadowMapRenderer.useOrtho);
 	ImGui::ColorEdit4("color", &sunColor[0]);
 	ImGui::SliderFloat("intensity", &sunIntensity, 1.0f, 15.0f);
@@ -408,12 +425,12 @@ void DeferredRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, v
 
 
 	std::array<VkClearValue, 6> clearValues{};
-	clearValues[0].color = { 0.15f, 0.15f, 0.15f, 1.0f }; // Final Swapchain
-	clearValues[1].color = { 0.0f, 0.0f, 0.0f, 1.0f };    // Position
-	clearValues[2].color = { 0.0f, 0.0f, 0.0f, 1.0f };    // Normal
-	clearValues[3].color = { 0.0f, 0.0f, 0.0f, 1.0f };    // Albedo
-	clearValues[4].color = { 1.0f, 1.0f, 0.0f, 1.0f };    // PBR (ORM)
-	clearValues[5].depthStencil = { 1.0f, 0 };            // Depth (Index 5)
+	clearValues[0].color = { 0.15f, 0.15f, 0.15f, 1.0f }; 	// Final Swapchain
+	clearValues[1].color = { 0.0f, 0.0f, 0.0f, 1.0f };    	// Position
+	clearValues[2].color = { 0.0f, 0.0f, 0.0f, 1.0f };    	// Normal
+	clearValues[3].color = { 0.0f, 0.0f, 0.0f, 1.0f };    	// Albedo
+	clearValues[4].color = { 1.0f, 1.0f, 0.0f, 1.0f };    	// PBR (ORM)
+	clearValues[5].depthStencil = { 1.0f, 0 };            								// Depth (Index 5)
 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
@@ -1003,14 +1020,16 @@ void DeferredRendererVulkan::_createLightDescriptor()
 		{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 		{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 		{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-
+		{ 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+		{ 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 	});
 
 	uint32_t poolIDLayout_1 = descriptorManagerVulkan->createPool(
 		{
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount },
 			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 2},
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 2 },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 5 },
 		},
 		frameCount
 	);
@@ -1046,6 +1065,20 @@ void DeferredRendererVulkan::_createLightDescriptor()
 		bufferInfoSH.offset = 0;
 		bufferInfoSH.range = VK_WHOLE_SIZE;
 
+		VkDescriptorImageInfo brdfLutImageInfo{};
+		brdfLutImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		brdfLutImageInfo.imageView = imageBasedRenderer.brdfLUT->textureImageView;
+		brdfLutImageInfo.sampler = imageBasedRenderer.brdfLUT->textureSampler;
+
+		VkDescriptorImageInfo prefilterImageInfo{};
+		prefilterImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		prefilterImageInfo.imageView = imageBasedRenderer.prefilterMap->textureImageView;
+		prefilterImageInfo.sampler = imageBasedRenderer.prefilterMap->textureSampler;
+
+		VkDescriptorImageInfo hdrImageInfo{};
+		hdrImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		hdrImageInfo.imageView = imageBasedRenderer.hdrImage->textureImageView;
+		hdrImageInfo.sampler = imageBasedRenderer.hdrImage->textureSampler;
 
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
@@ -1053,6 +1086,9 @@ void DeferredRendererVulkan::_createLightDescriptor()
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 2, imageInfo);
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 3, noiseImageInfo);
 		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 4, bufferInfoSH);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 5, brdfLutImageInfo);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 6, prefilterImageInfo);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 7, hdrImageInfo);
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 }
