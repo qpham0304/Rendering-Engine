@@ -47,7 +47,6 @@ public:
 	void waitIdle();
 
 private:
-	Logger* m_logger{ nullptr };
 	uint32_t currentFrame = 0;
 	std::atomic<uint16_t> m_ids;
 	uint16_t activeCommandPool = 0;

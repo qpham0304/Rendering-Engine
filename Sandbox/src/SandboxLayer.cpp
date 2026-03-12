@@ -113,7 +113,7 @@ bool SandBoxLayer::init()
 
 void SandBoxLayer::onAttach(LayerManager *manager)
 {
-    
+    init();
 }
 
 void SandBoxLayer::onDetach()

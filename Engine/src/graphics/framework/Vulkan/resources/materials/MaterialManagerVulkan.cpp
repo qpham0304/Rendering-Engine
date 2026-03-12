@@ -21,8 +21,6 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 {
     Service::init(config);
 
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
-
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&device);
 
@@ -132,7 +130,7 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 
 void MaterialManagerVulkan::bindMaterial(const uint32_t &id, void* cmdBuffer, void* p)
 {
-	assert(p, "pipeline required");
+	assert(p && "pipeline required");
 
 	MaterialVulkan material = materials.at(id);
 	VkDescriptorSet materialSet = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID)[0];

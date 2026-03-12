@@ -46,7 +46,6 @@ public:
 	TextureVulkan* prefilterMap;
 	
 protected:
-	Logger* m_logger{ nullptr };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	MeshManager* meshManager{ nullptr };
 	ModelManager* modelManager{ nullptr };

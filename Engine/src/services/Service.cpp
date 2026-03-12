@@ -17,6 +17,8 @@ bool Service::init(WindowConfig config)
 			
 	m_logger = make_unique<LoggerSpd>(m_serviceName);
 
+	m_logger->setLevel(LogLevel::Warn);
+	
 	return true;
 }
 

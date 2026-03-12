@@ -26,7 +26,6 @@ bool TextureManagerVulkan::init(WindowConfig config)
 
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = static_cast<RenderDeviceVulkan*>(&device);
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
 	vulkanBufferManager = static_cast<BufferManagerVulkan*>(&bufferManager);

@@ -75,7 +75,7 @@ void Engine::init()
 			engineLogger->error("Service Initilize failed: {}", service->getServiceName());
 		}
 		else {
-			engineLogger->info("Initilize Service: {}", service->getServiceName());
+			engineLogger->debug("Initilize Service: {}", service->getServiceName());
 		}
 	}
 }
@@ -109,7 +109,7 @@ void Engine::close()
 			engineLogger->error("Service Close failed: {}", service->getServiceName());
 		}
 		else {
-			engineLogger->info("Closing Service: {}", service->getServiceName());
+			engineLogger->debug("Closing Service: {}", service->getServiceName());
 		}
 	}
 }

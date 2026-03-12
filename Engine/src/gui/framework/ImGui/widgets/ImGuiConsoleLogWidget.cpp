@@ -30,18 +30,67 @@ ImGuiConsoleLogWidget::ImGuiConsoleLogWidget() : ConsoleLogWidget()
 
 }
 
+ImGuiConsoleLogWidget::~ImGuiConsoleLogWidget()
+{
+	
+}
+
 void ImGuiConsoleLogWidget::render()
 {
-	ImGui::BeginGroup();
+	ImGuiIO& io = ImGui::GetIO();
+
+	ImGui::Begin("Console");
+
+	if (ImGui::Button("Clear")) s_UiBuffer.clear();
+	ImGui::SameLine();
+	ImGui::Text("Size: %d bytes", s_UiBuffer.size());
+
+	ImGui::Separator();
+
+	// Scrolling Region: Reserve height for the input field below
+	// -ImGui::GetFrameHeightWithSpacing() leaves exact room for one line of input
+	// const float footer_height_to_reserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+	const float footer_height_to_reserve = 0.0f;
+	ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+	ImGui::TextUnformatted(s_UiBuffer.begin());
+
+	if (m_scrollToBottom || (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
+		ImGui::SetScrollHereY(1.0f);
+	m_scrollToBottom = false;
+
+	ImGui::EndChild();
+
+	m_imguiLogger.pollMessage();
+
+	// ImGui::Separator();
+
+	// char inputBuffer[256] = "";
+	// bool reclaim_focus = false;
+
+	// ImGuiInputTextFlags_EnterReturnsTrue allows process the command only when Enter is hit
+	// if (ImGui::InputText("Command", inputBuffer, IM_ARRAYSIZE(inputBuffer), ImGuiInputTextFlags_EnterReturnsTrue))
+	// {
+	// 	std::string command(inputBuffer);
+	// 	if (!command.empty()) {
+	// 		//HandleCommand(command);   //logic placeholder
+	// 	}
+	// 	inputBuffer[0] = '\0';
+	// 	reclaim_focus = true;
+	// 	m_scrollToBottom = true;
+	// }
+	
+	// ImGui::SetItemDefaultFocus();	// auto-focus on the input box if we just sent a command
+	// if (reclaim_focus) {
+	// 	ImGui::SetKeyboardFocusHere(-1); // Focus previous widget
+	// }
+
+	ImGui::End();
+
+	// ImGui::BeginGroup();
 	//ImGui::SetNextItemAllowOverlap();
 	//ImGui::SetCursorPos(ImGui::GetWindowContentRegionMin());
 	Profiler::display();
-
-
-	// ImGui::Begin("console");
-	ImGui::ShowDebugLogWindow();
-	// ImGui::End();
-
-	//ImGui::ShowDemoWindow();
-	ImGui::EndGroup();
+	// ImGui::ShowDebugLogWindow();
+	// ImGui::EndGroup();
 }

@@ -37,7 +37,6 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
 
@@ -164,7 +163,6 @@ void ImageBasedRendererVulkan::onUpdate()
 			descriptorManagerVulkan->updateDescriptorSets(&writes);
 		}
 		hdrImage_temp = nullptr;
-		printf("updated");
 	}
 	
 }

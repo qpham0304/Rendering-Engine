@@ -13,11 +13,15 @@ RendererManagerVulkan::~RendererManagerVulkan()
 
 bool RendererManagerVulkan::init(WindowConfig config)
 {
+    Service::init(config);
+
     return true;
 }
 
 bool RendererManagerVulkan::onClose()
 {
+    Service::onClose();
+
     return true;
 }
 
@@ -33,10 +37,10 @@ std::vector<uint32_t> RendererManagerVulkan::listIDs() const
 
 void RendererManagerVulkan::onUpdate()
 {
-
+    // m_logger->warn("updating...");
 }
 
 void RendererManagerVulkan::render()
 {
-    
+    // m_logger->warn("rendering...");
 }

@@ -30,7 +30,6 @@ bool BufferManagerVulkan::init(WindowConfig config)
 
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&device);
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
 	if (!(renderDeviceVulkan && m_logger)) {
 		return false;

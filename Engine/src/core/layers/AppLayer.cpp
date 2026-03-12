@@ -68,7 +68,7 @@ bool AppLayer::init()
 void AppLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);
-//setLogScopeClient();
+	//setLogScopeClient();
 
 	int width = AppWindow::getWidth();
 	int height = AppWindow::getHeight();

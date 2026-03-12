@@ -3,11 +3,13 @@
 
 extern ImGuiTextBuffer s_UiBuffer;
 
-class ImGuiInternalLogger : public Logger {
+class ImGuiLogger : public Logger {
 public:
-    ImGuiInternalLogger() : Logger("ImGuiInternal"), m_logLevel("DEBUG") {}
+    ImGuiLogger() : Logger("ImGuiInternal"), m_logLevel("DEBUG") {}
+    virtual ~ImGuiLogger() override;
 
     void setLevel(LogLevel level) override;
+    void pollMessage();
 
 protected:
     void logMessage(LogLevel level, const std::string& message) override;

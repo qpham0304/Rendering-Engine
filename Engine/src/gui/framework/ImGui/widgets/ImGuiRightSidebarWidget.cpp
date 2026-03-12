@@ -17,7 +17,6 @@ ImGuiRightSidebarWidget::ImGuiRightSidebarWidget()
         selectedTexture(0)
 {
     scene = SceneManager::getInstance().getActiveScene();
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 }
 
 void ImGuiRightSidebarWidget::TextureModal(const ImTextureID& id) {

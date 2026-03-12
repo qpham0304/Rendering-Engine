@@ -31,7 +31,5 @@ public:
 protected:
 	Logger& Log() const;
 
-private:
-	Logger* m_logger;
 };
 

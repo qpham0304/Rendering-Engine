@@ -49,11 +49,9 @@ void LoggerSpd::logMessage(LogLevel level, const std::string& message)
 {
     m_logger->logger->log(toSpdLevel(level), message);
 
-    //if (m_publishLog) {
-    //    GuiMessageEvent messageEvent = GuiMessageEvent(message);
-    //    messageEvent->logLevel = level;
-    //    EventManager::getInstance()->publish(messageEvent);
-    //}
+    // push to message queue for gui console consumption
+    std::lock_guard<std::mutex> lock(queueMutex);
+    Logger::messageQueue.push({level, message});
 }
 
 void LoggerSpd::setLevel(LogLevel level)

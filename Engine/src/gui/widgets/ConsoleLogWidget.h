@@ -6,9 +6,10 @@ class ConsoleLogWidget : public Widget
 {
 protected:
 	ConsoleLogWidget() : Widget() {}
-
+	virtual ~ConsoleLogWidget() override = default;
+	
 public:
 
-	virtual void render() = 0;
+	virtual void render() override = 0;
 };
 

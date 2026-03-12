@@ -29,7 +29,6 @@ bool ModelManager::init(WindowConfig config)
 {
     Service::init(config);
 
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
@@ -122,7 +121,7 @@ void ModelManager::_loadModel(std::string_view path)
     // }
 
     std::string loadTimer = std::string("Model loading ") + path.data();
-    Timer(loadTimer.c_str());
+    Timer(loadTimer.c_str(), true);
 
     std::string directory = std::string(path).substr(0, path.find_last_of('/'));
     std::string fileName = std::string(path).substr(path.find_last_of('/') + 1);

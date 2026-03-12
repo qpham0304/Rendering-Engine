@@ -1,27 +1,21 @@
 #pragma once
 
 #include "gui/widgets/ConsoleLogWidget.h"
+#include "gui/framework/ImGui/ImGuiLogger.h"
 #include <imgui.h>
-#include <unordered_map>
-
-// class TextureManager;
-// class MeshManager;
-// class ModelManager;
-// class BufferManager;
-// class MaterialManager;
-class DescriptorManagerVulkan;
 
 class ImGuiConsoleLogWidget : public ConsoleLogWidget
 {
 public:
 	ImGuiConsoleLogWidget();
+	virtual ~ImGuiConsoleLogWidget() override;
 
 	void render() override;
 	
-protected:
-	bool scrollToBottom = false;
-
 
 private:
+	bool m_scrollToBottom{ true };
+	ImGuiLogger m_imguiLogger;
+
 };
 

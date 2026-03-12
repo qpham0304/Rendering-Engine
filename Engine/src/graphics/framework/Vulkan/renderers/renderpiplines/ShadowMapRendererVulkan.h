@@ -50,7 +50,6 @@ public:
 	void dispatchBlur(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 public:	//TODO: make private once done testing	
-	Logger* m_logger{ nullptr };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	MeshManager* meshManager{ nullptr };
 	ModelManager* modelManager{ nullptr };

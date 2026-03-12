@@ -33,6 +33,7 @@ void Profiler::_addTracker(const ProfilerData& data)
 	profileList[data.name] = data.time;
 }
 
+//TODO: let imgui query from profiler and display it no coupling
 void Profiler::_display()
 {
 	ImGui::Begin("Profiler");

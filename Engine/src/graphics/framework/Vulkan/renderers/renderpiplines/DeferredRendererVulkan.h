@@ -82,7 +82,6 @@ public:	//TODO: make private once done testing
 
 	bool showGui{ true };
 
-	Logger* m_logger{ nullptr };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	MeshManager* meshManager{ nullptr };
 	ModelManager* modelManager{ nullptr };
