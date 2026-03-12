@@ -15,7 +15,7 @@ public:
     virtual void destroy(uint32_t id) = 0;
     virtual std::vector<uint32_t> listIDs() const = 0;
     virtual uint32_t createMaterial(const MaterialDesc& material) = 0;
-    virtual void bindMaterial(const uint32_t& id, void* cmdBuffer = nullptr) = 0;
+    virtual void bindMaterial(const uint32_t& id, void* cmdBuffer = nullptr, void* pipeline = nullptr) = 0;
     virtual MaterialDesc getMaterial(const uint32_t& id) = 0;
     virtual void* getMaterialLayout() = 0;
 

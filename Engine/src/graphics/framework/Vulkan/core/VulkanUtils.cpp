@@ -30,7 +30,9 @@ std::vector<char> VulkanUtils::readFile(const std::string& filename)
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
 	if (!file.is_open()) {
-		throw std::runtime_error("Device::readFile: failed to open file!");
+		throw std::runtime_error(
+			std::string("Device::readFile: failed to open file! ") + filename
+		);
 	}
 
 	size_t fileSize = (size_t)file.tellg();

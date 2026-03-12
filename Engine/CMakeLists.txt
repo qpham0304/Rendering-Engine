@@ -29,6 +29,7 @@ set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_glfw.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_opengl3.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_vulkan.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/misc/cpp/imgui_stdlib.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImGuizmo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/GraphEditor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImCurveEdit.cpp
@@ -42,6 +43,46 @@ add_library(${PROJECT_NAME} STATIC
     ${ENGINE_HEADERS}
     ${IMGUI_SOURCES}
 )
+
+# precompile headers
+set(PCH_HEADERS
+    <string>
+    <sstream>
+    <iostream>
+    <algorithm>
+    <memory>
+    <unordered_map>
+    <unordered_set>
+    <set>
+    <future>
+    <mutex>
+    <shared_mutex>
+    <thread>
+    <atomic>
+    <cstring>
+    <fstream>
+    <stdexcept>
+    <vector>
+    <array>
+    <cstdint>
+    <limits>
+    <optional>
+    <variant>
+    <any>
+    <functional>
+    <glm/glm.hpp>
+    <imgui.h>
+    <vulkan/vulkan.h>
+    <nlohmann/json.hpp>
+)
+
+if(WIN32)
+    # Use definitions to keep windows.h from breaking things
+    target_compile_definitions(${PROJECT_NAME} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    list(APPEND PCH_HEADERS <windows.h>)
+endif()
+
+target_precompile_headers(${PROJECT_NAME} PRIVATE ${PCH_HEADERS})
 
 # Output folders (optional)
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -72,11 +113,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/FileWatch
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/misc/cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/stb
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/glm
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo
     $ENV{VULKAN_SDK}/Include
 )
+
 
 # Link dependencies (publicly)
 target_link_libraries(${PROJECT_NAME} PUBLIC
@@ -88,6 +131,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     glfw
     opengl32
 )
+
+target_compile_definitions(${PROJECT_NAME} PUBLIC IMGUI_DEFINE_MATH_OPERATORS)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC
     IMGUI_IMPL_OPENGL_LOADER_GLAD

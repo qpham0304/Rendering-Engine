@@ -1,11 +1,13 @@
 #pragma once
 
 #include "graphics/renderers/Renderer.h"
+#include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
+#include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
+
 #include <glm/glm.hpp>
 #include <vector>
-#include <unordered_map>
-#include "graphics/framework/vulkan/core/WrapperStructs.h"
-#include "../resources/buffers/BufferManagerVulkan.h"
 
 class Logger;
 class TextureManager;
@@ -22,19 +24,6 @@ class VulkanPipeline;
 class RendererVulkan : public Renderer
 {
 public:
-	struct RenderTarget {
-		VkRenderPass renderPass;
-		std::vector<VkFramebuffer> framebuffers;
-		std::vector<TextureVulkan*> colorTextures;
-		std::vector<TextureVulkan*> depthTextures;
-
-		void destroy(VkDevice device) {
-			for (size_t i = 0; i < framebuffers.size(); i++) {
-				vkDestroyFramebuffer(device, framebuffers[i], nullptr);
-			}
-			vkDestroyRenderPass(device, renderPass, nullptr);
-		}
-	};
 
 private:
     struct PushConstantData {
@@ -89,17 +78,10 @@ private:
 	void _createDescriptorPool();
 	void _createDescriptorSets();
 
-	//TODO: PRIORITY: support recreation on screen resize
+	//TODO: support recreation on screen resize
 	void _createOffscreenViewDescriptorSet();
-	void _createDepthResources(VulkanDevice& device, TextureVulkan& depthTexture);
 
-private:
-	const int numInstances = 1;
-	const int numLights = 100;
-
-	bool showGui{ true };
-	PushConstantData pushConstantData{};
-
+protected:
 	Logger* m_logger{ nullptr };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	MeshManager* meshManager{ nullptr };
@@ -110,6 +92,13 @@ private:
     BufferManager* bufferManager{ nullptr };
 	BufferManagerVulkan* bufferManagerVulkan{ nullptr };
 	DescriptorManagerVulkan* descriptorManagerVulkan{ nullptr };
+
+private:
+	const int numInstances = 1;
+	const int numLights = 100;
+
+	bool showGui{ true };
+	PushConstantData pushConstantData{};
 
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
@@ -126,10 +115,15 @@ private:
 
 	uint32_t storageBufferID;
 
-	RenderTarget renderTarget;
+	VulkanRenderTarget renderTarget;
 	std::unique_ptr<VulkanPipeline> offscreenPipeline;
 	uint32_t imGuilayoutID;
 	uint32_t imGuipoolID;
 	std::vector<uint32_t> imGuisetIDs;
+
+	bool isActive{ false };
+
+	DeferredRendererVulkan deferredRenderer;
+	// ForwardRendererVulkan forwardRenderer;
 };
 

@@ -29,7 +29,7 @@ bool ModelManager::init(WindowConfig config)
 {
     Service::init(config);
 
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
@@ -131,7 +131,6 @@ void ModelManager::_loadModel(std::string_view path)
     unsigned int flags = aiProcess_Triangulate
         | aiProcess_GenSmoothNormals
         | aiProcess_GlobalScale
-        | aiProcess_FlipUVs
         | aiProcess_CalcTangentSpace
         | aiProcess_SplitByBoneCount
         | aiProcess_LimitBoneWeights
@@ -265,7 +264,7 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, aiTextureType
         mat->GetTexture(type, i, &str);
 
         std::string path = std::string(directory) + '/' + std::string(str.C_Str());
-        uint32_t textureID = textureManager->loadTexture(path.data());
+        uint32_t textureID = textureManager->loadTexture(path.data(), 5, false);
         textureIDs.push_back(textureID);
     }
 

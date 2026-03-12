@@ -3,10 +3,6 @@
 
 class Entity
 {
-private:
-	entt::entity entity;
-	entt::registry* registry;
-
 public:
 	Entity() = default;
 	Entity(const entt::entity& entity, entt::registry& registry);
@@ -57,4 +53,9 @@ public:
 	void onCameraComponentAdded();
 	void onModelComponentAdded();
 	void onMeshComponentAdded();
+	
+private:
+	entt::entity entity;
+	entt::registry* registry;
+
 };

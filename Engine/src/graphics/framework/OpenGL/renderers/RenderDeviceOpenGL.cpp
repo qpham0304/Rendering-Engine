@@ -13,8 +13,8 @@ bool RenderDeviceOpenGL::init(WindowConfig config)
 {
 	Service::init(config);
 
-	m_logger = &ServiceLocator::GetService<Logger>("Client_LoggerPSD");
-	Log().info("[{}] {}", m_ServiceName, "Render Device initialized");
+	m_logger = &ServiceLocator::GetService<Logger>("Client_LoggerSPD");
+	Log().info("[{}] {}", m_serviceName, "Render Device initialized");
 
 	return true;
 }

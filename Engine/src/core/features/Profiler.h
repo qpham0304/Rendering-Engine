@@ -29,4 +29,5 @@ private:
 private:
 	std::unordered_map<std::string, double> profileList;
 
+	bool showDetail{ false };
 };

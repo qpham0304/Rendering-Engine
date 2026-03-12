@@ -4,7 +4,6 @@
 #include <string>
 #include <format>
 #include <vector>
-#include "services/Service.h"
 
 enum class LogLevel {
     Trace,
@@ -17,7 +16,7 @@ enum class LogLevel {
 
 class WindowConfig;
 
-class Logger : public Service
+class Logger
 {
 public:
     virtual ~Logger() = default;
@@ -60,14 +59,14 @@ public:
         logMessage(LogLevel::Debug, std::vformat(fmt, std::make_format_args(args...)));
     }
 
+    const std::string& name() const { return m_name; }
+
 protected:
-    Logger(std::string name = "Logger") : Service(name) {};
+    Logger() : m_name("Logger") {};
+    Logger(std::string loggerType, std::string loggerName = "Logger") : m_name("Logger") {};
+
+    std::string m_name;
 
     virtual void logMessage(LogLevel level, const std::string& message) = 0;
-    virtual bool init(WindowConfig config) override { return Service::init(config); };
-    virtual bool onClose() override { return true; };
-    virtual void onUpdate() override {};
-
-private:
-	//static Logger* loggerInstance;
+    
 };

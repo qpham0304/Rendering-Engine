@@ -10,12 +10,12 @@
 #include "widgets/ImGuiRightSidebarWidget.h"
 #include "widgets/ImGuiMenuWidget.h"
 #include "gui/GuiManager.h"
-#include "widgets/ImGuiLogger.h"
+#include "widgets/ImGuiMathWidget.h"
 
 class ImGuiManager : public GuiManager 
 {
-public:
-
+public:	
+	
 public:
 	ImGuiManager();
 	ImGuiManager(bool darkTheme);
@@ -63,5 +63,4 @@ private:
 
 	ImGuizmo::OPERATION GuizmoType = ImGuizmo::OPERATION::TRANSLATE;
 	
-	ImGuiInternalLogger imguiLogger;
 };

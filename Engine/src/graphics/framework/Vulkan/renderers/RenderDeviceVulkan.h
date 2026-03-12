@@ -45,7 +45,6 @@ public:
 	void setViewport();
 	void setScissor();
 	void waitIdle();
-	Logger& Log() const;
 
 private:
 	Logger* m_logger{ nullptr };

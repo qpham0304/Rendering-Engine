@@ -24,9 +24,6 @@ bool RenderDeviceVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
-	m_logger->info("Vulkan Render Device initialized");
-
 	device.create();
 	swapchain.create();
 	commandPool.create();
@@ -105,11 +102,6 @@ void* RenderDeviceVulkan::getNativeDevice()
 void* RenderDeviceVulkan::getPhysicalDevice()
 {
 	return static_cast<void*>(device.physicalDevice);
-}
-
-Logger& RenderDeviceVulkan::Log() const
-{
-	return *m_logger;
 }
 
 uint16_t RenderDeviceVulkan::_assignID()

@@ -9,103 +9,75 @@
 #include "graphics/framework/Vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h"
 #include "graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h"
+#include "graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h"
+#include "graphics/framework/Vulkan/renderers/RendererManagerVulkan.h"
 
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)
 {
-    loggerFactory.Register(
-        LoggerPlatform::SPDLOG,
-        RegisterConstructor<Logger, LoggerSpd, std::string>()
-    );
-
-    windowFactory.Register(
+    GetFactory<AppWindow, WindowPlatform>().Register(
         WindowPlatform::GLFW,
         RegisterConstructor<AppWindow, AppWindowGLFW>()
     );
 
-    guiFactory.Register(
+    GetFactory<GuiManager, GuiPlatform>().Register(
         GuiPlatform::IMGUI,
         RegisterConstructor<GuiManager, ImGuiManager>()
     );
 
-    rendererFactory.Register(
+    GetFactory<Renderer, RenderPlatform>().Register(
         RenderPlatform::VULKAN,
         RegisterConstructor<Renderer, RendererVulkan>()
     );
 
-    renderDeviceFactory.Register(
+    GetFactory<RenderDevice, RenderPlatform>().Register(
         RenderPlatform::VULKAN,
         RegisterConstructor<RenderDevice, RenderDeviceVulkan>()
     );
 
-    renderDeviceFactory.Register(
+    GetFactory<RenderDevice, RenderPlatform>().Register(
         RenderPlatform::OPENGL,
         RegisterConstructor<RenderDevice, RenderDeviceOpenGL>()
     );
 
-    textureManagerFactory.Register(
+    GetFactory<TextureManager, RenderPlatform>().Register(
         RenderPlatform::VULKAN,
         RegisterConstructor<TextureManager, TextureManagerVulkan>()
     );
 
-    bufferManagerFactory.Register(
+    GetFactory<BufferManager, RenderPlatform>().Register(
         RenderPlatform::VULKAN,
         RegisterConstructor<BufferManager, BufferManagerVulkan>()
     );
 
-    descriptorManagerFactory.Register(
+    GetFactory<DescriptorManager, RenderPlatform>().Register(
         RenderPlatform::VULKAN,
         RegisterConstructor<DescriptorManager, DescriptorManagerVulkan>()
     );
 
-    materialManagerFactory.Register(
+    GetFactory<MaterialManager, RenderPlatform>().Register(
         RenderPlatform::VULKAN,
         RegisterConstructor<MaterialManager, MaterialManagerVulkan>()
+    );
+
+    GetFactory<RendererManager, RenderPlatform>().Register(
+        RenderPlatform::VULKAN,
+        RegisterConstructor<RendererManager, RendererManagerVulkan>()
     );
     
 }
 
-std::unique_ptr<Logger> PlatformFactory::createLogger(LoggerPlatform platform, std::string_view name)
+std::unique_ptr<Logger> PlatformFactory::Create(LoggerPlatform platform, std::string name)
 {
-    return loggerFactory.Create(platform, name.data());
-}
+    std::unique_ptr<Logger> logger;
 
-std::unique_ptr<AppWindow> PlatformFactory::createWindow(WindowPlatform platform)
-{
-	return windowFactory.Create(platform);
-}
+    if (platform == LoggerPlatform::SPDLOG) {
+        logger = std::make_unique<LoggerSpd>(name);
+    }
+    else {
+        throw std::runtime_error("platform not supported");
+    }
 
-std::unique_ptr<GuiManager> PlatformFactory::createGuiManager(GuiPlatform platform)
-{
-	return guiFactory.Create(platform);
+    serviceLocator.Register(logger->name(), *logger.get());
+    return logger;
 }
-std::unique_ptr<Renderer> PlatformFactory::createRenderer(RenderPlatform platform)
-{
-	return rendererFactory.Create(platform);
-}
-
-std::unique_ptr<RenderDevice> PlatformFactory::createRenderDevice(RenderPlatform platform)
-{
-    return renderDeviceFactory.Create(platform);
-}
-
-std::unique_ptr<TextureManager> PlatformFactory::createTextureManager(RenderPlatform platform)
-{
-    return textureManagerFactory.Create(platform);
-}
-
-std::unique_ptr<BufferManager> PlatformFactory::createBufferManager(RenderPlatform platform)
-{
-    return bufferManagerFactory.Create(platform);
-}
-
-std::unique_ptr<DescriptorManager> PlatformFactory::createDescriptorManager(RenderPlatform platform)
-{
-    return descriptorManagerFactory.Create(platform);
-}
-
-std::unique_ptr<MaterialManager> PlatformFactory::createMaterialManager(RenderPlatform platform)
-{
-    return materialManagerFactory.Create(platform);
-}
-

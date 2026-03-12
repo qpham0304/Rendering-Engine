@@ -1,0 +1,78 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0) uniform sampler2D inputTexture;
+layout(std430, binding = 1) buffer PartialSums {
+    vec4 coefficients[]; // size: num_workgroups * 9
+};
+
+const float PI = 3.14159265359;
+
+// SH Basis functions (Ylm)
+void getSHBasis(vec3 dir, out float Y[9]) {
+    Y[0] = 0.282095;                                    // L0,0
+    Y[1] = 0.488603 * dir.y;                            // L1,-1
+    Y[2] = 0.488603 * dir.z;                            // L1,0
+    Y[3] = 0.488603 * dir.x;                            // L1,1
+    Y[4] = 1.092548 * dir.x * dir.y;                    // L2,-2
+    Y[5] = 1.092548 * dir.y * dir.z;                    // L2,-1
+    Y[6] = 0.315392 * (3.0 * dir.z * dir.z - 1.0);      // L2,0
+    Y[7] = 1.092548 * dir.x * dir.z;                    // L2,1
+    Y[8] = 0.546274 * (dir.x * dir.x - dir.y * dir.y);  // L2,2
+}
+
+shared vec3 s_coeffs[9][256];
+
+void main() {
+    ivec2 texSize = textureSize(inputTexture, 0);
+    ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
+    uint localIdx = gl_LocalInvocationIndex;
+
+    for(int i = 0; i < 9; i++) {
+        s_coeffs[i][localIdx] = vec3(0.0);
+    }
+
+    // calculate if we are within the actual image pixels
+    if (coords.x < texSize.x && coords.y < texSize.y) {
+        float u = (float(coords.x) + 0.5) / float(texSize.x);
+        float v = (float(coords.y) + 0.5) / float(texSize.y);
+        
+        float phi = u * 2.0 * PI;
+        float theta = v * PI;
+
+        // calculate direction
+        vec3 dir = vec3(sin(theta) * sin(phi), cos(theta), sin(theta) * cos(phi));
+
+        // calculate weight (Solid Angle)
+        float weight = sin(theta) * (PI / texSize.y) * (2.0 * PI / texSize.x);
+        vec3 sampledColor = texture(inputTexture, vec2(u, v)).rgb * weight;
+
+        // project into SH using the REAL direction
+        float Y[9];
+        getSHBasis(normalize(dir), Y); 
+        
+        for(int i = 0; i < 9; i++) {
+            s_coeffs[i][localIdx] = sampledColor * Y[i];
+        }
+    }
+
+    barrier();
+
+    // local Reduction in Shared Memory
+    for (uint stride = 128; stride > 0; stride >>= 1) {
+        if (localIdx < stride) {
+            for(int i = 0; i < 9; i++) {
+                s_coeffs[i][localIdx] += s_coeffs[i][localIdx + stride];
+            }
+        }
+        barrier();
+    }
+
+    if (localIdx == 0) {
+        uint groupIdx = gl_WorkGroupID.y * gl_NumWorkGroups.x + gl_WorkGroupID.x;
+        for(int i = 0; i < 9; i++) {
+            coefficients[groupIdx * 9 + i] = vec4(s_coeffs[i][0], 1.0);
+        }
+    }
+}

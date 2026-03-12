@@ -30,7 +30,7 @@ public:
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
 	virtual uint32_t createMaterial(const MaterialDesc& materialDesc) override;
-    virtual void bindMaterial(const uint32_t& id, void* cmdBuffer) override;
+    virtual void bindMaterial(const uint32_t& id, void* cmdBuffer, void* pipeline) override;
     virtual MaterialDesc getMaterial(const uint32_t& id) override;
 	virtual void* getMaterialLayout() override;
 

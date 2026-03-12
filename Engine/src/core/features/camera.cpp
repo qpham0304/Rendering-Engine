@@ -148,7 +148,6 @@ bool Camera::processKeyboard()
 }
 
 bool Camera::processMouse() {
-
 	bool isMouseMoved = false;
 
 	if (AppWindow::isMousePressed(MOUSE_BUTTON_LEFT)) {

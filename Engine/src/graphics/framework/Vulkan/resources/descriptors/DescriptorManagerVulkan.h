@@ -36,6 +36,13 @@ public:
 		const VkDescriptorImageInfo& imageInfo
 	);
 
+	void writeStorageImage(
+		std::vector<VkWriteDescriptorSet>* writes,
+		const VkDescriptorSet& dstSet,
+		uint32_t binding,
+		const VkDescriptorImageInfo& imageInfo
+	);
+
 	void writeStorage(
 		std::vector<VkWriteDescriptorSet>* writes,
 		const VkDescriptorSet& dstSet,

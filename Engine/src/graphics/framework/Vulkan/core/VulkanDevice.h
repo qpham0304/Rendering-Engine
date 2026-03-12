@@ -3,31 +3,44 @@
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
 #include <iostream>
-#include <stdexcept>
-#include <algorithm>
 #include <vector>
 #include <optional>
-#include <set>
 #include <array>
-#include <memory>
 #include <unordered_map>
 
 #define MAX_BONE_INFLUENCE 4
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	VkDebugUtilsMessageTypeFlagsEXT messageType,
-	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-	void* pUserData) {
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData
+) {
+    const char* RED     = "\033[31m";
+    const char* YELLOW  = "\033[33m";
+    const char* WHITE   = "\033[37m";
+    const char* RESET   = "\033[0m";
+    const char* BOLD    = "\033[1m";
 
-	std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    std::cerr << "[Validation Layer] ";
 
-	return VK_FALSE;
+    if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+        std::cerr << BOLD << RED;
+    } else if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+        std::cerr << YELLOW;
+    } else {
+        std::cerr << WHITE;
+    }
+
+    std::cerr << pCallbackData->pMessage << RESET << std::endl;
+
+    return VK_FALSE;
 }
 
 class VulkanDevice
 {
-
+	class Logger;
+	
 public:
 	VulkanDevice();
 	operator VkDevice() const noexcept;
@@ -96,17 +109,17 @@ public:
 			
 			attributeDescriptions[3].binding = 0;
 			attributeDescriptions[3].location = 3;
-			attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[3].offset = offsetof(VertexVulkan, normal);
 			
 			attributeDescriptions[4].binding = 0;
 			attributeDescriptions[4].location = 4;
-			attributeDescriptions[4].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[4].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[4].offset = offsetof(VertexVulkan, tangent);
 			
 			attributeDescriptions[5].binding = 0;
 			attributeDescriptions[5].location = 5;
-			attributeDescriptions[5].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[5].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[5].offset = offsetof(VertexVulkan, bitangent);
 
 			attributeDescriptions[6].binding = 0;
@@ -116,7 +129,7 @@ public:
 
 			attributeDescriptions[7].binding = 0;
 			attributeDescriptions[7].location = 7;
-			attributeDescriptions[7].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[7].format = VK_FORMAT_R32G32B32A32_SFLOAT;
 			attributeDescriptions[7].offset = offsetof(VertexVulkan, m_Weights);
 
 			return attributeDescriptions;
@@ -166,7 +179,7 @@ public:
 #endif
 
 private:
-
+	Logger* m_logger;
 
 };
 

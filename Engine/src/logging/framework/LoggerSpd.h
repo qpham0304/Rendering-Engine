@@ -1,21 +1,20 @@
 #pragma once
 
-#include "logging/Logger.h"
-#include <memory>
+#include "Logging/Logger.h"
 
 class LoggerSpd : public Logger
 {
+
 public:
     LoggerSpd(std::string name = "LoggerSPD");
-    ~LoggerSpd() override = default;
+    ~LoggerSpd() override;
 
     void logMessage(LogLevel level, const std::string& message) override;
     void setLevel(LogLevel level) override;
 
 private:
-    LoggerSpd() = default;
+    LoggerSpd();
     struct SpdLogHandle;
-    std::unique_ptr<SpdLogHandle> m_Logger;
+    std::unique_ptr<SpdLogHandle> m_logger;
 
 };
-

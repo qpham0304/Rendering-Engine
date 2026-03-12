@@ -19,8 +19,6 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <core/scene/SceneManager.h>
-
-
 #include "imgui.h" // TODO: remove it once done
 
 RendererVulkan::RendererVulkan(std::string serviceName) 
@@ -38,7 +36,7 @@ bool RendererVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
 
@@ -129,10 +127,13 @@ bool RendererVulkan::init(WindowConfig config)
 	size_t lightBufferSize = lights.size() * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
+	deferredRenderer.init(config);
+
 	_createDescriptorSets();
 
 	_createOffscreenTarget();
 	_createOffscreenViewDescriptorSet();
+
 	
 	return true;
 }
@@ -146,6 +147,8 @@ bool RendererVulkan::onClose()
 	offscreenPipeline->destroy();
 	renderTarget.destroy(renderDeviceVulkan->device);
 
+	deferredRenderer.onClose();
+	
 	return true;
 }
 
@@ -168,8 +171,7 @@ void RendererVulkan::endFrame()
 void RendererVulkan::render(Camera& camera)
 {
 	UniformBufferObject ubo{};
-	ubo.model = glm::mat4(1.0);
-	ubo.model = glm::scale(ubo.model, glm::vec3(0.5f, 0.5f, 0.5f));
+	ubo.model = glm::scale(glm::mat4(1.0), glm::vec3(0.5f, 0.5f, 0.5f));
 	ubo.view = camera.getViewMatrix();
 	ubo.proj = camera.getProjectionMatrix();
 	ubo.proj[1][1] *= -1;
@@ -190,12 +192,17 @@ void RendererVulkan::render(Camera& camera)
 	
 	
 	renderDeviceVulkan->commandPool.beginBuffer();
-	if(showGui) {
-		recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-	}
+
+
+	//if(showGui) {
+	//	recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
+	//}
+	deferredRenderer.render(camera);
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
+
+
 	renderDeviceVulkan->commandPool.endBuffer();
-	
+
 	endFrame();
 }
 
@@ -245,11 +252,17 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 
 		int index = 1;
 		for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
+			
 			const glm::mat4& entityTransform = entity.getComponent<TransformComponent>().getModelMatrix();
 			// TODO: copy the multiple all transforms to ssbo would be slow
-			if (instanceData[index].model != entityTransform) {
-				instanceData[index].model = entityTransform;
+			if(index < instanceData.size()) {
+				if (instanceData[index].model != entityTransform) {
+					instanceData[index].model = entityTransform;
+				}
+			} else {
+				instanceData.push_back({ entityTransform });
 			}
+			
 
 			if(entity.hasComponent<ModelComponent>()) {
 				uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
@@ -257,7 +270,7 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 
 				for (uint32_t meshID : model->meshIDs) {
 					const Mesh* mesh = meshManager->getMesh(meshID);
-					materialManager->bindMaterial(mesh->materialID, commandBuffer);
+					materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)&renderDeviceVulkan->pipeline);
 					meshManager->bindMesh(meshID);
 
 					uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
@@ -269,7 +282,7 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 				MeshComponent meshComponent = entity.getComponent<MeshComponent>();
 				for (uint32_t meshID : meshComponent.meshIDs) {
 					const Mesh* mesh = meshManager->getMesh(meshID);
-					materialManager->bindMaterial(mesh->materialID, commandBuffer);
+					materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)&renderDeviceVulkan->pipeline);
 					meshManager->bindMesh(meshID);
 
 					uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
@@ -286,7 +299,7 @@ void RendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t i
 
 void RendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
-	Timer("CPU render submission time", true);
+	Timer timer("CPU render submission time", true);
 
 	beginRecording(
 		commandBuffer,
@@ -327,9 +340,14 @@ void RendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, u
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 		const glm::mat4& entityTransform = entity.getComponent<TransformComponent>().getModelMatrix();
 		// TODO: copy the multiple all transforms to ssbo would be slow
-		if (instanceData[index].model != entityTransform) {
-			instanceData[index].model = entityTransform;
+		if(index < instanceData.size()) {
+			if (instanceData[index].model != entityTransform) {
+				instanceData[index].model = entityTransform;
+			}
+		} else {
+			instanceData.push_back({ entityTransform });
 		}
+		
 
 		if(entity.hasComponent<ModelComponent>()) {
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
@@ -337,19 +355,19 @@ void RendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, u
 
 			for (uint32_t meshID : model->meshIDs) {
 				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, commandBuffer);
+				materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)offscreenPipeline.get());
 				meshManager->bindMesh(meshID);
 
 				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
 				renderDeviceVulkan->draw(indexCount, numInstances, index);
 			}
-		} 
-		
+		}
+
 		if (entity.hasComponent<MeshComponent>()) {
 			MeshComponent meshComponent = entity.getComponent<MeshComponent>();
 			for (uint32_t meshID : meshComponent.meshIDs) {
 				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, commandBuffer);
+				materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)offscreenPipeline.get());
 				meshManager->bindMesh(meshID);
 
 				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
@@ -369,6 +387,7 @@ void RendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* fra
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
 	VkRenderPass vulkanRenderPass = static_cast<VkRenderPass>(renderPass);
 	VkFramebuffer vulkanFrameBuffer = static_cast<VkFramebuffer>(frameBuffer);
+	VulkanPipeline* pipelinePtr = static_cast<VulkanPipeline*>(pipeline);
 
 	VkRenderPassBeginInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -388,7 +407,7 @@ void RendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* fra
 	//basic draw commands
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	offscreenPipeline->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
+	pipelinePtr->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
 	renderDeviceVulkan->setViewport();
 	renderDeviceVulkan->setScissor();
@@ -400,7 +419,6 @@ void RendererVulkan::endRecording(void* cmdBuffer)
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
 
 	vkCmdEndRenderPass(commandBuffer);
-
 }
 
 void RendererVulkan::renderGui(void* commandBuffer)
@@ -413,6 +431,34 @@ void RendererVulkan::renderGui(void* commandBuffer)
 	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 	uint32_t i = renderDeviceVulkan->getImageIndex();
 	ImGui::Image(reinterpret_cast<ImTextureID>(descSet), viewportPanelSize);
+
+	deferredRenderer.renderGui();
+
+	ImVec2 wsize = ImGui::GetWindowSize();
+	int wWidth = static_cast<int>(ImGui::GetWindowWidth());
+	int wHeight = static_cast<int>(ImGui::GetWindowHeight());
+	if (SceneManager::cameraController->getViewWidth() != wWidth || SceneManager::cameraController->getViewHeight() != wHeight) {
+		SceneManager::cameraController->updateViewResize(wWidth, wHeight);
+	}
+
+	if (ImGui::IsItemHovered() && ImGui::IsWindowFocused()) {
+		guiManager->editorActive = true;
+	} 
+	else{
+		guiManager->editorActive = false;
+	}
+
+	SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	if(scene){
+ 		const std::vector<Entity>& entities = scene->getSelectedEntities();
+ 		if(!entities.empty()) {
+ 			const Entity& entity = entities[0];
+ 			TransformComponent& transform = entity.getComponent<TransformComponent>();
+			guiManager->renderGuizmo(transform);
+ 		}
+	}
+
 	ImGui::EndChild();
 	ImGui::End();
 	guiManager->render(commandBuffer);
@@ -477,7 +523,9 @@ void RendererVulkan::_createOffscreenTarget()
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderTarget.renderPass);
+	if(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderTarget.renderPass) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create offscreen render pass!");
+	}
 
 	renderTarget.colorTextures.resize(swapchain.swapChainImages.size());
 	renderTarget.depthTextures.resize(swapchain.swapChainImages.size());
@@ -485,41 +533,73 @@ void RendererVulkan::_createOffscreenTarget()
 
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		uint32_t id = textureManager->createTexture();
-		auto* texture = static_cast<TextureVulkan*>(textureManager->getTexture(id));
-		renderTarget.colorTextures[i] = texture;
+
+		auto createTexture = [&] () {
+			auto* texture = static_cast<TextureVulkan*>(textureManager->getTexture(id));
+			renderTarget.colorTextures[i] = texture;
+
+			TextureManagerVulkan::createImage(
+				swapchain.swapChainExtent.width,
+				swapchain.swapChainExtent.height,
+				swapchain.swapChainImageFormat,
+				VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				texture->textureImage,
+				texture->textureImageMemory,
+				1,
+				renderDeviceVulkan->device
+			);
+
+			TextureManagerVulkan::createImageView(
+				texture->textureImage,
+				texture->textureImageView,
+				swapchain.swapChainImageFormat,
+				VK_IMAGE_ASPECT_COLOR_BIT,
+				1,
+				renderDeviceVulkan->device
+			);
+
+			TextureManagerVulkan::createTextureSampler(
+				texture->textureSampler, 
+				renderDeviceVulkan->device
+			);
+		};
+
+		createTexture();
+
+
+		VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
+
+		uint32_t depthId = textureManager->createTexture();
+		renderTarget.depthTextures[i] = static_cast<TextureVulkan*>(textureManager->getTexture(depthId));
 
 		TextureManagerVulkan::createImage(
 			swapchain.swapChainExtent.width,
 			swapchain.swapChainExtent.height,
-			// swapchain.swapChainImageFormat,
-			VK_FORMAT_R8G8B8A8_UNORM,
+			depthFormat,
 			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			texture->textureImage,
-			texture->textureImageMemory,
+			renderTarget.depthTextures[i]->textureImage,
+			renderTarget.depthTextures[i]->textureImageMemory,
+			1,
 			renderDeviceVulkan->device
 		);
 
 		TextureManagerVulkan::createImageView(
-			texture->textureImage,
-			texture->textureImageView,
-			swapchain.swapChainImageFormat,
-			VK_IMAGE_ASPECT_COLOR_BIT,
+			renderTarget.depthTextures[i]->textureImage,
+			renderTarget.depthTextures[i]->textureImageView,
+			depthFormat,
+			VK_IMAGE_ASPECT_DEPTH_BIT,
+			1,
 			renderDeviceVulkan->device
 		);
 
-		TextureManagerVulkan::createTextureSampler(
-			texture->textureSampler, 
-			renderDeviceVulkan->device
-		);
-
-		// _createDepthResources(renderDeviceVulkan->device, *textureTarget.depthTextures[i]);
 
 		std::array<VkImageView, 2> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,
-			// textureTarget.depthTextures[i]->textureImageView
-			renderDeviceVulkan->swapchain.depthImageView
+			renderTarget.depthTextures[i]->textureImageView
 		};
 
 		VkFramebufferCreateInfo framebufferInfo{};
@@ -622,31 +702,18 @@ void RendererVulkan::_createOffscreenViewDescriptorSet()
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = renderTarget.colorTextures[i]->textureImageView;
-		imageInfo.sampler = renderTarget.colorTextures[i]->textureSampler;
+		// imageInfo.imageView = renderTarget.colorTextures[i]->textureImageView;
+		// imageInfo.sampler = renderTarget.colorTextures[i]->textureSampler;
+
+		/*
+		//TODO: move away from modifying deferred renderer directly
+		*/
+		imageInfo.imageView = deferredRenderer.renderTarget.colorTextures[i]->textureImageView;
+		imageInfo.sampler = deferredRenderer.renderTarget.colorTextures[i]->textureSampler;
+
 
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeImage(&writes, imGuiDescriptorSet, 0, imageInfo);
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
-}
-
-void RendererVulkan::_createDepthResources(VulkanDevice& device, TextureVulkan& depthTexture)
-{
-	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-	VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(device);
-
-	TextureManagerVulkan::createImage(
-		swapchain.swapChainExtent.width,
-		swapchain.swapChainExtent.height,
-		depthFormat,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		depthTexture.textureImage,
-		depthTexture.textureImageMemory,
-		device
-	);
-
-	TextureManagerVulkan::createImageView(depthTexture.textureImage, depthTexture.textureImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, device);
 }

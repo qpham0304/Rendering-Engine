@@ -3,7 +3,7 @@
 #include "graphics/renderpasses/RenderPass.h"
 #include "../../core/VulkanDevice.h"
 
-class VulkanRenderPass : RenderPass
+class VulkanRenderPass : public RenderPass
 {
 public:
     VkRenderPass renderPass;

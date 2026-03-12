@@ -1,43 +1,56 @@
 #pragma once
 
-#include "core/layers/LayerManager.h"
+#include <core/features/ServiceLocator.h>
+#include <core/features/PlatformFactory.h>
+#include <services/Service.h>
+#include <core/layers/LayerManager.h>
+
 #include "core/scene/SceneManager.h"
-#include "core/events/EventManager.h"
-#include "core/features/ServiceLocator.h"
-#include "core/features/PlatformFactory.h"
-#include "core/layers/EditorLayer.h"
+
+class Layer;
+class EventManager;
 
 class Engine
 {
 public:
-	std::unique_ptr<GuiManager> guiManager;
+    Engine(WindowConfig config);
 
-public:
-	Engine(WindowConfig windowConfig);
-	~Engine() = default;
+    void pushLayer(Layer* layer);
+    void init();
+    void start();
+    void run();
+    void close();
 
-	void pushLayer(Layer* layer);
-
-	void init();
-	void start();
-	void run();
-	void end();
-	void onClose();
 
 private:
-	std::vector<Service*> services;
-	bool isRunning;
-	WindowConfig windowConfig;
-	ServiceLocator serviceLocator;
-	PlatformFactory platformFactory{ serviceLocator };
+    bool showGui = false;
+    bool isRunning = true;
+    WindowConfig windowConfig;
+    ServiceLocator serviceLocator;
+    PlatformFactory platformFactory{ serviceLocator };
 
-	SceneManager& sceneManager = SceneManager::getInstance();
-	EventManager& eventManager = EventManager::getInstance();
-	std::unique_ptr<LayerManager> layerManager;
-	std::unique_ptr<AppWindow> appWindow;
-	std::unique_ptr<RenderDevice> renderDevice;
-	std::unique_ptr<Logger> engineLogger;
-	std::unique_ptr<Logger> clientLogger;
-	EditorLayer* editorLayer;
+    SceneManager& sceneManager;
+    EventManager& eventManager;
+    std::unique_ptr<AppWindow> appWindow;
+    std::unique_ptr<LayerManager> layerManager;
+    std::unique_ptr<GuiManager> guiManager;
+    std::unique_ptr<RenderDevice> renderDevice;
+    std::unique_ptr<Logger> engineLogger;
+    std::unique_ptr<Logger> clientLogger;
+    std::unique_ptr<TextureManager> textureManager;
+    std::unique_ptr<BufferManager> bufferManager;
+    std::unique_ptr<MeshManager> meshManager;
+    std::unique_ptr<ModelManager> modelManager;
+    std::unique_ptr<DescriptorManager> descriptorManager;
+    std::unique_ptr<MaterialManager> materialManager;
+    std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<RendererManager> rendererManager;
+
+private:
+    std::vector<Service*> services;
+
+    uint32_t aruID;
+    uint32_t reimuID;
+    std::pair<std::vector<uint32_t>, std::vector<uint32_t>> aruMeshIDs;
+    std::pair<std::vector<uint32_t>, std::vector<uint32_t>> reimuMeshIDs;
 };
-

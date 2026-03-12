@@ -30,7 +30,7 @@ bool BufferManagerVulkan::init(WindowConfig config)
 
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&device);
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
 	if (!(renderDeviceVulkan && m_logger)) {
 		return false;
@@ -54,6 +54,7 @@ uint32_t BufferManagerVulkan::findMemoryType(uint32_t typeFilter, VkMemoryProper
 
 bool BufferManagerVulkan::onClose()
 {
+	//TODO: destroy() resizes buffers during iteration, check if this break
 	for (auto& [id, buffer] : buffers) {
 		buffer->destroy(renderDeviceVulkan->device);
 	}
@@ -249,6 +250,7 @@ uint32_t BufferManagerVulkan::createUniformBuffer(
 	return _assignID();
 }
 
+//TODO: allow customizable HOST_VISIBLE OR DEVICE_LOCAL for performance
 void BufferManagerVulkan::createStorageBuffers(std::vector<StorageBufferVulkan*>& storageBuffers, size_t bufferSize)
 {
 	VkBuffer storageBuffer;
@@ -262,6 +264,7 @@ void BufferManagerVulkan::createStorageBuffers(std::vector<StorageBufferVulkan*>
 	}
 }
 
+//TODO: allow customizable HOST_VISIBLE OR DEVICE_LOCAL for performance
 uint32_t BufferManagerVulkan::createStorageBuffer(VkBuffer& buffer, VkDeviceMemory& buffersMemory, size_t bufferSize)
 {
 	createBuffer(

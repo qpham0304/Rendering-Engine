@@ -90,6 +90,7 @@ bool ImGuiManager::init(WindowConfig config)
 	addWidget(std::make_unique<ImGuiRightSidebarWidget>());
 	addWidget(std::make_unique<ImGuiConsoleLogWidget>());
 	addWidget(std::make_unique<ImGuiMenuWidget>());
+	// addWidget(std::make_unique<ImGuiMathWidget>());
 
 	useDarkTheme();
 
@@ -160,7 +161,8 @@ void ImGuiManager::start(void* handle)
 
 void ImGuiManager::debugWindow(ImTextureID texture)
 {
-	glm::vec3 camPos = SceneManager::cameraController->getPosition();
+	Camera* camera =  SceneManager::cameraController;
+	glm::vec3 camPos = camera ? camera->getPosition() : glm::vec3(0.0); 
 	std::string x = "x: " + std::to_string(camPos.x).substr(0, 4);
 	std::string y = "y: " + std::to_string(camPos.y).substr(0, 4);
 	std::string z = "z: " + std::to_string(camPos.z).substr(0, 4);
@@ -174,11 +176,11 @@ void ImGuiManager::debugWindow(ImTextureID texture)
 		//ImGui::Text(countVertices.c_str());
 		ImGui::Text("Camera positon");
 		ImGui::SameLine();
-		ImGui::Text(x.c_str());
+		ImGui::Text("%s", x.c_str());
 		ImGui::SameLine();
-		ImGui::Text(y.c_str());
+		ImGui::Text("%s", y.c_str());
 		ImGui::SameLine();
-		ImGui::Text(z.c_str());
+		ImGui::Text("%s", z.c_str());
 		// Using a Child allow to fill all the space of the window.
 		// It also alows customization
 		ImGui::BeginChild("Debug shadow window");
@@ -192,6 +194,8 @@ void ImGuiManager::debugWindow(ImTextureID texture)
 
 void ImGuiManager::applicationWindow()
 {
+	// ImGuiIO& io = ImGui::GetIO();
+
 	//start group
 	ImGui::SetCursorPos(ImVec2(10.0f, 10.0f));
 	ImGui::BeginGroup();
@@ -201,8 +205,6 @@ void ImGuiManager::applicationWindow()
 	ImGui::SameLine();
 	ImGui::Button("C");
 	ImGui::EndGroup();
-
-	ImGuiIO& io = ImGui::GetIO();
 
 	//center group
 	ImVec4 buttonActiveColor = ImVec4{ 0.0f, (float)140 / 255, (float)184 / 255, 0.8 };
@@ -221,22 +223,8 @@ void ImGuiManager::applicationWindow()
 
 void ImGuiManager::render(void* handle)
 {
-	// applicationWindow();
 	for (const auto& widget : widgets) {
 		widget->render();
-	}
-
-	//TODO: once vulkan renderer supports render to imgui texture
-	// set up and call guizmo rendering in a separate widget's render
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if(scene){
-		const std::vector<Entity>& entities = scene->getSelectedEntities();
-		if(!entities.empty()) {
-			const Entity& entity = entities[0];
-			TransformComponent transform = entity.getComponent<TransformComponent>();
-			renderGuizmo(transform);
-		}
 	}
 
 	ImGui::Render();
@@ -341,6 +329,8 @@ void ImGuiManager::useDarkTheme()
 
 void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 {
+	applicationWindow();
+
 	ImGuizmo::BeginFrame();
 	glm::vec3 translateVector(0.0f, 0.0f, 0.0f);
 	glm::vec3 scaleVector(1.0f, 1.0f, 1.0f);
@@ -375,13 +365,21 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 		ImGuizmo::DrawGrid(v, p, glm::value_ptr(identity), 100.f);
 	}
 
+	ImGuizmo::OPERATION op = (ImGuizmo::OPERATION)GuizmoType;
+
+	if (op == ImGuizmo::ROTATE) {
+		op = (ImGuizmo::OPERATION)(ImGuizmo::ROTATE | ImGuizmo::ROTATE_SCREEN);
+	}
+	// op = ImGuizmo::UNIVERSAL;
+
 	bool res = ImGuizmo::Manipulate(
 		v,
 		p,
-		(ImGuizmo::OPERATION)GuizmoType,
+		op,
 		ImGuizmo::LOCAL,
 		glm::value_ptr(transform)
 	);
+	
 	viewManipulateRight = ImGui::GetWindowPos().x + wd;
 	viewManipulateTop = ImGui::GetWindowPos().y;
 	ImGuizmo::ViewManipulate(
@@ -392,7 +390,7 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 	);
 
 	if (ImGuizmo::IsUsing()) {
-		GuizmoActive = true;
+		guizmoActive = true;
 		glm::vec3 translation, rotation, scale;
 		Utils::Math::DecomposeTransform(transform, translation, rotation, scale);	// graphics utils dependency, resolve when have time
 		glm::vec3 deltaRotation = rotation - transformComponent.rotateVec;
@@ -402,7 +400,7 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 		transformComponent.scaleVec = scale;
 	}
 	else {
-		GuizmoActive = false;
+		guizmoActive = false;
 	}
 }
 

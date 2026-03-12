@@ -21,7 +21,7 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 {
     Service::init(config);
 
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&device);
@@ -36,12 +36,12 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 		return false;
 	}
 
-	fallback_albedoID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/albedo.png");
-	fallback_normalID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/normal.png");
-	fallback_metallicID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/metallic.png");
-	fallback_roughnessID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/roughness.png");
-	fallback_aoID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/ao.png");
-	fallback_emissiveID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/emissive.png");
+	fallback_albedoID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/albedo.png", 1, false);
+	fallback_normalID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/normal.png", 1, false);
+	fallback_metallicID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/metallic.png", 1, false);
+	fallback_roughnessID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/roughness.png", 1, false);
+	fallback_aoID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/ao.png", 1, false);
+	fallback_emissiveID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/emissive.png", 1, false);
 
 	_createMaterialDescriptorSet();
 
@@ -79,7 +79,7 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 	material.aoID = _checkMaterial(materialDesc.aoIDs, fallback_aoID);
 	material.emissiveID = _checkMaterial(materialDesc.emissiveIDs, fallback_emissiveID);
 
-	//TODO: each mesh own a set now, hash to prevent duplicate material set
+	//TODO: each mesh owns a set now, hash to prevent duplicate material set
 	material.descriptorSetID = descriptorManagerVulkan->createSets(materialLayoutID, materialPoolID, 1);
 	VkDescriptorSet materialSet = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID)[0];
 
@@ -130,15 +130,19 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
     return _assignID();
 }
 
-void MaterialManagerVulkan::bindMaterial(const uint32_t &id, void* cmdBuffer)
+void MaterialManagerVulkan::bindMaterial(const uint32_t &id, void* cmdBuffer, void* p)
 {
+	assert(p, "pipeline required");
+
 	MaterialVulkan material = materials.at(id);
 	VkDescriptorSet materialSet = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID)[0];
+
+	VulkanPipeline* pipeline = static_cast<VulkanPipeline*>(p);
 
 	vkCmdBindDescriptorSets(
 		reinterpret_cast<VkCommandBuffer>(cmdBuffer),
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		renderDeviceVulkan->pipeline.pipelineLayout,
+		pipeline->pipelineLayout,
 		1,
 		1,
 		&materialSet,

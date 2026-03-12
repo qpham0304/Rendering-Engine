@@ -118,7 +118,7 @@ uint32_t DescriptorManagerVulkan::createPool(std::vector<VkDescriptorPoolSize> p
 
 uint32_t DescriptorManagerVulkan::createSets(uint32_t layoutID, uint32_t poolID, uint32_t setsCount)
 {
-	std::vector<VkDescriptorSetLayout> layouts(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT, getDescriptorLayout(layoutID));
+	std::vector<VkDescriptorSetLayout> layouts(setsCount, getDescriptorLayout(layoutID));
 
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -170,6 +170,24 @@ void DescriptorManagerVulkan::writeImage(
 	write.dstBinding = binding;
 	write.dstArrayElement = 0;
 	write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write.descriptorCount = 1;
+	write.pImageInfo = &imageInfo;
+
+	writes->push_back(write);
+}
+
+void DescriptorManagerVulkan::writeStorageImage(
+	std::vector<VkWriteDescriptorSet>* writes,
+	const VkDescriptorSet& dstSet,
+	uint32_t binding,
+	const VkDescriptorImageInfo& imageInfo
+) {
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = dstSet;
+	write.dstBinding = binding;
+	write.dstArrayElement = 0;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	write.descriptorCount = 1;
 	write.pImageInfo = &imageInfo;
 

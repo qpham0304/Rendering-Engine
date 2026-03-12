@@ -15,19 +15,19 @@ Layer::Layer(const std::string& name = "Undefined")
 void Layer::onAttach(LayerManager* manager)
 {
 	this->m_Manager = manager;
-	setLogScopeEngine();
+	//setLogScopeEngine();
 }
 
 
 void Layer::setLogScopeEngine()
 {
-	m_Logger = &ServiceLocator::GetService<Logger>("Engine_LoggerPSD");
+	m_Logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 }
 
 
 void Layer::setLogScopeClient()
 {
-	m_Logger = &ServiceLocator::GetService<Logger>("Client_LoggerPSD");
+	m_Logger = &ServiceLocator::GetService<Logger>("Client_LoggerSPD");
 }
 
 const std::string& Layer::getName() const

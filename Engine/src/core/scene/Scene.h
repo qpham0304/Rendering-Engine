@@ -47,7 +47,7 @@ public:
 		auto view = getEnttEntities<Components...>();
 		std::vector<Entity> entitiesList = {};
 		for (auto& entity : view) {
-			entitiesList.push_back(entities[(uint32_t)entity]);
+			entitiesList.emplace_back(entity, registry);
 		}
 
 		return entitiesList;
@@ -73,10 +73,15 @@ private:
 	std::vector<Entity> selectedEntities;
 	uint32_t selectedMesh;
 	std::unordered_map<uint32_t, Entity> entities;
+	std::vector<Entity> frameNewEntities;
+	std::vector<uint32_t> frameDeletedEntities;
 	Logger& m_logger;
 	Serializer m_serializer;
 
 	bool controlPressed = false;
 	bool processing = false;
+
+	void _addEntity(Entity& entity);
+	bool _removeEntity(const uint32_t& uuid);
 };
 

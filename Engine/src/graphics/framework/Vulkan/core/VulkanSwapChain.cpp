@@ -3,6 +3,7 @@
 #include "Logging/Logger.h"
 #include "../renderers/RenderDeviceVulkan.h"
 #include "../resources/textures/TextureManagerVulkan.h"
+#include <algorithm>
 
 VulkanSwapChain::VulkanSwapChain(VulkanDevice& deviceRef, RenderDeviceVulkan& renderDeviceRef)
 	: device(deviceRef), renderDevice(renderDeviceRef)
@@ -412,9 +413,10 @@ void VulkanSwapChain::createDepthResources()
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		depthImage,
 		depthImageMemory,
+		1,
 		device
 	);
 	
-	TextureManagerVulkan::createImageView(depthImage, depthImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, device);
+	TextureManagerVulkan::createImageView(depthImage, depthImageView, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1, device);
 }
 

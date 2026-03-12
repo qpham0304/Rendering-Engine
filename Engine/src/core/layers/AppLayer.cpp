@@ -29,7 +29,9 @@ void AppLayer::renderApplication(const int& fboTexture)
 		else {
 			ImGui::Image((ImTextureID)fboTexture, wsize, ImVec2(0, 1), ImVec2(1, 0));
 		}
+
 		//(ImGui::IsItemHovered() && ImGui::IsWindowFocused()) ? isActive = true : false;
+		
 		if (camera->getViewWidth() != wWidth || camera->getViewHeight() != wHeight) {
 			camera->updateViewResize(wWidth, wHeight);
 		}
@@ -66,7 +68,7 @@ bool AppLayer::init()
 void AppLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);
-	setLogScopeClient();
+//setLogScopeClient();
 
 	int width = AppWindow::getWidth();
 	int height = AppWindow::getHeight();
