@@ -157,6 +157,7 @@ void DeferredRendererVulkan::render(Camera& camera)
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	
+	imageBasedRenderer.onUpdate();
 	imageBasedRenderer.computeSH(cmdBuffer, currentFrame);
 	imageBasedRenderer.computePrefilter(cmdBuffer, currentFrame);
 	// VkImageMemoryBarrier globalBarrier = {};

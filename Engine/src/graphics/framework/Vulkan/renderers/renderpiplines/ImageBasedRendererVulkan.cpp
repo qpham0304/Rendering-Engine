@@ -143,6 +143,30 @@ bool ImageBasedRendererVulkan::onClose()
 
 void ImageBasedRendererVulkan::onUpdate()
 {
+	if(hdrImage_temp) {
+		uint32_t frameCount = VulkanUtils::numFrames();
+		vkDeviceWaitIdle(renderDeviceVulkan->device);
+		
+		//update spherical harmonic descriptors
+		auto projectionSets = descriptorManagerVulkan->getDescriptorSet(projectionSH_descriptorSetID);
+		for (uint32_t i = 0; i < frameCount; i++) {
+			VkDescriptorImageInfo imageInfo{ hdrImage->textureSampler, hdrImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+			std::vector<VkWriteDescriptorSet> writes;
+			descriptorManagerVulkan->writeImage(&writes, projectionSets[i], 0, imageInfo);
+			descriptorManagerVulkan->updateDescriptorSets(&writes);
+		}
+
+		//update prefilter descriptors
+		for (uint32_t i = 0; i < mipLevels; i++) {
+			VkDescriptorImageInfo imageInfo{ hdrImage->textureSampler, hdrImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+			std::vector<VkWriteDescriptorSet> writes;
+			descriptorManagerVulkan->writeImage(&writes, prefilterSets[i], 0, imageInfo);
+			descriptorManagerVulkan->updateDescriptorSets(&writes);
+		}
+		hdrImage_temp = nullptr;
+		printf("updated");
+	}
+	
 }
 
 void ImageBasedRendererVulkan::render(Camera &camera)
@@ -358,26 +382,6 @@ void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
 		hdrImageID = hdrImageID_temp;
 
 		// textureManager->destroy(temp);
-		
-		uint32_t frameCount = VulkanUtils::numFrames();
-		vkDeviceWaitIdle(renderDeviceVulkan->device);
-		
-		//update spherical harmonic descriptors
-		auto projectionSets = descriptorManagerVulkan->getDescriptorSet(projectionSH_descriptorSetID);
-		for (uint32_t i = 0; i < frameCount; i++) {
-			VkDescriptorImageInfo imageInfo{ hdrImage->textureSampler, hdrImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-			std::vector<VkWriteDescriptorSet> writes;
-			descriptorManagerVulkan->writeImage(&writes, projectionSets[i], 0, imageInfo);
-			descriptorManagerVulkan->updateDescriptorSets(&writes);
-		}
-
-		//update prefilter descriptors
-		for (uint32_t i = 0; i < mipLevels; i++) {
-			VkDescriptorImageInfo imageInfo{ hdrImage->textureSampler, hdrImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-			std::vector<VkWriteDescriptorSet> writes;
-			descriptorManagerVulkan->writeImage(&writes, prefilterSets[i], 0, imageInfo);
-			descriptorManagerVulkan->updateDescriptorSets(&writes);
-		}
 	}
 	
 }
