@@ -6,7 +6,6 @@
 #include "core/features/ServiceLocator.h"
 #include "Logging/Logger.h"
 #include "window/AppWindow.h"
-#include "core/features/Stream.h"
 
 Scene::Scene(std::string name) 
 	: 	sceneName(name),
@@ -47,15 +46,13 @@ uint32_t Scene::addEntity(const std::string& name)
     entity.addComponent<NameComponent>(name);
 
     frameNewEntities.push_back(entity); 
+	selectEntities({ entity }); 
+
     return id;
 }
 
 bool Scene::removeEntity(const uint32_t& uuid)
 {
-	// if (entities.find(uuid) != entities.end()) {
-	// 	frameDeletedEntities.push_back(uuid);
-	// 	return true;
-	// }
 	frameDeletedEntities.push_back(uuid);
 	return true;
 }
@@ -204,6 +201,12 @@ bool Scene::loadScene(std::string_view filePath)
 
     processing = false;
     return true;
+}
+
+bool Scene::unloadScene() 
+{
+	
+	return true;
 }
 
 void Scene::_addEntity(Entity& entity)

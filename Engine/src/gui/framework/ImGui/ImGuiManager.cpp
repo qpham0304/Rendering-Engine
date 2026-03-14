@@ -37,6 +37,8 @@ bool ImGuiManager::init(WindowConfig config)
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;			// Enable Multi-Viewport / Platform Windows
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
 
+	io.IniFilename = "Assets/imgui.ini";
+
 	float fontSize = 16.0f;
 
 	static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
@@ -390,7 +392,7 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 	);
 
 	if (ImGuizmo::IsUsing()) {
-		guizmoActive = true;
+		setGuizmoFocus(true);
 		glm::vec3 translation, rotation, scale;
 		Utils::Math::DecomposeTransform(transform, translation, rotation, scale);	// graphics utils dependency, resolve when have time
 		glm::vec3 deltaRotation = rotation - transformComponent.rotateVec;
@@ -400,7 +402,7 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 		transformComponent.scaleVec = scale;
 	}
 	else {
-		guizmoActive = false;
+		setGuizmoFocus(false);
 	}
 }
 

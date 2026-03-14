@@ -62,6 +62,7 @@ public:
 	const std::string& getName() const;
 	bool saveScene(std::string_view path);
 	bool loadScene(std::string_view path);
+	bool unloadScene();
 
 
 private:

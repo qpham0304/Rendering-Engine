@@ -276,14 +276,15 @@ vec3 calcPBR(
     vec3 albedo, float roughness, float metallic, vec3 radiance
 ) {
     vec3 H = normalize(V + L);
-    float NdotL = max(dot(N, L), 0.0);
-    
+    float NdotL = max(dot(N, L), 0.0001);
+    float NdotV = max(dot(N, V), 0.0001);
+
     float D = DistributionGGX(N, H, roughness);   
     float G = GeometrySmith(N, V, L, roughness);      
     vec3 F  = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
     vec3 numerator    = D * G * F; 
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    float denominator = 4.0 * NdotV * NdotL + 0.0001;
     vec3 specular = numerator / denominator;
 
     vec3 kS = F;
@@ -320,27 +321,25 @@ void main() {
         vec3 irradiance = getIrradiance(V_sky_norm);
 
         vec3 envColor;
-        if(detail < 0.5) {
-            envColor = mix(hdrColor, prefilteredColor, detail * 2.0);
-        } else {
+        // if(detail < 0.5) {
+        //     envColor = mix(hdrColor, prefilteredColor, detail * 2.0);
+        // } else {
             float blendWeight = clamp(detail * 2.0 - 1.0, 0.0, 1.0);
             envColor = mix(prefilteredColor, irradiance, blendWeight);
-        }
+        // }
 
         envColor = envColor / (envColor + 1.0);
         outColor = vec4(pow(envColor, vec3(1.0/2.2)), 1.0);
         return;
     }
     
-    
-    worldNorm = normalize(worldNorm);
-
     float ao        = pbr.r;
     float roughness = pbr.g;
     float metallic  = pbr.b;
     
-    vec3 N = worldNorm;
+    vec3 N = normalize(worldNorm);
     vec3 V = normalize(ubo.cameraPos.xyz - worldPos);
+    float NdotV = max(dot(N, V), 0.0001);
 
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo.rgb, metallic);
@@ -365,12 +364,12 @@ void main() {
     
     // float shadow = calcShadow(worldPos);
     // float shadow = calcMSMShadow(worldPos + worldNorm * pcl.bias);
-    float shadow = calcPCSS(worldPos);
+    float shadow = 1.0 - calcPCSS(worldPos);
     vec3 L_sun = normalize(pcl.direction.xyz); 
-    vec3 sunRadiance = pcl.color.rgb * (1 - shadow);
+    vec3 sunRadiance = pcl.color.rgb * shadow;
     vec3 sunlight = calcPBR(L_sun, V, N, F0, albedo.rgb, roughness, metallic, sunRadiance);
 
-    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
     vec3 kS = F;
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;	  
@@ -381,13 +380,13 @@ void main() {
     vec3 R = reflect(-V, N); 
     const float MAX_REFLECTION_LOD = 4.0; 
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
-    vec2 brdf = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
     vec3 specularIBL = prefilteredColor * (F * brdf.x + brdf.y);
 
     // vec3 ambient = vec3(0.03) * albedo.rgb * ao;
     vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
     vec3 finalColor = ambient + Lo + sunlight;
-
+    // finalColor = worldNorm;
     finalColor = finalColor / (finalColor + vec3(1.0));     //HDR tone mapping
-    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), 1.0);   //Gamma correction
+    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);   //Gamma correction
 }

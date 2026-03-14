@@ -2,6 +2,7 @@
 #include "core/features/ServiceLocator.h"
 #include "Logging/Logger.h"
 #include "graphics/framework/vulkan/resources/Textures/TextureVulkan.h"
+#include "Window/AppWindow.h"
 
 RenderDeviceVulkan::RenderDeviceVulkan()
 	: RenderDevice("RenderDeviceVulkan"),
@@ -154,8 +155,8 @@ void RenderDeviceVulkan::setViewport()
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)swapchain.swapChainExtent.width;
-	viewport.height = (float)swapchain.swapChainExtent.height;
+	viewport.width = (float)AppWindow::getWidth();
+	viewport.height = (float)AppWindow::getHeight();
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(commandPool.currentBuffer(), 0, 1, &viewport);
@@ -163,9 +164,11 @@ void RenderDeviceVulkan::setViewport()
 
 void RenderDeviceVulkan::setScissor()
 {
+	// m_logger->warn("m_width: {}, m_height: {}", AppWindow::getWidth(), AppWindow::getHeight());
+
 	VkRect2D scissor{};
 	scissor.offset = { 0, 0 };
-	scissor.extent = swapchain.swapChainExtent;
+	scissor.extent = {AppWindow::getWidth(), AppWindow::getHeight() };
 	vkCmdSetScissor(commandPool.currentBuffer(), 0, 1, &scissor);
 }
 

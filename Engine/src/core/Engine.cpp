@@ -84,14 +84,14 @@ void Engine::start()
 {
 	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		isRunning = false;
-		});
+	});
 
 	eventManager.subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_ESCAPE) {
 			isRunning = false;
 		}
-		});
+	});
 }
 
 void Engine::run() {

@@ -10,7 +10,7 @@ private:
 	int id;
 
 public:
-	EntityControlWidget() : Widget() {}
+	EntityControlWidget() : Widget("EntityControlWidget") {}
 
 	void render() override = 0;
 

@@ -8,22 +8,19 @@
 
 class TransformComponent;
 
-class GuiManager : public Service {
-
-public:
-	//TODO: move way from public member
-	bool guizmoActive = false;
-	bool editorActive = false;
-
+class GuiManager : public Service 
+{
 protected:
 	std::vector<std::unique_ptr<Widget>> widgets;
 
-	bool darkTheme = false;
-	bool closeable = true;
-	int width = 0;
-	int height = 0;
-	int count = 0;
-	bool drawGrid = false;
+	bool darkTheme { false };
+	bool closeable { true };
+	int width { 0 };
+	int height { 0 };
+	int count { 0 };
+	bool drawGrid { false };
+	bool guizmoActive { false };
+	bool editorActive { false };
 
 protected:
 	GuiManager(std::string serviceName = "GuiManager") : Service(serviceName) {};
@@ -46,9 +43,16 @@ public:
 	virtual void guizmoRotate() = 0;
 	virtual void guizmoScale() = 0;
 
-	virtual void addWidget(std::unique_ptr<Widget> widget) {
+	void addWidget(std::unique_ptr<Widget> widget) {
 		widgets.push_back(std::move(widget));
 	};
+
+	void setGuizmoFocus(bool isFocused) { guizmoActive = isFocused; };
+	bool isGuizmoFocus() { return guizmoActive; };
+
+	void setEditorFocus(bool isFocused) {editorActive = isFocused; };
+	bool isEditorFocus() { return editorActive; };
+	
 
 };
 

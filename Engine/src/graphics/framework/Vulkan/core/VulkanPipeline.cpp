@@ -127,8 +127,8 @@ void VulkanPipeline::createGraphicsPipeline(
 	depthStencil.minDepthBounds = 0.0f; // Optional
 	depthStencil.maxDepthBounds = 1.0f; // Optional
 	depthStencil.stencilTestEnable = VK_FALSE;
-	depthStencil.front = {}; // Optional
-	depthStencil.back = {}; // Optional
+	depthStencil.front = {}; 	// Optional
+	depthStencil.back = {}; 	// Optional
 
 	std::vector<VkDynamicState> dynamicStates = {
 		VK_DYNAMIC_STATE_VIEWPORT,
@@ -337,10 +337,10 @@ PipelineConfigInfo VulkanPipeline::defaultPipelineConfigInfo(uint32_t numAttachm
 	configInfo.multisampleInfo.alphaToOneEnable = VK_FALSE;       // Optional
 
 	configInfo.viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	configInfo.viewportInfo.viewportCount = 1; // Even if dynamic, count must be 1
-	configInfo.viewportInfo.scissorCount = 1;  // Even if dynamic, count must be 1
-	configInfo.viewportInfo.pViewports = nullptr; // Can be null because of dynamic state
-	configInfo.viewportInfo.pScissors = nullptr;  // Can be null because of dynamic state
+	configInfo.viewportInfo.viewportCount = 1; 		// Even if dynamic, count must be 1
+	configInfo.viewportInfo.scissorCount = 1;  		// Even if dynamic, count must be 1
+	configInfo.viewportInfo.pViewports = nullptr; 	// Can be null because of dynamic state
+	configInfo.viewportInfo.pScissors = nullptr;  	// Can be null because of dynamic state
 
     for (uint32_t i = 0; i < numAttachments; i++) {
         VkPipelineColorBlendAttachmentState attachment{};

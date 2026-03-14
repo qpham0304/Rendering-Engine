@@ -117,7 +117,7 @@
     {
       "components": {
         "ModelComponent": {
-          "path": "C:/Users/tomor/Desktop/Projects/C++/MyGraphicsEngine/Sandbox/assets/models/stylized_medieval_house__free/scene.gltf"
+          "path": "assets/models/stylized_medieval_house__free/scene.gltf"
         },
         "NameComponent": {
           "name": "house"
@@ -137,54 +137,6 @@
             -4.153437614440918,
             0.0673285722732544,
             -4.9968743324279785
-          ]
-        }
-      }
-    },
-    {
-      "components": {
-        "NameComponent": {
-          "name": "light"
-        },
-        "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "translateVec": [
-            0.018007665872573853,
-            1.899540901184082,
-            -3.5673909187316895
-          ]
-        }
-      }
-    },
-    {
-      "components": {
-        "NameComponent": {
-          "name": "light_sphere_0"
-        },
-        "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            0.18000000715255737,
-            0.18000000715255737,
-            0.18000000715255737
-          ],
-          "translateVec": [
-            -1.4668474197387695,
-            2.0,
-            -0.05430401861667633
           ]
         }
       }

@@ -47,6 +47,7 @@ private:
 
 private:
 	std::unordered_map<std::string, std::unique_ptr<Scene>> scenes;
+	bool areaFocused { false };
 
 	static std::string selectedID;
 	std::mutex animationsLock;

@@ -106,10 +106,6 @@ public:	//TODO: make private once done testing
 	VulkanRenderTarget renderTarget;
 	std::unique_ptr<VulkanPipeline> gPassPipeline;
 
-	uint32_t imGuilayoutID;
-	uint32_t imGuipoolID;
-	std::vector<uint32_t> imGuisetIDs;
-
 	std::unique_ptr<VulkanPipeline> lightingPipeline;
 	uint32_t lightLayoutID;
 	uint32_t lightLayoutID_1;
@@ -128,10 +124,13 @@ public:	//TODO: make private once done testing
 	void _createRenderPasses();
 	void _createFrameBuffers();
 	void _createDescriptor();
+	void _updateDescriptor();
 	void _createPipelines();
-	void _createViewDescriptorSets();
 
 	void _createLightPipeline();
 	void _createLightDescriptor();
+	void _updateLightDescriptor();
 
+	void _recreteResources();
+	void _cleanupResources();
 };

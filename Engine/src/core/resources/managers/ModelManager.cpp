@@ -101,12 +101,14 @@ uint32_t ModelManager::loadModel(std::string_view path)
         return m_modelData.at(path.data());;
     }
 
-    _loadModel(path);
+    if(!_loadModel(path)) {
+        return 0;
+    }
 
     return _assignID();
 }
 
-const Model* ModelManager::getModel(uint32_t id) const
+Model* ModelManager::getModel(uint32_t id) const
 {
     if (m_models.find(id) == m_models.end()) {
         return nullptr;
@@ -114,14 +116,14 @@ const Model* ModelManager::getModel(uint32_t id) const
     return m_models.at(id).get();
 }
 
-void ModelManager::_loadModel(std::string_view path) 
+bool ModelManager::_loadModel(std::string_view path) 
 {
     // if (m_modelData.find(path.data()) != m_modelData.end()) {
     //     return;
     // }
 
     std::string loadTimer = std::string("Model loading ") + path.data();
-    Timer(loadTimer.c_str(), true);
+    Timer timer(loadTimer.c_str(), true);
 
     std::string directory = std::string(path).substr(0, path.find_last_of('/'));
     std::string fileName = std::string(path).substr(path.find_last_of('/') + 1);
@@ -134,6 +136,7 @@ void ModelManager::_loadModel(std::string_view path)
         | aiProcess_SplitByBoneCount
         | aiProcess_LimitBoneWeights
         | aiProcess_JoinIdenticalVertices
+        | aiProcess_RemoveRedundantMaterials
         | aiProcess_ValidateDataStructure;
 
     const aiScene* scene = import.ReadFile(path.data(), flags);
@@ -141,6 +144,7 @@ void ModelManager::_loadModel(std::string_view path)
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::string error = import.GetErrorString();
         m_logger->error("Model Loading failed: ERROR::ASSIMP::{}", error);
+        return false;
     }
 
     std::vector<uint32_t> meshes = {};
@@ -148,10 +152,13 @@ void ModelManager::_loadModel(std::string_view path)
     
     m_modelData[path.data()] = m_ids;
     m_models[m_ids] = std::make_shared<Model>();
-
+    m_models[m_ids]->path = path.data();
+    
     for (const auto& mesh : meshes) {
         m_models[m_ids]->meshIDs.push_back(mesh);
     }
+
+    return true;
 }
 
 void ModelManager::_processNode(aiNode* node, const aiScene* scene, std::vector<uint32_t>& meshes, std::string_view directory)

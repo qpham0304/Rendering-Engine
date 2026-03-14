@@ -78,8 +78,6 @@ private:
 	void _createDescriptorPool();
 	void _createDescriptorSets();
 
-	//TODO: support recreation on screen resize
-	void _createOffscreenViewDescriptorSet();
 
 protected:
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
@@ -116,9 +114,6 @@ private:
 
 	VulkanRenderTarget renderTarget;
 	std::unique_ptr<VulkanPipeline> offscreenPipeline;
-	uint32_t imGuilayoutID;
-	uint32_t imGuipoolID;
-	std::vector<uint32_t> imGuisetIDs;
 
 	bool isActive{ false };
 

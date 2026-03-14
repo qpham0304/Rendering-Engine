@@ -117,9 +117,7 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	deferredRenderer.init(config);
 
 	_createDescriptorSets();
-
 	_createOffscreenTarget();
-	_createOffscreenViewDescriptorSet();
 
 	
 	return true;
@@ -196,7 +194,7 @@ void ForwardRendererVulkan::render(Camera& camera)
 
 void ForwardRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
-	Timer("CPU render submission time", true);
+	Timer timer("CPU render submission time", true);
 
 	beginRecording(
 		commandBuffer,
@@ -414,10 +412,10 @@ void ForwardRendererVulkan::renderGui(void* commandBuffer)
 	ImGui::Begin("Application");
 	ImGui::BeginChild("Application View");
 	uint32_t imageIndex = renderDeviceVulkan->getImageIndex();
-	VkDescriptorSet descSet = descriptorManagerVulkan->getDescriptorSet(imGuisetIDs[imageIndex])[0];
+	// VkDescriptorSet descSet = descriptorManagerVulkan->getDescriptorSet(imGuisetIDs[imageIndex])[0];
 	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 	uint32_t i = renderDeviceVulkan->getImageIndex();
-	ImGui::Image(reinterpret_cast<ImTextureID>(descSet), viewportPanelSize);
+	ImGui::Image(reinterpret_cast<ImTextureID>(textureManager->inspectTexture(deferredRenderer.renderTarget.colorTextures[imageIndex]->id())), viewportPanelSize);
 
 	deferredRenderer.renderGui();
 
@@ -429,10 +427,14 @@ void ForwardRendererVulkan::renderGui(void* commandBuffer)
 	}
 
 	if (ImGui::IsItemHovered() && ImGui::IsWindowFocused()) {
-		guiManager->editorActive = true;
+		guiManager->setEditorFocus(true);
+		GuiFocusEvent event(true);
+		EventManager::getInstance().publish(event);
 	} 
 	else{
-		guiManager->editorActive = false;
+		guiManager->setEditorFocus(false);
+		GuiFocusEvent event(false);
+		EventManager::getInstance().publish(event);
 	}
 
 	SceneManager& sceneManager = SceneManager::getInstance();
@@ -661,46 +663,6 @@ void ForwardRendererVulkan::_createDescriptorSets()
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
 		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 1, ssboInfo);
 		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 2, lightSsboInfo);
-		descriptorManagerVulkan->updateDescriptorSets(&writes);
-	}
-}
-
-void ForwardRendererVulkan::_createOffscreenViewDescriptorSet()
-{
-	const uint32_t MAX_NUM_SETS = 3;				// add more if requires more
-	
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 0;
-	samplerLayoutBinding.descriptorCount = 1;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { samplerLayoutBinding };
-	imGuilayoutID = descriptorManagerVulkan->createLayout(bindings);
-
-	std::vector<VkDescriptorPoolSize> poolSizes = { 
-		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} 
-	};
-	imGuipoolID = descriptorManagerVulkan->createPool(poolSizes, MAX_NUM_SETS);
-
-	for(int i = 0; i < renderTarget.colorTextures.size(); i++) {
-		imGuisetIDs.push_back(descriptorManagerVulkan->createSets(imGuilayoutID, imGuipoolID, 1));
-		VkDescriptorSet imGuiDescriptorSet = descriptorManagerVulkan->getDescriptorSet(imGuisetIDs[i])[0];
-
-		VkDescriptorImageInfo imageInfo{};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		// imageInfo.imageView = renderTarget.colorTextures[i]->textureImageView;
-		// imageInfo.sampler = renderTarget.colorTextures[i]->textureSampler;
-
-		/*
-		//TODO: move away from modifying deferred renderer directly
-		*/
-		imageInfo.imageView = deferredRenderer.renderTarget.colorTextures[i]->textureImageView;
-		imageInfo.sampler = deferredRenderer.renderTarget.colorTextures[i]->textureSampler;
-
-
-		std::vector<VkWriteDescriptorSet> writes = {};
-		descriptorManagerVulkan->writeImage(&writes, imGuiDescriptorSet, 0, imageInfo);
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 }

@@ -316,9 +316,3 @@ void BufferManagerVulkan::copyBuffer(
 	// pipeline barrier?
     renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
 }
-
-
-const uint32_t& BufferManagerVulkan::_assignID()
-{
-	return m_ids.fetch_add(1, std::memory_order_relaxed);
-}

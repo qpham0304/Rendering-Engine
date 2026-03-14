@@ -73,6 +73,11 @@ bool AppWindowGLFW::onClose() {
 
 void AppWindowGLFW::onUpdate()
 {
+	// if(m_width != m_config.width || m_height != m_config.height) {
+	// 	m_width = m_config.width;
+	// 	m_height = m_config.height;
+	// }
+	
 	switch (m_config.renderPlatform) {
 		case RenderPlatform::OPENGL: _onUpdateOpenGL(); break;
 		case RenderPlatform::VULKAN: _onUpdateVulkan(); break;

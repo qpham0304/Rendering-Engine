@@ -5,7 +5,7 @@
 class RightSidebarWidget : public Widget
 {
 protected:
-	RightSidebarWidget() : Widget() {}
+	RightSidebarWidget() : Widget("RightSidebarWidget") {}
 
 public:
 	virtual void layersControl() = 0;

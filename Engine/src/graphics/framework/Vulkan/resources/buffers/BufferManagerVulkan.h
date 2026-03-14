@@ -60,8 +60,6 @@ private:
     BufferManagerVulkan(const BufferManagerVulkan&& other) = delete;
     BufferManagerVulkan& operator=(const BufferManagerVulkan&& other) = delete;
     
-    const uint32_t& _assignID();
-
 private:
     RenderDeviceVulkan* renderDeviceVulkan;
     std::unordered_map<uint32_t, std::shared_ptr<BufferVulkan>> buffers;

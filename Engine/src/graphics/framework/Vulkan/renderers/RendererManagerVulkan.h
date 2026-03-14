@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Core/resources/managers/RendererManager.h"
+#include "RendererVulkan.h"
+
 class RendererManagerVulkan : public RendererManager
 {
 public:
@@ -15,8 +17,6 @@ public:
     virtual void render() override;
 
 protected:
-
-protected:
-
-
+	std::unordered_map<std::string, std::unique_ptr<Renderer>> m_renderers;
+	
 };

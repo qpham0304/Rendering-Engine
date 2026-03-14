@@ -66,48 +66,25 @@ bool EditorLayer::init()
 void EditorLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);
-
-	//if (!SceneManager::cameraController) {
-	//	return;
-	//}
-
-	//editorCamera = SceneManager::cameraController;
-
-	//eventManager.subscribe(EventType::AnimationLoadEvent, [](Event& event) {
-	//	AnimationLoadEvent& e = static_cast<AnimationLoadEvent&>(event);
-	//	if (!e.entity.hasComponent<AnimationComponent>()) {
-	//		e.entity.addComponent<AnimationComponent>();
-	//	}
-
-	//	AnimationComponent& animationComponent = e.entity.getComponent<AnimationComponent>();
-	//	ModelComponent& modelComponent = e.entity.getComponent<ModelComponent>();
-	//	animationComponent.path = "Loading...";
-		//std::string uuid = SceneManager::getInstance().addAnimation(e.path.c_str(), modelComponent.model.lock().get());
-
-		//if (animationComponent.path != e.path && !uuid.empty()) {
-		//	animationComponent.animation = SceneManager::getInstance().animations[uuid];
-		//	animationComponent.animator.Init(SceneManager::getInstance().animations[uuid].get());
-		//	animationComponent.path = e.path;
-		//}
-
-		//else {
-		//	ImGui::OpenPopup("Failed to load file, please check the format");
-		//	animationComponent.reset();
-		//}
-	//});
-
-
 	eventManager.subscribe(EventType::MouseMoved, [&](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 
-		if (guiController.guizmoActive) {
+		if (guiController.isGuizmoFocus()) {
+			mouseEvent.Handled = true;	// block mouse event from other layers
+		}
+	});
+
+	eventManager.subscribe(EventType::MouseScrolled, [&](Event& event) {
+		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
+
+		if (guiController.isGuizmoFocus()) {
 			mouseEvent.Handled = true;	// block mouse event from other layers
 		}
 	});
 
 	keyEventID = eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
-		if (guiController.guizmoActive || guiController.editorActive) {
+		if (guiController.isGuizmoFocus() || guiController.isEditorFocus()) {
 			handleKeyPressed(keyPressedEvent.keyCode);
 			keyPressedEvent.Handled = true;	// block keyboard event from other layers
 		}
@@ -122,16 +99,6 @@ void EditorLayer::onDetach()
 void EditorLayer::onUpdate()
 {
 	
-// 	ImGui::Begin("Application");
-// 	ImGui::BeginChild("Application View");
-// 	if (ImGui::IsItemHovered() && ImGui::IsWindowFocused()) {
-// 		editorActive = true;
-// 	} 
-// 	else{
-// 		editorActive = false;
-// 	}
-// 	ImGui::EndChild();
-// 	ImGui::End();
 }
 
 void EditorLayer::onGuiUpdate()

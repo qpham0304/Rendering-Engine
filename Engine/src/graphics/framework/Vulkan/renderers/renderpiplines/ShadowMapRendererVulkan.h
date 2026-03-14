@@ -62,6 +62,7 @@ public:	//TODO: make private once done testing
 
 
 	std::unique_ptr<VulkanPipeline> shadowPipeline;
+	uint32_t depthID;
 	TextureVulkan* depthMap;
 	TextureVulkan* momentImage;
 	TextureVulkan* tempMomentImage;
@@ -84,11 +85,6 @@ public:	//TODO: make private once done testing
 	uint32_t compDescSetMtoT_ID;
 	uint32_t compDescSetTtoM_ID;
 
-	uint32_t imGuilayoutID;
-	uint32_t imGuipoolID;
-	std::vector<uint32_t> imGuisetIDs;
-	VkDescriptorSet imGuiDescriptorSet;
-
 	bool useOrtho = true;
 
 private:
@@ -98,6 +94,6 @@ private:
 	void _createShadowFrameBuffer();
 	void _createMomentImage();
 	void _createMomentDescriptor();
-    void _createOffscreenViewDescriptorSet();
+	// void _updateMomentDesccriptor();
 	void _createComputePipeline();
 };

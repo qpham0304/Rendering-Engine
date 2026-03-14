@@ -69,7 +69,6 @@ bool ShadowMapRendererVulkan::init(WindowConfig config)
 	_createDepthMap();
 	_createShadowRenderPass();
 	_createShadowPipeline();
-	_createOffscreenViewDescriptorSet();
 
 	_createMomentImage();
 	_createMomentDescriptor();
@@ -235,6 +234,32 @@ void ShadowMapRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, u
 			vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
 		}
 	}
+
+	for (auto& entity : scene->getEntitiesWith<TransformComponent, MeshComponent>()) {
+		auto& transform = entity.getComponent<TransformComponent>();
+		auto& meshComp = entity.getComponent<MeshComponent>();
+
+		LightPushConstant push{};
+		push.model = transform.getModelMatrix();
+		push.lightMVP = lightSpaceMatrix;
+
+		vkCmdPushConstants(
+			commandBuffer,
+			shadowPipeline->pipelineLayout,
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(LightPushConstant),
+			&push
+		);
+		
+		for (uint32_t meshID : meshComp.meshIDs) {
+			const Mesh* mesh = meshManager->getMesh(meshID);
+			meshManager->bindMesh(meshID);
+
+			uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+			vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+		}
+	}
 	endRecording(commandBuffer);
 }
 
@@ -293,8 +318,8 @@ void ShadowMapRendererVulkan::_createDepthMap()
 {
 	VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
-	uint32_t depthId = textureManager->createTexture();
-	depthMap = static_cast<TextureVulkan*>(textureManager->getTexture(depthId));
+	depthID = textureManager->createTexture();
+	depthMap = static_cast<TextureVulkan*>(textureManager->getTexture(depthID));
 
 	TextureManagerVulkan::createImage(
 		width,
@@ -547,38 +572,6 @@ void ShadowMapRendererVulkan::_createMomentDescriptor()
 		writesB[1].pImageInfo = &momentInfo;
 		vkUpdateDescriptorSets(renderDeviceVulkan->device, 2, writesB, 0, nullptr);
 	}
-}
-
-void ShadowMapRendererVulkan::_createOffscreenViewDescriptorSet()
-{
-	const uint32_t MAX_NUM_SETS = 3;	// add more if requires more
-	
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 0;
-	samplerLayoutBinding.descriptorCount = 1;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { samplerLayoutBinding };
-	imGuilayoutID = descriptorManagerVulkan->createLayout(bindings);
-
-	std::vector<VkDescriptorPoolSize> poolSizes = { 
-		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} 
-	};
-	imGuipoolID = descriptorManagerVulkan->createPool(poolSizes, MAX_NUM_SETS);
-
-	imGuisetIDs.push_back(descriptorManagerVulkan->createSets(imGuilayoutID, imGuipoolID, 1));
-	imGuiDescriptorSet = descriptorManagerVulkan->getDescriptorSet(imGuisetIDs[0])[0];
-
-	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = depthMap->textureImageView;
-	imageInfo.sampler = depthMap->textureSampler;
-
-
-	std::vector<VkWriteDescriptorSet> writes = {};
-	descriptorManagerVulkan->writeImage(&writes, imGuiDescriptorSet, 0, imageInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
 void ShadowMapRendererVulkan::_createComputePipeline() {

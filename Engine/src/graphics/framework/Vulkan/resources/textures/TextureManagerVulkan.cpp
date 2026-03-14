@@ -57,11 +57,28 @@ bool TextureManagerVulkan::onClose()
 
 void TextureManagerVulkan::destroy(uint32_t id)
 {
-	if (m_textures.find(id) == m_textures.end()) {
-		throw std::runtime_error("texture not found");
+	auto it = m_textures.find(id);
+	if (it == m_textures.end()) {
+		m_logger->warn("Texture not found id:{}", id);
+		return;
 	}
-	getTexture(id)->destroy(renderDeviceVulkan->device);
+	
+	TextureVulkan* texture = getTexture(id);
+	std::string path = texture->m_path;
+	texture->destroy(renderDeviceVulkan->device);
 	m_textures[id] = nullptr;
+
+	auto it2 = m_textureData.find(path);
+	if(it2 != m_textureData.end()){
+		m_textureData.erase(path);
+	}
+
+	auto it3 = textureIDs.find(id);
+	if(it3 != textureIDs.end()) {
+		textureIDs.erase(id);
+	}
+
+	
 	m_textures.erase(id);
 }
 

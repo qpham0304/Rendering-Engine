@@ -1,8 +1,8 @@
 #include "SceneManager.h"
 #include "graphics/utils/Utils.h"
 #include "animation/Animation.h"
-#include "core/features/Camera.h"
 #include "graphics/framework/OpenGL/core/ModelOpenGL.h"
+#include "core/features/Camera.h"
 #include "window/AppWindow.h"
 #include "core/events/EventManager.h"
 
@@ -28,6 +28,7 @@ bool SceneManager::init(WindowConfig config)
 		if(!cameraController) {
 			return;
 		}
+
 		cameraController->updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
 	});
 
@@ -36,7 +37,10 @@ bool SceneManager::init(WindowConfig config)
 		if(!cameraController) {
 			return;
 		}
-		cameraController->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
+
+		if(areaFocused) {
+			cameraController->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
+		}
 	});
 	
 	eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
@@ -44,9 +48,16 @@ bool SceneManager::init(WindowConfig config)
 		if(!cameraController) {
 			return;
 		}
-		cameraController->processMouse();
+
+		if(areaFocused) {
+			cameraController->processMouse();
+		}
 	});
 
+	eventManager.subscribe(EventType::GuiFocusedEvent, [this](Event& event) {
+		GuiFocusEvent& focusEvent = static_cast<GuiFocusEvent&>(event);
+		areaFocused = focusEvent.isFocused;
+	});
 
 	return true;
 }
@@ -67,7 +78,10 @@ void SceneManager::onUpdate()
 
 	if(cameraController){
 		cameraController->onUpdate();
-		cameraController->processKeyboard();
+
+		if(areaFocused) {
+			cameraController->processKeyboard();
+		}
 	}
 }
 
