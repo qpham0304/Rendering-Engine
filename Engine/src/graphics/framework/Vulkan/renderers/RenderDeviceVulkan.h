@@ -44,6 +44,9 @@ public:
 
 	void setViewport();
 	void setScissor();
+
+	void setViewport(uint32_t width, uint32_t height);
+	void setScissor(uint32_t width, uint32_t height);
 	void waitIdle();
 
 private:

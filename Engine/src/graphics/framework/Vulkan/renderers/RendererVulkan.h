@@ -43,8 +43,7 @@ protected:
     BufferManager* bufferManager{ nullptr };
 	GuiManager* guiManager{ nullptr };
 
-private:
 	bool isActive{ false };
-
+	bool needResize{ false };
 };
 

@@ -69,10 +69,8 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 
 
 	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
-		_recreteResources();
+		this->needResize = true;
 	});
-
-	
 
 	return true;
 }
@@ -80,9 +78,7 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 bool DeferredRendererVulkan::onClose()
 {
 	renderDeviceVulkan->waitIdle();
-	gPassPipeline->destroy();
-	lightingPipeline->destroy();
-	renderTarget.destroy(renderDeviceVulkan->device);
+	_cleanupResources();
 	
 	shadowMapRenderer.onClose();
 	imageBasedRenderer.onClose();
@@ -97,6 +93,12 @@ void DeferredRendererVulkan::onUpdate()
 
 void DeferredRendererVulkan::render(Camera& camera)
 {
+	if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
 	instanceData.clear(); 
     lights.clear();
 
@@ -116,10 +118,6 @@ void DeferredRendererVulkan::render(Camera& camera)
 			lights.push_back(LightSSBO(light.color, glm::vec4(transform.translateVec, 1.0), light.intensity * transform.scaleVec.x));
         }
     }
-	
-    pushConstantLight.time = AppWindow::getTime();
-	pushConstantLight.numLights = lights.size();
-	
 
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
@@ -131,13 +129,15 @@ void DeferredRendererVulkan::render(Camera& camera)
 	ubo.invView = camera.getInViewMatrix();
 	ubo.invProj = camera.getInProjectionMatrix();
 	ubo.invProj[1][1] *= -1;
-	ubo.width = AppWindow::getWidth();
-	ubo.height = AppWindow::getHeight();
+	ubo.width = renderTarget.width;
+	ubo.height = renderTarget.height;
 	
 	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.direction = glm::vec4(shadowMapRenderer.lightDir, 0.0f);
 	pushConstantLight.sunlightMVP = shadowMapRenderer.lightSpaceMatrix;
-
+    pushConstantLight.time = AppWindow::getTime();
+	pushConstantLight.numLights = lights.size();
+	
 	uint32_t frame = renderDeviceVulkan->getCurrentFrameIndex();
 	uniformbuffersList[frame]->update(&ubo, sizeof(ubo));
 
@@ -153,9 +153,9 @@ void DeferredRendererVulkan::render(Camera& camera)
 	imageBasedRenderer.computeSH(cmdBuffer, currentFrame);
 	imageBasedRenderer.computePrefilter(cmdBuffer, currentFrame);
 	
-	//TODO: ideally should be image index but this saves space and work with no issue
+	//TODO: ideally should be image index but this saves space and work with no issue "yet"
 	// right now only 2 images and 2 frame buffers, not swapchain image size, change back when there's issue 
-	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getCurrentFrameIndex());
+	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 	
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
 }
@@ -242,8 +242,8 @@ void DeferredRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, ui
 
 	gPassPipeline->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
-	renderDeviceVulkan->setViewport();
-	renderDeviceVulkan->setScissor();
+	renderDeviceVulkan->setViewport(renderTarget.width, renderTarget.height);
+	renderDeviceVulkan->setScissor(renderTarget.width, renderTarget.height);
 
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(setsID);
@@ -378,7 +378,9 @@ void DeferredRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, v
 	renderPassInfo.renderPass = vulkanRenderPass;
 	renderPassInfo.framebuffer = vulkanFrameBuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = {AppWindow::getWidth(), AppWindow::getHeight()};
+	// renderPassInfo.renderArea.extent = renderDeviceVulkan->swapchain.swapChainExtent;
+	// renderPassInfo.renderArea.extent = { AppWindow::getWidth(), AppWindow::getHeight() };
+	renderPassInfo.renderArea.extent = { renderTarget.width, renderTarget.height };
 
 
 	std::array<VkClearValue, 6> clearValues{};
@@ -411,6 +413,8 @@ void DeferredRendererVulkan::_createRenderPasses()
 {
 	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
 	VkDevice device = renderDeviceVulkan->device;
+	renderTarget.width = swapchain.swapChainExtent.width;
+	renderTarget.height = swapchain.swapChainExtent.height;
 
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = swapchain.swapChainImageFormat;
@@ -562,13 +566,13 @@ void DeferredRendererVulkan::_createFrameBuffers()
 	VkDevice device = renderDeviceVulkan->device;
 	
 	uint32_t numFrames = VulkanUtils::numFrames();
-	renderTarget.colorTextures.resize(numFrames);
-	renderTarget.gBufferPos.resize(numFrames);
-	renderTarget.gBufferNorm.resize(numFrames);
-	renderTarget.gBufferAlbedo.resize(numFrames);
-	renderTarget.gPBR.resize(numFrames);
-	renderTarget.depthTextures.resize(numFrames);
-	renderTarget.framebuffers.resize(numFrames);
+	renderTarget.colorTextures.resize(swapchain.swapChainImageViews.size());
+	renderTarget.gBufferPos.resize(swapchain.swapChainImageViews.size());
+	renderTarget.gBufferNorm.resize(swapchain.swapChainImageViews.size());
+	renderTarget.gBufferAlbedo.resize(swapchain.swapChainImageViews.size());
+	renderTarget.gPBR.resize(swapchain.swapChainImageViews.size());
+	renderTarget.depthTextures.resize(swapchain.swapChainImageViews.size());
+	renderTarget.framebuffers.resize(swapchain.swapChainImageViews.size());
 
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		auto createTexture = [&] (VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) -> TextureVulkan* {
@@ -576,8 +580,8 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			auto* texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
 
 			TextureManagerVulkan::createImage(
-				AppWindow::getWidth(),
-				AppWindow::getHeight(),
+				renderDeviceVulkan->swapchain.swapChainExtent.width,
+				renderDeviceVulkan->swapchain.swapChainExtent.height,
 				format,
 				VK_IMAGE_TILING_OPTIMAL,
 				usage,
@@ -672,11 +676,11 @@ void DeferredRendererVulkan::_createFrameBuffers()
 		renderTarget.depthTextures[i] = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(depthId));
 
 		TextureManagerVulkan::createImage(
-			AppWindow::getWidth(),
-			AppWindow::getHeight(),
+			renderDeviceVulkan->swapchain.swapChainExtent.width,
+			renderDeviceVulkan->swapchain.swapChainExtent.height,
 			depthFormat,
 			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			renderTarget.depthTextures[i]->textureImage,
 			renderTarget.depthTextures[i]->textureImageMemory,
@@ -707,8 +711,8 @@ void DeferredRendererVulkan::_createFrameBuffers()
 		framebufferInfo.renderPass = renderTarget.renderPass;
 		framebufferInfo.attachmentCount = attachments.size();
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = AppWindow::getWidth();
-		framebufferInfo.height = AppWindow::getHeight();
+		framebufferInfo.width = renderDeviceVulkan->swapchain.swapChainExtent.width;
+		framebufferInfo.height = renderDeviceVulkan->swapchain.swapChainExtent.height;
 		framebufferInfo.layers = 1;
 
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &renderTarget.framebuffers[i]) != VK_SUCCESS) {
@@ -808,7 +812,7 @@ void DeferredRendererVulkan::_createLightPipeline()
 	// Configure the PipelineInfo (Subpass 1, 1 Attachment, No Depth)
 	PipelineConfigInfo lightConfig = VulkanPipeline::defaultPipelineConfigInfo(1);
 	lightConfig.renderPass = renderTarget.renderPass;
-	lightConfig.subpass = 1; // CRITICAL: Target the second subpass
+	lightConfig.subpass = 1; // Target the second subpass
 	lightConfig.depthStencilInfo.depthTestEnable = VK_FALSE;
 	lightConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
@@ -842,10 +846,7 @@ void DeferredRendererVulkan::_createLightDescriptor()
     };
 
     uint32_t lightPoolID = descriptorManagerVulkan->createPool(poolSizes, 100);    // Create pool with maxSets = 100
-
     lightSetsID = descriptorManagerVulkan->createSets(lightLayoutID, lightPoolID, frameCount);
-    
-
 
 	lightLayoutID_1 = descriptorManagerVulkan->createLayout({
 		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
@@ -970,18 +971,26 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 	}
 }
 
-void DeferredRendererVulkan::_recreteResources()
+void DeferredRendererVulkan::_recreateResources()
 {
 	renderDeviceVulkan->waitIdle();
+	rendererManagerVulkan->setDisplayImage(nullptr);
 	_cleanupResources();
+
 	_createRenderPasses();
 	_createFrameBuffers();
+
 	_updateDescriptor();
 	_updateLightDescriptor();
+
+	_createPipelines();
+	_createLightPipeline();
 }
 
 void DeferredRendererVulkan::_cleanupResources()
 {
 	renderTarget.destroy(renderDeviceVulkan->device);
+	gPassPipeline->destroy();
+	lightingPipeline->destroy();
 }
 #pragma endregion setup

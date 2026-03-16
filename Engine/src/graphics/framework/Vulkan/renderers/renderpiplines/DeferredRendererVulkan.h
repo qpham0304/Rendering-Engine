@@ -107,6 +107,6 @@ public:	//TODO: make private once done testing
 	void _createLightDescriptor();
 	void _updateLightDescriptor();
 
-	void _recreteResources();
+	void _recreateResources();
 	void _cleanupResources();
 };

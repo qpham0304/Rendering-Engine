@@ -9,7 +9,7 @@ VulkanPipeline::VulkanPipeline(VulkanDevice& deviceRef)
 
 VulkanPipeline::~VulkanPipeline()
 {
-
+	destroy();
 }
 
 void VulkanPipeline::create()
@@ -19,8 +19,14 @@ void VulkanPipeline::create()
 
 void VulkanPipeline::destroy()
 {
-	vkDestroyPipeline(device.device, pipeline, nullptr);
-	vkDestroyPipelineLayout(device.device, pipelineLayout, nullptr);
+	if (pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(device, pipeline, nullptr);
+        pipeline = VK_NULL_HANDLE;
+    }
+	if (pipelineLayout != VK_NULL_HANDLE) {
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        pipelineLayout = VK_NULL_HANDLE;
+    }
 }
 
 void VulkanPipeline::bind(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint)

@@ -153,21 +153,31 @@ bool RenderDeviceVulkan::hasStencilComponent(VkFormat format) {
 
 void RenderDeviceVulkan::setViewport()
 {
+	setViewport(swapchain.swapChainExtent.width, swapchain.swapChainExtent.height);
+}
+
+void RenderDeviceVulkan::setScissor()
+{
+	setScissor( swapchain.swapChainExtent.width, swapchain.swapChainExtent.height );
+}
+
+void RenderDeviceVulkan::setViewport(uint32_t width, uint32_t height)
+{
 	VkViewport viewport{};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)AppWindow::getWidth();
-	viewport.height = (float)AppWindow::getHeight();
+	viewport.width = (float)width;
+	viewport.height = (float)height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(commandPool.currentBuffer(), 0, 1, &viewport);
 }
 
-void RenderDeviceVulkan::setScissor()
+void RenderDeviceVulkan::setScissor(uint32_t width, uint32_t height)
 {
 	VkRect2D scissor{};
 	scissor.offset = { 0, 0 };
-	scissor.extent = {AppWindow::getWidth(), AppWindow::getHeight() };
+	scissor.extent = { width, height };
 	vkCmdSetScissor(commandPool.currentBuffer(), 0, 1, &scissor);
 }
 

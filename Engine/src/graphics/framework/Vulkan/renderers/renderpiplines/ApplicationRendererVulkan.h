@@ -53,7 +53,10 @@ private:
 	void renderGui(void* commandBuffer);
 
 	void _createDescriptors();
+	void _createPipeline();
 	void _updateDescriptorSets(uint32_t index);
+	void _recreateResources();
+	void _cleanupResources();
 
 private:
 	const int numInstances = 1;
@@ -73,5 +76,6 @@ private:
 	std::unique_ptr<VulkanPipeline> appPipeline;
 
 	bool isActive{ false };
+	VkImageView lastView { VK_NULL_HANDLE };
 };
 

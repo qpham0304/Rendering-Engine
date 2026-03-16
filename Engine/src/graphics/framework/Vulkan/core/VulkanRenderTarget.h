@@ -11,6 +11,8 @@
 class VulkanRenderTarget 
 {
 public:
+    uint32_t width;
+    uint32_t height;
     VkRenderPass renderPass;
     std::vector<VkFramebuffer> framebuffers;
     std::vector<TextureVulkan*> colorTextures;

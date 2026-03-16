@@ -49,38 +49,19 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 		}
 	});
 
+	
+	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
+		this->needResize = true;
+	});
+
+
 	pushConstantData.flag = true;
 	pushConstantData.color = glm::vec3(1.0f, 1.0f, 0.0f);
 	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
 	pushConstantData.data = 0.1f;
 
 	_createDescriptors();
-	
-	void* handle = materialManager->getMaterialLayout();
-	VkDescriptorSetLayout materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
-
-	VkPipelineVertexInputStateCreateInfo emptyVertexInput{};
-	emptyVertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	emptyVertexInput.vertexAttributeDescriptionCount = 0;
-	emptyVertexInput.pVertexAttributeDescriptions = nullptr;
-	emptyVertexInput.vertexBindingDescriptionCount = 0;
-	emptyVertexInput.pVertexBindingDescriptions = nullptr;
-
-	PipelineConfigInfo pipelineConfig = VulkanPipeline::defaultPipelineConfigInfo(1);
-	pipelineConfig.renderPass = renderDeviceVulkan->swapchain.renderPass;
-	pipelineConfig.subpass = 0;
-	pipelineConfig.depthStencilInfo.depthTestEnable = VK_FALSE;
-	pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
-	
-	appPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
-	appPipeline->createGraphicsPipeline(
-		"assets/shaders/spv/default.vert.spv",
-		"assets/shaders/spv/default.frag.spv",
-		pipelineConfig,
-		emptyVertexInput,
-		{ descriptorSetLayout }, 
-		0
-	);
+	_createPipeline();
 
 	return true;
 }
@@ -99,13 +80,36 @@ void ApplicationRendererVulkan::onUpdate()
 
 void ApplicationRendererVulkan::render(Camera& camera)
 {
-	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
+	// stop rendering as we can't record begin/endRecording because the manager's 
+	// command Buffer recording state is likely corrupted by the destruction inside
+	//  _recreateResources. By returning, we let the manager call endFrame on an empty buffer.
+    if (needResize) {
+        _recreateResources();
+        needResize = false;
+        return; 
+    }
+
+    VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
+	
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 }
 
 void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
 	Timer timer("CPU render submission time", true);
+
+    TextureVulkan* texture = rendererManagerVulkan->getDisplayImage();
+    if (!texture) {
+        beginRecording(commandBuffer, renderDeviceVulkan->swapchain.renderPass, 
+                       renderDeviceVulkan->swapchain.currentFrameBuffer());
+        endRecording(commandBuffer);
+        return; 
+    }
+
+    if (texture->textureImageView != lastView) {
+		_updateDescriptorSets(renderDeviceVulkan->getCurrentFrameIndex());
+        lastView = texture->textureImageView;
+    }
 
 	beginRecording(
 		commandBuffer,
@@ -117,15 +121,13 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
 		renderGui(commandBuffer);
 	} 
 	else {
-		uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-		_updateDescriptorSets(currentFrame);
 		vkCmdBindDescriptorSets(
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			appPipeline->pipelineLayout,
 			0,
 			1,
-			&descriptorSets[currentFrame],
+			&descriptorSets[renderDeviceVulkan->getCurrentFrameIndex()],
 			0,
 			nullptr
 		);
@@ -147,7 +149,8 @@ void ApplicationRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass
 	renderPassInfo.renderPass = vulkanRenderPass;
 	renderPassInfo.framebuffer = vulkanFrameBuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = {AppWindow::getWidth(), AppWindow::getHeight()};
+	renderPassInfo.renderArea.extent = renderDeviceVulkan->swapchain.swapChainExtent;
+	// renderPassInfo.renderArea.extent = { AppWindow::getWidth(), AppWindow::getHeight() };
 
 
 	std::array<VkClearValue, 2> clearValues{};
@@ -180,6 +183,8 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	TextureVulkan* displayImage = rendererManagerVulkan->getDisplayImage();
 	if(displayImage) {
 		ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(displayImage->id()), size);
+	} else {
+		ImGui::Dummy(size);
 	}
 
 	ImVec2 wsize = ImGui::GetWindowSize();
@@ -241,6 +246,35 @@ void ApplicationRendererVulkan::_createDescriptors()
 	}
 }
 
+void ApplicationRendererVulkan::_createPipeline()
+{
+	void* handle = materialManager->getMaterialLayout();
+	VkDescriptorSetLayout materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
+
+	VkPipelineVertexInputStateCreateInfo emptyVertexInput{};
+	emptyVertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	emptyVertexInput.vertexAttributeDescriptionCount = 0;
+	emptyVertexInput.pVertexAttributeDescriptions = nullptr;
+	emptyVertexInput.vertexBindingDescriptionCount = 0;
+	emptyVertexInput.pVertexBindingDescriptions = nullptr;
+
+	PipelineConfigInfo pipelineConfig = VulkanPipeline::defaultPipelineConfigInfo(1);
+	pipelineConfig.renderPass = renderDeviceVulkan->swapchain.renderPass;
+	pipelineConfig.subpass = 0;
+	pipelineConfig.depthStencilInfo.depthTestEnable = VK_FALSE;
+	pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
+	
+	appPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	appPipeline->createGraphicsPipeline(
+		"assets/shaders/spv/default.vert.spv",
+		"assets/shaders/spv/default.frag.spv",
+		pipelineConfig,
+		emptyVertexInput,
+		{ descriptorSetLayout }, 
+		0
+	);
+}
+
 void ApplicationRendererVulkan::_updateDescriptorSets(uint32_t index)
 {
 	TextureVulkan* texture = rendererManagerVulkan->getDisplayImage();
@@ -256,4 +290,21 @@ void ApplicationRendererVulkan::_updateDescriptorSets(uint32_t index)
 	std::vector<VkWriteDescriptorSet> writes = {};
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 0, imageInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
+}
+
+void ApplicationRendererVulkan::_recreateResources()
+{
+	renderDeviceVulkan->waitIdle();
+
+	_cleanupResources();
+	_createPipeline();
+
+	for (uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
+        _updateDescriptorSets(i);
+    }
+}
+
+void ApplicationRendererVulkan::_cleanupResources()
+{
+	appPipeline->destroy();
 }
