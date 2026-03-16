@@ -1,7 +1,6 @@
 #pragma once
 
 #include <unordered_map>
-#include <vector>
 #include <functional>
 #include <memory>
 
@@ -9,8 +8,6 @@
 #include "ServiceLocator.h"
 #include "gui/GuiManager.h"
 #include "window/AppWindow.h"
-#include "graphics/renderers/Renderer.h"
-#include "logging/Logger.h"
 #include "services/Service.h"
 #include "graphics/renderers/RenderDevice.h"
 #include "core/resources/managers/Manager.h"
@@ -82,7 +79,6 @@ private:
 	std::tuple<
 		Factory<AppWindow, WindowPlatform>,
 		Factory<GuiManager, GuiPlatform>,
-		Factory<Renderer, RenderPlatform>,
 		Factory<RenderDevice, RenderPlatform>,
 		Factory<TextureManager, RenderPlatform>,
 		Factory<BufferManager, RenderPlatform>,

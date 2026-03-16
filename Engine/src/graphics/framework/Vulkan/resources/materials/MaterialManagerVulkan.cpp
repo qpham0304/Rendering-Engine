@@ -190,7 +190,7 @@ void MaterialManagerVulkan::_createMaterialDescriptorSet()
 	};
 	materialLayoutID = descriptorManagerVulkan->createLayout(bindings);
 
-	uint32_t maxMaterial = 1024;
+	uint32_t maxMaterial = 1024 * 4;
 	std::vector<VkDescriptorPoolSize> poolSizes = {
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6 * maxMaterial },
 	};

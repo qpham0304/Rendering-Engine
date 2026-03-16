@@ -5,6 +5,14 @@
 #include "window/Input.h"
 #include "core/layers/layerManager.h"
 #include "gui/GuiManager.h"
+#include "core/features/camera.h"
+
+
+#include "src/gui/framework/ImGui/widgets/ImGuiConsoleLogWidget.h"
+#include "src/gui/framework/ImGui/widgets/ImGuiLeftSidebarWidget.h"
+#include "src/gui/framework/ImGui/widgets/ImGuiRightSidebarWidget.h"
+#include "src/gui/framework/ImGui/widgets/ImGuiMenuWidget.h"
+#include "src/gui/framework/ImGui/widgets/ImGuiMathWidget.h"
 
 void EditorLayer::mockThreadTasks()
 {
@@ -60,12 +68,21 @@ EditorLayer::~EditorLayer()
 bool EditorLayer::init()
 {
 	guiController.useDarkTheme();
+	// guiController.useLightTheme();
+	
+	guiController.addWidget<ImGuiLeftSidebarWidget>();
+	guiController.addWidget<ImGuiRightSidebarWidget>();
+	guiController.addWidget<ImGuiConsoleLogWidget>();
+	guiController.addWidget<ImGuiMenuWidget>(guiController.getWidgets());
+	// addWidget(std::make_unique<ImGuiMathWidget>());
+
 	return true;
 }
 
 void EditorLayer::onAttach(LayerManager* manager)
 {
 	Layer::onAttach(manager);
+
 	eventManager.subscribe(EventType::MouseMoved, [&](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 
@@ -89,11 +106,31 @@ void EditorLayer::onAttach(LayerManager* manager)
 			keyPressedEvent.Handled = true;	// block keyboard event from other layers
 		}
 	});
+
+	if(SceneManager::getInstance().listIDs().empty()) {
+		SceneManager::getInstance().addScene("default scene");
+		Scene* scene = SceneManager::getInstance().getActiveScene();
+		if(scene) {
+			// scene->loadScene("assets/data/default-scene.json");
+			scene->loadScene("assets/data/level1-test.json");
+
+			editorCamera = new Camera();
+			editorCamera->init(
+				AppWindow::getWidth(),
+				AppWindow::getHeight(),
+				glm::vec3(-3.0, 10.0, 10.0),
+				glm::vec3(3.0, -10.0, -10.0)
+			);
+
+			SceneManager::cameraController = editorCamera;
+		}
+	}
+
 }
 
 void EditorLayer::onDetach()
 {
-
+	delete editorCamera;
 }
 
 void EditorLayer::onUpdate()

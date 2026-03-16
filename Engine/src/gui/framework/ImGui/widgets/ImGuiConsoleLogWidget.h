@@ -16,6 +16,13 @@ public:
 private:
 	bool m_scrollToBottom{ true };
 	ImGuiLogger m_imguiLogger;
+    bool showDebug { true };
+    bool showInfo { true };
+    bool showWarn { true };
+    bool showError { true };
+    char searchFilter[128] {""};
 
+    void _renderConsole();
+    void _renderProfiler();
 };
 

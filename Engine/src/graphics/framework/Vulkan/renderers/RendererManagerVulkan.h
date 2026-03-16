@@ -3,6 +3,9 @@
 #include "Core/resources/managers/RendererManager.h"
 #include "RendererVulkan.h"
 
+class RenderDeviceVulkan;
+class TextureVulkan;
+
 class RendererManagerVulkan : public RendererManager
 {
 public:
@@ -16,7 +19,21 @@ public:
 	virtual void onUpdate() override;
     virtual void render() override;
 
+    virtual RendererVulkan* getRenderer(std::string_view name) override;
+
+	void beginFrame();
+	void endFrame();
+	void setDisplayImage(TextureVulkan* image);
+	TextureVulkan* getDisplayImage();
+
 protected:
-	std::unordered_map<std::string, std::unique_ptr<Renderer>> m_renderers;
-	
+	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
+	Renderer* applicationRenderer { nullptr };
+	Renderer* forwardRenderer { nullptr };
+	Renderer* deferredRenderer { nullptr };
+	Renderer* shadowMapRenderer { nullptr };
+	Renderer* imageBasedRenderer { nullptr };
+	Renderer* postProcessRenderer { nullptr };
+
+	TextureVulkan* displayImage { nullptr };
 };

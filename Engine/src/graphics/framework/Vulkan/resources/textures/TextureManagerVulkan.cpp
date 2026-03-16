@@ -106,31 +106,36 @@ TextureVulkan* TextureManagerVulkan::getTexture(uint32_t id)
 
 void* TextureManagerVulkan::inspectTexture(uint32_t id)
 {
-	if(textureIDs.find(id) != textureIDs.end()) {
-		return (void*)descriptorManagerVulkan->getDescriptorSet(textureIDs[id])[0];
+    TextureVulkan* textureVulkan = getTexture(id);
+    if(!textureVulkan || textureVulkan->textureImageView == VK_NULL_HANDLE) {
+		return nullptr;
 	}
 
-	TextureVulkan* textureVulkan = getTexture(id);
-	if(!textureVulkan){
-		throw std::runtime_error("textureVulkan inspectTexture: failed to retrieve texture");
-	}
+    uint32_t imguiSetID;
+    if(textureIDs.find(id) == textureIDs.end()) {
+        imguiSetID = descriptorManagerVulkan->createSets(inspectorLayoutID, inspectorPoolID, 1);
+        textureIDs[id] = imguiSetID;
+    } else {
+        imguiSetID = textureIDs[id];
+    }
 
-	uint32_t imguiSetID = descriptorManagerVulkan->createSets(inspectorLayoutID, inspectorPoolID, 1);
-	VkDescriptorSet imguiTextureDescriptorSet = descriptorManagerVulkan->getDescriptorSet(imguiSetID)[0];
+    VkDescriptorSet imguiSet = descriptorManagerVulkan->getDescriptorSet(imguiSetID)[0];
 
-	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = textureVulkan->textureImageView;
-	imageInfo.sampler = textureVulkan->textureSampler;
+    VkDescriptorImageInfo imageInfo{};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = textureVulkan->textureImageView;
+    imageInfo.sampler = textureVulkan->textureSampler;
 
-	std::vector<VkWriteDescriptorSet> writes{};
-	descriptorManagerVulkan->writeImage(&writes, imguiTextureDescriptorSet, writes.size(), imageInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writes);
+    std::vector<VkWriteDescriptorSet> writes{};
+    descriptorManagerVulkan->writeImage(&writes, imguiSet, 0, imageInfo);
+    descriptorManagerVulkan->updateDescriptorSets(&writes);
 
-	textureIDs[id] = imguiSetID;
-
-	return (void*)imguiTextureDescriptorSet;
+    return (void*)imguiSet;
 }
+
+uint32_t TextureManagerVulkan::getInspectorLayout() {
+	return inspectorLayoutID;
+} 
 
 void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture)
 {

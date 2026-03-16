@@ -174,9 +174,9 @@ uint32_t BufferManagerVulkan::createVertexBuffer(const Vertex* vertices, int siz
 }
 
 
-uint32_t BufferManagerVulkan::createIndexBuffer(const uint16_t* indices, int size)
+uint32_t BufferManagerVulkan::createIndexBuffer(const uint32_t* indices, int size)
 {
-	VkDeviceSize bufferSize = sizeof(uint16_t) * size;
+	VkDeviceSize bufferSize = sizeof(uint32_t) * size;
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 

@@ -12,13 +12,13 @@ ImGuiLogger::~ImGuiLogger()
 
 void ImGuiLogger::setLevel(LogLevel level)
 {
-    m_logLevel = _getLevelString(level);
+    m_logLevel = getLevelString(level);
 }
 
 void ImGuiLogger::logMessage(LogLevel level, const std::string& message)
 {
     //ImGui::DebugLog("[%s] %s\n", getLevelString(level), message.c_str());
-    s_UiBuffer.appendf("[%s] %s\n", _getLevelString(level), message.c_str());
+    s_UiBuffer.appendf("[%s] %s\n", getLevelString(level), message.c_str());
 }
 
 void ImGuiLogger::pollMessage()
@@ -33,13 +33,24 @@ void ImGuiLogger::pollMessage()
             case LogLevel::Debug: logMessage(level, message); break;
             default: break;
         }
-        
+        m_logHistory.emplace_back(level, std::move(message));
         Logger::messageQueue.pop();
     }
 }
 
 
-const char* ImGuiLogger::_getLevelString(LogLevel level)
+std::span<ImGuiLogger::LogInfo> ImGuiLogger::logEntries()
+{
+    return m_logHistory;
+}
+
+void ImGuiLogger::clear()
+{
+    return m_logHistory.clear();
+}
+
+
+const char* ImGuiLogger::getLevelString(LogLevel level)
 {
     switch (level) {
         case LogLevel::Trace:    return "TRACE";

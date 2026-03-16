@@ -1,9 +1,9 @@
 #include "ForwardRendererVulkan.h"
 #include "core/features/ServiceLocator.h"
+#include "window/AppWindow.h"
 #include "graphics/renderers/RenderDevice.h"
 #include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
 #include "logging/Logger.h"
-#include "window/AppWindow.h"
 #include "core/events/EventManager.h"
 
 #include <core/resources/managers/TextureManager.h>
@@ -17,12 +17,13 @@
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
+#include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <core/scene/SceneManager.h>
 #include "imgui.h" // TODO: remove it once done
 
 ForwardRendererVulkan::ForwardRendererVulkan(std::string serviceName) 
-	:	Renderer(serviceName)
+	:	RendererVulkan(serviceName)
 {
 
 }
@@ -34,41 +35,7 @@ ForwardRendererVulkan::~ForwardRendererVulkan()
 
 bool ForwardRendererVulkan::init(WindowConfig config)
 {
-	Service::init(config);
-
-	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
-	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
-
-	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
-	bufferManagerVulkan = &static_cast<BufferManagerVulkan&>(bufferManager);
-	DescriptorManager& descriptorManager = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
-	descriptorManagerVulkan = &static_cast<DescriptorManagerVulkan&>(descriptorManager);
-	
-	textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
-	meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-    materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
-	modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-	guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");
-
-	if(!(
-		renderDeviceVulkan &&
-		bufferManagerVulkan &&
-		descriptorManagerVulkan &&
-		textureManager &&
-		meshManager &&
-		materialManager &&
-		modelManager &&
-		guiManager
-	)) {
-		return false;
-	}
-
-	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
-		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
-		if (keyPressedEvent.keyCode == KEY_1) {
-			pushConstantData.flag = !pushConstantData.flag;
-		}
-	});
+	RendererVulkan::init(config);
 
 	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
@@ -93,6 +60,8 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 
 	renderDeviceVulkan->pipeline.create();
 	renderDeviceVulkan->pipeline.createGraphicsPipeline(
+		"assets/shaders/spv/forwardLightPass.vert.spv",
+		"assets/shaders/spv/forwardLightPass.frag.spv",
 		{ descriptorSetLayout, materialLayout }, 
 		renderDeviceVulkan->swapchain.renderPass, 
 		sizeof(PushConstantData)
@@ -101,9 +70,8 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
-	instanceData.resize(numInstances);			// reserve the ssbo size
+	instanceData.resize(numInstances);					// reserve the ssbo size
 	instanceData.push_back({ glm::mat4(1.0) });	// prevent no entity size 0
-
 	size_t bufferSize = instanceData.size() * sizeof(StorageBufferObject);
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
 	
@@ -114,43 +82,30 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	size_t lightBufferSize = lights.size() * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
-	deferredRenderer.init(config);
-
 	_createDescriptorSets();
 	_createOffscreenTarget();
 
-	
+	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
+		_recreteResources();
+	});
+
 	return true;
 }
 
 bool ForwardRendererVulkan::onClose()
 {
-
 	renderDeviceVulkan->waitIdle();
 	renderDeviceVulkan->pipeline.destroy();
 
 	offscreenPipeline->destroy();
 	renderTarget.destroy(renderDeviceVulkan->device);
 
-	deferredRenderer.onClose();
-	
 	return true;
 }
 
 void ForwardRendererVulkan::onUpdate()
 {
 	render(*SceneManager::cameraController);
-}
-
-
-void ForwardRendererVulkan::beginFrame()
-{
-	renderDeviceVulkan->beginFrame();
-}
-
-void ForwardRendererVulkan::endFrame()
-{
-	renderDeviceVulkan->endFrame();
 }
 
 void ForwardRendererVulkan::render(Camera& camera)
@@ -170,116 +125,11 @@ void ForwardRendererVulkan::render(Camera& camera)
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[frame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 
-	beginFrame();
 
-	renderDeviceVulkan->render();
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	
-	
-	renderDeviceVulkan->commandPool.beginBuffer();
-
-
-	//if(showGui) {
-	//	recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-	//}
-	deferredRenderer.render(camera);
-	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-
-
-	renderDeviceVulkan->commandPool.endBuffer();
-
-	endFrame();
-}
-
-
-void ForwardRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
-{
-	Timer timer("CPU render submission time", true);
-
-	beginRecording(
-		commandBuffer,
-		renderDeviceVulkan->swapchain.renderPass,
-		renderDeviceVulkan->swapchain.currentFrameBuffer(),
-		&renderDeviceVulkan->pipeline
-	);
-
-	if(showGui){
-		renderGui(commandBuffer);
-	} 
-	else {
-		uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-		vkCmdBindDescriptorSets(
-			commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			renderDeviceVulkan->pipeline.pipelineLayout,
-			0,
-			1,
-			&descriptorSets[currentFrame],
-			0,
-			nullptr
-		);
-
-		vkCmdPushConstants(
-			commandBuffer,
-			renderDeviceVulkan->pipeline.pipelineLayout,
-			VK_SHADER_STAGE_FRAGMENT_BIT,
-			0,
-			sizeof(PushConstantData),
-			&pushConstantData
-		);
-
-
-		SceneManager& sceneManager = SceneManager::getInstance();
-		Scene* scene = sceneManager.getActiveScene();
-		if (!scene) {
-			m_logger->error("No scene to render");
-		}
-
-		int index = 1;
-		for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
-			
-			const glm::mat4& entityTransform = entity.getComponent<TransformComponent>().getModelMatrix();
-			// TODO: copy the multiple all transforms to ssbo would be slow
-			if(index < instanceData.size()) {
-				if (instanceData[index].model != entityTransform) {
-					instanceData[index].model = entityTransform;
-				}
-			} else {
-				instanceData.push_back({ entityTransform });
-			}
-			
-
-			if(entity.hasComponent<ModelComponent>()) {
-				uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-				const Model* model = modelManager->getModel(modelID);
-
-				for (uint32_t meshID : model->meshIDs) {
-					const Mesh* mesh = meshManager->getMesh(meshID);
-					materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)&renderDeviceVulkan->pipeline);
-					meshManager->bindMesh(meshID);
-
-					uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-					renderDeviceVulkan->draw(indexCount, numInstances, index);
-				}
-			} 
-			
-			if (entity.hasComponent<MeshComponent>()) {
-				MeshComponent meshComponent = entity.getComponent<MeshComponent>();
-				for (uint32_t meshID : meshComponent.meshIDs) {
-					const Mesh* mesh = meshManager->getMesh(meshID);
-					materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)&renderDeviceVulkan->pipeline);
-					meshManager->bindMesh(meshID);
-
-					uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-					renderDeviceVulkan->draw(indexCount, numInstances, index);
-				}
-			}
-			
-			index++;
-		}
-	}
-
-	endRecording(commandBuffer);
+	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
+	recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 }
 
 void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -379,7 +229,7 @@ void ForwardRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, vo
 	renderPassInfo.renderPass = vulkanRenderPass;
 	renderPassInfo.framebuffer = vulkanFrameBuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = renderDeviceVulkan->swapchain.swapChainExtent;
+	renderPassInfo.renderArea.extent = {AppWindow::getWidth(), AppWindow::getHeight()};
 
 
 	std::array<VkClearValue, 2> clearValues{};
@@ -406,54 +256,6 @@ void ForwardRendererVulkan::endRecording(void* cmdBuffer)
 	vkCmdEndRenderPass(commandBuffer);
 }
 
-void ForwardRendererVulkan::renderGui(void* commandBuffer)
-{
-	guiManager->start();
-	ImGui::Begin("Application");
-	ImGui::BeginChild("Application View");
-	uint32_t imageIndex = renderDeviceVulkan->getImageIndex();
-	// VkDescriptorSet descSet = descriptorManagerVulkan->getDescriptorSet(imGuisetIDs[imageIndex])[0];
-	ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-	uint32_t i = renderDeviceVulkan->getImageIndex();
-	ImGui::Image(reinterpret_cast<ImTextureID>(textureManager->inspectTexture(deferredRenderer.renderTarget.colorTextures[imageIndex]->id())), viewportPanelSize);
-
-	deferredRenderer.renderGui();
-
-	ImVec2 wsize = ImGui::GetWindowSize();
-	int wWidth = static_cast<int>(ImGui::GetWindowWidth());
-	int wHeight = static_cast<int>(ImGui::GetWindowHeight());
-	if (SceneManager::cameraController->getViewWidth() != wWidth || SceneManager::cameraController->getViewHeight() != wHeight) {
-		SceneManager::cameraController->updateViewResize(wWidth, wHeight);
-	}
-
-	if (ImGui::IsItemHovered() && ImGui::IsWindowFocused()) {
-		guiManager->setEditorFocus(true);
-		GuiFocusEvent event(true);
-		EventManager::getInstance().publish(event);
-	} 
-	else{
-		guiManager->setEditorFocus(false);
-		GuiFocusEvent event(false);
-		EventManager::getInstance().publish(event);
-	}
-
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if(scene){
- 		const std::vector<Entity>& entities = scene->getSelectedEntities();
- 		if(!entities.empty()) {
- 			const Entity& entity = entities[0];
- 			TransformComponent& transform = entity.getComponent<TransformComponent>();
-			guiManager->renderGuizmo(transform);
- 		}
-	}
-
-	ImGui::EndChild();
-	ImGui::End();
-	guiManager->render(commandBuffer);
-	guiManager->end();
-}
-
 void ForwardRendererVulkan::_createOffscreenTarget()
 {
 	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
@@ -462,12 +264,12 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = swapchain.swapChainImageFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;  	// Clear the texture before drawing
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // Save the results
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // transitions the image for use in the NEXT shader automatically
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	VkAttachmentReference colorAttachmentRef{};
 	colorAttachmentRef.attachment = 0;
@@ -521,10 +323,10 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 	renderTarget.framebuffers.resize(swapchain.swapChainImageViews.size());
 
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
-		uint32_t id = textureManager->createTexture();
+		uint32_t id = textureManagerVulkan->createTexture();
 
 		auto createTexture = [&] () {
-			auto* texture = static_cast<TextureVulkan*>(textureManager->getTexture(id));
+			auto* texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
 			renderTarget.colorTextures[i] = texture;
 
 			TextureManagerVulkan::createImage(
@@ -560,8 +362,8 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 
 		VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
-		uint32_t depthId = textureManager->createTexture();
-		renderTarget.depthTextures[i] = static_cast<TextureVulkan*>(textureManager->getTexture(depthId));
+		uint32_t depthId = textureManagerVulkan->createTexture();
+		renderTarget.depthTextures[i] = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(depthId));
 
 		TextureManagerVulkan::createImage(
 			swapchain.swapChainExtent.width,
@@ -596,8 +398,8 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 		framebufferInfo.renderPass = renderTarget.renderPass;
 		framebufferInfo.attachmentCount = attachments.size();
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = swapchain.swapChainExtent.width;
-		framebufferInfo.height = swapchain.swapChainExtent.height;
+		framebufferInfo.width = AppWindow::getWidth();
+		framebufferInfo.height = AppWindow::getHeight();
 		framebufferInfo.layers = 1;
 
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &renderTarget.framebuffers[i]) != VK_SUCCESS) {
@@ -610,6 +412,8 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 
 	offscreenPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	offscreenPipeline->createGraphicsPipeline(
+		"assets/shaders/spv/forwardLightPass.vert.spv",
+		"assets/shaders/spv/forwardLightPass.frag.spv",
 		{ descriptorSetLayout, materialLayout }, 
 		renderTarget.renderPass, 
 		sizeof(PushConstantData)
@@ -643,6 +447,11 @@ void ForwardRendererVulkan::_createDescriptorSets()
 	setsID = descriptorManagerVulkan->createSets(layoutID, poolID, VulkanUtils::numFrames());
 	descriptorSets = descriptorManagerVulkan->getDescriptorSet(setsID);
 
+	_updateDescriptor();
+}
+
+void ForwardRendererVulkan::_updateDescriptor()
+{
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.buffer = static_cast<VkBuffer>(*uniformbuffersList[i]);
@@ -665,4 +474,17 @@ void ForwardRendererVulkan::_createDescriptorSets()
 		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 2, lightSsboInfo);
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
+}
+
+void ForwardRendererVulkan::_recreteResources()
+{
+	renderDeviceVulkan->waitIdle();
+	_cleanupResources();
+	_createOffscreenTarget();
+	_updateDescriptor();
+}
+
+void ForwardRendererVulkan::_cleanupResources()
+{
+	renderTarget.destroy(renderDeviceVulkan->device);
 }

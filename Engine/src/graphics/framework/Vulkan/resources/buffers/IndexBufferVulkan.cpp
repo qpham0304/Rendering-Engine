@@ -13,6 +13,6 @@ IndexBufferVulkan::~IndexBufferVulkan()
 
 void IndexBufferVulkan::bind(void* commandBuffer)
 {
-	vkCmdBindIndexBuffer((VkCommandBuffer)commandBuffer, buffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdBindIndexBuffer((VkCommandBuffer)commandBuffer, buffer, 0, VK_INDEX_TYPE_UINT32);
 
 }

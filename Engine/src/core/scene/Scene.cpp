@@ -22,7 +22,7 @@ Scene::Scene(std::string name)
 		// two keys ctrl and KEY_S pressed do not happen at the same frame
 		if(keyCode == KEY_LEFT_CONTROL || keyCode == KEY_RIGHT_CONTROL) {
 			controlPressed = true;
-		}
+		} 
 
 		if(keyCode == KEY_S) {
 			if(controlPressed){

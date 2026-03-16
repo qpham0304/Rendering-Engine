@@ -15,7 +15,7 @@ Layer::Layer(std::string_view name)
 void Layer::onAttach(LayerManager* manager)
 {
 	this->m_Manager = manager;
-	//setLogScopeEngine();
+	setLogScopeEngine();
 	init();
 }
 

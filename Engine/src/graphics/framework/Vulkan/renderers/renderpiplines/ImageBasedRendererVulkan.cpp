@@ -23,7 +23,7 @@
 #include <vulkan/vulkan.h>
 
 ImageBasedRendererVulkan::ImageBasedRendererVulkan()
-	: Renderer("ImageBasedRendererVulkan")
+	: RendererVulkan("ImageBasedRendererVulkan")
 {
 
 }
@@ -35,30 +35,16 @@ ImageBasedRendererVulkan::~ImageBasedRendererVulkan()
 
 bool ImageBasedRendererVulkan::init(WindowConfig config)
 {
-	Service::init(config);
+	RendererVulkan::init(config);
 
-	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
-	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
-
-	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
-	bufferManagerVulkan = &static_cast<BufferManagerVulkan&>(bufferManager);
-	DescriptorManager& descriptorManager = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
-	descriptorManagerVulkan = &static_cast<DescriptorManagerVulkan&>(descriptorManager);
-	
-	textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
-	meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-    materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
-	modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-	guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");
-
-	hdrImageID = textureManager->loadTexture(
-		// "assets/textures/hdr/photo_studio_loft_hall_2k.hdr", 
-		"assets/textures/hdr/industrial_sunset_02_puresky_1k.hdr", 
+	hdrImageID = textureManagerVulkan->loadTexture(
+		"assets/textures/hdr/farm_field_puresky_2k.hdr", 
+		// "assets/textures/hdr/newport_loft.hdr", 
 		1, 
 		false
 	);
 
-	hdrImage = dynamic_cast<TextureVulkan*>(textureManager->getTexture(hdrImageID));
+	hdrImage = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(hdrImageID));
 	assert(hdrImage && "Failed to cast texture to TextureVulkan");
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
@@ -84,7 +70,7 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	VkDescriptorSetLayout descriptorLayout = descriptorManagerVulkan->getDescriptorLayout(projectionSH_descriptorLayoutID);
 	projectionSH_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	projectionSH_pipeline->createComputePipeline(
-		"assets/shaders/projectionSH.comp.spv", 
+		"assets/shaders/spv/projectionSH.comp.spv", 
 		{ descriptorLayout },
 		0
 	);
@@ -95,7 +81,7 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	VkDescriptorSetLayout descriptorLayoutSum = descriptorManagerVulkan->getDescriptorLayout(sumSH_descriptorLayoutID);
 	sumSH_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	sumSH_pipeline->createComputePipeline(
-		"assets/shaders/globalSumSH.comp.spv", 
+		"assets/shaders/spv/globalSumSH.comp.spv", 
 		{ descriptorLayoutSum },
 		sizeof(uint32_t)
 	);
@@ -105,7 +91,7 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	VkDescriptorSetLayout descriptorLayoutLUT = descriptorManagerVulkan->getDescriptorLayout(lutDescriptorLayoutID);
 	brdfLUT_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	brdfLUT_pipeline->createComputePipeline(
-		"assets/shaders/brdfLUT.comp.spv", 
+		"assets/shaders/spv/brdfLUT.comp.spv", 
 		{ descriptorLayoutLUT }, 
 		0
 	);
@@ -115,7 +101,7 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	VkDescriptorSetLayout descriptorLayoutPrefilter = descriptorManagerVulkan->getDescriptorLayout(prefilterLayoutID);
 	prefilter_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	prefilter_pipeline->createComputePipeline(
-		"assets/shaders/prefilter.comp.spv", 
+		"assets/shaders/spv/prefilter.comp.spv", 
 		{ descriptorLayoutPrefilter }, 
 		sizeof(PrefilterPushConstants)
 	);
@@ -366,20 +352,20 @@ void ImageBasedRendererVulkan::computePrefilter(VkCommandBuffer cmd, uint32_t cu
 }
 
 void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
-	hdrImageID_temp = textureManager->loadTexture(
+	hdrImageID_temp = textureManagerVulkan->loadTexture(
 		path, 
 		1, 
 		false
 	);
 
-	hdrImage_temp = dynamic_cast<TextureVulkan*>(textureManager->getTexture(hdrImageID_temp));
+	hdrImage_temp = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(hdrImageID_temp));
 
 	if(hdrImage_temp) {
 		int32_t temp = hdrImageID;
 		hdrImage = hdrImage_temp;
 		hdrImageID = hdrImageID_temp;
 
-		// textureManager->destroy(temp);
+		// textureManagerVulkan->destroy(temp);
 	}
 	
 }
@@ -502,8 +488,8 @@ void ImageBasedRendererVulkan::_createDescriptorSetGlobalSum() {
 }
 
 void ImageBasedRendererVulkan::_createResourceLUT() {
-	uint32_t textureID = textureManager->createTexture();
-	brdfLUT = dynamic_cast<TextureVulkan*>(textureManager->getTexture(textureID));
+	uint32_t textureID = textureManagerVulkan->createTexture();
+	brdfLUT = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(textureID));
 
 	assert(brdfLUT && "failed to cast texture into vulkan texture");
 
@@ -577,8 +563,8 @@ void ImageBasedRendererVulkan::_createResourceLUT() {
 }
 
 void ImageBasedRendererVulkan::_createResourcePrefilteredMap() {
-	uint32_t textureID = textureManager->createTexture();
-	prefilterMap = dynamic_cast<TextureVulkan*>(textureManager->getTexture(textureID));
+	uint32_t textureID = textureManagerVulkan->createTexture();
+	prefilterMap = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(textureID));
 
 	assert(prefilterMap && "failed to cast texture into vulkan texture");
 

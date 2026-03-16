@@ -71,7 +71,7 @@ bool SandBoxLayer::init()
     // });
 
 
-    const int numLights = 1;
+    const int numLights = 100;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(-numLights, numLights);
@@ -113,11 +113,18 @@ bool SandBoxLayer::init()
 
 void SandBoxLayer::onAttach(LayerManager *manager)
 {
-    init();
+    Layer::onAttach(manager);
 }
 
 void SandBoxLayer::onDetach()
 {
+    Scene* scene = SceneManager::getInstance().getScene("Sanbox scene");
+    if(scene) {
+        // std::string directory = "../../";
+        // scene->saveScene(directory + "assets/data/Level1-test.json");
+        Log().info("layer detached");
+        SceneManager::getInstance().removeScene("Sanbox scene");
+    }
 
 }
 

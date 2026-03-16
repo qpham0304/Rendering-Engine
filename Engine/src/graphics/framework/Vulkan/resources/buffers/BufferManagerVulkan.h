@@ -22,7 +22,7 @@ public:
     virtual std::vector<uint32_t> listIDs() const override;
     virtual void bind(uint32_t id) override;
     virtual uint32_t createVertexBuffer(const Vertex* vertices, int size) override;
-    virtual uint32_t createIndexBuffer(const uint16_t* indices, int size) override;
+    virtual uint32_t createIndexBuffer(const uint32_t* indices, int size) override;
     virtual BufferVulkan* getBuffer(uint32_t id) override;
 
 

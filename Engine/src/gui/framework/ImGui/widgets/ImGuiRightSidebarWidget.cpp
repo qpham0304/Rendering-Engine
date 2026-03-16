@@ -198,6 +198,10 @@ void ImGuiRightSidebarWidget::environmentControl()
 
 void ImGuiRightSidebarWidget::render()
 {
+    if(!m_isVisible) {
+        return;
+    }
+
     scene = SceneManager::getInstance().getActiveScene();
     if (scene) {
         ImGui::BeginGroup();
@@ -216,7 +220,7 @@ void ImGuiRightSidebarWidget::_listTextureManager()
 	if(AppWindow::getWindowConfig().renderPlatform == RenderPlatform::VULKAN) {
 		std::vector<uint32_t> ids = textureManager->listIDs();
 		for (auto& id : ids) {
-			ImGui::Text(std::to_string(id).c_str());
+			ImGui::Text("%s", std::to_string(id).c_str());
 			ImGui::Begin("Texture View");
 			ImGui::BeginChild("Image View");
 			ImGui::Image((ImTextureID)textureManager->inspectTexture(id), ImVec2(250, 250));

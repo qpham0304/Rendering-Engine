@@ -314,16 +314,19 @@ void ImGuiLeftSidebarWidget::ScenesTab()
 
 void ImGuiLeftSidebarWidget::render()
 {
-    Scene* scene = SceneManager::getInstance().getActiveScene();
+    if(!m_isVisible) {
+        return;
+    }
 
-    ImGui::BeginGroup();
+    Scene* scene = SceneManager::getInstance().getActiveScene();
     if (scene) {
+        ImGui::BeginGroup();
         ErrorModal("Error loading Model");
         EntityTab();
         LightTab();
         ModelsTab();
+        ImGui::EndGroup();
     }
-    ImGui::EndGroup();
 }
 
 #pragma region menu

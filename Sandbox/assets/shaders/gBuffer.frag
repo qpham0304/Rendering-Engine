@@ -36,21 +36,22 @@ layout(set = 1, binding = 4) uniform sampler2D aoMap;
 
 vec3 getNormalFromMap() {
     vec3 tangentNormal = texture(normalMap, inTexCoord).xyz * 2.0 - 1.0;
+    // tangentNormal.y *= -1.0;
+    mat3 tbn = mat3(
+        normalize(inTBN[0]),
+        normalize(inTBN[1]),
+        normalize(inTBN[2])
+    );
 
-    vec3 N = normalize(inNormal);
-    vec3 T = normalize(inTBN[0] - dot(inTBN[0], N) * N);
-    vec3 B = cross(N, T); 
-
-    mat3 TBN = mat3(T, B, N);
-    return normalize(TBN * tangentNormal);
+    return normalize(tbn * tangentNormal);
 }
 
 void main() {
     outPos = vec4(inWorldPos, 1.0);
     
     vec3 N = getNormalFromMap();
-    outNorm = vec4(N, 1.0);
-    // outNorm = vec4(inNormal, 1.0);
+    // outNorm = vec4(N, 1.0);
+    outNorm = vec4(inNormal, 1.0);
     
     outAlbedo = texture(albedoSampler, inTexCoord);
     

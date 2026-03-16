@@ -30,6 +30,8 @@ void VulkanPipeline::bind(VkCommandBuffer commandBuffer, VkPipelineBindPoint pip
 
 
 void VulkanPipeline::createGraphicsPipeline(
+	const std::string& vertFilepath,
+	const std::string& fragFilepath,
 	const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, 
 	VkRenderPass renderPass,
 	size_t pushConstantSize
@@ -37,11 +39,9 @@ void VulkanPipeline::createGraphicsPipeline(
 	// separate shader creation, allow a function to add shader stages into pipeline
 	// set some default config for pipeline
 	// pass in attribute description object for the pipeline to create
-	std::string vertPath = "assets/shaders/default.vert.spv";
-	std::string fragPath = "assets/shaders/default.frag.spv";
 	
-	auto vertShaderCode = VulkanUtils::readFile(vertPath);
-	auto fragShaderCode = VulkanUtils::readFile(fragPath);
+	auto vertShaderCode = VulkanUtils::readFile(vertFilepath);
+	auto fragShaderCode = VulkanUtils::readFile(fragFilepath);
 	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
@@ -84,9 +84,9 @@ void VulkanPipeline::createGraphicsPipeline(
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.lineWidth = 1.0f;
-	//rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	//rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizer.cullMode = VK_CULL_MODE_NONE;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	// rasterizer.cullMode = VK_CULL_MODE_NONE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 
 	VkPipelineMultisampleStateCreateInfo multisampling{};

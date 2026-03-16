@@ -9,38 +9,13 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-class ForwardRendererVulkan : public RendererVulkan
+class ApplicationRendererVulkan : public RendererVulkan
 {
-public:
-
-private:
-    struct PushConstantData {
-        alignas(16) glm::vec3 color;
-        alignas(16) glm::vec3 range;
-        alignas(4)  bool flag;
-        alignas(4)  float data;
-    };
-	
-	struct UniformBufferObject {
-		glm::mat4 model;
-		glm::mat4 view;
-		glm::mat4 proj;
-	};
-
-	struct StorageBufferObject {
-		glm::mat4 model;
-	};
-
-	struct LightSSBO {
-		glm::vec4 color = glm::vec4(1.0f);
-		int modelIndex;
-		float intensity;
-	};
 
 public:
-	ForwardRendererVulkan(std::string serviceName = "ForwardRendererVulkan");
+	ApplicationRendererVulkan(std::string serviceName = "ApplicationRendererVulkan");
 
-	virtual ~ForwardRendererVulkan() override;
+	virtual ~ApplicationRendererVulkan() override;
 
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
@@ -57,27 +32,14 @@ private:
 	void recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	void renderGui(void* commandBuffer);
 
-
 	void _createOffscreenTarget();
 	void _createDescriptorSetLayout();
 	void _createDescriptorPool();
 	void _createDescriptorSets();
-	void _updateDescriptor();
-	void _recreteResources();
-	void _cleanupResources();
 
 private:
-	const int numInstances = 1;
-	const int numLights = 100;
-
 	bool showGui{ true };
-	PushConstantData pushConstantData{};
-
-	std::vector<UniformBufferVulkan*> uniformbuffersList;
-	std::vector<StorageBufferVulkan*> storagebuffersList;
-	std::vector<StorageBufferVulkan*> lightStoragebuffers;
-	std::vector<StorageBufferObject> instanceData;
-	std::vector<LightSSBO> lights;
+	bool isActive{ false };
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorPool descriptorPool;
@@ -90,9 +52,5 @@ private:
 
 	VulkanRenderTarget renderTarget;
 	std::unique_ptr<VulkanPipeline> offscreenPipeline;
-
-	bool isActive{ false };
-
-	DeferredRendererVulkan* deferredRenderer;
 };
 

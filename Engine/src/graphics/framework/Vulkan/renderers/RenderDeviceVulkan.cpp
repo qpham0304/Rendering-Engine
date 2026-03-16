@@ -51,12 +51,13 @@ void RenderDeviceVulkan::beginFrame()
 	vkWaitForFences(device.device, 1, &swapchain.inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	swapchain.accquireNextImage(currentFrame);
+	
+	vkResetFences(device.device, 1, &swapchain.inFlightFences[currentFrame]);
+	vkResetCommandBuffer(commandPool.currentBuffer(), 0);
 }
 
 void RenderDeviceVulkan::render()
 {
-	vkResetFences(device.device, 1, &swapchain.inFlightFences[currentFrame]);
-	vkResetCommandBuffer(commandPool.currentBuffer(), 0);
 }
 
 void RenderDeviceVulkan::endFrame()
@@ -164,8 +165,6 @@ void RenderDeviceVulkan::setViewport()
 
 void RenderDeviceVulkan::setScissor()
 {
-	// m_logger->warn("m_width: {}, m_height: {}", AppWindow::getWidth(), AppWindow::getHeight());
-
 	VkRect2D scissor{};
 	scissor.offset = { 0, 0 };
 	scissor.extent = {AppWindow::getWidth(), AppWindow::getHeight() };

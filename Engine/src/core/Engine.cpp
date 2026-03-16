@@ -39,7 +39,6 @@ Engine::Engine(WindowConfig config)
 	serviceLocator.Register<LayerManager>("LayerManager", *layerManager);
 
 	guiManager = platformFactory.Create<GuiManager>(windowConfig.guiPlatform);
-	renderer = platformFactory.Create<Renderer>(windowConfig.renderPlatform);
 	rendererManager = platformFactory.Create<RendererManager>(windowConfig.renderPlatform);
 
 	//NOTE: setup order is important!
@@ -53,9 +52,8 @@ Engine::Engine(WindowConfig config)
 	services.push_back(materialManager.get());
 	services.push_back(meshManager.get());
 	services.push_back(modelManager.get());
-	services.push_back(layerManager.get());
 	services.push_back(guiManager.get());
-	services.push_back(renderer.get());
+	services.push_back(layerManager.get());
 	services.push_back(rendererManager.get());
 }
 
@@ -67,9 +65,7 @@ void Engine::pushLayer(Layer* layer)
 void Engine::init()
 {
 	engineLogger->setLevel(LogLevel::Debug);
-
-	pushLayer(new EditorLayer("EditorLayer", *guiManager));
-
+	
 	for (Service*& service : services) {
 		if (!service->init(windowConfig)) {
 			engineLogger->error("Service Initilize failed: {}", service->getServiceName());
@@ -78,6 +74,8 @@ void Engine::init()
 			engineLogger->debug("Initilize Service: {}", service->getServiceName());
 		}
 	}
+	
+	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 }
 
 void Engine::start()

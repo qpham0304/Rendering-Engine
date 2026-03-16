@@ -17,9 +17,9 @@
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
+#include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <core/scene/SceneManager.h>
-#include "imgui.h" // TODO: remove it once done
 
 RendererVulkan::RendererVulkan(std::string serviceName) 
 	:	Renderer(serviceName)
@@ -34,7 +34,7 @@ RendererVulkan::~RendererVulkan()
 
 bool RendererVulkan::init(WindowConfig config)
 {
-	Service::init(config);
+	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
 	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
@@ -45,6 +45,8 @@ bool RendererVulkan::init(WindowConfig config)
 	descriptorManagerVulkan = &dynamic_cast<DescriptorManagerVulkan&>(descriptorManager);
 	TextureManager& textureManager = ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
 	textureManagerVulkan = &dynamic_cast<TextureManagerVulkan&>(textureManager);
+	RendererManager& rendererManager = ServiceLocator::GetService<RendererManager>("RendererManagerVulkan");
+	rendererManagerVulkan = &dynamic_cast<RendererManagerVulkan&>(rendererManager);
 
 	meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
@@ -56,6 +58,7 @@ bool RendererVulkan::init(WindowConfig config)
 		bufferManagerVulkan &&
 		descriptorManagerVulkan &&
 		textureManagerVulkan &&
+		rendererManagerVulkan &&
 		meshManager &&
 		materialManager &&
 		modelManager &&
@@ -64,37 +67,21 @@ bool RendererVulkan::init(WindowConfig config)
 		return false;
 	}
 
-	forwardRenderer.init(config);
 
 	return true;
 }
 
 bool RendererVulkan::onClose()
 {
-	forwardRenderer.onClose();
 	return true;
 }
 
 void RendererVulkan::onUpdate()
 {
-	if(!SceneManager::cameraController) {
-		return;
-	}
-	render(*SceneManager::cameraController);
-}
-
-
-void RendererVulkan::beginFrame()
-{
-	renderDeviceVulkan->beginFrame();
-}
-
-void RendererVulkan::endFrame()
-{
-	renderDeviceVulkan->endFrame();
+	
 }
 
 void RendererVulkan::render(Camera& camera)
 {
-	forwardRenderer.render(camera);
+
 }

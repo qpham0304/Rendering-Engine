@@ -118,6 +118,9 @@ bool LayerManager::init(WindowConfig config)
 
 bool LayerManager::onClose()
 {
+	for (Layer* layer : m_Layers) {
+		layer->onDetach();
+	}
 	return true;
 }
 

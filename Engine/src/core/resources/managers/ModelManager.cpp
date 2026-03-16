@@ -176,7 +176,7 @@ void ModelManager::_processNode(aiNode* node, const aiScene* scene, std::vector<
 uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::string_view directory)
 {
     std::vector<Vertex> vertices;
-    std::vector<uint16_t> indices;
+    std::vector<uint32_t> indices;
     
     // process vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {

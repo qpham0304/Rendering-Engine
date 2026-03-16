@@ -31,11 +31,13 @@ public:
 	Scene* getScene(const std::string& name);
 	Scene* getScene(const uint32_t& id);
 	Scene* getActiveScene();
+
+	virtual std::vector<uint32_t> listIDs() const override;
+	
 	void setActiveScene(const std::string& name);
 	bool removeScene(const std::string& name);
 	bool empty();
 
-	virtual std::vector<uint32_t> listIDs() const;
 
 private:
 	SceneManager();
@@ -54,5 +56,6 @@ private:
 	std::mutex animatorsLock;
 	std::mutex modelsLock;
 	std::string activeScene;
+
 };
 

@@ -34,6 +34,8 @@ public:
 	void bind(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint);
 
 	void createGraphicsPipeline(
+		const std::string& vertFilepath,
+		const std::string& fragFilepath,
 		const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
 		VkRenderPass renderPass,
 		size_t pushConstantSize = 0

@@ -5,6 +5,8 @@
 #include "core/features/Camera.h"
 #include "window/AppWindow.h"
 #include "core/events/EventManager.h"
+#include "core/features/ServiceLocator.h"
+#include "gui/GuiManager.h"
 
 Camera* SceneManager::cameraController = nullptr;
 std::string SceneManager::selectedID = "";
@@ -49,7 +51,9 @@ bool SceneManager::init(WindowConfig config)
 			return;
 		}
 
-		if(areaFocused) {
+
+		GuiManager* guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");
+		if(areaFocused || (guiManager && !guiManager->isActive())) {
 			cameraController->processMouse();
 		}
 	});
@@ -130,6 +134,7 @@ Scene* SceneManager::getActiveScene()
 	}
 	return nullptr;
 }
+
 
 void SceneManager::setActiveScene(const std::string& name)
 {

@@ -16,12 +16,14 @@
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
+#include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
 
-DeferredRendererVulkan::DeferredRendererVulkan()
+DeferredRendererVulkan::DeferredRendererVulkan() 
+	: RendererVulkan("DeferredRendererVulkan")
 {
 
 }
@@ -33,34 +35,7 @@ DeferredRendererVulkan::~DeferredRendererVulkan()
 
 bool DeferredRendererVulkan::init(WindowConfig config)
 {
-	Service::init(config);
-
-	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
-	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
-
-	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
-	bufferManagerVulkan = &static_cast<BufferManagerVulkan&>(bufferManager);
-	DescriptorManager& descriptorManager = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
-	descriptorManagerVulkan = &static_cast<DescriptorManagerVulkan&>(descriptorManager);
-	
-	textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
-	meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-    materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
-	modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-	guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");
-
-	if(!(
-		renderDeviceVulkan &&
-		bufferManagerVulkan &&
-		descriptorManagerVulkan &&
-		textureManager &&
-		meshManager &&
-		materialManager &&
-		modelManager &&
-		guiManager
-	)) {
-		return false;
-	}
+	RendererVulkan::init(config);
 
 	shadowMapRenderer.init(config);
 	imageBasedRenderer.init(config);
@@ -78,7 +53,7 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
-	pushConstantLight.skyboxDetail = 1.0f;
+	pushConstantLight.skyboxDetail = 0.0f;
 	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.bias = 0.001f;
 	pushConstantLight.alpha = 0.0001f;
@@ -96,6 +71,8 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
 		_recreteResources();
 	});
+
+	
 
 	return true;
 }
@@ -118,19 +95,8 @@ void DeferredRendererVulkan::onUpdate()
 	shadowMapRenderer.onUpdate();
 }
 
-void DeferredRendererVulkan::beginFrame()
-{
-	renderDeviceVulkan->beginFrame();
-}
-
-void DeferredRendererVulkan::endFrame()
-{
-	renderDeviceVulkan->endFrame();
-}
-
 void DeferredRendererVulkan::render(Camera& camera)
 {
-	cam = &camera;
 	instanceData.clear(); 
     lights.clear();
 
@@ -187,8 +153,11 @@ void DeferredRendererVulkan::render(Camera& camera)
 	imageBasedRenderer.computeSH(cmdBuffer, currentFrame);
 	imageBasedRenderer.computePrefilter(cmdBuffer, currentFrame);
 	
-	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-
+	//TODO: ideally should be image index but this saves space and work with no issue
+	// right now only 2 images and 2 frame buffers, not swapchain image size, change back when there's issue 
+	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getCurrentFrameIndex());
+	
+	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
 }
 
 void DeferredRendererVulkan::renderGui()
@@ -217,6 +186,10 @@ void DeferredRendererVulkan::renderGui()
 	ImGui::SliderFloat("Lintstep Low", &pushConstantLight.lintstepLow, 0.01f, 1.0f);
 	ImGui::SliderFloat("Lintstep High", &pushConstantLight.linstepHigh, 0.01f, 2.0f);
 	ImGui::SliderFloat("Lit Bias", &pushConstantLight.litBias, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags_Logarithmic);
+	uint32_t min_r = 1;
+	uint32_t max_r = 64;
+	ImGui::SliderScalar("radius", ImGuiDataType_U32, &shadowMapRenderer.pushconstant.radius, &min_r, &max_r);
+	ImGui::SliderFloat("sigma", &shadowMapRenderer.pushconstant.sigma, 1.0f, 30.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
 
 	int i = 0;
 	for (auto& entity : entities) {
@@ -236,29 +209,19 @@ void DeferredRendererVulkan::renderGui()
 	ImGui::End();
 
 	ImGui::Begin("G-Buffer Debug");
-	uint32_t frameIdx = renderDeviceVulkan->getImageIndex();
-	int numFrames = 3; 
-	// int numGroups = imGuisetIDs.size() / numFrames;
+	
+	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.colorTextures[currentFrame]->id()), ImVec2(256, 256));
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferPos[currentFrame]->id()), ImVec2(256, 256));
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferNorm[currentFrame]->id()), ImVec2(256, 256));
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferAlbedo[currentFrame]->id()), ImVec2(256, 256));
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gPBR[currentFrame]->id()), ImVec2(256, 256));
 
-
-	// const char* names[] = { "Final", "Position", "Albedo", "PBR", "Normals" };
-
-	// for (int i = 0; i < numGroups; i++) {
-	// 	int index = (i * numFrames) + frameIdx;
-
-	// 	// ensure we don't exceed the vector size
-	// 	if (index < imGuisetIDs.size()) {
-	// 		VkDescriptorSet descSet = descriptorManagerVulkan->getDescriptorSet(imGuisetIDs[index])[0];
-
-	// 		ImGui::Text("%s", names[i]);
-	// 		ImGui::Image(reinterpret_cast<ImTextureID>(descSet), ImVec2(256, 144));
-	// 	}
-	// }
 
 	// ImGui::Text("DEPTH MAP", names[i]);
-	ImGui::Image(reinterpret_cast<ImTextureID>(textureManager->inspectTexture(shadowMapRenderer.depthID)), ImVec2(256, 256));
+	ImGui::Image(reinterpret_cast<ImTextureID>(textureManagerVulkan->inspectTexture(shadowMapRenderer.depthID)), ImVec2(256, 256));
 	
-	// void* irradianceImage = textureManager->inspectTexture(imageBasedRenderer.hdrImageID);
+	// void* irradianceImage = textureManagerVulkan->inspectTexture(imageBasedRenderer.hdrImageID);
 	// ImGui::Image(reinterpret_cast<ImTextureID>(irradianceImage), ImVec2(256, 256));
 
 	//ImGui::SliderFloat4("Sunlight Direction", &pushConstantLight.direction[0], -1.0f, 1.0f);
@@ -406,7 +369,6 @@ void DeferredRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, ui
 
 void DeferredRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer)
 {
-	uint32_t imageIndex = renderDeviceVulkan->getImageIndex();
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
 	VkRenderPass vulkanRenderPass = static_cast<VkRenderPass>(renderPass);
 	VkFramebuffer vulkanFrameBuffer = static_cast<VkFramebuffer>(frameBuffer);
@@ -599,18 +561,19 @@ void DeferredRendererVulkan::_createFrameBuffers()
 	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
 	VkDevice device = renderDeviceVulkan->device;
 	
-	renderTarget.colorTextures.resize(swapchain.swapChainImages.size());
-	renderTarget.gBufferPos.resize(swapchain.swapChainImages.size());
-	renderTarget.gBufferNorm.resize(swapchain.swapChainImages.size());
-	renderTarget.gBufferAlbedo.resize(swapchain.swapChainImages.size());
-	renderTarget.gPBR.resize(swapchain.swapChainImages.size());
-	renderTarget.depthTextures.resize(swapchain.swapChainImages.size());
-	renderTarget.framebuffers.resize(swapchain.swapChainImageViews.size());
+	uint32_t numFrames = VulkanUtils::numFrames();
+	renderTarget.colorTextures.resize(numFrames);
+	renderTarget.gBufferPos.resize(numFrames);
+	renderTarget.gBufferNorm.resize(numFrames);
+	renderTarget.gBufferAlbedo.resize(numFrames);
+	renderTarget.gPBR.resize(numFrames);
+	renderTarget.depthTextures.resize(numFrames);
+	renderTarget.framebuffers.resize(numFrames);
 
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		auto createTexture = [&] (VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) -> TextureVulkan* {
-			uint32_t id = textureManager->createTexture();
-			auto* texture = static_cast<TextureVulkan*>(textureManager->getTexture(id));
+			uint32_t id = textureManagerVulkan->createTexture();
+			auto* texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
 
 			TextureManagerVulkan::createImage(
 				AppWindow::getWidth(),
@@ -705,8 +668,8 @@ void DeferredRendererVulkan::_createFrameBuffers()
 
 		VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
-		uint32_t depthId = textureManager->createTexture();
-		renderTarget.depthTextures[i] = static_cast<TextureVulkan*>(textureManager->getTexture(depthId));
+		uint32_t depthId = textureManagerVulkan->createTexture();
+		renderTarget.depthTextures[i] = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(depthId));
 
 		TextureManagerVulkan::createImage(
 			AppWindow::getWidth(),
@@ -819,8 +782,8 @@ void DeferredRendererVulkan::_createPipelines()
 	
 	gPassPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	gPassPipeline->createGraphicsPipeline(
-		"assets/shaders/gBuffer.vert.spv", 
-		"assets/shaders/gBuffer.frag.spv", 
+		"assets/shaders/spv/gBuffer.vert.spv", 
+		"assets/shaders/spv/gBuffer.frag.spv", 
 		gBufferConfig, 
 		vertexInputInfo, 
 		layouts, 
@@ -851,8 +814,8 @@ void DeferredRendererVulkan::_createLightPipeline()
 
 	lightingPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	lightingPipeline->createGraphicsPipeline(
-		"assets/shaders/lightPass.vert.spv",
-		"assets/shaders/lightPass.frag.spv",
+		"assets/shaders/spv/lightPass.vert.spv",
+		"assets/shaders/spv/lightPass.frag.spv",
 		lightConfig,
 		emptyVertexInput,
 		lightLayouts,
@@ -964,10 +927,10 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = shadowMapRenderer.depthMap->textureImageView;
-		imageInfo.sampler = shadowMapRenderer.depthMap->textureSampler;
-		// imageInfo.imageView = shadowMapRenderer.momentImage->textureImageView;
-		// imageInfo.sampler = shadowMapRenderer.momentImage->textureSampler;
+		// imageInfo.imageView = shadowMapRenderer.depthMap->textureImageView;
+		// imageInfo.sampler = shadowMapRenderer.depthMap->textureSampler;
+		imageInfo.imageView = shadowMapRenderer.momentImage->textureImageView;
+		imageInfo.sampler = shadowMapRenderer.momentImage->textureSampler;
 
 		VkDescriptorImageInfo noiseImageInfo{};
 		noiseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1009,7 +972,7 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 
 void DeferredRendererVulkan::_recreteResources()
 {
-	vkDeviceWaitIdle(renderDeviceVulkan->device);
+	renderDeviceVulkan->waitIdle();
 	_cleanupResources();
 	_createRenderPasses();
 	_createFrameBuffers();

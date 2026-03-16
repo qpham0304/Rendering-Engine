@@ -30,9 +30,9 @@ find_program(GLSLC_EXECUTABLE glslc REQUIRED)
 set(SPIRV_BINARY_FILES "")
 foreach(SHADER ${SHADER_SOURCES})
     get_filename_component(SHADER_FILE ${SHADER} NAME)
-    get_filename_component(SHADER_EXT ${SHADER} LAST_EXT) # Get .vert, .frag, .comp
-    
-    # Map extensions to glslc stage flags
+    get_filename_component(SHADER_EXT ${SHADER} LAST_EXT)
+    get_filename_component(SHADER_DIR ${SHADER} DIRECTORY)
+
     if(SHADER_EXT STREQUAL ".vert")
         set(STAGE_FLAG "-fshader-stage=vertex")
     elseif(SHADER_EXT STREQUAL ".frag")
@@ -40,26 +40,27 @@ foreach(SHADER ${SHADER_SOURCES})
     elseif(SHADER_EXT STREQUAL ".comp")
         set(STAGE_FLAG "-fshader-stage=compute")
     else()
-        set(STAGE_FLAG "") # Fallback to glslc default detection
+        set(STAGE_FLAG "") 
     endif()
 
-    set(SPIRV_OUTPUT "${SHADER}.spv")
+    set(SPV_DIR "${SHADER_DIR}/spv")
+    set(SPIRV_OUTPUT "${SPV_DIR}/${SHADER_FILE}.spv")
 
     add_custom_command(
         OUTPUT ${SPIRV_OUTPUT}
-        # Add ${STAGE_FLAG} to the command
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${SPV_DIR}
         COMMAND ${GLSLC_EXECUTABLE} ${STAGE_FLAG} -x glsl --target-env=vulkan1.1 ${SHADER} -o ${SPIRV_OUTPUT}
         DEPENDS ${SHADER}
         MAIN_DEPENDENCY ${SHADER}
-        COMMENT "Compiling ${SHADER_FILE} (${SHADER_EXT}) for Vulkan"
+        COMMENT "Compiling ${SHADER_FILE} to ${SPV_DIR}"
         VERBATIM
     )
 
     list(APPEND SPIRV_BINARY_FILES ${SPIRV_OUTPUT})
 endforeach()
 
-add_custom_target(Shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
-add_dependencies(${PROJECT_NAME} Shaders)
+add_custom_target(${PROJECT_NAME}_Shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
+add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_Shaders)
 
 # Output location
 set_target_properties(${PROJECT_NAME} PROPERTIES
