@@ -17,57 +17,15 @@ file(GLOB_RECURSE SHADER_SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${SANDBOX_SOURCES})
-# add_executable(${PROJECT_NAME} WIN32 ${SANDBOX_SOURCES})
-# if(MSVC)
-#     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
-# endif()
-
 
 target_link_libraries(${PROJECT_NAME} PRIVATE MyGraphicsEngine)
-
-# Shader compilation
-find_program(GLSLC_EXECUTABLE glslc REQUIRED)
-set(SPIRV_BINARY_FILES "")
-foreach(SHADER ${SHADER_SOURCES})
-    get_filename_component(SHADER_FILE ${SHADER} NAME)
-    get_filename_component(SHADER_EXT ${SHADER} LAST_EXT)
-    get_filename_component(SHADER_DIR ${SHADER} DIRECTORY)
-
-    if(SHADER_EXT STREQUAL ".vert")
-        set(STAGE_FLAG "-fshader-stage=vertex")
-    elseif(SHADER_EXT STREQUAL ".frag")
-        set(STAGE_FLAG "-fshader-stage=fragment")
-    elseif(SHADER_EXT STREQUAL ".comp")
-        set(STAGE_FLAG "-fshader-stage=compute")
-    else()
-        set(STAGE_FLAG "") 
-    endif()
-
-    set(SPV_DIR "${SHADER_DIR}/spv")
-    set(SPIRV_OUTPUT "${SPV_DIR}/${SHADER_FILE}.spv")
-
-    add_custom_command(
-        OUTPUT ${SPIRV_OUTPUT}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${SPV_DIR}
-        COMMAND ${GLSLC_EXECUTABLE} ${STAGE_FLAG} -x glsl --target-env=vulkan1.1 ${SHADER} -o ${SPIRV_OUTPUT}
-        DEPENDS ${SHADER}
-        MAIN_DEPENDENCY ${SHADER}
-        COMMENT "Compiling ${SHADER_FILE} to ${SPV_DIR}"
-        VERBATIM
-    )
-
-    list(APPEND SPIRV_BINARY_FILES ${SPIRV_OUTPUT})
-endforeach()
-
-add_custom_target(${PROJECT_NAME}_Shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
-add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_Shaders)
 
 # Output location
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>"
 )
 
-# Copy assets to build folder
+# Copy the 'assets' folder to the output directory after build
 add_custom_command(
     TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory

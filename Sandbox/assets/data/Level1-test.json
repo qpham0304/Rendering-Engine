@@ -5,14 +5,14 @@
         "components": {
           "TransformComponent": {
             "rotateVec": [
-              3.1415927410125732,
-              1.3428514003753662,
-              3.1415927410125732
+              0.0,
+              45.0,
+              0.0
             ],
             "translateVec": [
-              2.503429889678955,
-              0.1322341412305832,
-              0.3501221239566803
+              3.0,
+              3.0,
+              1.0
             ]
           }
         }
@@ -49,97 +49,19 @@
           },
           "TransformComponent": {
             "scaleVec": [
-              4.3838887214660645,
-              4.3838887214660645,
-              4.3838887214660645
+              0.5,
+              0.5,
+              0.5
             ],
             "translateVec": [
-              -11.099790573120117,
-              -5.963878631591797,
-              -0.7150759100914001
+              -1.0,
+              2.0,
+              1.0
             ]
           }
         }
       },
       "prefab_ref": "assets/data/prefabs/asteroid.json"
-    },
-    {
-      "overrides": {
-        "components": {
-          "TransformComponent": {
-            "rotateVec": [
-              -3.141592502593994,
-              0.08679907768964767,
-              -3.141592502593994
-            ],
-            "scaleVec": [
-              0.4999999403953552,
-              0.5,
-              0.4999999403953552
-            ],
-            "translateVec": [
-              1.0858275890350342,
-              0.4399420917034149,
-              0.013673699460923672
-            ]
-          }
-        }
-      },
-      "prefab_ref": "assets/data/prefabs/helmet.json"
-    },
-    {
-      "components": {
-        "ModelComponent": {
-          "path": "assets/models/cube/cube-notex.gltf"
-        },
-        "NameComponent": {
-          "name": "plane"
-        },
-        "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            8.743499755859375,
-            1.3960028886795044,
-            8.743499755859375
-          ],
-          "translateVec": [
-            2.0,
-            -1.519755244255066,
-            2.3921761512756348
-          ]
-        }
-      }
-    },
-    {
-      "components": {
-        "ModelComponent": {
-          "path": "assets/models/stylized_medieval_house__free/scene.gltf"
-        },
-        "NameComponent": {
-          "name": "house"
-        },
-        "TransformComponent": {
-          "rotateVec": [
-            -1.5770479440689087,
-            0.25953859090805054,
-            -0.0016044009244069457
-          ],
-          "scaleVec": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "translateVec": [
-            -4.153437614440918,
-            0.0673285722732544,
-            -4.9968743324279785
-          ]
-        }
-      }
     }
   ],
   "scene_name": "Level1"

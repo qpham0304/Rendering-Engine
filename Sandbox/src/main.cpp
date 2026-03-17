@@ -1,3 +1,4 @@
+#include "Sandbox.h"
 #include <core/Engine.h>
 #include "SandboxLayer.h"
 
@@ -14,9 +15,9 @@ int main()
         windowConfig.height = 1080;
         windowConfig.vsync = false;
 
-        Engine app(windowConfig);
-        app.init();
+        Sandbox app(windowConfig);
         app.pushLayer(new SandBoxLayer("Sandbox Layer"));
+        app.init();
         app.start();
         app.run();
         app.close();
@@ -24,9 +25,6 @@ int main()
     catch (const std::runtime_error& e) {
         std::cerr << "Exception caught by main: " << e.what() << std::endl;
     } 
-    catch (const std::exception& e) { // Catch by reference
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
     catch (...) {
         std::cerr << "Unknown exception caught by main" << std::endl;
     }
