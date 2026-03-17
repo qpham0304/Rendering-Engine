@@ -33,57 +33,64 @@ void Profiler::_addTracker(const ProfilerData& data)
 	profileList[data.name] = data.time;
 }
 
+//TODO: let imgui query from profiler and display it no coupling
 void Profiler::_display()
 {
-	ImGui::Begin("Profiler");
+    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Engine Profiler", nullptr, ImGuiWindowFlags_NoScrollbar)) {
+        ImGui::End();
+        return;
+    }
 
-	static float frame_times[90] = { 0 }; 
-	static int values_offset = 0;
+    static float frame_times[90] = { 0 };
+    static int values_offset = 0;
+    
+    float dt = ImGui::GetIO().DeltaTime;
+    float current_ms = dt * 1000.0f;
+    frame_times[values_offset] = current_ms;
+    values_offset = (values_offset + 1) % 90;
 
-	float current_frame_time = 1000.0f / ImGui::GetIO().Framerate;
-	frame_times[values_offset] = current_frame_time;
-	values_offset = (values_offset + 1) % 90; // Rotate the index
+    float average = 0.0f;
+    for (int n = 0; n < 90; n++) average += frame_times[n];
+    average /= 90.0f;
 
-	// 3. Calculate the average for the overlay text
-	float average = 0.0f;
-	for (int n = 0; n < 90; n++) {
-		average += frame_times[n];
-	}
-	average /= (float)90;
+    ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), "Performance Summary");
+    ImGui::Separator();
+    
+    ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+    ImGui::SameLine(ImGui::GetWindowWidth() * 0.5f);
+    ImGui::Text("Avg: %.2f ms", average);
 
-	char overlay[32];
-	sprintf(overlay, "avg %.2f ms", average);
+    ImVec4 plot_color = ImVec4(0.2f, 0.9f, 0.2f, 1.0f);
+    if (current_ms > 16.66f) plot_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);
+    if (current_ms > 33.33f) plot_color = ImVec4(1.0f, 0.2f, 0.2f, 1.0f);
 
-	float min_val = frame_times[0];
-	float max_val = frame_times[0];
-	for (int i = 1; i < 90; i++) {
-		if (frame_times[i] < min_val) min_val = frame_times[i];
-		if (frame_times[i] > max_val) max_val = frame_times[i];
-	}
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, plot_color);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
+    
+    ImGui::PlotHistogram("##FrameTimes", frame_times, 90, values_offset, 
+                         nullptr, 0.0f, 33.3f, ImVec2(ImGui::GetContentRegionAvail().x, 60.0f));
+    
+    ImGui::PopStyleColor(2);
 
-	float display_min = min_val * 0.9f; 
-	float display_max = max_val * 1.1f;
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("Detailed Breakdowns", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::BeginTable("ProfileTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Task/System");
+            ImGui::TableSetupColumn("Time (ms)", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableHeadersRow();
 
-	ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.0f, 1.0f, 0.0f, 1.0f)); // Pure Green
-	ImGui::PlotLines("##FrameTimes", 
-		frame_times, 
-		90, 
-		values_offset, 
-		overlay, 
-		0.0f,          // Min scale (keep at 0 to see relative height)
-		FLT_MAX,       // AUTO-SCALE: Max will be the highest value in the buffer
-		ImVec2(0, 80.0f)
-	);
-	ImGui::PopStyleColor();
-
-	ImGui::SameLine();
-	ImGui::Checkbox("Detail", &showDetail);
-	if (showDetail) {
-		for (const auto& [label, time] : profileList) {
-			ImGui::Text("%s", label.c_str());
-			ImGui::SameLine();
-			ImGui::Text("%s", std::to_string(time).c_str());
-		}
-	}
-	ImGui::End();
+            for (const auto& [label, time] : profileList) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%s", label.c_str());
+                
+                ImGui::TableSetColumnIndex(1);
+                if (time > 5.0f) ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%.3f ms", time);
+                else ImGui::Text("%.3f ms", time);
+            }
+            ImGui::EndTable();
+        }
+    }
+    ImGui::End();
 }

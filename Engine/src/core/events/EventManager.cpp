@@ -35,12 +35,14 @@ void EventManager::unsubscribe(EventType eventType, uint32_t cbID)
 
 void EventManager::publish(Event& event)
 {
-	if (callbacks.find(event.GetEventType()) != callbacks.end()) {
-		for (const auto& [id, callback] : callbacks[event.GetEventType()]) {
-			callback(event);
-			if (event.Handled) {
-				break;
-			}
+	if (callbacks.find(event.GetEventType()) == callbacks.end()) {
+		return;
+	}
+
+	for (const auto& [id, callback] : callbacks[event.GetEventType()]) {
+		callback(event);
+		if (event.Handled) {
+			break;
 		}
 	}
 }

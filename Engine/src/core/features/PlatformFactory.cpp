@@ -25,11 +25,6 @@ PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
         RegisterConstructor<GuiManager, ImGuiManager>()
     );
 
-    GetFactory<Renderer, RenderPlatform>().Register(
-        RenderPlatform::VULKAN,
-        RegisterConstructor<Renderer, RendererVulkan>()
-    );
-
     GetFactory<RenderDevice, RenderPlatform>().Register(
         RenderPlatform::VULKAN,
         RegisterConstructor<RenderDevice, RenderDeviceVulkan>()

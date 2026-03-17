@@ -15,8 +15,8 @@ int main()
         windowConfig.vsync = false;
 
         Engine app(windowConfig);
-        app.pushLayer(new SandBoxLayer("Sandbox Layer"));
         app.init();
+        app.pushLayer(new SandBoxLayer("Sandbox Layer"));
         app.start();
         app.run();
         app.close();

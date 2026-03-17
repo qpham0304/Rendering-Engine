@@ -16,8 +16,7 @@ ImGuiRightSidebarWidget::ImGuiRightSidebarWidget()
         popupOpen(false),
         selectedTexture(0)
 {
-    scene = SceneManager::getInstance().getActiveScene();
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
+
 }
 
 void ImGuiRightSidebarWidget::TextureModal(const ImTextureID& id) {
@@ -199,15 +198,19 @@ void ImGuiRightSidebarWidget::environmentControl()
 
 void ImGuiRightSidebarWidget::render()
 {
-    ImGui::BeginGroup();
+    if(!m_isVisible) {
+        return;
+    }
+
+    scene = SceneManager::getInstance().getActiveScene();
     if (scene) {
+        ImGui::BeginGroup();
         _componentsControl();
         // layersControl();
         textureInspector();
         environmentControl();
+        ImGui::EndGroup();
     }
-    ImGui::EndGroup();
-
 }
 
 void ImGuiRightSidebarWidget::_listTextureManager()
@@ -217,7 +220,7 @@ void ImGuiRightSidebarWidget::_listTextureManager()
 	if(AppWindow::getWindowConfig().renderPlatform == RenderPlatform::VULKAN) {
 		std::vector<uint32_t> ids = textureManager->listIDs();
 		for (auto& id : ids) {
-			ImGui::Text(std::to_string(id).c_str());
+			ImGui::Text("%s", std::to_string(id).c_str());
 			ImGui::Begin("Texture View");
 			ImGui::BeginChild("Image View");
 			ImGui::Image((ImTextureID)textureManager->inspectTexture(id), ImVec2(250, 250));
@@ -240,6 +243,15 @@ void ImGuiRightSidebarWidget::_componentsControl()
     if(selectedEntities.empty()) {
         return;
     }
+    
+    // ImGuiWindowClass window_class;  // flag to hide the tab bar
+    // window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
+    // ImGui::SetNextWindowClass(&window_class);
+    
+    ImGui::PushStyleColor(ImGuiCol_TabActive, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg)); 
+    ImGui::PushStyleColor(ImGuiCol_Tab, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
+    ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.3f, 0.3f, 0.35f, 1.0f)); // Subtle hover
+    ImGui::PushStyleColor(ImGuiCol_TabUnfocusedActive, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
 
     Entity& entity = const_cast<Entity&>(selectedEntities[0]);
     ImGui::Begin("Components");
@@ -296,9 +308,6 @@ void ImGuiRightSidebarWidget::_componentsControl()
             
             ImGui::EndMenu();
         }
-        // if (ImGui::Selectable("Mesh")) { 
-        //     entity.addComponent<MeshComponent>();
-        // }
 
         if (ImGui::Selectable("Camera")) { 
 
@@ -321,7 +330,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
         ImGui::EndPopup();
     }
     ImGui::End();
-    
+    ImGui::PopStyleColor(4);
 }
 
 void ImGuiRightSidebarWidget::_nameControl(const Entity& entity)

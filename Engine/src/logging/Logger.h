@@ -1,9 +1,9 @@
 #pragma once
 
-#include <memory>
 #include <string>
 #include <format>
-#include <vector>
+#include <queue>
+#include <mutex>
 
 enum class LogLevel {
     Trace,
@@ -62,6 +62,10 @@ public:
     const std::string& name() const { return m_name; }
 
 protected:
+    //only consumed by gui console not thread safe
+    inline static std::queue<std::tuple<LogLevel, std::string>> messageQueue; 
+    inline static std::mutex queueMutex;
+
     Logger() : m_name("Logger") {};
     Logger(std::string loggerType, std::string loggerName = "Logger") : m_name("Logger") {};
 

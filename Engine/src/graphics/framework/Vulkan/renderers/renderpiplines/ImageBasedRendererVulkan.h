@@ -2,22 +2,10 @@
 #include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
+#include "graphics/framework/vulkan/renderers/RendererVulkan.h"
  
 
-class Logger;
-class TextureManager;
-class MeshManager;
-class ModelManager;
-class GuiManager;
-class BufferManager;
-class RenderDeviceVulkan;
-class TextureVulkan;
-class DescriptorManagerVulkan;
-class MaterialManager;
-class VulkanPipeline;
-class Camera;
-
-class ImageBasedRendererVulkan : public Renderer
+class ImageBasedRendererVulkan : public RendererVulkan
 {
 public:
     ImageBasedRendererVulkan();
@@ -26,8 +14,6 @@ public:
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
-	virtual void beginFrame() override {};
-	virtual void endFrame() override {};
 	virtual void render(Camera& camera) override;
 
 	void computeSH(VkCommandBuffer cmd, uint32_t currentFrame);
@@ -46,18 +32,6 @@ public:
 	TextureVulkan* prefilterMap;
 	
 protected:
-	Logger* m_logger{ nullptr };
-	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
-	MeshManager* meshManager{ nullptr };
-	ModelManager* modelManager{ nullptr };
-	GuiManager* guiManager{ nullptr };
-	TextureManager* textureManager{ nullptr };
-	MaterialManager* materialManager{ nullptr };
-    BufferManager* bufferManager{ nullptr };
-	BufferManagerVulkan* bufferManagerVulkan{ nullptr };
-	DescriptorManagerVulkan* descriptorManagerVulkan{ nullptr };
-
-
 	struct PartialSum {
 		glm::vec4 coefficients;
 	};

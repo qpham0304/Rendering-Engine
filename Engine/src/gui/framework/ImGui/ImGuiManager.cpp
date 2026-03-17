@@ -37,6 +37,8 @@ bool ImGuiManager::init(WindowConfig config)
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;			// Enable Multi-Viewport / Platform Windows
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
 
+	io.IniFilename = "Assets/imgui.ini";
+
 	float fontSize = 16.0f;
 
 	static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
@@ -71,8 +73,6 @@ bool ImGuiManager::init(WindowConfig config)
 
 	io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto/Roboto-Regular.ttf", fontSize);
 	io.Fonts->AddFontFromFileTTF("assets/fonts/fa/" FONT_ICON_FILE_NAME_FAS, fontSize*0.75, &icons_config, icons_ranges);
-
-	darkTheme ? useDarkTheme() : useLightTheme(); // preset style from others
 	
 	ImGuiStyle& style = ImGui::GetStyle();
 	style.WindowMenuButtonPosition = ImGuiDir_None;
@@ -84,25 +84,8 @@ bool ImGuiManager::init(WindowConfig config)
 	style.TabRounding = 8;
 	style.GrabMinSize = 15;
 
+	darkTheme ? useDarkTheme() : useLightTheme(); // preset style from others
 
-	addWidget(std::make_unique<ImGuiMenuWidget>());
-	addWidget(std::make_unique<ImGuiLeftSidebarWidget>());
-	addWidget(std::make_unique<ImGuiRightSidebarWidget>());
-	addWidget(std::make_unique<ImGuiConsoleLogWidget>());
-	addWidget(std::make_unique<ImGuiMenuWidget>());
-	// addWidget(std::make_unique<ImGuiMathWidget>());
-
-	useDarkTheme();
-
-	// Gamma correct swapchain current use SRGB output
-	// if (m_config.renderPlatform == RenderPlatform::VULKAN) {
-	// 	for (int i = 0; i < ImGuiCol_COUNT; i++) {
-	// 		ImVec4 c = style.Colors[i];
-	// 		style.Colors[i].x = pow(c.x, 2.2f);
-	// 		style.Colors[i].y = pow(c.y, 2.2f);
-	// 		style.Colors[i].z = pow(c.z, 2.2f);
-	// 	}
-	// }
 	return true;
 }
 
@@ -296,7 +279,8 @@ void ImGuiManager::setTheme(bool darkTheme)
 
 void ImGuiManager::useLightTheme()
 {
-	ImGuiThemes::purpleTheme();
+	// ImGuiThemes::purpleTheme();
+	ImGuiThemes::lightTheme();
 }
 
 void ImGuiManager::useDarkTheme()
@@ -390,7 +374,7 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 	);
 
 	if (ImGuizmo::IsUsing()) {
-		guizmoActive = true;
+		setGuizmoFocus(true);
 		glm::vec3 translation, rotation, scale;
 		Utils::Math::DecomposeTransform(transform, translation, rotation, scale);	// graphics utils dependency, resolve when have time
 		glm::vec3 deltaRotation = rotation - transformComponent.rotateVec;
@@ -400,7 +384,7 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 		transformComponent.scaleVec = scale;
 	}
 	else {
-		guizmoActive = false;
+		setGuizmoFocus(false);
 	}
 }
 

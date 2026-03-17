@@ -5,13 +5,9 @@
 
 class ImGuiMenuWidget : public MenuWidget
 {
-protected:
-
-
 public:
-	ImGuiMenuWidget();
+	ImGuiMenuWidget(std::span<std::shared_ptr<Widget>> widgetIDs);
 	~ImGuiMenuWidget();
-
 
 	virtual void render() override;
 	virtual void MainMenuBar()override;
@@ -20,5 +16,10 @@ public:
 	virtual void ToolMenu()override;
 	virtual void WindowMenu()override;
 	virtual void HelpMenu()override;
+
+protected:
+	std::vector<std::shared_ptr<Widget>> m_widgetRefs;
+	bool m_showDebug;
+
 };
 

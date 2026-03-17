@@ -64,6 +64,7 @@ set(PCH_HEADERS
     <stdexcept>
     <vector>
     <array>
+    <span>
     <cstdint>
     <limits>
     <optional>

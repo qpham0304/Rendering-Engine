@@ -8,28 +8,40 @@
             "type": "shell",
             "command": "cmake --build build --target Sandbox --config Debug",
             "group": "build",
-            "problemMatcher": []
+            "problemMatcher": {
+                "base": "$msvc",
+                "fileLocation": ["relative", "${workspaceFolder}/build"]
+            }
         },
         {
             "label": "build Sandbox Release",
             "type": "shell",
             "command": "cmake --build build --target Sandbox --config Release",
             "group": "build",
-            "problemMatcher": []
+            "problemMatcher": {
+                "base": "$msvc",
+                "fileLocation": ["relative", "${workspaceFolder}/build"]
+            }
         },
         {
             "label": "build Editor Debug",
             "type": "shell",
             "command": "cmake --build build --target Editor --config Debug",
             "group": "build",
-            "problemMatcher": []
+            "problemMatcher": {
+                "base": "$msvc",
+                "fileLocation": ["relative", "${workspaceFolder}/build"]
+            }
         },
         {
             "label": "build Editor Release",
             "type": "shell",
             "command": "cmake --build build --target Editor --config Release",
             "group": "build",
-            "problemMatcher": []
+            "problemMatcher": {
+                "base": "$msvc",
+                "fileLocation": ["relative", "${workspaceFolder}/build"]
+            }
         }
     ]
 }

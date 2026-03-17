@@ -73,6 +73,11 @@ bool AppWindowGLFW::onClose() {
 
 void AppWindowGLFW::onUpdate()
 {
+	if(m_width != m_config.width || m_height != m_config.height) {
+		m_width = m_config.width;
+		m_height = m_config.height;
+	}
+	
 	switch (m_config.renderPlatform) {
 		case RenderPlatform::OPENGL: _onUpdateOpenGL(); break;
 		case RenderPlatform::VULKAN: _onUpdateVulkan(); break;
@@ -81,7 +86,9 @@ void AppWindowGLFW::onUpdate()
 }
 void AppWindowGLFW::_getFrameBufferSize(int& width, int& height)
 {
-	glfwGetFramebufferSize(m_windowHandle, &width, &height);	//TODO: remove abstract to appwindow
+	glfwGetFramebufferSize(m_windowHandle, &width, &height);
+	// m_width = width;
+	// m_height = height;
 }
 
 void AppWindowGLFW::_waitEvents()

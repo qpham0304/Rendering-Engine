@@ -5,7 +5,7 @@
 class MenuWidget : public Widget
 {
 protected:
-	MenuWidget() : Widget() {}
+	MenuWidget(std::string name = "MenuWidget") : Widget(name) {}
 
 public:
 	~MenuWidget() = default;

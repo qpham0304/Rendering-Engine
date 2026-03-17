@@ -1,27 +1,14 @@
 #pragma once
 
-#include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
+#include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>
 #include <unordered_map>
 
-
-class Logger;
-class TextureManager;
-class MeshManager;
-class ModelManager;
-class GuiManager;
-class BufferManager;
-class RenderDeviceVulkan;
-class TextureVulkan;
-class DescriptorManagerVulkan;
-class MaterialManager;
-class VulkanPipeline;
-
-class ShadowMapRendererVulkan : public Renderer
+class ShadowMapRendererVulkan : public RendererVulkan
 {
 private:
 	struct LightPushConstant {
@@ -31,6 +18,8 @@ private:
 
 	struct ComputePushConstant {
 		uint32_t isVertical;	// 0 for horizontal, 1 for vertical
+		uint32_t radius;
+		float sigma;
 	};
 
 public:
@@ -40,8 +29,6 @@ public:
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
-	virtual void beginFrame() override;
-	virtual void endFrame() override;
 	virtual void render(Camera& camera) override;
 
 	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline);
@@ -49,20 +36,9 @@ public:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	void dispatchBlur(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
-public:	//TODO: make private once done testing	
-	Logger* m_logger{ nullptr };
-	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
-	MeshManager* meshManager{ nullptr };
-	ModelManager* modelManager{ nullptr };
-	GuiManager* guiManager{ nullptr };
-	TextureManager* textureManager{ nullptr };
-	MaterialManager* materialManager{ nullptr };
-	BufferManager* bufferManager{ nullptr };
-	BufferManagerVulkan* bufferManagerVulkan{ nullptr };
-	DescriptorManagerVulkan* descriptorManagerVulkan{ nullptr };
-
-
+public:	
 	std::unique_ptr<VulkanPipeline> shadowPipeline;
+	uint32_t depthID;
 	TextureVulkan* depthMap;
 	TextureVulkan* momentImage;
 	TextureVulkan* tempMomentImage;
@@ -85,11 +61,7 @@ public:	//TODO: make private once done testing
 	uint32_t compDescSetMtoT_ID;
 	uint32_t compDescSetTtoM_ID;
 
-	uint32_t imGuilayoutID;
-	uint32_t imGuipoolID;
-	std::vector<uint32_t> imGuisetIDs;
-	VkDescriptorSet imGuiDescriptorSet;
-
+	ComputePushConstant pushconstant;
 	bool useOrtho = true;
 
 private:
@@ -99,6 +71,6 @@ private:
 	void _createShadowFrameBuffer();
 	void _createMomentImage();
 	void _createMomentDescriptor();
-    void _createOffscreenViewDescriptorSet();
+	// void _updateMomentDesccriptor();
 	void _createComputePipeline();
 };

@@ -23,7 +23,6 @@ public:
 	virtual void render() override;
 
 private:
-	
 	Logger* m_logger;
 	ModelManager* modelManager;
 

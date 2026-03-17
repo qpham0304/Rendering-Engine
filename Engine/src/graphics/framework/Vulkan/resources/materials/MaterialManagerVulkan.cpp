@@ -21,8 +21,6 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 {
     Service::init(config);
 
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
-
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&device);
 
@@ -132,7 +130,7 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 
 void MaterialManagerVulkan::bindMaterial(const uint32_t &id, void* cmdBuffer, void* p)
 {
-	assert(p, "pipeline required");
+	assert(p && "pipeline required");
 
 	MaterialVulkan material = materials.at(id);
 	VkDescriptorSet materialSet = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID)[0];
@@ -192,7 +190,7 @@ void MaterialManagerVulkan::_createMaterialDescriptorSet()
 	};
 	materialLayoutID = descriptorManagerVulkan->createLayout(bindings);
 
-	uint32_t maxMaterial = 1024;
+	uint32_t maxMaterial = 1024 * 4;
 	std::vector<VkDescriptorPoolSize> poolSizes = {
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6 * maxMaterial },
 	};

@@ -2,12 +2,17 @@
 
 #include <vector>
 #include <vulkan/vulkan.h>
+#include "core/features/ServiceLocator.h"
+#include "core/resources/managers/TextureManager.h"
+#include "graphics/framework/Vulkan/resources/textures/TextureVulkan.h"
 
-class TextureVulkan;
+// class TextureVulkan;
 
 class VulkanRenderTarget 
 {
 public:
+    uint32_t width;
+    uint32_t height;
     VkRenderPass renderPass;
     std::vector<VkFramebuffer> framebuffers;
     std::vector<TextureVulkan*> colorTextures;
@@ -22,5 +27,25 @@ public:
             vkDestroyFramebuffer(device, framebuffers[i], nullptr);
         }
         vkDestroyRenderPass(device, renderPass, nullptr);
+
+        TextureManager& textureManager = ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
+        for(TextureVulkan* texture : colorTextures){
+            textureManager.destroy(texture->id());
+        }
+        for(auto& texture : gBufferPos){
+            textureManager.destroy(texture->id());
+        }
+        for(auto& texture : gBufferNorm){
+            textureManager.destroy(texture->id());
+        }
+        for(auto& texture : gBufferAlbedo){
+            textureManager.destroy(texture->id());
+        }
+        for(auto& texture : gPBR){
+            textureManager.destroy(texture->id());
+        }
+        for(auto& texture : depthTextures){
+            textureManager.destroy(texture->id());
+        }
     }
 };

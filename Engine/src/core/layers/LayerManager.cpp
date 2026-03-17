@@ -108,16 +108,19 @@ bool LayerManager::init(WindowConfig config)
 {
 	Service::init(config);
 
-	for (auto& layer : m_Layers) {
-		if (!layer->init()) {
-			return false;
-		}
-	}
+	// for (auto& layer : m_Layers) {
+	// 	if (!layer->init()) {
+	// 		return false;
+	// 	}
+	// }
 	return true;
 }
 
 bool LayerManager::onClose()
 {
+	for (Layer* layer : m_Layers) {
+		layer->onDetach();
+	}
 	return true;
 }
 

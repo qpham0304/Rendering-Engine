@@ -44,10 +44,12 @@ public:
 
 	void setViewport();
 	void setScissor();
+
+	void setViewport(uint32_t width, uint32_t height);
+	void setScissor(uint32_t width, uint32_t height);
 	void waitIdle();
 
 private:
-	Logger* m_logger{ nullptr };
 	uint32_t currentFrame = 0;
 	std::atomic<uint16_t> m_ids;
 	uint16_t activeCommandPool = 0;

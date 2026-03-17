@@ -22,7 +22,7 @@
 #include <vulkan/vulkan.h>
 
 ShadowMapRendererVulkan::ShadowMapRendererVulkan() 
-	: Renderer("ShadowMapRendererVulkan")
+	: RendererVulkan("ShadowMapRendererVulkan")
 {
 
 
@@ -34,56 +34,28 @@ ShadowMapRendererVulkan::~ShadowMapRendererVulkan()
 
 bool ShadowMapRendererVulkan::init(WindowConfig config)
 {
-	Service::init(config);
+	RendererVulkan::init(config);
 
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
-	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
-	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
-
-	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
-	bufferManagerVulkan = &static_cast<BufferManagerVulkan&>(bufferManager);
-	DescriptorManager& descriptorManager = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
-	descriptorManagerVulkan = &static_cast<DescriptorManagerVulkan&>(descriptorManager);
-
-	textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
-	meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-	materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
-	modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-	guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");
-
-	if (!(
-		renderDeviceVulkan &&
-		bufferManagerVulkan &&
-		descriptorManagerVulkan &&
-		textureManager &&
-		meshManager &&
-		materialManager &&
-		modelManager &&
-		guiManager
-	)) {
-		return false;
-	}
-
-	uint32_t imageID = textureManager->loadTexture("assets/textures/obluenoise256.png", true);
-	blueNoiseImage = dynamic_cast<TextureVulkan*>(textureManager->getTexture(imageID));
+	uint32_t imageID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
+	blueNoiseImage = textureManagerVulkan->getTexture(imageID);
 
 	_createDepthMap();
 	_createShadowRenderPass();
 	_createShadowPipeline();
-	_createOffscreenViewDescriptorSet();
 
 	_createMomentImage();
 	_createMomentDescriptor();
 	_createShadowFrameBuffer();
 	_createComputePipeline();
 
+	pushconstant.radius = 64;  	// range 1 to 64
+    pushconstant.sigma = 15;  	// range 1.0 to 30.0
+
 	return true;
 }
 
 bool ShadowMapRendererVulkan::onClose()
 {
-	Service::onClose();
-
 	shadowPipeline->destroy();
 	vkDestroyFramebuffer(renderDeviceVulkan->device, shadowFramebuffer, nullptr);
 	vkDestroyRenderPass(renderDeviceVulkan->device, shadowRenderPass, nullptr);
@@ -96,16 +68,6 @@ bool ShadowMapRendererVulkan::onClose()
 
 void ShadowMapRendererVulkan::onUpdate()
 {
-}
-
-void ShadowMapRendererVulkan::beginFrame()
-{
-	renderDeviceVulkan->beginFrame();
-}
-
-void ShadowMapRendererVulkan::endFrame()
-{
-	renderDeviceVulkan->endFrame();
 }
 
 void ShadowMapRendererVulkan::render(Camera& camera)
@@ -122,9 +84,9 @@ void ShadowMapRendererVulkan::render(Camera& camera)
 		lightDir = glm::normalize(glm::vec3(1.0f));
 		lightPos = lightDir * 100.0f;
 		lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		float s = 15.0f;
-		float zNear = 15.0f;
-		float zFar = 150.0f;
+		float s = 5.0f;
+		float zNear = 0.01f;
+		float zFar = 105.0f;
 		lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
 
 		// glm::vec3 followTarget = camera.getPosition();
@@ -236,6 +198,32 @@ void ShadowMapRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, u
 			vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
 		}
 	}
+
+	for (auto& entity : scene->getEntitiesWith<TransformComponent, MeshComponent>()) {
+		auto& transform = entity.getComponent<TransformComponent>();
+		auto& meshComp = entity.getComponent<MeshComponent>();
+
+		LightPushConstant push{};
+		push.model = transform.getModelMatrix();
+		push.lightMVP = lightSpaceMatrix;
+
+		vkCmdPushConstants(
+			commandBuffer,
+			shadowPipeline->pipelineLayout,
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(LightPushConstant),
+			&push
+		);
+		
+		for (uint32_t meshID : meshComp.meshIDs) {
+			const Mesh* mesh = meshManager->getMesh(meshID);
+			meshManager->bindMesh(meshID);
+
+			uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+			vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+		}
+	}
 	endRecording(commandBuffer);
 }
 
@@ -254,9 +242,8 @@ void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIn
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipeline);
 
 	// horizontal pass moment -> temp
-	ComputePushConstant push{};
-	push.isVertical = 0;
-	vkCmdPushConstants(cmd, computePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ComputePushConstant), &push);
+	pushconstant.isVertical = 0;
+	vkCmdPushConstants(cmd, computePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ComputePushConstant), &pushconstant);
 
 	auto& setsH = descriptorManagerVulkan->getDescriptorSet(compDescSetMtoT_ID);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipelineLayout, 0, 1, &setsH[0], 0, nullptr);
@@ -274,8 +261,8 @@ void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIn
 		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
 	// verticle pass tmp -> moment
-	push.isVertical = 1;
-	vkCmdPushConstants(cmd, computePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ComputePushConstant), &push);
+	pushconstant.isVertical = 1;
+	vkCmdPushConstants(cmd, computePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ComputePushConstant), &pushconstant);
 
 	auto& setsV = descriptorManagerVulkan->getDescriptorSet(compDescSetTtoM_ID);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipelineLayout, 0, 1, &setsV[0], 0, nullptr);
@@ -294,8 +281,8 @@ void ShadowMapRendererVulkan::_createDepthMap()
 {
 	VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
-	uint32_t depthId = textureManager->createTexture();
-	depthMap = static_cast<TextureVulkan*>(textureManager->getTexture(depthId));
+	depthID = textureManagerVulkan->createTexture();
+	depthMap = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(depthID));
 
 	TextureManagerVulkan::createImage(
 		width,
@@ -341,11 +328,15 @@ void ShadowMapRendererVulkan::_createShadowPipeline()
 	pipelineConfig.colorBlendInfo.pAttachments = pipelineConfig.colorBlendAttachments.data();
 
 	pipelineConfig.rasterizationInfo.depthBiasEnable = VK_TRUE;
-	pipelineConfig.rasterizationInfo.depthBiasConstantFactor = 1.25f;
-	pipelineConfig.rasterizationInfo.depthBiasSlopeFactor = 1.75f;
+	pipelineConfig.rasterizationInfo.depthBiasConstantFactor = 0.0f;
+	pipelineConfig.rasterizationInfo.depthBiasSlopeFactor = 0.0f;
+	
+	// pipelineConfig.rasterizationInfo.depthBiasConstantFactor = 1.25f;
+	// pipelineConfig.rasterizationInfo.depthBiasSlopeFactor = 1.75f;
 
 	//pipelineConfig.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
-	pipelineConfig.rasterizationInfo.cullMode = VK_CULL_MODE_FRONT_BIT;
+	// pipelineConfig.rasterizationInfo.cullMode = VK_CULL_MODE_FRONT_BIT;
+	// pipelineConfig.rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipelineConfig.rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
 	pipelineConfig.renderPass = shadowRenderPass;
@@ -364,8 +355,8 @@ void ShadowMapRendererVulkan::_createShadowPipeline()
 
 	shadowPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	shadowPipeline->createGraphicsPipeline(
-		"assets/shaders/shadowMap.vert.spv",
-		"assets/shaders/shadowMap.frag.spv",
+		"assets/shaders/spv/shadowMap.vert.spv",
+		"assets/shaders/spv/shadowMap.frag.spv",
 		pipelineConfig,
 		vertexInputInfo,
 		layouts,
@@ -444,8 +435,8 @@ void ShadowMapRendererVulkan::_createShadowFrameBuffer()
 void ShadowMapRendererVulkan::_createMomentImage()
 {
 	auto createTexture = [&](TextureVulkan** outTexture) {
-		uint32_t imageID = textureManager->createTexture();
-		*outTexture = static_cast<TextureVulkan*>(textureManager->getTexture(imageID));
+		uint32_t imageID = textureManagerVulkan->createTexture();
+		*outTexture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(imageID));
 
 		TextureManagerVulkan::createImage(
 			width,
@@ -550,38 +541,6 @@ void ShadowMapRendererVulkan::_createMomentDescriptor()
 	}
 }
 
-void ShadowMapRendererVulkan::_createOffscreenViewDescriptorSet()
-{
-	const uint32_t MAX_NUM_SETS = 3;	// add more if requires more
-	
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 0;
-	samplerLayoutBinding.descriptorCount = 1;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { samplerLayoutBinding };
-	imGuilayoutID = descriptorManagerVulkan->createLayout(bindings);
-
-	std::vector<VkDescriptorPoolSize> poolSizes = { 
-		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1} 
-	};
-	imGuipoolID = descriptorManagerVulkan->createPool(poolSizes, MAX_NUM_SETS);
-
-	imGuisetIDs.push_back(descriptorManagerVulkan->createSets(imGuilayoutID, imGuipoolID, 1));
-	imGuiDescriptorSet = descriptorManagerVulkan->getDescriptorSet(imGuisetIDs[0])[0];
-
-	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = depthMap->textureImageView;
-	imageInfo.sampler = depthMap->textureSampler;
-
-
-	std::vector<VkWriteDescriptorSet> writes = {};
-	descriptorManagerVulkan->writeImage(&writes, imGuiDescriptorSet, 0, imageInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writes);
-}
-
 void ShadowMapRendererVulkan::_createComputePipeline() {
 	computePipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	VkDescriptorSetLayout layout = descriptorManagerVulkan->getDescriptorLayout(compDescriptorLayoutID);
@@ -589,7 +548,7 @@ void ShadowMapRendererVulkan::_createComputePipeline() {
 	std::vector<VkDescriptorSetLayout> layouts = { layout };
 
 	computePipeline->createComputePipeline(
-		"assets/shaders/shadowMap.comp.spv",
+		"assets/shaders/spv/shadowMap.comp.spv",
 		layouts,
 		sizeof(ComputePushConstant)
 	);

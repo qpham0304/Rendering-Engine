@@ -9,7 +9,7 @@ VulkanPipeline::VulkanPipeline(VulkanDevice& deviceRef)
 
 VulkanPipeline::~VulkanPipeline()
 {
-
+	
 }
 
 void VulkanPipeline::create()
@@ -19,8 +19,14 @@ void VulkanPipeline::create()
 
 void VulkanPipeline::destroy()
 {
-	vkDestroyPipeline(device.device, pipeline, nullptr);
-	vkDestroyPipelineLayout(device.device, pipelineLayout, nullptr);
+	if (pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(device, pipeline, nullptr);
+        pipeline = VK_NULL_HANDLE;
+    }
+	if (pipelineLayout != VK_NULL_HANDLE) {
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        pipelineLayout = VK_NULL_HANDLE;
+    }
 }
 
 void VulkanPipeline::bind(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint)
@@ -30,6 +36,8 @@ void VulkanPipeline::bind(VkCommandBuffer commandBuffer, VkPipelineBindPoint pip
 
 
 void VulkanPipeline::createGraphicsPipeline(
+	const std::string& vertFilepath,
+	const std::string& fragFilepath,
 	const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, 
 	VkRenderPass renderPass,
 	size_t pushConstantSize
@@ -37,11 +45,9 @@ void VulkanPipeline::createGraphicsPipeline(
 	// separate shader creation, allow a function to add shader stages into pipeline
 	// set some default config for pipeline
 	// pass in attribute description object for the pipeline to create
-	std::string vertPath = "assets/shaders/default.vert.spv";
-	std::string fragPath = "assets/shaders/default.frag.spv";
 	
-	auto vertShaderCode = VulkanUtils::readFile(vertPath);
-	auto fragShaderCode = VulkanUtils::readFile(fragPath);
+	auto vertShaderCode = VulkanUtils::readFile(vertFilepath);
+	auto fragShaderCode = VulkanUtils::readFile(fragFilepath);
 	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
@@ -84,9 +90,9 @@ void VulkanPipeline::createGraphicsPipeline(
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.lineWidth = 1.0f;
-	//rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	//rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizer.cullMode = VK_CULL_MODE_NONE;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	// rasterizer.cullMode = VK_CULL_MODE_NONE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 
 	VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -127,8 +133,8 @@ void VulkanPipeline::createGraphicsPipeline(
 	depthStencil.minDepthBounds = 0.0f; // Optional
 	depthStencil.maxDepthBounds = 1.0f; // Optional
 	depthStencil.stencilTestEnable = VK_FALSE;
-	depthStencil.front = {}; // Optional
-	depthStencil.back = {}; // Optional
+	depthStencil.front = {}; 	// Optional
+	depthStencil.back = {}; 	// Optional
 
 	std::vector<VkDynamicState> dynamicStates = {
 		VK_DYNAMIC_STATE_VIEWPORT,
@@ -337,10 +343,10 @@ PipelineConfigInfo VulkanPipeline::defaultPipelineConfigInfo(uint32_t numAttachm
 	configInfo.multisampleInfo.alphaToOneEnable = VK_FALSE;       // Optional
 
 	configInfo.viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	configInfo.viewportInfo.viewportCount = 1; // Even if dynamic, count must be 1
-	configInfo.viewportInfo.scissorCount = 1;  // Even if dynamic, count must be 1
-	configInfo.viewportInfo.pViewports = nullptr; // Can be null because of dynamic state
-	configInfo.viewportInfo.pScissors = nullptr;  // Can be null because of dynamic state
+	configInfo.viewportInfo.viewportCount = 1; 		// Even if dynamic, count must be 1
+	configInfo.viewportInfo.scissorCount = 1;  		// Even if dynamic, count must be 1
+	configInfo.viewportInfo.pViewports = nullptr; 	// Can be null because of dynamic state
+	configInfo.viewportInfo.pScissors = nullptr;  	// Can be null because of dynamic state
 
     for (uint32_t i = 0; i < numAttachments; i++) {
         VkPipelineColorBlendAttachmentState attachment{};

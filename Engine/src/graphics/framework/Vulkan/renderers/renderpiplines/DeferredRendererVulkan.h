@@ -1,28 +1,16 @@
 #pragma once
 
-#include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "ShadowMapRendererVulkan.h"
 #include "ImageBasedRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>
 #include <unordered_map>
 
-class Logger;
-class TextureManager;
-class MeshManager;
-class ModelManager;
-class GuiManager;
-class BufferManager;
-class RenderDeviceVulkan;
-class TextureVulkan;
-class DescriptorManagerVulkan;
-class MaterialManager;
-class VulkanPipeline;
-
-class DeferredRendererVulkan : public Renderer
+class DeferredRendererVulkan : public RendererVulkan
 {
 private:
 	struct UniformBufferObject {
@@ -67,8 +55,6 @@ public:
     virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
-	virtual void beginFrame() override;
-	virtual void endFrame() override;
 	virtual void render(Camera& camera) override;
 	void renderGui();
 
@@ -81,18 +67,7 @@ public:	//TODO: make private once done testing
 	const int numLights = 1000;
 
 	bool showGui{ true };
-
-	Logger* m_logger{ nullptr };
-	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
-	MeshManager* meshManager{ nullptr };
-	ModelManager* modelManager{ nullptr };
-	GuiManager* guiManager{ nullptr };
-	TextureManager* textureManager{ nullptr };
-	MaterialManager* materialManager{ nullptr };
-    BufferManager* bufferManager{ nullptr };
-	BufferManagerVulkan* bufferManagerVulkan{ nullptr };
-	DescriptorManagerVulkan* descriptorManagerVulkan{ nullptr };
-
+	
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
 	std::vector<StorageBufferObject> instanceData;
@@ -106,10 +81,6 @@ public:	//TODO: make private once done testing
 
 	VulkanRenderTarget renderTarget;
 	std::unique_ptr<VulkanPipeline> gPassPipeline;
-
-	uint32_t imGuilayoutID;
-	uint32_t imGuipoolID;
-	std::vector<uint32_t> imGuisetIDs;
 
 	std::unique_ptr<VulkanPipeline> lightingPipeline;
 	uint32_t lightLayoutID;
@@ -125,14 +96,19 @@ public:	//TODO: make private once done testing
 
 	ShadowMapRendererVulkan shadowMapRenderer;
 	ImageBasedRendererVulkan imageBasedRenderer;
-
+	
+	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
+	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _createRenderPasses();
 	void _createFrameBuffers();
 	void _createDescriptor();
+	void _updateDescriptor();
 	void _createPipelines();
-	void _createViewDescriptorSets();
 
 	void _createLightPipeline();
 	void _createLightDescriptor();
+	void _updateLightDescriptor();
 
+	void _recreateResources();
+	void _cleanupResources();
 };

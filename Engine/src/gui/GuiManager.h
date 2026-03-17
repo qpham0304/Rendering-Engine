@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <span>
 #include <memory>
 #include "widgets/widget.h"
 #include "core/features/Configs.h"
@@ -8,22 +9,20 @@
 
 class TransformComponent;
 
-class GuiManager : public Service {
-
-public:
-	//TODO: move way from public member
-	bool guizmoActive = false;
-	bool editorActive = false;
-
+class GuiManager : public Service 
+{
 protected:
-	std::vector<std::unique_ptr<Widget>> widgets;
+	std::vector<std::shared_ptr<Widget>> widgets;
 
-	bool darkTheme = false;
-	bool closeable = true;
-	int width = 0;
-	int height = 0;
-	int count = 0;
-	bool drawGrid = false;
+	bool darkTheme { false };
+	bool closeable { true };
+	int width { 0 };
+	int height { 0 };
+	int count { 0 };
+	bool drawGrid { false };
+	bool guizmoActive { false };
+	bool editorActive { false };
+	bool guiActive { false };
 
 protected:
 	GuiManager(std::string serviceName = "GuiManager") : Service(serviceName) {};
@@ -46,9 +45,22 @@ public:
 	virtual void guizmoRotate() = 0;
 	virtual void guizmoScale() = 0;
 
-	virtual void addWidget(std::unique_ptr<Widget> widget) {
-		widgets.push_back(std::move(widget));
+	template<typename T, typename... Args> requires std::derived_from<T, Widget>
+	void addWidget(Args&&... args) {
+		widgets.push_back(std::make_shared<T>(std::forward<Args>(args)...));
 	};
 
+	std::span<std::shared_ptr<Widget>> getWidgets() {
+		return widgets;
+	}
+
+	void setGuizmoFocus(bool isFocused) { guizmoActive = isFocused; };
+	bool isGuizmoFocus() { return guizmoActive; };
+
+	void setEditorFocus(bool isFocused) {editorActive = isFocused; };
+	bool isEditorFocus() { return editorActive; };
+	
+	void setActive(bool active) {guiActive = active; };
+	bool isActive() { return guiActive; };
 };
 

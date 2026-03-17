@@ -43,7 +43,6 @@ private:
     std::unique_ptr<ModelManager> modelManager;
     std::unique_ptr<DescriptorManager> descriptorManager;
     std::unique_ptr<MaterialManager> materialManager;
-    std::unique_ptr<Renderer> renderer;
     std::unique_ptr<RendererManager> rendererManager;
 
 private:

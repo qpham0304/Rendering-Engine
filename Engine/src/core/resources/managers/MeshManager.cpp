@@ -18,7 +18,6 @@ bool MeshManager::init(WindowConfig config)
 {
     Service::init(config);
 
-    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
     m_bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
     if (!(m_logger && m_bufferManager)) {
         return - 1;

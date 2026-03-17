@@ -175,6 +175,12 @@ struct PrefabComponent {
     }
 };
 
+struct RenderTag {
+	RenderTag() = default;
+
+	std::vector<std::string> renderers;
+};
+
 // struct ShaderComponent {
 // 	std::string path;
 

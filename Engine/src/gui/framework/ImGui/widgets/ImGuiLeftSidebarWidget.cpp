@@ -16,74 +16,6 @@ static ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow
 | ImGuiTreeNodeFlags_OpenOnDoubleClick
 | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float columnWidth = 100.0f)
-{
-    ImGuiIO& io = ImGui::GetIO();
-    auto boldFont = io.Fonts->Fonts[0];
-
-    ImGui::PushID(label.c_str());
-
-    ImGui::Columns(2);
-    ImGui::SetColumnWidth(0, columnWidth);
-    ImGui::Text(label.c_str());
-    ImGui::NextColumn();
-
-    //ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
-
-    //float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
-    float lineHeight = 30.0f;
-    ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
-
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
-    ImGui::PushFont(boldFont);
-    if (ImGui::Button("X", buttonSize))
-        values.x = resetValue;
-    ImGui::PopFont();
-    ImGui::PopStyleColor(3);
-
-    ImGui::SameLine();
-    ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f");
-    ImGui::PopItemWidth();
-    ImGui::SameLine();
-
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.3f, 0.8f, 0.3f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
-    ImGui::PushFont(boldFont);
-    if (ImGui::Button("Y", buttonSize))
-        values.y = resetValue;
-    ImGui::PopFont();
-    ImGui::PopStyleColor(3);
-
-    ImGui::SameLine();
-    ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f");
-    ImGui::PopItemWidth();
-    ImGui::SameLine();
-
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.2f, 0.35f, 0.9f, 1.0f });
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
-    ImGui::PushFont(boldFont);
-    if (ImGui::Button("Z", buttonSize))
-        values.z = resetValue;
-    ImGui::PopFont();
-    ImGui::PopStyleColor(3);
-
-    ImGui::SameLine();
-    ImGui::DragFloat("##Z", &values.z, 0.1f, 0.0f, 0.0f, "%.2f");
-    ImGui::PopItemWidth();
-
-    ImGui::PopStyleVar();
-
-    ImGui::Columns(1);
-
-    ImGui::PopID();
-}
-
-
 ImGuiLeftSidebarWidget::ImGuiLeftSidebarWidget() : LeftSidebarWidget()
 {
     m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
@@ -187,162 +119,125 @@ void ImGuiLeftSidebarWidget::LightTab()
 }
 
 void ImGuiLeftSidebarWidget::EntityTab() {
-    SceneManager& sceneManager = sceneManager.getInstance();
+    SceneManager& sceneManager = SceneManager::getInstance();
     Scene* scene = sceneManager.getActiveScene();
-    if(!scene) {
+    if (!scene) {
         m_logger->warn("No active scene found");
         return;
     }
 
-    if (ImGui::Begin("Scenes")) {
-        static char filterBuffer[256] = "";
-        ImGui::InputTextWithHint("##Search", ICON_FA_SEARCH " Search...", filterBuffer, IM_ARRAYSIZE(filterBuffer));
-        ImGui::SameLine();
-        AddItemButton("+ Add Entity");
-        ImGui::Separator();
+    ImGui::Begin("Scenes");
+    static char filterBuffer[256] = "";
+    ImGui::InputTextWithHint("##Search", ICON_FA_SEARCH " Search...", filterBuffer, IM_ARRAYSIZE(filterBuffer));
+    ImGui::SameLine();
+    AddItemButton("+ Add Entity");
+    ImGui::Separator();
 
-        auto entities = scene->getEntitiesWith<TransformComponent>();
-        for (auto& entity : entities) {
-            NameComponent& nameComponent = entity.getComponent<NameComponent>();
-            std::string filterStr = filterBuffer;
+    auto selectedEntities = scene->getSelectedEntities();
+    auto entities = scene->getEntitiesWith<TransformComponent>();
 
-            if (!filterStr.empty()) {
-                auto it = std::search(
-                    nameComponent.name.begin(), nameComponent.name.end(),
-                    filterStr.begin(), filterStr.end(),
-                    [](char a, char b) { return std::tolower(a) == std::tolower(b); }
-                );
+    for (auto& entity : entities) {
+        uint32_t currentID = entity.getID();
+        NameComponent& nameComponent = entity.getComponent<NameComponent>();
+        std::string filterStr = filterBuffer;
 
-                if (it == nameComponent.name.end()) {
-                    continue;
-                }
+        if (!filterStr.empty()) {
+            auto it = std::search(
+                nameComponent.name.begin(), nameComponent.name.end(),
+                filterStr.begin(), filterStr.end(),
+                [](char a, char b) { return std::tolower(a) == std::tolower(b); }
+            );
+            if (it == nameComponent.name.end()) {
+                continue;
             }
+        }
 
-            ImGuiTreeNodeFlags node_flags = base_flags;
-            ImGui::PushID(std::to_string(entity.getID()).c_str());
+        ImGui::PushID(currentID);
 
-            if (entity.hasComponent<ModelComponent>() && nameComponent.name == "Entity") {
-                uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-                Model* model = const_cast<Model*>(modelManager->getModel(modelID));
+        if (entity.hasComponent<ModelComponent>() && nameComponent.name == "Entity") {
+            uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
+            Model* model = const_cast<Model*>(modelManager->getModel(modelID));
+            if (model) {
                 nameComponent.name = model->path;
             }
-
-            if (selectedEntity == &entity) {
-                node_flags |= ImGuiTreeNodeFlags_Selected;
-            }
-
-            std::string addModelTex = "Add Model Async(unavailable on current platform)";
-
-            if (selectedEntity == &entity) {
-                node_flags |= ImGuiTreeNodeFlags_Selected;
-            }
-
-            bool treeNodeOpen = ImGui::TreeNodeEx(nameComponent.name.c_str(), node_flags);
-            bool showPopup = ImGui::BeginPopupContextItem("Add Component");
-            bool showTextInput = false;
-
-            if (showTextInput) {
-                ImGui::PushID(std::to_string(entity.getID()).c_str());
-                static char str1[128] = "";
-                //ImGui::InputTextWithHint("input text (w/ hint)", "enter text here", str1, IM_ARRAYSIZE(str1));
-                ImGui::InputText("Edit Text", str1, sizeof(str1));
-                nameComponent.name = str1;
-                ImGui::InputText("Edit Text", str1, sizeof(str1));
-
-                // Optionally, add a button to confirm and hide the input field
-                if (ImGui::Button("Confirm")) {
-                    NameComponent& nameComponent = entity.getComponent<NameComponent>();
-                    nameComponent.name = str1;
-                    showTextInput = false;
-                }
-
-                ImGui::SameLine();
-
-                if (ImGui::Button("Cancel")) {
-                    showTextInput = false;
-                }
-                ImGui::PopID();
-            }
-
-            if (showPopup) {
-                if (ImGui::MenuItem("Rename")) {
-                    showTextInput = true;
-                }
-
-                _RenameMenuItem(entity);
-                _AddModelMenuItem(entity, addModelTex);
-                _AddLightMenuItem();
-                _AddCameraMenuItem();
-                _LoadAnimationMenuItem(entity);
-                _DeleteEntityMenuItem(entity, scene);
-
-                ImGui::EndPopup();
-            }
-
-            if (treeNodeOpen) {
-                if (entity.hasComponent<ModelComponent>()) {
-                    addModelTex = "Change Model";
-                    std::string modelPath = "Path: " + entity.getComponent<ModelComponent>().path;
-                    ImGui::Text(modelPath.c_str());
-                }
-
-                ImGui::Text(std::string("id: " + std::to_string(entity.getID())).c_str());
-
-
-                if(entity.hasComponent<ModelComponent>()) {
-                    uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-                    Model* model = const_cast<Model*>(modelManager->getModel(modelID));
-
-                    for(uint32_t meshID : model->meshIDs){
-                        std::string str = "Mesh: " + std::to_string(meshID);
-                        if(ImGui::Button(str.c_str())) {
-                            scene->selectMesh(meshID);
-                        }
-                    }
-                } 
-                else if (entity.hasComponent<MeshComponent>()) {
-                    for(uint32_t meshID : entity.getComponent<MeshComponent>().meshIDs){
-                        std::string str = "Mesh: " + std::to_string(meshID);
-                        if(ImGui::Button(str.c_str())) {
-                            scene->selectMesh(meshID);
-                        }
-                    }
-                }
-                
-                TransformComponent& transform = entity.getComponent<TransformComponent>();
-                // displayMatrix(transform.getModelMatrix());
-
-                if (ImGui::DragFloat3("Position", glm::value_ptr(transform.translateVec), 0.2f, -20.0f, 20.0f)) {
-                    transform.updateTransform();
-                }
-
-                if (ImGui::DragFloat3("Scale", glm::value_ptr(transform.scaleVec), 0.2f, -20.0f, 20.0f)) {
-                    transform.updateTransform();
-                }
-
-                if (ImGui::DragFloat3("Rotation", glm::value_ptr(transform.rotateVec), 0.2f, -180.0f, 180.0f)) {
-                    transform.updateTransform();
-                }
-                ImGui::TreePop();
-            }
-
-            if (ImGui::IsItemHovered() && !showPopup) {
-                if (ImGui::IsAnyItemHovered()) {
-                    ImGui::BeginTooltip();
-                    //ImGui::Text(path.c_str());
-                    ImGui::EndTooltip();
-                }
-            }
-
-            // currently support single entity selection
-            if (ImGui::IsItemClicked()) {
-                scene->selectEntities({ entity });
-                Entity ent = scene->getSelectedEntities()[0];
-                selectedEntity = &ent;
-            }
-
-            ImGui::PopID();
         }
+
+        bool is_selected = false;
+        for (const auto& sel : selectedEntities) {
+            if (sel.getID() == currentID) {
+                is_selected = true;
+                break;
+            }
+        }
+
+        ImGuiTreeNodeFlags node_flags = base_flags | ImGuiTreeNodeFlags_OpenOnArrow;
+        if (is_selected) {
+            node_flags |= ImGuiTreeNodeFlags_Selected;
+        }
+
+        if (is_selected && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered()) {
+            ImGui::SetNextItemOpen(!ImGui::GetStateStorage()->GetBool(ImGui::GetID(nameComponent.name.c_str())));
+        }
+
+        bool treeNodeOpen = ImGui::TreeNodeEx(nameComponent.name.c_str(), node_flags);
+
+        if (ImGui::IsItemClicked()) {
+            scene->selectEntities({ entity });
+        }
+
+        if (ImGui::BeginPopupContextItem("Add Component")) {
+            _RenameMenuItem(entity);
+            _AddModelMenuItem(entity, "Add Model Async");
+            _AddLightMenuItem();
+            _AddCameraMenuItem();
+            _LoadAnimationMenuItem(entity);
+            _DeleteEntityMenuItem(entity, scene);
+            ImGui::EndPopup();
+        }
+
+        if (treeNodeOpen) {
+            if (entity.hasComponent<ModelComponent>()) {
+                auto& modelComp = entity.getComponent<ModelComponent>();
+                Model* model = const_cast<Model*>(modelManager->getModel(modelComp.modelID));
+
+                if (model) {
+                    std::string fullPath = modelComp.path;
+                    float availWidth = ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x;
+                    std::string displayPath = fullPath;
+
+                    if (ImGui::CalcTextSize(fullPath.c_str()).x > availWidth) {
+                        while (!displayPath.empty() && ImGui::CalcTextSize((displayPath + "...").c_str()).x > availWidth) {
+                            displayPath.pop_back();
+                        }
+                        displayPath += "...";
+                    }
+                    
+                    ImGui::Separator();
+                    ImGui::TextDisabled("ID: %u", currentID);
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+                    ImGui::TextUnformatted(displayPath.c_str());
+                    ImGui::PopStyleColor();
+
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s", fullPath.c_str());
+                    }
+
+                    ImGui::Indent(10.0f);
+                    for (uint32_t meshID : model->meshIDs) {
+                        std::string meshLabel = "Mesh " + std::to_string(meshID);
+                        
+                        if (ImGui::Selectable(meshLabel.c_str(), false, ImGuiSelectableFlags_SpanAllColumns)) {
+                            scene->selectMesh(meshID);
+                        }
+                        
+                    }
+                    ImGui::Unindent(10.0f);
+                }
+            }
+            ImGui::Separator();
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
     }
     ImGui::End();
 }
@@ -357,10 +252,10 @@ void ImGuiLeftSidebarWidget::ModelsTab()
         ImGuiTreeNodeFlags node_flags = base_flags;
 
         if (selectedModel == uuid) {
-            node_flags |= ImGuiTreeNodeFlags_Selected;
+            node_flags |= ImGuiTreeNodeFlags_Selected; 
         }
 
-        const Model* model = modelManager->getModel(id);
+        Model* model = modelManager->getModel(id);
         std::string displayPath = (model->path.empty() ? uuid : model->path);
         bool open = (ImGui::TreeNodeEx(displayPath.c_str(), node_flags));
         bool showPopup = ImGui::BeginPopupContextItem("Add Component");
@@ -372,7 +267,6 @@ void ImGuiLeftSidebarWidget::ModelsTab()
             if (ImGui::MenuItem("Load Model")) {
                 std::string uuid = Utils::fileDialog();
                 if (!uuid.empty()) {
-                    //sceneManager.addModel(uuid);
                     m_logger->warn("ImGuiLeftSideBar::ModelsTab load model unimplemented");
                 }
             }
@@ -391,7 +285,7 @@ void ImGuiLeftSidebarWidget::ModelsTab()
         if (ImGui::IsItemHovered() && !showPopup) {
             if (ImGui::IsAnyItemHovered()) {
                 ImGui::BeginTooltip();
-                ImGui::Text(uuid.c_str());
+                ImGui::Text("%s", displayPath.c_str());
                 ImGui::EndTooltip();
             }
         }
@@ -413,23 +307,26 @@ void ImGuiLeftSidebarWidget::ScenesTab()
     ImGui::Begin("Scenes");
     for(uint32_t id : SceneManager::getInstance().listIDs()) {
         const Scene* scene = SceneManager::getInstance().getScene(id);
-        ImGui::Text(scene->getName().c_str());
+        ImGui::Text("%s", scene->getName().c_str());
     }
     ImGui::End();
 }
 
 void ImGuiLeftSidebarWidget::render()
 {
-    Scene* scene = SceneManager::getInstance().getActiveScene();
+    if(!m_isVisible) {
+        return;
+    }
 
-    ImGui::BeginGroup();
+    Scene* scene = SceneManager::getInstance().getActiveScene();
     if (scene) {
+        ImGui::BeginGroup();
         ErrorModal("Error loading Model");
         EntityTab();
         LightTab();
         ModelsTab();
+        ImGui::EndGroup();
     }
-    ImGui::EndGroup();
 }
 
 #pragma region menu

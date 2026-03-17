@@ -2,19 +2,55 @@
 
 ImGuiTextBuffer s_UiBuffer;
 
-void ImGuiInternalLogger::setLevel(LogLevel level)
+ImGuiLogger::~ImGuiLogger()
 {
-    m_logLevel = _getLevelString(level);
+    // as this is the only thing consume the message queue, clear when it's removed
+    while(!Logger::messageQueue.empty()) {
+        Logger::messageQueue.pop();
+    }
 }
 
-void ImGuiInternalLogger::logMessage(LogLevel level, const std::string& message)
+void ImGuiLogger::setLevel(LogLevel level)
 {
-    // This is the internal function ShowDebugLogWindow reads from
-    s_UiBuffer.appendf("[%s] %s\n", _getLevelString(level), message.c_str());
+    m_logLevel = getLevelString(level);
+}
+
+void ImGuiLogger::logMessage(LogLevel level, const std::string& message)
+{
     //ImGui::DebugLog("[%s] %s\n", getLevelString(level), message.c_str());
+    s_UiBuffer.appendf("[%s] %s\n", getLevelString(level), message.c_str());
 }
 
-const char* ImGuiInternalLogger::_getLevelString(LogLevel level)
+void ImGuiLogger::pollMessage()
+{
+    while(!Logger::messageQueue.empty()) {
+        std::lock_guard<std::mutex> lock(queueMutex);
+
+        auto [level, message] =  Logger::messageQueue.front();
+        
+        switch (level) {
+            case LogLevel::Info: logMessage(level, message); break;
+            case LogLevel::Debug: logMessage(level, message); break;
+            default: break;
+        }
+        m_logHistory.emplace_back(level, std::move(message));
+        Logger::messageQueue.pop();
+    }
+}
+
+
+std::span<ImGuiLogger::LogInfo> ImGuiLogger::logEntries()
+{
+    return m_logHistory;
+}
+
+void ImGuiLogger::clear()
+{
+    return m_logHistory.clear();
+}
+
+
+const char* ImGuiLogger::getLevelString(LogLevel level)
 {
     switch (level) {
         case LogLevel::Trace:    return "TRACE";

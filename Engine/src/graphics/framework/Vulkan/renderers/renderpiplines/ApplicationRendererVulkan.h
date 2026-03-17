@@ -9,10 +9,8 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-class ForwardRendererVulkan : public RendererVulkan
+class ApplicationRendererVulkan : public RendererVulkan
 {
-public:
-
 private:
     struct PushConstantData {
         alignas(16) glm::vec3 color;
@@ -38,9 +36,9 @@ private:
 	};
 
 public:
-	ForwardRendererVulkan(std::string serviceName = "ForwardRendererVulkan");
+	ApplicationRendererVulkan(std::string serviceName = "ApplicationRendererVulkan");
 
-	virtual ~ForwardRendererVulkan() override;
+	virtual ~ApplicationRendererVulkan() override;
 
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
@@ -50,20 +48,13 @@ public:
 	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer);
 	void endRecording(void* cmdBuffer);
 
-public:
-	
 private:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-	void recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	void renderGui(void* commandBuffer);
 
-
+	void _createDescriptors();
 	void _createPipeline();
-	void _createOffscreenTarget();
-	void _createDescriptorSetLayout();
-	void _createDescriptorPool();
-	void _createDescriptorSets();
-	void _updateDescriptor();
+	void _updateDescriptorSets(uint32_t index);
 	void _recreateResources();
 	void _cleanupResources();
 
@@ -73,13 +64,7 @@ private:
 
 	bool showGui{ true };
 	PushConstantData pushConstantData{};
-
-	std::vector<UniformBufferVulkan*> uniformbuffersList;
-	std::vector<StorageBufferVulkan*> storagebuffersList;
-	std::vector<StorageBufferVulkan*> lightStoragebuffers;
-	std::vector<StorageBufferObject> instanceData;
-	std::vector<LightSSBO> lights;
-
+	
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorPool descriptorPool;
 	std::vector<VkDescriptorSet> descriptorSets;
@@ -88,12 +73,9 @@ private:
 	uint32_t setsID;
 
 	uint32_t storageBufferID;
-
-	VulkanRenderTarget renderTarget;
-	std::unique_ptr<VulkanPipeline> offscreenPipeline;
+	std::unique_ptr<VulkanPipeline> appPipeline;
 
 	bool isActive{ false };
-
-	DeferredRendererVulkan* deferredRenderer;
+	VkImageView lastView { VK_NULL_HANDLE };
 };
 

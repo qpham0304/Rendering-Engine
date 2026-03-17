@@ -28,7 +28,7 @@ protected:
 
 
 protected:
-	Layer(const std::string& name);
+	Layer(std::string_view name = "Undefined");
 	
 	void setLogScopeEngine();
 	void setLogScopeClient();

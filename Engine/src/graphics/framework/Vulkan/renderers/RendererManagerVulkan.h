@@ -1,6 +1,11 @@
 #pragma once
 
 #include "Core/resources/managers/RendererManager.h"
+#include "RendererVulkan.h"
+
+class RenderDeviceVulkan;
+class TextureVulkan;
+
 class RendererManagerVulkan : public RendererManager
 {
 public:
@@ -14,9 +19,21 @@ public:
 	virtual void onUpdate() override;
     virtual void render() override;
 
-protected:
+    virtual RendererVulkan* getRenderer(std::string_view name) override;
+
+	void beginFrame();
+	void endFrame();
+	void setDisplayImage(TextureVulkan* image);
+	TextureVulkan* getDisplayImage();
 
 protected:
+	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
+	Renderer* applicationRenderer { nullptr };
+	Renderer* forwardRenderer { nullptr };
+	Renderer* deferredRenderer { nullptr };
+	Renderer* shadowMapRenderer { nullptr };
+	Renderer* imageBasedRenderer { nullptr };
+	Renderer* postProcessRenderer { nullptr };
 
-
+	TextureVulkan* displayImage { nullptr };
 };

@@ -16,26 +16,34 @@ layout(set = 1, binding = 2) uniform sampler2D metallicMap;
 layout(set = 1, binding = 3) uniform sampler2D roughnessMap;
 layout(set = 1, binding = 4) uniform sampler2D aoMap;
 
-vec3 getNormalFromMap() {
-    vec3 tangentNormal = texture(normalMap, inTexCoord).rgb * 2.0 - 1.0;
+// vec3 getNormalFromMap() {
+//     vec3 tangentNormal = texture(normalMap, inTexCoord).rgb * 2.0 - 1.0;
 
-    vec3 N = normalize(inNormal); // Geometric Normal
-    vec3 T = normalize(inTBN[0] - dot(inTBN[0], N) * N);
-    vec3 B = cross(N, T);
-    mat3 TBN = mat3(T, B, N);
+//     vec3 N = normalize(inNormal); // Geometric Normal
+//     vec3 T = normalize(inTBN[0] - dot(inTBN[0], N) * N);
+//     vec3 B = cross(N, T);
+//     mat3 TBN = mat3(T, B, N);
     
-    vec3 worldNormal = normalize(TBN * tangentNormal);
+//     vec3 worldNormal = normalize(TBN * tangentNormal);
 
-    // AAA FIX: The "Safe Normal"
-    // If the worldNormal is pointing "into" the surface relative to 
-    // the geometric normal, the lighting will break.
-    // We nudge the normal back toward the geometric normal.
-    vec3 geomNormal = normalize(inNormal);
-    if (dot(worldNormal, geomNormal) < 0.0) {
-        worldNormal = normalize(worldNormal - geomNormal * dot(worldNormal, geomNormal));
-    }
+//     vec3 geomNormal = normalize(inNormal);
+//     if (dot(worldNormal, geomNormal) < 0.0) {
+//         worldNormal = normalize(worldNormal - geomNormal * dot(worldNormal, geomNormal));
+//     }
 
-    return worldNormal;
+//     return worldNormal;
+// }
+
+vec3 getNormalFromMap() {
+    vec3 tangentNormal = texture(normalMap, inTexCoord).xyz * 2.0 - 1.0;
+    // tangentNormal.y *= -1.0;
+    mat3 tbn = mat3(
+        normalize(inTBN[0]),
+        normalize(inTBN[1]),
+        normalize(inTBN[2])
+    );
+
+    return normalize(tbn * tangentNormal);
 }
 
 void main() {

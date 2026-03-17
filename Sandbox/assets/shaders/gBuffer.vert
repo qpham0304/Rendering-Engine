@@ -29,14 +29,12 @@ void main() {
     outWorldPos = worldPos.xyz;
 
     mat3 normalMatrix = mat3(modelMatrix); 
-    // Note: If you have non-uniform scaling, use: 
     // mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
 
     vec3 T = normalize(normalMatrix * inTangent);
     vec3 B = normalize(normalMatrix * inBiTangent);
     vec3 N = normalize(normalMatrix * inNormal);
 
-    // Pass the TBN matrix directly to Fragment Shader
     outTBN = mat3(T, B, N);
     outNormal = N;
     outTexCoord = inTexCoord;

@@ -11,7 +11,7 @@ enum class EventType
 	KeyPressed, KeyCombined, KeyReleased, KeyTyped,
 	MousePressed, MouseReleased, MouseMoved, MouseScrolled,
 	AsyncEvent, ModelLoadEvent, AnimationLoadEvent,
-	GuiMessageEvent, 
+	GuiMessageEvent, GuiFocusedEvent
 };
 
 class Event
@@ -298,6 +298,32 @@ public:
 
 	std::string ToString() const override {
 		return "GuiMessageEvent";
+	}
+
+};
+
+
+class GuiFocusEvent : public Event
+{
+public:
+	bool isFocused = false;
+
+	GuiFocusEvent() = default;
+	GuiFocusEvent(bool focus) : isFocused(focus)
+	{
+
+	};
+
+	EventType GetEventType() const override {
+		return EventType::GuiFocusedEvent;
+	}
+
+	const char* GetName() const override {
+		return "GuiFocusEvent";
+	};
+
+	std::string ToString() const override {
+		return "GuiFocusEvent";
 	}
 
 };

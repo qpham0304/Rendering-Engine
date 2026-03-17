@@ -3,7 +3,7 @@
 #include "core/features/ServiceLocator.h"
 #include "logging/Logger.h"
 
-Layer::Layer(const std::string& name = "Undefined")
+Layer::Layer(std::string_view name)
 	:	m_LayerName(name),
 		m_Enabled(true),
 		m_Manager(nullptr)
@@ -15,7 +15,8 @@ Layer::Layer(const std::string& name = "Undefined")
 void Layer::onAttach(LayerManager* manager)
 {
 	this->m_Manager = manager;
-	//setLogScopeEngine();
+	setLogScopeEngine();
+	init();
 }
 
 

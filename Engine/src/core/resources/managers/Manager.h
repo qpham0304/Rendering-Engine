@@ -35,6 +35,5 @@ protected:
 protected:
 	std::atomic<uint32_t> m_ids { 1 };	// reserves 0 for invalid value
 	std::shared_mutex m_resourceLock;
-	Logger* m_logger { nullptr };
 };
 

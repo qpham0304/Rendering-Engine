@@ -30,7 +30,6 @@ bool BufferManagerVulkan::init(WindowConfig config)
 
 	RenderDevice& device = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&device);
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
 	if (!(renderDeviceVulkan && m_logger)) {
 		return false;
@@ -175,9 +174,9 @@ uint32_t BufferManagerVulkan::createVertexBuffer(const Vertex* vertices, int siz
 }
 
 
-uint32_t BufferManagerVulkan::createIndexBuffer(const uint16_t* indices, int size)
+uint32_t BufferManagerVulkan::createIndexBuffer(const uint32_t* indices, int size)
 {
-	VkDeviceSize bufferSize = sizeof(uint16_t) * size;
+	VkDeviceSize bufferSize = sizeof(uint32_t) * size;
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
@@ -316,10 +315,4 @@ void BufferManagerVulkan::copyBuffer(
 	// current solution wait and submit queue which stall the gpu
 	// pipeline barrier?
     renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
-}
-
-
-const uint32_t& BufferManagerVulkan::_assignID()
-{
-	return m_ids.fetch_add(1, std::memory_order_relaxed);
 }

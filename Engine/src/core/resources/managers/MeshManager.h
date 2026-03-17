@@ -24,7 +24,7 @@ public:
 private:
     struct MeshData {           // handle to GPU buffers
         uint32_t vertexBufferID;
-        uint16_t indexBufferID;
+        uint32_t indexBufferID;
     };
 
     std::unordered_map<uint32_t, std::shared_ptr<Mesh>> m_meshes;     // CPU-side mesh data

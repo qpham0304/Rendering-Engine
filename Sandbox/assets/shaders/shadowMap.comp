@@ -7,13 +7,15 @@ layout(binding = 1, rgba32f) uniform writeonly image2D dst;
 
 layout(push_constant) uniform BlurControl {
     uint isVertical;
+    uint radius;
+    float sigma;
 } ctrl;
 
 // 128 threads + 100 extra pixels (2*w) = 228
-shared vec4 v[228];
+shared vec4 v[256];
 
 void main() {
-    const int w = 50;
+    const int w = int(ctrl.radius);
     ivec2 bufferSize = imageSize(src);
     uint lpos = gl_LocalInvocationIndex;
 
@@ -32,8 +34,7 @@ void main() {
     ivec2 readPos1 = gpos - (dir * w);
     v[lpos] = imageLoad(src, clamp(readPos1, ivec2(0), bufferSize - 1));
 
-    // first 2w (100) threads load the "tail" fills v[128] to v[227]
-    if (lpos < 100) {
+    if (lpos < (2 * w)) { 
         ivec2 readPos2 = gpos + (dir * (128 - w));
         v[lpos + 128] = imageLoad(src, clamp(readPos2, ivec2(0), bufferSize - 1));
     }
@@ -43,16 +44,16 @@ void main() {
     // the window for thread 'lpos' starts at v[lpos], ends at v[lpos + 100]
     vec4 sum = vec4(0.0);
     float totalWeight = 0.0;
+    float s2 = 2.0 * ctrl.sigma * ctrl.sigma;
     
-    for(int j = 0; j <= 100; j++) {
+    for(int j = 0; j <= 2 * w; j++) {
         float x = float(j - w);
-        float sigma = 15.0; // lower sigma (15 instead of 25) helps keep detail
-        float weight = exp(-(x * x) / (2.0 * sigma * sigma));
+        float weight = exp(-(x * x) / s2);
         
         sum += v[lpos + j] * weight;
         totalWeight += weight;
     }
-
+    
     if (gpos.x < bufferSize.x && gpos.y < bufferSize.y) {
         imageStore(dst, gpos, sum / totalWeight);
     }
