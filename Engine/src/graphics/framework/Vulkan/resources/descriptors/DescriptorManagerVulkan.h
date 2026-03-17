@@ -49,8 +49,15 @@ public:
 		uint32_t binding,
 		const VkDescriptorBufferInfo& bufferInfo
 	);
+
+	void writeAttachment(
+		std::vector<VkWriteDescriptorSet>* writes,
+		const VkDescriptorSet& dstSet,
+		uint32_t binding,
+		const VkDescriptorImageInfo& bufferInfo
+	);
 	
-	void updateDescriptorSets(const std::vector<VkWriteDescriptorSet>* writes);
+	void updateDescriptorSets(std::vector<VkWriteDescriptorSet>* const writes);
 
 	const VkDescriptorSetLayout& getDescriptorLayout(uint32_t id) const;
 	const VkDescriptorPool& getDescriptorPool(uint32_t id) const;

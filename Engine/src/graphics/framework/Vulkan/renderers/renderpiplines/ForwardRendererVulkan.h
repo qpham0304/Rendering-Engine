@@ -47,7 +47,7 @@ public:
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
 
-	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline);
+	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer);
 	void endRecording(void* cmdBuffer);
 
 public:
@@ -58,12 +58,13 @@ private:
 	void renderGui(void* commandBuffer);
 
 
+	void _createPipeline();
 	void _createOffscreenTarget();
 	void _createDescriptorSetLayout();
 	void _createDescriptorPool();
 	void _createDescriptorSets();
 	void _updateDescriptor();
-	void _recreteResources();
+	void _recreateResources();
 	void _cleanupResources();
 
 private:

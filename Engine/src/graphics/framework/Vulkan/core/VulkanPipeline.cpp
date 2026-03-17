@@ -9,7 +9,7 @@ VulkanPipeline::VulkanPipeline(VulkanDevice& deviceRef)
 
 VulkanPipeline::~VulkanPipeline()
 {
-	destroy();
+	
 }
 
 void VulkanPipeline::create()

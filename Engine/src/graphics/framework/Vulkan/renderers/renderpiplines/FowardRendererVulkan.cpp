@@ -58,16 +58,6 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	void* handle = materialManager->getMaterialLayout();
 	VkDescriptorSetLayout materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
 
-	renderDeviceVulkan->pipeline.create();
-	renderDeviceVulkan->pipeline.createGraphicsPipeline(
-		"assets/shaders/spv/forwardLightPass.vert.spv",
-		"assets/shaders/spv/forwardLightPass.frag.spv",
-		{ descriptorSetLayout, materialLayout }, 
-		renderDeviceVulkan->swapchain.renderPass, 
-		sizeof(PushConstantData)
-	);
-	
-
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
 	instanceData.resize(numInstances);					// reserve the ssbo size
@@ -75,7 +65,6 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	size_t bufferSize = instanceData.size() * sizeof(StorageBufferObject);
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
 	
-
 	lights.reserve(numLights);
 	lights.push_back(LightSSBO{glm::vec4(1.0, 1, 1.0, 1.0), 0, 1.0});
 	lights.push_back(LightSSBO(glm::vec4(1.0, 1.0, 0.0, 1.0), 1, 5.5));
@@ -84,10 +73,7 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 
 	_createDescriptorSets();
 	_createOffscreenTarget();
-
-	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
-		_recreteResources();
-	});
+	_createPipeline();
 
 	return true;
 }
@@ -95,10 +81,7 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 bool ForwardRendererVulkan::onClose()
 {
 	renderDeviceVulkan->waitIdle();
-	renderDeviceVulkan->pipeline.destroy();
-
-	offscreenPipeline->destroy();
-	renderTarget.destroy(renderDeviceVulkan->device);
+	_cleanupResources();
 
 	return true;
 }
@@ -110,6 +93,12 @@ void ForwardRendererVulkan::onUpdate()
 
 void ForwardRendererVulkan::render(Camera& camera)
 {
+	if (needResize) {
+        _recreateResources();
+        needResize = false;
+        return; 
+    }
+
 	UniformBufferObject ubo{};
 	ubo.model = glm::scale(glm::mat4(1.0), glm::vec3(0.5f, 0.5f, 0.5f));
 	ubo.view = camera.getViewMatrix();
@@ -128,8 +117,8 @@ void ForwardRendererVulkan::render(Camera& camera)
 
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
 	recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
+	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
 }
 
 void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -139,9 +128,13 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBu
 	beginRecording(
 		commandBuffer,
 		renderTarget.renderPass,
-		renderTarget.framebuffers[imageIndex],
-		offscreenPipeline.get()
+		renderTarget.framebuffers[imageIndex]
 	);
+	
+	offscreenPipeline->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+	renderDeviceVulkan->setViewport(renderTarget.width, renderTarget.height);
+	renderDeviceVulkan->setScissor(renderTarget.width, renderTarget.height);
 
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	vkCmdBindDescriptorSets(
@@ -171,7 +164,7 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBu
 		m_logger->error("No scene to render");
 	}
 
-	int index = 1;
+	int index = 0;
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 		const glm::mat4& entityTransform = entity.getComponent<TransformComponent>().getModelMatrix();
 		// TODO: copy the multiple all transforms to ssbo would be slow
@@ -216,20 +209,19 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBu
 	endRecording(commandBuffer);
 }
 
-void ForwardRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline)
+void ForwardRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer)
 {
 	uint32_t imageIndex = renderDeviceVulkan->getImageIndex();
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
 	VkRenderPass vulkanRenderPass = static_cast<VkRenderPass>(renderPass);
 	VkFramebuffer vulkanFrameBuffer = static_cast<VkFramebuffer>(frameBuffer);
-	VulkanPipeline* pipelinePtr = static_cast<VulkanPipeline*>(pipeline);
 
 	VkRenderPassBeginInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = vulkanRenderPass;
 	renderPassInfo.framebuffer = vulkanFrameBuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = {AppWindow::getWidth(), AppWindow::getHeight()};
+	renderPassInfo.renderArea.extent = { renderTarget.width, renderTarget.height };
 
 
 	std::array<VkClearValue, 2> clearValues{};
@@ -239,27 +231,36 @@ void ForwardRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, vo
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
-	//basic draw commands
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	pipelinePtr->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
-
-	renderDeviceVulkan->setViewport();
-	renderDeviceVulkan->setScissor();
 }
 
 
 void ForwardRendererVulkan::endRecording(void* cmdBuffer)
 {
-	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
+	vkCmdEndRenderPass(static_cast<VkCommandBuffer>(cmdBuffer));
+}
 
-	vkCmdEndRenderPass(commandBuffer);
+void ForwardRendererVulkan::_createPipeline()
+{
+	void* handle = materialManager->getMaterialLayout();
+	VkDescriptorSetLayout materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
+
+	offscreenPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	offscreenPipeline->createGraphicsPipeline(
+		"assets/shaders/spv/forwardLightPass.vert.spv",
+		"assets/shaders/spv/forwardLightPass.frag.spv",
+		{ descriptorSetLayout, materialLayout }, 
+		renderTarget.renderPass, 
+		sizeof(PushConstantData)
+	);
 }
 
 void ForwardRendererVulkan::_createOffscreenTarget()
 {
 	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
 	VkDevice device = renderDeviceVulkan->device;
+	renderTarget.width = swapchain.swapChainExtent.width;
+	renderTarget.height = swapchain.swapChainExtent.height;
 
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = swapchain.swapChainImageFormat;
@@ -304,15 +305,24 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
+	VkSubpassDependency dependency2{};
+	dependency2.srcSubpass = 0;
+	dependency2.dstSubpass = VK_SUBPASS_EXTERNAL;
+	dependency2.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency2.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependency2.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependency2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
 	std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
+	std::array<VkSubpassDependency, 2> dependencies = { dependency, dependency2 };
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.attachmentCount = attachments.size();
 	renderPassInfo.pAttachments = attachments.data();
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
-	renderPassInfo.dependencyCount = 1;
-	renderPassInfo.pDependencies = &dependency;
+	renderPassInfo.dependencyCount = dependencies.size();
+	renderPassInfo.pDependencies = dependencies.data();
 
 	if(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderTarget.renderPass) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create offscreen render pass!");
@@ -355,6 +365,22 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 				texture->textureSampler, 
 				renderDeviceVulkan->device
 			);
+
+			
+			VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+			TextureManagerVulkan::transitionImageLayout(
+				cmd,
+				texture->textureImage,
+				swapchain.swapChainImageFormat,
+				VK_IMAGE_LAYOUT_UNDEFINED,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				1,
+				1,
+				renderDeviceVulkan
+			);
+			
+			renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+
 		};
 
 		createTexture();
@@ -370,7 +396,7 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 			swapchain.swapChainExtent.height,
 			depthFormat,
 			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			renderTarget.depthTextures[i]->textureImage,
 			renderTarget.depthTextures[i]->textureImageMemory,
@@ -398,26 +424,14 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 		framebufferInfo.renderPass = renderTarget.renderPass;
 		framebufferInfo.attachmentCount = attachments.size();
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = AppWindow::getWidth();
-		framebufferInfo.height = AppWindow::getHeight();
+		framebufferInfo.width = renderDeviceVulkan->swapchain.swapChainExtent.width;
+		framebufferInfo.height = renderDeviceVulkan->swapchain.swapChainExtent.height;
 		framebufferInfo.layers = 1;
 
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &renderTarget.framebuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create offscreen framebuffer!");
 		}
 	}
-
-	void* handle = materialManager->getMaterialLayout();
-	VkDescriptorSetLayout materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
-
-	offscreenPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
-	offscreenPipeline->createGraphicsPipeline(
-		"assets/shaders/spv/forwardLightPass.vert.spv",
-		"assets/shaders/spv/forwardLightPass.frag.spv",
-		{ descriptorSetLayout, materialLayout }, 
-		renderTarget.renderPass, 
-		sizeof(PushConstantData)
-	);
 }
 
 void ForwardRendererVulkan::_createDescriptorSetLayout()
@@ -476,15 +490,19 @@ void ForwardRendererVulkan::_updateDescriptor()
 	}
 }
 
-void ForwardRendererVulkan::_recreteResources()
+void ForwardRendererVulkan::_recreateResources()
 {
 	renderDeviceVulkan->waitIdle();
+	rendererManagerVulkan->setDisplayImage(nullptr);
 	_cleanupResources();
+
 	_createOffscreenTarget();
 	_updateDescriptor();
+	_createPipeline();
 }
 
 void ForwardRendererVulkan::_cleanupResources()
 {
 	renderTarget.destroy(renderDeviceVulkan->device);
+	offscreenPipeline->destroy();
 }

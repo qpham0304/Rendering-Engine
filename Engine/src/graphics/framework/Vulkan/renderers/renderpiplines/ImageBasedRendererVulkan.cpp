@@ -287,7 +287,7 @@ void ImageBasedRendererVulkan::writeBRDF() {
 		VK_IMAGE_LAYOUT_GENERAL, 
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
 		1, 
-		1, // 1 mip, 1 layer
+		1,
 		renderDeviceVulkan
 	);
 

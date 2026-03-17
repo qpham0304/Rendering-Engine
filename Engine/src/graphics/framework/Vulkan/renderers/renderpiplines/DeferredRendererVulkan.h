@@ -96,7 +96,9 @@ public:	//TODO: make private once done testing
 
 	ShadowMapRendererVulkan shadowMapRenderer;
 	ImageBasedRendererVulkan imageBasedRenderer;
-
+	
+	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
+	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _createRenderPasses();
 	void _createFrameBuffers();
 	void _createDescriptor();

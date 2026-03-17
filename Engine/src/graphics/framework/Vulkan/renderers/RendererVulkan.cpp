@@ -66,7 +66,10 @@ bool RendererVulkan::init(WindowConfig config)
 	)) {
 		return false;
 	}
-
+	
+	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
+		this->needResize = true;
+	});
 
 	return true;
 }

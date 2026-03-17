@@ -29,6 +29,9 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+
+	// void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer);
+	// void endRecording(void* cmdBuffer);
 	
 protected:
 	Logger* m_logger { nullptr };

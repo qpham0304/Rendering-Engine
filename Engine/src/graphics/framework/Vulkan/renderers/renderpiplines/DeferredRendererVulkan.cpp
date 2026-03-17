@@ -1,9 +1,9 @@
 #include "DeferredRendererVulkan.h"
 #include "core/features/ServiceLocator.h"
+#include "core/events/EventManager.h"
 #include "graphics/renderers/RenderDevice.h"
 #include "logging/Logger.h"
 #include "window/AppWindow.h"
-#include "core/events/EventManager.h"
 
 #include <core/resources/managers/TextureManager.h>
 #include <core/resources/managers/MeshManager.h>
@@ -42,7 +42,6 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	_createRenderPasses();
 	_createFrameBuffers();
 
-
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 	
 	instanceData.resize(10000);
@@ -66,11 +65,6 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 
 	_createLightDescriptor();
 	_createLightPipeline();
-
-
-	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
-		this->needResize = true;
-	});
 
 	return true;
 }
@@ -110,18 +104,18 @@ void DeferredRendererVulkan::render(Camera& camera)
     auto entities = scene->getEntitiesWith<TransformComponent>();
     for (auto& entity : entities) {
         auto& transform = entity.getComponent<TransformComponent>();
-        
         instanceData.push_back({ transform.getModelMatrix() });
 
         if (entity.hasComponent<LightComponent>()) {
             auto& light = entity.getComponent<LightComponent>();
-			lights.push_back(LightSSBO(light.color, glm::vec4(transform.translateVec, 1.0), light.intensity * transform.scaleVec.x));
+			lights.push_back(LightSSBO(
+				light.color, 
+				glm::vec4(transform.translateVec, 1.0), 
+				light.intensity * transform.scaleVec.x
+			));
         }
     }
 
-	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	
 	ubo.view = camera.getViewMatrix();
 	ubo.proj = camera.getProjectionMatrix();
 	ubo.cameraPos = glm::vec4(camera.getPosition(), 1.0);
@@ -138,25 +132,22 @@ void DeferredRendererVulkan::render(Camera& camera)
     pushConstantLight.time = AppWindow::getTime();
 	pushConstantLight.numLights = lights.size();
 	
-	uint32_t frame = renderDeviceVulkan->getCurrentFrameIndex();
-	uniformbuffersList[frame]->update(&ubo, sizeof(ubo));
+	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
+	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
-	StorageBufferVulkan* ssbo = storagebuffersList[frame];
+	StorageBufferVulkan* ssbo = storagebuffersList[currentFrame];
 	ssbo->update(instanceData.data(), instanceData.size() * sizeof(StorageBufferObject));
 
-	StorageBufferVulkan* lightSSBO = lightStoragebuffers[frame];
+	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
-
 	
 	shadowMapRenderer.render(camera);
 	imageBasedRenderer.onUpdate();
 	imageBasedRenderer.computeSH(cmdBuffer, currentFrame);
 	imageBasedRenderer.computePrefilter(cmdBuffer, currentFrame);
 	
-	//TODO: ideally should be image index but this saves space and work with no issue "yet"
-	// right now only 2 images and 2 frame buffers, not swapchain image size, change back when there's issue 
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-	
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
 }
 
@@ -233,136 +224,12 @@ void DeferredRendererVulkan::renderGui()
 
 void DeferredRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
-	beginRecording(
-		commandBuffer,
-		renderTarget.renderPass,
-		renderTarget.framebuffers[imageIndex]
-	);
-
-
-	gPassPipeline->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
-
-	renderDeviceVulkan->setViewport(renderTarget.width, renderTarget.height);
-	renderDeviceVulkan->setScissor(renderTarget.width, renderTarget.height);
-
+	beginRecording(commandBuffer,renderTarget.renderPass,renderTarget.framebuffers[imageIndex]);
+	
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(setsID);
-	vkCmdBindDescriptorSets(
-		commandBuffer,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		gPassPipeline->pipelineLayout,
-		0,
-		1,
-		&descriptorSets[currentFrame],
-		0,
-		nullptr
-	);
-
-
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if (!scene) {
-		m_logger->error("No scene to render");
-	}
-
-	int index = 0;
-	int lightIndex = 0;
-	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
-		TransformComponent& transform = entity.getComponent<TransformComponent>();
-		const glm::mat4& entityTransform = transform.getModelMatrix();
-		glm::vec3& translation = transform.translateVec;
-		
-		if(index >= instanceData.size()) {
-			instanceData.push_back({entityTransform});
-			continue;
-		}
-
-		// TODO: copy the multiple all transforms to ssbo would be slow
-		if (instanceData[index].model != entityTransform) {
-			instanceData[index].model = entityTransform;
-		}
-		// ubo.invNormal = glm::transpose(glm::inverse(glm::mat4(entityTransform)));
-
-		if (entity.hasComponent<LightComponent>()) {
-			// LightComponent& lightComponent = entity.getComponent<LightComponent>();
-			// lights[lightIndex].color = lightComponent.color;
-			// lights[lightIndex].position = glm::vec4(translation, 1.0);
-			// lights[lightIndex].intensity = transform.scaleVec.x;
-			lightIndex++;
-		}
-
-		if(entity.hasComponent<ModelComponent>()) {
-			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-			const Model* model = modelManager->getModel(modelID);
-
-			if (!model) {
-				continue;
-			}
-			for (uint32_t meshID : model->meshIDs) {
-				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)gPassPipeline.get());
-				meshManager->bindMesh(meshID);
-
-				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				renderDeviceVulkan->draw(indexCount, numInstances, index);
-			}
-		} 
-		
-		if (entity.hasComponent<MeshComponent>()) {
-			MeshComponent meshComponent = entity.getComponent<MeshComponent>();
-			for (uint32_t meshID : meshComponent.meshIDs) {
-				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)gPassPipeline.get());
-				meshManager->bindMesh(meshID);
-
-				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				renderDeviceVulkan->draw(indexCount, numInstances, index);
-			}
-		}
-		
-		index++;
-	}
-
-	// --- TRANSITION ---
-    vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
-
-    // --- SUBPASS 1 (Lighting) ---
-    lightingPipeline->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
-
-
-    auto lightSets = descriptorManagerVulkan->getDescriptorSet(lightSetsID);
-    vkCmdBindDescriptorSets(
-        commandBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        lightingPipeline->pipelineLayout,
-        0, 
-		1, 
-		&lightSets[currentFrame],
-        0, nullptr
-    );
-
-	auto lightDescriptorSets_1 = descriptorManagerVulkan->getDescriptorSet(lightSetsID_1);
-	vkCmdBindDescriptorSets(
-		commandBuffer,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		lightingPipeline->pipelineLayout,
-		1,
-		1,
-		&lightDescriptorSets_1[currentFrame],
-		0,
-		nullptr
-	);
-
-	vkCmdPushConstants(
-		commandBuffer,
-		lightingPipeline->pipelineLayout,
-		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-		0,
-		sizeof(PushConstantLight),
-		&pushConstantLight
-	);
-
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+	_renderGeometryPass(commandBuffer, currentFrame);
+    vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);	// transition to next pass
+    _renderLightPass(commandBuffer, currentFrame);
 
 	endRecording(commandBuffer);
 }
@@ -397,15 +264,132 @@ void DeferredRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, v
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
-	//basic draw commands
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void DeferredRendererVulkan::endRecording(void* cmdBuffer)
 {
-	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
+	vkCmdEndRenderPass(static_cast<VkCommandBuffer>(cmdBuffer));
+}
 
-	vkCmdEndRenderPass(commandBuffer);
+void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame)
+{
+	gPassPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+	renderDeviceVulkan->setViewport(renderTarget.width, renderTarget.height);
+	renderDeviceVulkan->setScissor(renderTarget.width, renderTarget.height);
+
+	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(setsID);
+	vkCmdBindDescriptorSets(
+		cmd,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		gPassPipeline->pipelineLayout,
+		0,
+		1,
+		&descriptorSets[currentFrame],
+		0,
+		nullptr
+	);
+
+
+	SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	if (!scene) {
+		m_logger->error("No scene to render");
+	}
+
+	int index = 0;
+	int lightIndex = 0;
+	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
+		TransformComponent& transform = entity.getComponent<TransformComponent>();
+		const glm::mat4& entityTransform = transform.getModelMatrix();
+		glm::vec3& translation = transform.translateVec;
+		
+		if(index >= instanceData.size()) {
+			instanceData.push_back({entityTransform});
+			continue;
+		}
+
+		// TODO: copy the multiple all transforms to ssbo would be slow
+		if (instanceData[index].model != entityTransform) {
+			instanceData[index].model = entityTransform;
+		}
+
+		if (entity.hasComponent<LightComponent>()) {
+			lightIndex++;
+		}
+
+		if(entity.hasComponent<ModelComponent>()) {
+			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
+			const Model* model = modelManager->getModel(modelID);
+
+			if (!model) {
+				continue;
+			}
+			for (uint32_t meshID : model->meshIDs) {
+				const Mesh* mesh = meshManager->getMesh(meshID);
+				materialManager->bindMaterial(mesh->materialID, cmd, (void*)gPassPipeline.get());
+				meshManager->bindMesh(meshID);
+
+				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+				renderDeviceVulkan->draw(indexCount, numInstances, index);
+			}
+		} 
+		
+		if (entity.hasComponent<MeshComponent>()) {
+			MeshComponent meshComponent = entity.getComponent<MeshComponent>();
+			for (uint32_t meshID : meshComponent.meshIDs) {
+				const Mesh* mesh = meshManager->getMesh(meshID);
+				materialManager->bindMaterial(mesh->materialID, cmd, (void*)gPassPipeline.get());
+				meshManager->bindMesh(meshID);
+
+				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+				renderDeviceVulkan->draw(indexCount, numInstances, index);
+			}
+		}
+		
+		index++;
+	}
+}
+
+void DeferredRendererVulkan::_renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame)
+{
+	lightingPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+
+    auto lightSets = descriptorManagerVulkan->getDescriptorSet(lightSetsID);
+    vkCmdBindDescriptorSets(
+        cmd,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        lightingPipeline->pipelineLayout,
+        0, 
+		1, 
+		&lightSets[currentFrame],
+        0, nullptr
+    );
+
+	auto lightDescriptorSets_1 = descriptorManagerVulkan->getDescriptorSet(lightSetsID_1);
+	vkCmdBindDescriptorSets(
+		cmd,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		lightingPipeline->pipelineLayout,
+		1,
+		1,
+		&lightDescriptorSets_1[currentFrame],
+		0,
+		nullptr
+	);
+
+	vkCmdPushConstants(
+		cmd,
+		lightingPipeline->pipelineLayout,
+		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		sizeof(PushConstantLight),
+		&pushConstantLight
+	);
+
+    vkCmdDraw(cmd, 3, 1, 0, 0);
 }
 
 #pragma region setup
@@ -419,12 +403,12 @@ void DeferredRendererVulkan::_createRenderPasses()
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = swapchain.swapChainImageFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;  	// Clear the texture before drawing
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // Save the results
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // transitions the image for use in the NEXT shader automatically
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // transition automatically
 
 	VkAttachmentDescription gBufferPos{};
 	gBufferPos.format = VK_FORMAT_R16G16B16A16_SFLOAT;
@@ -580,8 +564,8 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			auto* texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
 
 			TextureManagerVulkan::createImage(
-				renderDeviceVulkan->swapchain.swapChainExtent.width,
-				renderDeviceVulkan->swapchain.swapChainExtent.height,
+				swapchain.swapChainExtent.width,
+				swapchain.swapChainExtent.height,
 				format,
 				VK_IMAGE_TILING_OPTIMAL,
 				usage,
@@ -636,28 +620,24 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			return texture;
 		};
 
-		// for the output image
 		renderTarget.colorTextures[i] = createTexture(
 			swapchain.swapChainImageFormat, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
 
-		//TODO: for g-buffer positions image
 		renderTarget.gBufferPos[i] = createTexture(
 			VK_FORMAT_R16G16B16A16_SFLOAT, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
 
-		//TODO: for g-buffer normals image
 		renderTarget.gBufferNorm[i] = createTexture(
 			VK_FORMAT_R16G16B16A16_SFLOAT,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
 
-		// TODO: for g-buffer albedo image
 		renderTarget.gBufferAlbedo[i] = createTexture(
 			VK_FORMAT_R8G8B8A8_UNORM, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, 
@@ -716,7 +696,7 @@ void DeferredRendererVulkan::_createFrameBuffers()
 		framebufferInfo.layers = 1;
 
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &renderTarget.framebuffers[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create offscreen framebuffer!");
+			throw std::runtime_error("failed to create framebuffer!");
 		}
 	}
 }
@@ -812,7 +792,7 @@ void DeferredRendererVulkan::_createLightPipeline()
 	// Configure the PipelineInfo (Subpass 1, 1 Attachment, No Depth)
 	PipelineConfigInfo lightConfig = VulkanPipeline::defaultPipelineConfigInfo(1);
 	lightConfig.renderPass = renderTarget.renderPass;
-	lightConfig.subpass = 1; // Target the second subpass
+	lightConfig.subpass = 1;
 	lightConfig.depthStencilInfo.depthTestEnable = VK_FALSE;
 	lightConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
@@ -837,15 +817,14 @@ void DeferredRendererVulkan::_createLightDescriptor()
 		{2, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 		{3, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
     };
-    lightLayoutID = descriptorManagerVulkan->createLayout(bindings);
     
-    // Over-allocating to 100 to prevent any "tight fit" crashes
     uint32_t frameCount = VulkanUtils::numFrames();
     std::vector<VkDescriptorPoolSize> poolSizes{
-        {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100} 
+        {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, frameCount * 4} 
     };
 
-    uint32_t lightPoolID = descriptorManagerVulkan->createPool(poolSizes, 100);    // Create pool with maxSets = 100
+    lightLayoutID = descriptorManagerVulkan->createLayout(bindings);
+    uint32_t lightPoolID = descriptorManagerVulkan->createPool(poolSizes, frameCount * 4);
     lightSetsID = descriptorManagerVulkan->createSets(lightLayoutID, lightPoolID, frameCount);
 
 	lightLayoutID_1 = descriptorManagerVulkan->createLayout({
@@ -881,37 +860,12 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 		VkDescriptorImageInfo albedoInfo = { VK_NULL_HANDLE, renderTarget.gBufferAlbedo[i]->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 		VkDescriptorImageInfo pbrInfo = { VK_NULL_HANDLE, renderTarget.gPBR[i]->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
-		std::array<VkWriteDescriptorSet, 4> writes{};
-        
-        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[0].dstSet = lightingDescriptorSets[i];
-        writes[0].dstBinding = 0; // Position
-        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        writes[0].descriptorCount = 1;
-        writes[0].pImageInfo = &posInfo;
-
-        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[1].dstSet = lightingDescriptorSets[i];
-        writes[1].dstBinding = 1; // Normal
-        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        writes[1].descriptorCount = 1;
-        writes[1].pImageInfo = &normInfo;
-
-        writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[2].dstSet = lightingDescriptorSets[i];
-        writes[2].dstBinding = 2; // Albedo
-        writes[2].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        writes[2].descriptorCount = 1;
-        writes[2].pImageInfo = &albedoInfo;
-
-		writes[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writes[3].dstSet = lightingDescriptorSets[i];
-		writes[3].dstBinding = 3;
-		writes[3].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		writes[3].descriptorCount = 1;
-		writes[3].pImageInfo = &pbrInfo;
-
-        vkUpdateDescriptorSets(renderDeviceVulkan->device, writes.size(), writes.data(), 0, nullptr);
+		std::vector<VkWriteDescriptorSet> writes;
+		descriptorManagerVulkan->writeAttachment(&writes, lightingDescriptorSets[i], 0, posInfo);
+		descriptorManagerVulkan->writeAttachment(&writes, lightingDescriptorSets[i], 1, normInfo);
+		descriptorManagerVulkan->writeAttachment(&writes, lightingDescriptorSets[i], 2, albedoInfo);
+		descriptorManagerVulkan->writeAttachment(&writes, lightingDescriptorSets[i], 3, pbrInfo);
+        descriptorManagerVulkan->updateDescriptorSets(&writes);
     }
 
 	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(lightSetsID_1);

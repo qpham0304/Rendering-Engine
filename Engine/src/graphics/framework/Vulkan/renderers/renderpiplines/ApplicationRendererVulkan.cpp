@@ -49,12 +49,6 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 		}
 	});
 
-	
-	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
-		this->needResize = true;
-	});
-
-
 	pushConstantData.flag = true;
 	pushConstantData.color = glm::vec3(1.0f, 1.0f, 0.0f);
 	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -82,7 +76,7 @@ void ApplicationRendererVulkan::render(Camera& camera)
 {
 	// stop rendering as we can't record begin/endRecording because the manager's 
 	// command Buffer recording state is likely corrupted by the destruction inside
-	//  _recreateResources. By returning, we let the manager call endFrame on an empty buffer.
+	//  _recreateResources By returning, we let the manager call endFrame on an empty buffer
     if (needResize) {
         _recreateResources();
         needResize = false;
@@ -90,7 +84,6 @@ void ApplicationRendererVulkan::render(Camera& camera)
     }
 
     VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 }
 
@@ -107,7 +100,12 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
     }
 
     if (texture->textureImageView != lastView) {
-		_updateDescriptorSets(renderDeviceVulkan->getCurrentFrameIndex());
+		renderDeviceVulkan->waitIdle(); 
+    
+		for (uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
+			_updateDescriptorSets(i);
+		}
+		// _updateDescriptorSets(renderDeviceVulkan->getCurrentFrameIndex());
         lastView = texture->textureImageView;
     }
 
