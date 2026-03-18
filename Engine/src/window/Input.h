@@ -12,8 +12,11 @@ public:
 	virtual bool isMousePressed(MouseCodes key) = 0;
 	virtual bool isKeyPressed(KeyCodes key) = 0;;
 	virtual void getCursorPos(double* x, double* y) = 0;
+	virtual void enableCursor() = 0;
+	virtual void disableCursor() = 0;
 	virtual int getMouseButton(MouseCodes key) = 0;
 	virtual int getKey(KeyCodes key) = 0;
+	
 
 protected:
 	Input() = default;

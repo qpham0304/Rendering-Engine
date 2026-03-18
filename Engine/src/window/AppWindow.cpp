@@ -39,6 +39,14 @@ void AppWindow::getCursorPos(double* x, double* y) {
 	return window->m_input->getCursorPos(x, y);
 }
 
+void AppWindow::enableCursor() {
+	return window->m_input->enableCursor();
+}
+
+void AppWindow::disableCursor() {
+	return window->m_input->disableCursor();
+}
+
 int AppWindow::getKey(KeyCodes keyCode) {
 	return window->m_input->getKey(keyCode);
 }

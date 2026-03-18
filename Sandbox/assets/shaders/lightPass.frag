@@ -154,52 +154,53 @@ float random(vec3 seed) {
 }
 
 float calcPCSS(vec3 worldPos) {
-    vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(worldPos, 1.0);
+    vec3 worldNorm = normalize(subpassLoad(inputNorm).rgb);
+    vec3 L = normalize(pcl.direction.xyz);
+    
+    // 1. COORDINATE SETUP
+    // UVs are nudged to sample "clean" areas of the shadow map
+    vec3 offsetWorldPos = worldPos + worldNorm * pcl.bias;
+    vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(offsetWorldPos, 1.0);
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords.xy = projCoords.xy * 0.5 + 0.5;
-    float currentDepth = projCoords.z;
+    
+    // True depth for contact hardening math
+    vec4 fragPosTrue = pcl.sunlightMVP * vec4(worldPos, 1.0);
+    float currentDepth = fragPosTrue.z / fragPosTrue.w;
 
     if(projCoords.z > 1.0) return 0.0;
 
+    // 2. BLOCKER SEARCH
     float avgBlockerDepth = 0.0;
     int blockers = 0;
-    
-    // Increase this to 0.1 or 0.2 to force a massive, obvious blur for testing.
     const float LIGHT_SIZE_UV = 0.05; 
-    
-    // wide search to find blockers that are far away
     float searchRegion = LIGHT_SIZE_UV * (currentDepth); 
 
-    // small grid for blocker search
+    // Calculate a slope-based bias to stop the ground from blocking itself
+    float searchBias = max(0.002 * (1.0 - dot(worldNorm, L)), 0.0005);
+
     for(int i = -2; i <= 2; ++i) {
         for(int j = -2; j <= 2; ++j) {
             vec2 offset = vec2(i, j) * (searchRegion / 5.0);
-            vec3 L = normalize(pcl.direction.xyz);
-            vec3 worldNorm = normalize(subpassLoad(inputNorm).rgb);
-            float bias = max(0.005 * (1.0 - dot(worldNorm, L)), 0.0005);
             float depth = texture(shadowMap, projCoords.xy + offset).r;
-            if(depth < currentDepth - bias) { 
+            
+            if(depth < currentDepth - searchBias) { 
                 avgBlockerDepth += depth;
                 blockers++;
             }
         }
     }
 
-    if(blockers == 0) {
-        return 0.0; 
-    }
+    if(blockers == 0) return 0.0; 
     avgBlockerDepth /= float(blockers);
 
-    // Receiver - Blocker) / Blocker
-    // float penumbra = (currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV / avgBlockerDepth;
-    float penumbra = (currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV;
-    
+    // 3. PENUMBRA CALCULATION
+    float penumbra = ((currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV) / avgBlockerDepth;
     penumbra = clamp(penumbra, 0.0, 0.02); 
 
+    // 4. NOISE AND ROTATION
     vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
-    // noiseUV += vec2(pcl.time * 0.1337, pcl.time * 0.4337);
     float noiseValue = texture(blueNoise, noiseUV).r;
-    // float noiseValue = random(worldPos + vec3(pcl.time));
 
     float angle = noiseValue * 6.283185;
     float s = sin(angle);
@@ -217,15 +218,22 @@ float calcPCSS(vec3 worldPos) {
         vec2( 0.73039985, -0.23011690 ), vec2( 0.51726257, 0.43840042 )
     );
 
+    // 5. PCF FILTERING
     float shadow = 0.0;
+    
+    // SLOPE SCALED BIAS: This is the key. 
+    // It is tiny when looking top-down and larger at steep angles.
+    float pcfBias = max(0.001 * (1.0 - dot(worldNorm, L)), 0.0001);
+
     for (int i = 0; i < 16; i++) {
         vec2 offset = (rotation * poissonDisk32[i]) * penumbra;
         float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
         
-        if (currentDepth - 0.0015 > pcfDepth) {
+        if (currentDepth - pcfBias > pcfDepth) {
             shadow += 1.0;
         }
     }
+
     return shadow / 16.0;
 }
 
@@ -363,8 +371,8 @@ void main() {
     }
     
     // float shadow = calcShadow(worldPos);
-    // float shadow = calcMSMShadow(worldPos + worldNorm * pcl.bias);
-    float shadow = 1.0 - calcPCSS(worldPos);
+    float shadow = 1.0 - calcMSMShadow(worldPos + worldNorm * pcl.bias);
+    // float shadow = 1.0 - calcPCSS(worldPos);
     vec3 L_sun = normalize(pcl.direction.xyz); 
     vec3 sunRadiance = pcl.color.rgb * shadow;
     vec3 sunlight = calcPBR(L_sun, V, N, F0, albedo.rgb, roughness, metallic, sunRadiance);

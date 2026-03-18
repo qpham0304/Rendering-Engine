@@ -6,6 +6,7 @@
 #include "core/layers/layerManager.h"
 #include "gui/GuiManager.h"
 #include "core/features/camera.h"
+#include "core/features/OrbitCamera.h"
 
 
 #include "src/gui/framework/ImGui/widgets/ImGuiConsoleLogWidget.h"
@@ -114,7 +115,7 @@ void EditorLayer::onAttach(LayerManager* manager)
 			// scene->loadScene("assets/data/default-scene.json");
 			scene->loadScene("assets/data/level1-test.json");
 
-			editorCamera = new Camera();
+			editorCamera = new OrbitCamera();
 			editorCamera->init(
 				AppWindow::getWidth(),
 				AppWindow::getHeight(),

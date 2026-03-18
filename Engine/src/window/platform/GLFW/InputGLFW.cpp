@@ -28,6 +28,16 @@ void InputGLFW::getCursorPos(double* x, double* y)
 	return glfwGetCursorPos(m_windowHandle, x, y);
 }
 
+void InputGLFW::enableCursor()
+{
+	glfwSetInputMode(m_windowHandle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+}
+
+void InputGLFW::disableCursor()
+{
+	glfwSetInputMode(m_windowHandle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+}
+
 int InputGLFW::getMouseButton(MouseCodes mouseCode)
 {
 	return glfwGetMouseButton(m_windowHandle, static_cast<int>(mouseCode));
