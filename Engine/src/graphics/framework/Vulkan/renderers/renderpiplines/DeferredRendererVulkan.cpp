@@ -147,7 +147,8 @@ void DeferredRendererVulkan::render(Camera& camera)
 	imageBasedRenderer.computeSH(cmdBuffer, currentFrame);
 	imageBasedRenderer.computePrefilter(cmdBuffer, currentFrame);
 	
-	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
+	// recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
+	recordDrawCommand(cmdBuffer, currentFrame);
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
 }
 
@@ -550,13 +551,13 @@ void DeferredRendererVulkan::_createFrameBuffers()
 	VkDevice device = renderDeviceVulkan->device;
 	
 	uint32_t numFrames = VulkanUtils::numFrames();
-	renderTarget.colorTextures.resize(swapchain.swapChainImageViews.size());
-	renderTarget.gBufferPos.resize(swapchain.swapChainImageViews.size());
-	renderTarget.gBufferNorm.resize(swapchain.swapChainImageViews.size());
-	renderTarget.gBufferAlbedo.resize(swapchain.swapChainImageViews.size());
-	renderTarget.gPBR.resize(swapchain.swapChainImageViews.size());
-	renderTarget.depthTextures.resize(swapchain.swapChainImageViews.size());
-	renderTarget.framebuffers.resize(swapchain.swapChainImageViews.size());
+	renderTarget.colorTextures.resize(numFrames);
+	renderTarget.gBufferPos.resize(numFrames);
+	renderTarget.gBufferNorm.resize(numFrames);
+	renderTarget.gBufferAlbedo.resize(numFrames);
+	renderTarget.gPBR.resize(numFrames);
+	renderTarget.depthTextures.resize(numFrames);
+	renderTarget.framebuffers.resize(numFrames);
 
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		auto createTexture = [&] (VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) -> TextureVulkan* {

@@ -71,7 +71,7 @@ std::vector<uint32_t> RendererManagerVulkan::listIDs() const
 
 void RendererManagerVulkan::onUpdate()
 {
-    render();
+    
 }
 
 void RendererManagerVulkan::render()
@@ -85,7 +85,7 @@ void RendererManagerVulkan::render()
 
     beginFrame();
 	forwardRenderer->render(*camera);
-    // deferredRenderer->render(*camera);
+    deferredRenderer->render(*camera);
     applicationRenderer->render(*camera);
     endFrame();
 }

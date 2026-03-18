@@ -119,8 +119,8 @@ void EditorLayer::onAttach(LayerManager* manager)
 			editorCamera->init(
 				AppWindow::getWidth(),
 				AppWindow::getHeight(),
-				glm::vec3(-3.0, 10.0, 10.0),
-				glm::vec3(3.0, -10.0, -10.0)
+				glm::vec3(3),
+				glm::vec3(0)
 			);
 
 			SceneManager::cameraController = editorCamera;

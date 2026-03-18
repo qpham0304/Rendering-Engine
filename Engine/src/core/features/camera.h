@@ -83,7 +83,6 @@ public:
 	virtual void init(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation);
 	virtual void onUpdate();
 	virtual void updateViewResize(int width, int height);
-	virtual void processInput();
 	virtual void resetCamera();
 	virtual void setCameraSpeed(int speedMultiplier);
 	virtual void translate(const glm::vec3& position);
@@ -91,7 +90,6 @@ public:
 	virtual bool processKeyboard();
 	virtual bool processMouse();
 	virtual void scroll_callback(double xoffset, double yoffset);
-	virtual void key_callback(int key, int scancode, int action, int mods);
 
 private:
 	void mouseControl();

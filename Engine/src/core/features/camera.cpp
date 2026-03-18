@@ -186,14 +186,6 @@ void Camera::translate(const glm::vec3& position)
 	this->position = position;
 }
 
-
-void Camera::processInput()
-{
-	bool isMouseMoved = processMouse();
-	bool isKeyboardMoved = processKeyboard();
-	cameraMove = isMouseMoved || isKeyboardMoved;
-}
-
 void Camera::mouseControl()
 {
 	double x;
@@ -260,11 +252,6 @@ void Camera::scroll_callback(double xoffset, double yoffset)
 	if (fov > 45.0f)
 		fov = 45.0f;
 }
-
-void Camera::key_callback(int key, int scancode, int action, int mods) {
-	processKeyboard();
-}
-
 
 void Camera::reCalculateView()
 {

@@ -116,9 +116,9 @@ void ForwardRendererVulkan::render(Camera& camera)
 
 
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
+	// recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
+	recordDrawToTextureCommand(cmdBuffer, frame);
+	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[frame]);
 }
 
 void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -328,9 +328,10 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 		throw std::runtime_error("failed to create offscreen render pass!");
 	}
 
-	renderTarget.colorTextures.resize(swapchain.swapChainImages.size());
-	renderTarget.depthTextures.resize(swapchain.swapChainImages.size());
-	renderTarget.framebuffers.resize(swapchain.swapChainImageViews.size());
+	uint32_t numFrames = VulkanUtils::numFrames();
+	renderTarget.colorTextures.resize(numFrames);
+	renderTarget.depthTextures.resize(numFrames);
+	renderTarget.framebuffers.resize(numFrames);
 
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		uint32_t id = textureManagerVulkan->createTexture();

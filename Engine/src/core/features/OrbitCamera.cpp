@@ -9,7 +9,9 @@ OrbitCamera::OrbitCamera() {
     height = DEFAULT_HEIGHT;
     position = glm::vec3(0.0f, 0.0f, 5.0f);
     target = glm::vec3(0.0f);                       // center of rotation
+    targetCenter = target;
     distance = 5.0f;
+    targetDistance = distance;
     setup(width, height, position);
     setupOrientation(orientation);
 }
@@ -19,6 +21,8 @@ OrbitCamera::OrbitCamera(unsigned int width, unsigned int height, glm::vec3 posi
     setupOrientation(orientation);
     this->target = position + orientation * 5.0f; // guess a target based on orientation
     this->distance = 5.0f;
+    this->targetCenter = target;
+    this->targetDistance = distance;
 }
 
 OrbitCamera::OrbitCamera(unsigned int width, unsigned int height, glm::vec3 position) {
@@ -63,6 +67,9 @@ void OrbitCamera::onUpdate() {
     yaw += (targetYaw - yaw) * interpolationFactor;
     pitch += (targetPitch - pitch) * interpolationFactor;
 
+    distance += (targetDistance - distance) * interpolationFactor;
+    target += (targetCenter - target) * interpolationFactor;
+
     if (targetPitch > 89.0f) targetPitch = 89.0f;
     if (targetPitch < -89.0f) targetPitch = -89.0f;
 
@@ -92,12 +99,6 @@ void OrbitCamera::reCalculateView() {
 void OrbitCamera::reCalculateProjection() {
     projection = glm::perspective(glm::radians(fov), (float)width / height, nearPlane, farPlane);
     inProjection = glm::inverse(projection);
-}
-
-void OrbitCamera::processInput() {
-    bool isMouseMoved = processMouse();
-    bool isKeyboardMoved = processKeyboard();
-    cameraMove = isMouseMoved || isKeyboardMoved;
 }
 
 bool OrbitCamera::processMouse() {
@@ -143,8 +144,8 @@ void OrbitCamera::mouseControl(bool panning) {
 
     if (panning) {
         float panSpeed = distance * 0.001f; 
-        target -= right * xOffset * panSpeed;
-        target += up * yOffset * panSpeed;
+        targetCenter -= right * xOffset * panSpeed;
+        targetCenter += up * yOffset * panSpeed;
     } else {    // prevents the camera from spinning 360 degrees in one flick
         sensitivity = 0.3f;
 		smoothTime = 0.12f;
@@ -157,29 +158,30 @@ void OrbitCamera::mouseControl(bool panning) {
 bool OrbitCamera::processKeyboard() {
     bool isPressing = false;
     shiftPressed = AppWindow::isKeyPressed(KEY_LEFT_SHIFT) || AppWindow::isKeyPressed(KEY_RIGHT_SHIFT);
+    float currentSpeed = speed * deltaTime * 100.0f;
 
     if (AppWindow::isKeyPressed(KEY_W)) { 
-        target += orientation * speed;
+        targetCenter += orientation * currentSpeed;
         isPressing = true; 
     }
     if (AppWindow::isKeyPressed(KEY_S)) { 
-        target -= orientation * speed;
+        targetCenter -= orientation * currentSpeed;
         isPressing = true; 
     }
     if (AppWindow::isKeyPressed(KEY_A)) { 
-        target -= right * speed;
+        targetCenter -= right * currentSpeed;
         isPressing = true; 
     }
     if (AppWindow::isKeyPressed(KEY_D)) { 
-        target += right * speed;
+        targetCenter += right * currentSpeed;
         isPressing = true; 
     }
     if (AppWindow::isKeyPressed(KEY_SPACE) && !shiftPressed) {
-        target += glm::vec3(0,1,0) * speed;
+        targetCenter += glm::vec3(0,1,0) * currentSpeed;
         isPressing = true;
     }
     if (AppWindow::isKeyPressed(KEY_SPACE) && shiftPressed)  {
-        target -= glm::vec3(0,1,0) * speed;
+        targetCenter -= glm::vec3(0,1,0) * currentSpeed;
         isPressing = true;
     }
     if (AppWindow::isKeyPressed(KEY_R) && shiftPressed) { 
@@ -191,8 +193,18 @@ bool OrbitCamera::processKeyboard() {
 }
 
 void OrbitCamera::scroll_callback(double xoffset, double yoffset) {
-    distance -= (float)yoffset * (distance * 0.1f);
-    if (distance < 0.1f) distance = 0.1f;
+    targetDistance -= (float)yoffset * (targetDistance * 0.1f);
+    if (targetDistance < 0.5f) {
+        targetDistance = 0.5f;
+    }
+    if (targetDistance > 100.0f) {
+        targetDistance = 100.0f;
+    }
+
+    // distance -= (float)yoffset * (distance * 0.1f);
+    // if (distance < 0.1f) {
+    //     distance = 0.1f;
+    // }
 }
 
 void OrbitCamera::updateViewResize(int width, int height) {
@@ -217,5 +229,3 @@ void OrbitCamera::resetCamera() {
     pitch = DEFAULT_PITCH_;
     fov = DEFAULT_FOV;
 }
-
-void OrbitCamera::key_callback(int key, int scancode, int action, int mods) { processKeyboard(); }
