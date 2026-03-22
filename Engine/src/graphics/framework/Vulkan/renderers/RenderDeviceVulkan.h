@@ -17,6 +17,7 @@ public:
 	VulkanSwapChain swapchain;
 	VulkanPipeline pipeline;
 	VulkanCommandPool commandPool;
+	VulkanCommandPool transferPool;
 
 public:
 	RenderDeviceVulkan();

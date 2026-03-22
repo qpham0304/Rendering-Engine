@@ -105,42 +105,39 @@ bool OrbitCamera::processMouse() {
     bool leftPressed = AppWindow::isMousePressed(MOUSE_BUTTON_LEFT);
     
     if (leftPressed) {
+        double x, y;
+        AppWindow::getCursorPos(&x, &y);
+        float xpos = static_cast<float>(x);
+        float ypos = static_cast<float>(y);
+
         if (firstClick) {
-            AppWindow::disableCursor(); // lock the mouse so it can't hit the window bar
-            
-            // prevent camera jump by immediately bring the mouse back to it's coord from center
-            double x, y;
-            AppWindow::getCursorPos(&x, &y);
-            lastX = (float)x;
-            lastY = (float)y;
-            
+            lastX = xpos;
+            lastY = ypos;
             firstClick = false;
         }
 
         bool isPanning = AppWindow::isKeyPressed(KEY_LEFT_SHIFT);
-        mouseControl(isPanning);
+        
+        mouseControl(isPanning); 
         return true;
     } 
     else {
-        if (!firstClick) {  // when user lets go, enable cursor back
-            AppWindow::enableCursor();
-            firstClick = true;
-        }
+        firstClick = true; 
         return false;
     }
 }
 
-void OrbitCamera::mouseControl(bool panning) {
+void OrbitCamera::mouseControl(bool panning) 
+{
     double x, y;
     AppWindow::getCursorPos(&x, &y);
+
     float xpos = static_cast<float>(x);
     float ypos = static_cast<float>(y);
 
     float xOffset = (xpos - lastX) * sensitivity;
     float yOffset = (ypos - lastY) * sensitivity; 
 
-    lastX = xpos;
-    lastY = ypos;
 
     if (panning) {
         float panSpeed = distance * 0.001f; 
@@ -153,9 +150,13 @@ void OrbitCamera::mouseControl(bool panning) {
         targetYaw += glm::clamp(xOffset, -maxChange, maxChange);
         targetPitch += glm::clamp(yOffset, -maxChange, maxChange);
     }
+    
+    lastX = xpos;
+    lastY = ypos;
 }
 
-bool OrbitCamera::processKeyboard() {
+bool OrbitCamera::processKeyboard() 
+{
     bool isPressing = false;
     shiftPressed = AppWindow::isKeyPressed(KEY_LEFT_SHIFT) || AppWindow::isKeyPressed(KEY_RIGHT_SHIFT);
     float currentSpeed = speed * deltaTime * 100.0f;
@@ -192,39 +193,43 @@ bool OrbitCamera::processKeyboard() {
     return isPressing;
 }
 
-void OrbitCamera::scroll_callback(double xoffset, double yoffset) {
-    targetDistance -= (float)yoffset * (targetDistance * 0.1f);
+void OrbitCamera::scroll_callback(double xoffset, double yoffset) 
+{
+    targetDistance -= static_cast<float>(yoffset) * (targetDistance * 0.1f);
     if (targetDistance < 0.5f) {
         targetDistance = 0.5f;
     }
+    
     if (targetDistance > 100.0f) {
         targetDistance = 100.0f;
     }
-
-    // distance -= (float)yoffset * (distance * 0.1f);
-    // if (distance < 0.1f) {
-    //     distance = 0.1f;
-    // }
 }
 
-void OrbitCamera::updateViewResize(int width, int height) {
+void OrbitCamera::updateViewResize(int width, int height) 
+{
     this->width = width;
     this->height = height;
 }
 
-void OrbitCamera::setCameraSpeed(int speedMultiplier) { this->speedMultiplier = (float)speedMultiplier; }
+void OrbitCamera::setCameraSpeed(int speedMultiplier) { 
+    this->speedMultiplier = static_cast<float>(speedMultiplier); 
+}
 
-void OrbitCamera::translate(const glm::vec3& newPos) {
+void OrbitCamera::translate(const glm::vec3& newPos) 
+{
     glm::vec3 diff = newPos - position;
     target += diff;
     position = newPos;
 }
 
-void OrbitCamera::resetCamera() {
+void OrbitCamera::resetCamera() 
+{
     position = defaultPosition;
     orientation = defaultOrientation;
     target = glm::vec3(0.0f);
     distance = glm::distance(position, target);
+    targetCenter = glm::vec3(0.0f);
+    targetDistance = glm::distance(defaultPosition, targetCenter);
     yaw = DEFAULT_YAW;
     pitch = DEFAULT_PITCH_;
     fov = DEFAULT_FOV;

@@ -8,6 +8,7 @@
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/resources/descriptors/DescriptorManagerVulkan.h"
 #include "logging/Logger.h"
+#include "core/events/EventManager.h"
 
 TextureManagerVulkan::TextureManagerVulkan(std::string serviceName)
 	: TextureManager(serviceName), renderDeviceVulkan(nullptr)
@@ -89,6 +90,7 @@ uint32_t TextureManagerVulkan::loadTexture(std::string_view path, uint32_t mipLe
 	}
 
 	_loadTexture(path, mipLevels, isDataTexture);
+
 	return _assignID();
 }
 

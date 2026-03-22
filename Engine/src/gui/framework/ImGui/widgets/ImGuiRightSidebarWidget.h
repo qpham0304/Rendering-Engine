@@ -3,6 +3,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
+#include "core/events/Event.h"
+#include <future>
 
 class DescriptorManagerVulkan;
 class Scene;
@@ -21,8 +23,13 @@ public:
 
 protected:
 	bool popupOpen;
+	bool errorPopupOpen;
 	unsigned int selectedTexture;
 	void TextureModal(const ImTextureID& id);
+	AsyncEvent asyncE;
+	uint32_t tempID;
+	Entity* myEntt;
+	std::future<uint32_t> m_loadingFuture;
 
 private:
 	Scene* scene{ nullptr };
@@ -32,6 +39,9 @@ private:
 	uint32_t imGuipoolID;
 
 	void _listTextureManager();
+	void _addModelDialog(Entity& entity);
+	void errorModal(const char* message);
+
 
 	//TODO: maybe reflection can help avoiding manual modification for every component?
 	void _componentsControl();

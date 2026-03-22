@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_vulkan_glsl : enable
 
 layout(location = 0) in vec3 inNormal;
 layout(location = 1) in vec2 inTexCoord;
@@ -10,11 +11,12 @@ layout(location = 1) out vec4 outNorm;
 layout(location = 2) out vec4 outAlbedo; 
 layout(location = 3) out vec4 outPBR;    
 
-layout(set = 1, binding = 0) uniform sampler2D albedoSampler;
+layout(set = 1, binding = 0) uniform sampler2D albedoMap;
 layout(set = 1, binding = 1) uniform sampler2D normalMap;
 layout(set = 1, binding = 2) uniform sampler2D metallicMap;
 layout(set = 1, binding = 3) uniform sampler2D roughnessMap;
 layout(set = 1, binding = 4) uniform sampler2D aoMap;
+layout(set = 1, binding = 5) uniform sampler2D emissiveMaps;
 
 // vec3 getNormalFromMap() {
 //     vec3 tangentNormal = texture(normalMap, inTexCoord).rgb * 2.0 - 1.0;
@@ -53,7 +55,7 @@ void main() {
     // outNorm = vec4(N, 1.0);
     outNorm = vec4(inNormal, 1.0);
     
-    outAlbedo = texture(albedoSampler, inTexCoord);
+    outAlbedo = texture(albedoMap, inTexCoord);
     
     // Sampling PBR maps
     float ao        = texture(aoMap, inTexCoord).r;

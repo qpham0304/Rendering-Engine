@@ -86,24 +86,6 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 	writes.reserve(6);
 	imageInfos.reserve(6);
 
-	//std::vector<TextureVulkan*> textures;
-	//textures.push_back(textureManagerVulkan->getTexture(material.albedoID));
-	//textures.push_back(textureManagerVulkan->getTexture(material.normalID));
-	//textures.push_back(textureManagerVulkan->getTexture(material.metallicID));
-	//textures.push_back(textureManagerVulkan->getTexture(material.roughnessID));
-	//textures.push_back(textureManagerVulkan->getTexture(material.aoID));
-	//textures.push_back(textureManagerVulkan->getTexture(material.emissiveID));
-
-	//int i = 0;
-	//for(TextureVulkan* texture : textures) {
-	//	imageInfos.push_back(VkDescriptorImageInfo());
-	//	imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	//	imageInfos[i].imageView = texture->textureImageView;
-	//	imageInfos[i].sampler = texture->textureSampler;
-
-	//	descriptorManagerVulkan->writeImage(&writes, materialSet, i, imageInfos[i++]);
-	//}
-
 	auto writeMaterial = [&](uint32_t binding, uint32_t materialID) {
 		TextureVulkan* texture = textureManagerVulkan->getTexture(materialID);
 

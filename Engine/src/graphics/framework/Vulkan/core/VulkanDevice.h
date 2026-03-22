@@ -18,6 +18,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 ) {
     const char* RED     = "\033[31m";
     const char* YELLOW  = "\033[33m";
+	const char* GREEN   = "\033[32m";
     const char* WHITE   = "\033[37m";
     const char* RESET   = "\033[0m";
     const char* BOLD    = "\033[1m";
@@ -28,6 +29,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         std::cerr << BOLD << RED;
     } else if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
         std::cerr << YELLOW;
+    } else if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
+        std::cerr << GREEN;
     } else {
         std::cerr << WHITE;
     }
@@ -56,6 +59,8 @@ public:
 	void selectPhysicalDevice();
 	void createLogicalDevice();
 
+	void submitDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity, const char* message);
+	
 	struct QueueFamilyIndices {
 		std::optional<uint32_t> graphicsFamily;
 		std::optional<uint32_t> presentFamily;
@@ -162,13 +167,15 @@ public:
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 
+	bool rtSupported;
+	bool dynamicRenderingSupported;
+
 	const std::vector<const char*> validationLayers = {
 		"VK_LAYER_KHRONOS_validation"
 	};
 
 	const std::vector<const char*> deviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-		// VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME
 	};
 
 

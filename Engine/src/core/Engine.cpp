@@ -95,11 +95,8 @@ void Engine::start()
 
 void Engine::run() {
     const int maxUpdates = 5;
-    const double targetUpdateFps = 144.0;
-    const double targetRenderFps = 144.0;
-    
-    const double targetUpdateTime = 1.0 / targetUpdateFps;
-    const double targetRenderTime = 1.0 / targetRenderFps;
+    const double targetUpdateTime = 1.0 / windowConfig.targetUpdateFPS;
+    const double targetRenderTime = 1.0 / windowConfig.targetRenderFPS;
 
     double accumulator = 0.0;
     double lastTime = AppWindow::getTime();
@@ -111,7 +108,7 @@ void Engine::run() {
         double currentTime = AppWindow::getTime();
         double deltaTime = currentTime - lastTime;
         lastTime = currentTime;
-		deltaTime = deltaTime > 0.25 ? 0.25 : deltaTime;	// clamp deltaTime in case of lag spike
+		deltaTime = deltaTime > 0.25 ? 0.25 : deltaTime;
         accumulator += deltaTime;
 		updatesThisFrame = 0;
 		

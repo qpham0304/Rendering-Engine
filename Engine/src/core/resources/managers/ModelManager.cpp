@@ -148,6 +148,7 @@ bool ModelManager::_loadModel(std::string_view path)
     }
 
     std::vector<uint32_t> meshes = {};
+    
     _processNode(scene->mRootNode, scene, meshes, directory);
     
     m_modelData[path.data()] = m_ids;

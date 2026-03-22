@@ -188,8 +188,7 @@ void Camera::translate(const glm::vec3& position)
 
 void Camera::mouseControl()
 {
-	double x;
-	double y;
+	double x, y;
 	AppWindow::getCursorPos(&x, &y);
 
 	float xpos = static_cast<float>(x);
@@ -216,7 +215,6 @@ void Camera::mouseControl()
 
 	// Update camera orientation based on mouse movement
 	// Example: Adjust yaw and pitch of the camera
-
 	if(yaw == DEFAULT_YAW) {
 		orientation = glm::normalize(orientation);
 		pitch = glm::degrees(asin(orientation.y));

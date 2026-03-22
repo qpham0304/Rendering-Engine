@@ -31,6 +31,8 @@ struct WindowConfig {
 	int width = 1280;
 	int height = 720;
 	bool vsync = true;
+	float targetRenderFPS = 60.0f;
+	float targetUpdateFPS = 60.0f;
 	std::string WorkDir = "./src";
 	std::string AssetsDir = "./assets";
 };

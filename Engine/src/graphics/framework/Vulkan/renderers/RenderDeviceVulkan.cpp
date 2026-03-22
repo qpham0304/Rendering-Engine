@@ -8,7 +8,8 @@ RenderDeviceVulkan::RenderDeviceVulkan()
 	: RenderDevice("RenderDeviceVulkan"),
 	swapchain(device, *this),
 	pipeline(device),
-	commandPool(device)
+	commandPool(device),
+	transferPool(device)
 {
 
 }
@@ -28,6 +29,7 @@ bool RenderDeviceVulkan::init(WindowConfig config)
 	device.create();
 	swapchain.create();
 	commandPool.create();
+	transferPool.create();
 
 	swapchain.createFramebuffers();
 
@@ -115,6 +117,7 @@ void RenderDeviceVulkan::_cleanup()
 {
 	swapchain.destroy();
 	commandPool.destroy();
+	transferPool.destroy();
 	device.destroy();
 }
 

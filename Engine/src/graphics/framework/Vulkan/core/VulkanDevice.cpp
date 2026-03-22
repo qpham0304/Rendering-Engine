@@ -6,7 +6,11 @@
 #include <windows.h>
 #include <vulkan/vulkan_win32.h>
 
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, 
+	const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, 
+	const VkAllocationCallbacks* pAllocator, 
+	VkDebugUtilsMessengerEXT* pDebugMessenger
+) {
 	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
 	if (func != nullptr) {
 		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
@@ -16,7 +20,10 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMes
 	}
 }
 
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+void DestroyDebugUtilsMessengerEXT(VkInstance instance, 
+	VkDebugUtilsMessengerEXT debugMessenger, 
+	const VkAllocationCallbacks* pAllocator
+) {
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 	if (func != nullptr) {
 		func(instance, debugMessenger, pAllocator);
@@ -95,7 +102,6 @@ void VulkanDevice::createInstance()
 	}
 	else {
 		createInfo.enabledLayerCount = 0;
-
 		createInfo.pNext = nullptr;
 	}
 
@@ -115,6 +121,21 @@ void VulkanDevice::setupDebugMessenger() {
 	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
 		throw std::runtime_error("failed to set up debug messenger!");
 	}
+}
+
+void VulkanDevice::submitDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity, const char* message) {
+    auto func = (PFN_vkSubmitDebugUtilsMessageEXT)vkGetInstanceProcAddr(instance, "vkSubmitDebugUtilsMessageEXT");
+    if (func != nullptr) {
+        VkDebugUtilsObjectNameInfoEXT nameInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
+        
+		VkDebugUtilsMessengerCallbackDataEXT callbackData = {};
+		callbackData.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT;
+		callbackData.pMessageIdName = "ENGINE_STATUS";
+		callbackData.pMessage = message;
+		callbackData.messageIdNumber = 0;
+
+        func(instance, severity, VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT, &callbackData);
+    }
 }
 
 void VulkanDevice::createSurface() {
@@ -165,19 +186,68 @@ void VulkanDevice::createLogicalDevice() {
 		queueCreateInfos.push_back(queueCreateInfo);
 	}
 
+	VkPhysicalDeviceVulkan13Features features13{};
+	features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+	features13.dynamicRendering = VK_TRUE;
+	features13.synchronization2 = VK_TRUE;
+
+	
+	VkPhysicalDeviceVulkan12Features features12{};
+	features13.pNext = &features12;
+	features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+	features12.bufferDeviceAddress = this->rtSupported ? VK_TRUE : VK_FALSE;
+	features12.descriptorIndexing = this->rtSupported ? VK_TRUE : VK_FALSE;
+
+	VkPhysicalDeviceAccelerationStructureFeaturesKHR accelFeatures{};
+	accelFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+	accelFeatures.accelerationStructure = this->rtSupported ? VK_TRUE : VK_FALSE;
+	accelFeatures.pNext = &features12;
+
+	if (this->rtSupported) {
+		submitDebugMessage(
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT, 
+			"Ray Tracing hardware detected and enabled."
+		);
+	} else {
+		submitDebugMessage(
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT, 
+			"Ray Tracing not supported on this device. Falling back to Rasterization."
+		);
+	}
+
+	VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{};
+	rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+	rayQueryFeatures.rayQuery = this->rtSupported ? VK_TRUE : VK_FALSE;
+	rayQueryFeatures.pNext = &accelFeatures;
+
 	VkPhysicalDeviceFeatures deviceFeatures{};
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
 
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	createInfo.pNext = &rayQueryFeatures;
 
 	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 	createInfo.pQueueCreateInfos = queueCreateInfos.data();
 
 	createInfo.pEnabledFeatures = &deviceFeatures;
 
-	createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-	createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+	std::vector<const char*> enabledExtensions(deviceExtensions);
+
+	if(this->rtSupported) {
+		enabledExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+		enabledExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+		enabledExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+		enabledExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+		enabledExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+		enabledExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+		enabledExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+		enabledExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+		enabledExtensions.push_back(VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME);
+	}
+
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size());
+	createInfo.ppEnabledExtensionNames = enabledExtensions.data();
 
 	if (enableValidationLayers) {
 		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
@@ -205,8 +275,19 @@ bool VulkanDevice::isDeviceSuitable(VkPhysicalDevice device) {
 		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
 	}
 
-	VkPhysicalDeviceFeatures supportedFeatures;
+	VkPhysicalDeviceFeatures supportedFeatures{};
 	vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+
+	VkPhysicalDeviceVulkan13Features supported13{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR supportedAccel{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
+    supportedAccel.pNext = &supported13;
+    
+    VkPhysicalDeviceFeatures2 deviceFeatures2{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+    deviceFeatures2.pNext = &supportedAccel;
+
+    vkGetPhysicalDeviceFeatures2(device, &deviceFeatures2);
+	this->rtSupported = supportedAccel.accelerationStructure; 
+    this->dynamicRenderingSupported = supported13.dynamicRendering;
 
 	return indices.isComplete() 
 		&& extensionsSupported 
