@@ -17,6 +17,7 @@ protected:
 	Service(std::string_view name = "untitled");
 	
 	virtual bool init(WindowConfig config);
+	virtual bool onClose();
 
 	std::string m_serviceName;
 	WindowConfig m_config;
@@ -25,7 +26,6 @@ protected:
 private:
 	friend class Engine;
 
-	virtual bool onClose();
 	virtual void onUpdate();
 
 };
