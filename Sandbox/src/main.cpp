@@ -1,4 +1,3 @@
-#include "Sandbox.h"
 #include <core/Engine.h>
 #include "SandboxLayer.h"
 
@@ -15,7 +14,7 @@ int main()
         windowConfig.height = 1080;
         windowConfig.vsync = false;
 
-        Sandbox app(windowConfig);
+        Engine app(windowConfig);
         app.pushLayer(new SandBoxLayer("Sandbox Layer"));
         app.init();
         app.start();
