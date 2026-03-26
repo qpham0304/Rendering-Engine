@@ -29,27 +29,25 @@ struct Light {
 
 layout(set = 0, binding = 2, std430) readonly buffer LightSSBO {
     Light lights[];
-} lightData;
+} lightSSBO;
 
 
 void main() {
-    // vec4 L = vec4(0.0, 0.0, 1.0, 1.0);
-    
-    // if (pushConstantData.flag) {
-    //     outColor = texture(albedoMaps, fragTexCoord);
-    // } else {
-    //     outColor = texture(normalMaps, fragTexCoord);
-    // }
-    // outColor = vec4(pow(outColor.xyz, vec3(1.0f/2.2f)), 1.0f);
-    
     vec4 albedo = texture(albedoMaps, fragTexCoord);
+    vec4 normal = texture(normalMaps, fragTexCoord);
+    vec4 metalness = texture(metalnessMaps, fragTexCoord);
+    vec4 roughness = texture(roughnessMaps, fragTexCoord);
+    vec4 ao = texture(aoMaps, fragTexCoord);
+    vec4 emissive = texture(emissiveMaps, fragTexCoord);
+
+
     vec3 totalLighting = vec3(0.0);
 
     for(int i = 0; i < 2; i++) {
-        vec3 color = lightData.lights[i].color.rgb;
-        float intensity = lightData.lights[i].intensity;
+        vec3 color = lightSSBO.lights[i].color.rgb;
+        float intensity = lightSSBO.lights[i].intensity;
 
-        int mIdx = lightData.lights[i].modelIndex;
+        int mIdx = lightSSBO.lights[i].modelIndex;
         vec3 worldPos = fragLightPos.xyz; 
 
         float d = distance(worldPos, fragWorldPos);
@@ -60,7 +58,7 @@ void main() {
     if (pushConstantData.flag) {
         outColor = vec4(albedo.rgb * totalLighting, albedo.a);
     } else {
-        outColor = texture(normalMaps, fragTexCoord);
+        outColor = normal;
     }
     
     outColor = vec4(pow(outColor.xyz, vec3(1.0f/2.2f)), 1.0f);

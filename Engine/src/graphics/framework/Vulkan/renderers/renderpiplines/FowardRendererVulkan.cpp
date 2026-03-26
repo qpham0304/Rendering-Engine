@@ -1,10 +1,9 @@
 #include "ForwardRendererVulkan.h"
 #include "core/features/ServiceLocator.h"
-#include "window/AppWindow.h"
-#include "graphics/renderers/RenderDevice.h"
-#include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
-#include "logging/Logger.h"
 #include "core/events/EventManager.h"
+#include "graphics/renderers/RenderDevice.h"
+#include "logging/Logger.h"
+#include "window/AppWindow.h"
 
 #include <core/resources/managers/TextureManager.h>
 #include <core/resources/managers/MeshManager.h>
@@ -19,8 +18,10 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
+#include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
 #include <core/scene/SceneManager.h>
-#include "imgui.h" // TODO: remove it once done
+#include <imgui.h>
+
 
 ForwardRendererVulkan::ForwardRendererVulkan(std::string serviceName) 
 	:	RendererVulkan(serviceName)
@@ -42,6 +43,9 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 		if (keyPressedEvent.keyCode == KEY_2) {
 			showGui = !showGui;
 		}
+		if (keyPressedEvent.keyCode == KEY_0) {
+			pushConstantData.flag = !pushConstantData.flag;
+		}
 	});
 
 	pushConstantData.flag = true;
@@ -60,16 +64,14 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
-	instanceData.resize(numInstances);					// reserve the ssbo size
-	instanceData.push_back({ glm::mat4(1.0) });	// prevent no entity size 0
-	size_t bufferSize = instanceData.size() * sizeof(StorageBufferObject);
+	instanceData.resize(10000);
+	size_t bufferSize = 10000 * sizeof(StorageBufferObject);
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
-	
+
 	lights.reserve(numLights);
-	lights.push_back(LightSSBO{glm::vec4(1.0, 1, 1.0, 1.0), 0, 1.0});
-	lights.push_back(LightSSBO(glm::vec4(1.0, 1.0, 0.0, 1.0), 1, 5.5));
-	size_t lightBufferSize = lights.size() * sizeof(LightSSBO);
+	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
+
 
 	_createDescriptorSets();
 	_createOffscreenTarget();
@@ -99,6 +101,29 @@ void ForwardRendererVulkan::render(Camera& camera)
         return; 
     }
 
+	instanceData.clear(); 
+    lights.clear();
+
+	SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	if(!scene){
+		m_logger->error("No scene to render");
+	}
+    auto entities = scene->getEntitiesWith<TransformComponent>();
+    for (auto& entity : entities) {
+        auto& transform = entity.getComponent<TransformComponent>();
+        instanceData.push_back({ transform.getModelMatrix() });
+
+        if (entity.hasComponent<LightComponent>()) {
+            auto& light = entity.getComponent<LightComponent>();
+			lights.push_back(LightSSBO(
+				light.color, 
+				glm::vec4(transform.translateVec, 1.0), 
+				light.intensity * transform.scaleVec.x
+			));
+        }
+    }
+
 	UniformBufferObject ubo{};
 	ubo.model = glm::scale(glm::mat4(1.0), glm::vec3(0.5f, 0.5f, 0.5f));
 	ubo.view = camera.getViewMatrix();
@@ -121,24 +146,24 @@ void ForwardRendererVulkan::render(Camera& camera)
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[frame]);
 }
 
-void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint32_t imageIndex)
 {
 	Timer timer("CPU render submission time", true);
 
 	beginRecording(
-		commandBuffer,
+		cmd,
 		renderTarget.renderPass,
 		renderTarget.framebuffers[imageIndex]
 	);
 	
-	offscreenPipeline->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
+	offscreenPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
 	renderDeviceVulkan->setViewport(renderTarget.width, renderTarget.height);
 	renderDeviceVulkan->setScissor(renderTarget.width, renderTarget.height);
 
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	vkCmdBindDescriptorSets(
-		commandBuffer,
+		cmd,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		offscreenPipeline->pipelineLayout,
 		0,
@@ -149,7 +174,7 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBu
 	);
 
 	vkCmdPushConstants(
-		commandBuffer,
+		cmd,
 		offscreenPipeline->pipelineLayout,
 		VK_SHADER_STAGE_FRAGMENT_BIT,
 		0,
@@ -165,37 +190,48 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBu
 	}
 
 	int index = 0;
+	int lightIndex = 0;
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
-		const glm::mat4& entityTransform = entity.getComponent<TransformComponent>().getModelMatrix();
-		// TODO: copy the multiple all transforms to ssbo would be slow
-		if(index < instanceData.size()) {
-			if (instanceData[index].model != entityTransform) {
-				instanceData[index].model = entityTransform;
-			}
-		} else {
-			instanceData.push_back({ entityTransform });
-		}
+		TransformComponent& transform = entity.getComponent<TransformComponent>();
+		const glm::mat4& entityTransform = transform.getModelMatrix();
+		glm::vec3& translation = transform.translateVec;
 		
+		if(index >= instanceData.size()) {
+			instanceData.push_back({entityTransform});
+			continue;
+		}
+
+		// TODO: copy the multiple all transforms to ssbo would be slow
+		if (instanceData[index].model != entityTransform) {
+			instanceData[index].model = entityTransform;
+		}
+
+		if (entity.hasComponent<LightComponent>()) {
+			lightIndex++;
+		}
 
 		if(entity.hasComponent<ModelComponent>()) {
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 			const Model* model = modelManager->getModel(modelID);
 
+			if (!model) {
+				continue;
+			}
 			for (uint32_t meshID : model->meshIDs) {
 				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)offscreenPipeline.get());
+				materialManager->bindMaterial(mesh->materialID, cmd, (void*)offscreenPipeline.get());
 				meshManager->bindMesh(meshID);
 
 				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
 				renderDeviceVulkan->draw(indexCount, numInstances, index);
 			}
-		}
-
+		} 
+		
 		if (entity.hasComponent<MeshComponent>()) {
 			MeshComponent meshComponent = entity.getComponent<MeshComponent>();
 			for (uint32_t meshID : meshComponent.meshIDs) {
 				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, commandBuffer, (void*)offscreenPipeline.get());
+				materialManager->bindMaterial(mesh->materialID, cmd, (void*)offscreenPipeline.get());
 				meshManager->bindMesh(meshID);
 
 				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
@@ -206,7 +242,7 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer commandBu
 		index++;
 	}
 
-	endRecording(commandBuffer);
+	endRecording(cmd);
 }
 
 void ForwardRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer)

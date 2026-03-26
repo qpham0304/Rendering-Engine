@@ -85,7 +85,7 @@ void RendererManagerVulkan::render()
 
     beginFrame();
 	forwardRenderer->render(*camera);
-    deferredRenderer->render(*camera);
+    // deferredRenderer->render(*camera);
     applicationRenderer->render(*camera);
     endFrame();
 }

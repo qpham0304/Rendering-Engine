@@ -32,9 +32,9 @@ private:
 	};
 
 	struct LightSSBO {
-		glm::vec4 color = glm::vec4(1.0f);
-		int modelIndex;
-		float intensity;
+		alignas(16) glm::vec4 color;
+		alignas(16) glm::vec4 position;
+		alignas(4) float intensity;
 	};
 
 public:
