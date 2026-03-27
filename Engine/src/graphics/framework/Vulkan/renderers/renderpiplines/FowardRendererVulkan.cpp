@@ -18,7 +18,8 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
-#include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
+#include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
+#include <graphics/framework/Vulkan/renderers/renderpiplines/shadowMapRendererVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
 
@@ -43,15 +44,15 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 		if (keyPressedEvent.keyCode == KEY_2) {
 			showGui = !showGui;
 		}
-		if (keyPressedEvent.keyCode == KEY_0) {
-			pushConstantData.flag = !pushConstantData.flag;
-		}
 	});
 
-	pushConstantData.flag = true;
-	pushConstantData.color = glm::vec3(1.0f, 1.0f, 0.0f);
-	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
-	pushConstantData.data = 0.1f;
+	pushConstantLight.skyboxDetail = 0.0f;
+	pushConstantLight.color = sunColor * sunIntensity;
+	pushConstantLight.bias = 0.001f;
+	pushConstantLight.alpha = 0.0001f;
+    pushConstantLight.lintstepLow = 0.2f;
+    pushConstantLight.linstepHigh = 1.0f;
+    pushConstantLight.litBias = 0.0005f;
 
 	_createDescriptorSetLayout();
 	descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
@@ -72,6 +73,7 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
+	shadowMapRenderer = (shadowMapRendererVulkan*)(rendererManagerVulkan->getRenderer("shadowMapRendererVulkan"));
 
 	_createDescriptorSets();
 	_createOffscreenTarget();
@@ -124,11 +126,21 @@ void ForwardRendererVulkan::render(Camera& camera)
         }
     }
 
-	UniformBufferObject ubo{};
-	ubo.model = glm::scale(glm::mat4(1.0), glm::vec3(0.5f, 0.5f, 0.5f));
 	ubo.view = camera.getViewMatrix();
 	ubo.proj = camera.getProjectionMatrix();
+	ubo.cameraPos = glm::vec4(camera.getPosition(), 1.0);
 	ubo.proj[1][1] *= -1;
+	ubo.invView = camera.getInViewMatrix();
+	ubo.invProj = camera.getInProjectionMatrix();
+	ubo.invProj[1][1] *= -1;
+	ubo.width = renderTarget.width;
+	ubo.height = renderTarget.height;
+	
+	pushConstantLight.color = sunColor * sunIntensity;
+	pushConstantLight.direction = glm::vec4(shadowMapRenderer.lightDir, 0.0f);
+	pushConstantLight.sunlightMVP = shadowMapRenderer.lightSpaceMatrix;
+    pushConstantLight.time = AppWindow::getTime();
+	pushConstantLight.numLights = lights.size();
 
 	uint32_t frame = renderDeviceVulkan->getCurrentFrameIndex();
 	uniformbuffersList[frame]->update(&ubo, sizeof(ubo));
@@ -141,7 +153,6 @@ void ForwardRendererVulkan::render(Camera& camera)
 
 
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	// recordDrawToTextureCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 	recordDrawToTextureCommand(cmdBuffer, frame);
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[frame]);
 }
@@ -178,8 +189,8 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 		offscreenPipeline->pipelineLayout,
 		VK_SHADER_STAGE_FRAGMENT_BIT,
 		0,
-		sizeof(PushConstantData),
-		&pushConstantData
+		sizeof(PushConstantLight),
+		&pushConstantLight
 	);
 
 
@@ -287,7 +298,7 @@ void ForwardRendererVulkan::_createPipeline()
 		"assets/shaders/spv/forwardLightPass.frag.spv",
 		{ descriptorSetLayout, materialLayout }, 
 		renderTarget.renderPass, 
-		sizeof(PushConstantData)
+		sizeof(PushConstantLight)
 	);
 }
 

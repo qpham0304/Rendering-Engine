@@ -29,14 +29,14 @@ bool RendererManagerVulkan::init(WindowConfig config)
     applicationRenderer = addRenderer<ApplicationRendererVulkan>("ApplicationRendererVulkan");
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
-    // shadowMapRenderer = addRenderer<ShadowMapRendererVulkan>("ShadowMapRendererVulkan");
+    shadowMapRenderer = addRenderer<ShadowMapRendererVulkan>("ShadowMapRendererVulkan");
     // imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
     // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererRendererVulkan");
 	
     applicationRenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
-	// shadowMapRenderer->init(config);
+	shadowMapRenderer->init(config);
 	// imageBasedRenderer->init(config);
 	// postProcessRenderer->init(config);
 
@@ -54,7 +54,7 @@ bool RendererManagerVulkan::onClose()
     applicationRenderer->onClose();
 	forwardRenderer->onClose();
 	deferredRenderer->onClose();
-	// shadowMapRenderer->onClose();
+	shadowMapRenderer->onClose();
 	// imageBasedRenderer->onClose();
     return true;
 }
@@ -84,6 +84,7 @@ void RendererManagerVulkan::render()
 	}
 
     beginFrame();
+    shadowMapRenderer->render(*camera);
 	forwardRenderer->render(*camera);
     // deferredRenderer->render(*camera);
     applicationRenderer->render(*camera);
