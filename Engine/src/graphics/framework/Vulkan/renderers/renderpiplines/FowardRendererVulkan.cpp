@@ -106,7 +106,7 @@ void ForwardRendererVulkan::onUpdate()
 
 void ForwardRendererVulkan::render(Camera& camera)
 {
-	RendererVulkan::render(camera);
+    Timer timer(m_name, true);
 
 	if (needResize) {
         _recreateResources();

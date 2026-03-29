@@ -473,7 +473,7 @@ void DeferredRendererVulkan::_createRenderPasses()
 	subpass0.pColorAttachments = gBufferReferences.data();
 	subpass0.pDepthStencilAttachment = &depthReference;
 
-	// tell the shader to use 'subpassInput' to read from the G-Buffer
+	// set the light pass shader to use subpassInput from gbuffer pass
 	std::vector<VkAttachmentReference> inputReferences = {
 		{1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
 		{2, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
@@ -492,19 +492,19 @@ void DeferredRendererVulkan::_createRenderPasses()
 	subpass1.pInputAttachments = inputReferences.data();
 	subpass1.pDepthStencilAttachment = &depthReference;
 
-	// ZERO INITIALIZE or validation layer will complain
+	// validation layer complains if dependencies is not zero initialized?
 	std::array<VkSubpassDependency, 3> dependencies{};
 
-	// wait for swapchain to be ready
+	// wait for swapchain, basically barrier but set up as subpass dependency
 	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependencies[0].dstSubpass = 0; // The Geometry Pass
+	dependencies[0].dstSubpass = 0;
 	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependencies[0].srcAccessMask = 0;
 	dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-	// wait for Subpass 0 (G-Buffer) to finish before Subpass 1 (Lighting) reads
+	// wait for gbuffer subpass before lighitng subpass reads
 	dependencies[1].srcSubpass = 0;
 	dependencies[1].dstSubpass = 1;
 	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -513,7 +513,7 @@ void DeferredRendererVulkan::_createRenderPasses()
 	dependencies[1].dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
 	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-	dependencies[2].srcSubpass = 1; // Lighting Subpass
+	dependencies[2].srcSubpass = 1;
 	dependencies[2].dstSubpass = VK_SUBPASS_EXTERNAL;
 	dependencies[2].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependencies[2].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;

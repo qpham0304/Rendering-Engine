@@ -102,17 +102,19 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
 float calcPCSS(vec3 worldPos, vec3 worldNorm) {
     vec3 L = normalize(pcl.direction.xyz);
     
-    // UVs are nudged to sample "clean" areas of the shadow map
+    // UVs are nudged to sample clean areas of the shadow map
     vec3 offsetWorldPos = worldPos + worldNorm * pcl.bias;
     vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(offsetWorldPos, 1.0);
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords.xy = projCoords.xy * 0.5 + 0.5;
     
-    // True depth for contact hardening math
+    // true depth for contact hardening
     vec4 fragPosTrue = pcl.sunlightMVP * vec4(worldPos, 1.0);
     float currentDepth = fragPosTrue.z / fragPosTrue.w;
 
-    if(projCoords.z > 1.0) return 0.0;
+    if(projCoords.z > 1.0) {
+        return 0.0;
+    }
 
     float avgBlockerDepth = 0.0;
     int blockers = 0;
@@ -133,10 +135,13 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm) {
         }
     }
 
-    if(blockers == 0) return 0.0; 
+    if(blockers == 0) {
+        return 0.0;
+    }
     avgBlockerDepth /= float(blockers);
 
-    float penumbra = ((currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV) / avgBlockerDepth;
+    // float penumbra = ((currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV) / avgBlockerDepth;
+    float penumbra = (currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV;
     penumbra = clamp(penumbra, 0.0, 0.02); 
 
     vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
@@ -173,6 +178,33 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm) {
     return shadow / 16.0;
 }
 
+const mat4 DITHER_PATTERN = mat4(
+    vec4(0.0, 0.5, 0.125, 0.625),
+    vec4(0.75, 0.22, 0.875, 0.375),
+    vec4(0.1875, 0.6875, 0.0625, 0.5625),
+    vec4(0.9375, 0.4375, 0.8125, 0.3125)
+);
+
+float mieScattering(float cosTheta, float g) {
+    float g2 = g * g;
+    return (1.0 - g2) / (4.0 * PI * pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5));
+}
+
+float rand(vec3 p) {
+    return fract(sin(dot(p, vec3(12.345, 67.89, 412.12))) * 42123.45) * 2.0 - 1.0;
+}
+
+// single octave noise
+float simpleNoise(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(mix(rand(i), rand(i + vec3(1, 0, 0)), f.x),
+               mix(rand(i + vec3(0, 1, 0)), rand(i + vec3(1, 1, 0)), f.x), f.y),
+               mix(mix(rand(i + vec3(0, 0, 1)), rand(i + vec3(1, 0, 1)), f.x),
+               mix(rand(i + vec3(0, 1, 1)), rand(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+
 void main() {
     vec3 albedo     = texture(albedoMaps, fragTexCoord).rgb;
     float ao        = texture(aoMaps, fragTexCoord).r;
@@ -192,8 +224,7 @@ void main() {
 
     vec3 N = normalize(TBN * tangentNormal) * side;
 
-    // orizon Correction
-    // prevents the normal map from pointing 'away' from the camera 
+    // orizon correction prevents the normal map from pointing away from the camera 
     // relative to the triangle surface.
     // If the normal map pushes the vector behind the camera, mix it back toward the face normal until it's safe.
     float NdotV_unclamped = dot(N, V);
@@ -268,8 +299,51 @@ void main() {
     vec3 emissive = texture(emissiveMaps, fragTexCoord).rgb;
     vec3 color = ambient + Lo + emissive;
 
+    vec3 V_dir = normalize(fragWorldPos - ubo.cameraPos.xyz);
+    float maxDist = length(fragWorldPos - ubo.cameraPos.xyz);
+    
+    /*
+    */
+    const int numSteps = 16;
+    float stepSize = maxDist / float(numSteps);
+    
+    // Dithering to hide banding
+    // gl_FragCoord is better than UV for screen-space dithering
+    // float dither = DITHER_PATTERN[int(gl_FragCoord.x) % 4][int(gl_FragCoord.y) % 4];
+    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
+    float dither = texture(blueNoise, noiseUV).r;
+    float worldOffset = mod(dot(ubo.cameraPos.xyz, V_dir), stepSize);
+    vec3 rayPos = ubo.cameraPos.xyz + V_dir * (stepSize * dither - worldOffset);
+
+    vec3 volumetricLight = vec3(0.0);
+    vec3 L_sun = normalize(pcl.direction.xyz);
+
+    for(int i = 0; i < numSteps; i++) {
+        // check if this point in the fog is in shadow
+        vec4 shadowCoord = pcl.sunlightMVP * vec4(rayPos, 1.0);
+        vec3 proj = shadowCoord.xyz / shadowCoord.w * 0.5 + 0.5;
+        float depthSample = texture(shadowMap, proj.xy).r;
+        
+        // if the ray point is visible to the sun
+        if(depthSample > proj.z - 0.001) {
+            float cosTheta = dot(V_dir, L_sun);
+            float scattering = mieScattering(cosTheta, 0.7); // G value is 0.7
+            
+            float density = 1.0;
+            // density = simpleNoise(rayPos * 0.5 + pcl.time * 0.1); // density noise expensive, maybe use a 3D texture later
+            volumetricLight += pcl.color.rgb * scattering * density * stepSize;
+            
+        }
+        rayPos += V_dir * stepSize;
+    }
+    
+    volumetricLight *= 0.2;
+    color += volumetricLight;
+
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2));
-    if (any(isnan(color))) color = vec3(0.0);
+    if (any(isnan(color))) {
+        color = vec3(0.0);
+    }
     outColor = vec4(color, 1.0);
 }

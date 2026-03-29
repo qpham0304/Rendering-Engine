@@ -4,12 +4,20 @@
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
-#include "window/AppWindow.h"
 #include "logging/Logger.h"
+#include "window/AppWindow.h"
 #include "core/features/Timer.h"
 #include "core/features/Mesh.h"
 #include "core/features/Material.h"
-#include "vulkan/vulkan.h" //TODO: remove dependency
+#include "Core/features/ServiceLocator.h"
+#include "core/scene/SceneManager.h"
+
+// #include "graphics/framework/Vulkan/renderers/RendererManagerVulkan.h"	//TODO: remove vulkan specific setup
+// #include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
+// #include "graphics/framework/Vulkan/renderers/renderpiplines/ShadowMapRendererVulkan.h"
+// #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
+// #include "graphics/framework/vulkan/renderers/renderpiplines/ImageBasedRendererVulkan.h"
+// #include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 
 bool ButtonCenteredOnLine(const char* label, float alignment = 0.5f)
 {

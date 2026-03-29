@@ -38,8 +38,8 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	RendererVulkan::init(config);
 
 	hdrImageID = textureManagerVulkan->loadTexture(
-		"assets/textures/hdr/farm_field_puresky_2k.hdr", 
-		// "assets/textures/hdr/newport_loft.hdr", 
+		// "assets/textures/hdr/farm_field_puresky_2k.hdr", 
+		"assets/textures/hdr/newport_loft.hdr", 
 		1, 
 		false
 	);
@@ -334,10 +334,10 @@ void ImageBasedRendererVulkan::computePrefilter(VkCommandBuffer cmd, uint32_t cu
 
 	VkImageMemoryBarrier finalBarrier = {};
 	finalBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	finalBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL; // Where compute left it
-	finalBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // Where graphics wants it
-	finalBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; // Compute wrote it
-	finalBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;  // Fragment shader will read it
+	finalBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL; 					// where compute left
+	finalBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; 	// where graphics reads
+	finalBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+	finalBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	finalBarrier.image = prefilterMap->textureImage;
 	finalBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	finalBarrier.subresourceRange.levelCount = mipLevels;
@@ -345,8 +345,8 @@ void ImageBasedRendererVulkan::computePrefilter(VkCommandBuffer cmd, uint32_t cu
 
 	vkCmdPipelineBarrier(
 		cmd,
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,   // Source
-		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,  // Destination
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		0, 0, nullptr, 0, nullptr, 1, &finalBarrier
 	);
 }
@@ -369,7 +369,6 @@ void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
 	}
 	
 }
-
 
 
 void ImageBasedRendererVulkan::_createDescriptorSetProjection() {
@@ -631,7 +630,7 @@ void ImageBasedRendererVulkan::_createResourcePrefilteredMap() {
 			VK_IMAGE_ASPECT_COLOR_BIT, 
 			1,                          	// only want to see one level
 			i,
-			6,                          // 6 faces
+			6,                          	// 6 faces
 			VK_IMAGE_VIEW_TYPE_2D_ARRAY, 	// compute sees cube as an array
 			renderDeviceVulkan->device
 		);
@@ -656,13 +655,11 @@ void ImageBasedRendererVulkan::_createResourcePrefilteredMap() {
 	for (uint32_t i = 0; i < mipLevels; i++) {
 		std::vector<VkWriteDescriptorSet> writes;
 		
-		// binding 0: The Source HDR Sky (Same for all sets)
 		VkDescriptorImageInfo sourceInfo{};
 		sourceInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		sourceInfo.imageView = hdrImage->textureImageView;
 		sourceInfo.sampler = hdrImage->textureSampler;
 
-		// binding 1: The Output Mip Level (Unique per set)
 		VkDescriptorImageInfo outputInfo{};
 		outputInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 		outputInfo.imageView = prefilterMipViews[i];

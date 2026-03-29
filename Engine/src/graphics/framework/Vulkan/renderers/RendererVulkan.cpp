@@ -86,6 +86,5 @@ void RendererVulkan::onUpdate()
 
 void RendererVulkan::render(Camera& camera)
 {
-	Timer("renderer: " + m_name, true);
 	
 }
