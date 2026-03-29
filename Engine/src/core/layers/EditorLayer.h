@@ -14,7 +14,7 @@ private:
 	SceneManager& sceneManager = SceneManager::getInstance();
 	EventManager& eventManager = EventManager::getInstance();
 	GuiManager& guiController;
-	Camera* editorCamera;
+	std::unique_ptr<Camera> editorCamera;
 	bool GuizmoActive = false;
 	bool drawGrid = false;
 	bool editorActive = false;

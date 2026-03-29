@@ -4,6 +4,8 @@
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
+#include <graphics/framework/Vulkan/renderers/renderpiplines/ShadowMapRendererVulkan.h>
+#include "graphics/framework/vulkan/renderers/renderpiplines/ImageBasedRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 
 #include <glm/glm.hpp>
@@ -11,8 +13,6 @@
 
 class ForwardRendererVulkan : public RendererVulkan
 {
-public:
-	class ShadowMapRendererVulkan;
 
 private:
 	struct UniformBufferObject {
@@ -107,6 +107,7 @@ private:
 	std::unique_ptr<VulkanPipeline> offscreenPipeline;
 
 	ShadowMapRendererVulkan* shadowMapRenderer { nullptr };
+	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 
 	bool isActive{ false };
 

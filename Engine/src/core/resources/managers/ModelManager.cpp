@@ -264,6 +264,13 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
 
 std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, aiTextureType type, std::string typeName, std::string_view directory)
 {
+    bool isData = (type == aiTextureType_NORMALS || 
+                   type == aiTextureType_METALNESS || 
+                   type == aiTextureType_DIFFUSE_ROUGHNESS || 
+                   type == aiTextureType_AMBIENT_OCCLUSION || 
+                   type == aiTextureType_HEIGHT || 
+                   type == aiTextureType_SHININESS);
+                   
     std::vector<uint32_t> textureIDs;
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
     {
@@ -271,7 +278,7 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, aiTextureType
         mat->GetTexture(type, i, &str);
 
         std::string path = std::string(directory) + '/' + std::string(str.C_Str());
-        uint32_t textureID = textureManager->loadTexture(path.data(), 5, false);
+        uint32_t textureID = textureManager->loadTexture(path.data(), 5, isData);
         textureIDs.push_back(textureID);
     }
 

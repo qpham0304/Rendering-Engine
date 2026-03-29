@@ -19,7 +19,6 @@
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
-#include <graphics/framework/Vulkan/renderers/renderpiplines/shadowMapRendererVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
 
@@ -38,6 +37,14 @@ ForwardRendererVulkan::~ForwardRendererVulkan()
 bool ForwardRendererVulkan::init(WindowConfig config)
 {
 	RendererVulkan::init(config);
+
+	RendererVulkan* renderer = nullptr;
+	renderer = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
+	shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
+	imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
+	
+	assert(shadowMapRenderer && imageBasedRenderer && "failed to retrieve renderer");
 
 	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
@@ -73,7 +80,9 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
-	shadowMapRenderer = (shadowMapRendererVulkan*)(rendererManagerVulkan->getRenderer("shadowMapRendererVulkan"));
+	RendererVulkan* tmp = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
+	shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(tmp);
+	assert(shadowMapRenderer && "fail to retrieve shadowmap renderer");
 
 	_createDescriptorSets();
 	_createOffscreenTarget();
@@ -92,11 +101,13 @@ bool ForwardRendererVulkan::onClose()
 
 void ForwardRendererVulkan::onUpdate()
 {
-	render(*SceneManager::cameraController);
+	
 }
 
 void ForwardRendererVulkan::render(Camera& camera)
 {
+	RendererVulkan::render(camera);
+
 	if (needResize) {
         _recreateResources();
         needResize = false;
@@ -137,8 +148,8 @@ void ForwardRendererVulkan::render(Camera& camera)
 	ubo.height = renderTarget.height;
 	
 	pushConstantLight.color = sunColor * sunIntensity;
-	pushConstantLight.direction = glm::vec4(shadowMapRenderer.lightDir, 0.0f);
-	pushConstantLight.sunlightMVP = shadowMapRenderer.lightSpaceMatrix;
+	pushConstantLight.direction = glm::vec4(shadowMapRenderer->lightDir, 0.0f);
+	pushConstantLight.sunlightMVP = shadowMapRenderer->lightSpaceMatrix;
     pushConstantLight.time = AppWindow::getTime();
 	pushConstantLight.numLights = lights.size();
 
@@ -151,16 +162,18 @@ void ForwardRendererVulkan::render(Camera& camera)
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[frame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 
-
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
+	shadowMapRenderer->render(camera);
+	imageBasedRenderer->onUpdate();
+	imageBasedRenderer->computeSH(cmdBuffer, frame);
+	imageBasedRenderer->computePrefilter(cmdBuffer, frame);
+
 	recordDrawToTextureCommand(cmdBuffer, frame);
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[frame]);
 }
 
 void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint32_t imageIndex)
 {
-	Timer timer("CPU render submission time", true);
-
 	beginRecording(
 		cmd,
 		renderTarget.renderPass,
@@ -485,9 +498,15 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 void ForwardRendererVulkan::_createDescriptorSetLayout()
 {
     std::vector<VkDescriptorSetLayoutBinding> bindings = { 
-		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr },
+		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr },
-		{ 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, nullptr },
+		{ 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+		{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+		{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+		{ 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+		{ 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 	};
 	
 	layoutID = descriptorManagerVulkan->createLayout(bindings);
@@ -498,7 +517,8 @@ void ForwardRendererVulkan::_createDescriptorPool()
 	uint32_t frameCount = VulkanUtils::numFrames();
 	std::vector<VkDescriptorPoolSize> poolSizes = {
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 2 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 3 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 5 }
 	};
 
 	poolID = descriptorManagerVulkan->createPool(poolSizes, frameCount);
@@ -512,6 +532,17 @@ void ForwardRendererVulkan::_createDescriptorSets()
 	_updateDescriptor();
 }
 
+/*
+{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr },
+{ 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+{ 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+{ 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+*/
 void ForwardRendererVulkan::_updateDescriptor()
 {
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
@@ -525,15 +556,54 @@ void ForwardRendererVulkan::_updateDescriptor()
 		ssboInfo.offset = 0;
 		ssboInfo.range = VK_WHOLE_SIZE;
 
-		VkDescriptorBufferInfo lightSsboInfo{};
-		lightSsboInfo.buffer = static_cast<VkBuffer>(*lightStoragebuffers[i]);
-		lightSsboInfo.offset = 0;
-		lightSsboInfo.range = VK_WHOLE_SIZE;
+		VkDescriptorBufferInfo lightsBufferInfo{};
+		lightsBufferInfo.buffer = static_cast<VkBuffer>(*lightStoragebuffers[i]);
+		lightsBufferInfo.offset = 0;
+		lightsBufferInfo.range = VK_WHOLE_SIZE;
+
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = shadowMapRenderer->depthMap->textureImageView;
+		imageInfo.sampler = shadowMapRenderer->depthMap->textureSampler;
+		// imageInfo.imageView = shadowMapRenderer->momentImage->textureImageView;
+		// imageInfo.sampler = shadowMapRenderer->momentImage->textureSampler;
+
+		VkDescriptorImageInfo noiseImageInfo{};
+		noiseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		noiseImageInfo.imageView = shadowMapRenderer->blueNoiseImage->textureImageView;
+		noiseImageInfo.sampler = shadowMapRenderer->blueNoiseImage->textureSampler;
+
+		VkDescriptorBufferInfo bufferInfoSH{};
+		bufferInfoSH.buffer = static_cast<VkBuffer>(*imageBasedRenderer->finalSumBuffers[i]);
+		bufferInfoSH.offset = 0;
+		bufferInfoSH.range = VK_WHOLE_SIZE;
+
+		VkDescriptorImageInfo brdfLutImageInfo{};
+		brdfLutImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		brdfLutImageInfo.imageView = imageBasedRenderer->brdfLUT->textureImageView;
+		brdfLutImageInfo.sampler = imageBasedRenderer->brdfLUT->textureSampler;
+
+		VkDescriptorImageInfo prefilterImageInfo{};
+		prefilterImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		prefilterImageInfo.imageView = imageBasedRenderer->prefilterMap->textureImageView;
+		prefilterImageInfo.sampler = imageBasedRenderer->prefilterMap->textureSampler;
+
+		VkDescriptorImageInfo hdrImageInfo{};
+		hdrImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		hdrImageInfo.imageView = imageBasedRenderer->hdrImage->textureImageView;
+		hdrImageInfo.sampler = imageBasedRenderer->hdrImage->textureSampler;
+ 
 
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
 		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 1, ssboInfo);
-		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 2, lightSsboInfo);
+		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 2, lightsBufferInfo);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 3, imageInfo);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 4, noiseImageInfo);
+		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 5, bufferInfoSH);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 6, brdfLutImageInfo);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 7, prefilterImageInfo);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 8, hdrImageInfo);
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 }

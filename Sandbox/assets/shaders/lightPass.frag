@@ -157,7 +157,6 @@ float calcPCSS(vec3 worldPos) {
     vec3 worldNorm = normalize(subpassLoad(inputNorm).rgb);
     vec3 L = normalize(pcl.direction.xyz);
     
-    // 1. COORDINATE SETUP
     // UVs are nudged to sample "clean" areas of the shadow map
     vec3 offsetWorldPos = worldPos + worldNorm * pcl.bias;
     vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(offsetWorldPos, 1.0);
@@ -170,13 +169,11 @@ float calcPCSS(vec3 worldPos) {
 
     if(projCoords.z > 1.0) return 0.0;
 
-    // 2. BLOCKER SEARCH
     float avgBlockerDepth = 0.0;
     int blockers = 0;
     const float LIGHT_SIZE_UV = 0.05; 
     float searchRegion = LIGHT_SIZE_UV * (currentDepth); 
 
-    // Calculate a slope-based bias to stop the ground from blocking itself
     float searchBias = max(0.002 * (1.0 - dot(worldNorm, L)), 0.0005);
 
     for(int i = -2; i <= 2; ++i) {
@@ -194,11 +191,9 @@ float calcPCSS(vec3 worldPos) {
     if(blockers == 0) return 0.0; 
     avgBlockerDepth /= float(blockers);
 
-    // 3. PENUMBRA CALCULATION
     float penumbra = ((currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV) / avgBlockerDepth;
     penumbra = clamp(penumbra, 0.0, 0.02); 
 
-    // 4. NOISE AND ROTATION
     vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
     float noiseValue = texture(blueNoise, noiseUV).r;
 
@@ -218,11 +213,8 @@ float calcPCSS(vec3 worldPos) {
         vec2( 0.73039985, -0.23011690 ), vec2( 0.51726257, 0.43840042 )
     );
 
-    // 5. PCF FILTERING
     float shadow = 0.0;
     
-    // SLOPE SCALED BIAS: This is the key. 
-    // It is tiny when looking top-down and larger at steep angles.
     float pcfBias = max(0.001 * (1.0 - dot(worldNorm, L)), 0.0001);
 
     for (int i = 0; i < 16; i++) {
@@ -345,9 +337,16 @@ void main() {
     float roughness = pbr.g;
     float metallic  = pbr.b;
     
-    vec3 N = normalize(worldNorm);
     vec3 V = normalize(ubo.cameraPos.xyz - worldPos);
-    float NdotV = max(dot(N, V), 0.0001);
+    vec3 N = normalize(worldNorm);
+    if (dot(N, V) < 0.0) {
+        N = -N;
+    }
+
+    N = normalize(mix(N, V, 0.015)); 
+
+    float NdotV = clamp(dot(N, V), 0.001, 1.0);
+    // float NdotV = max(dot(N, V), 0.0001);
 
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo.rgb, metallic);
@@ -371,7 +370,7 @@ void main() {
     }
     
     // float shadow = calcShadow(worldPos);
-    float shadow = 1.0 - calcMSMShadow(worldPos + worldNorm * pcl.bias);
+    float shadow = 1.0 - calcMSMShadow(worldPos + N * pcl.bias);
     // float shadow = 1.0 - calcPCSS(worldPos);
     vec3 L_sun = normalize(pcl.direction.xyz); 
     vec3 sunRadiance = pcl.color.rgb * shadow;
@@ -394,7 +393,7 @@ void main() {
     // vec3 ambient = vec3(0.03) * albedo.rgb * ao;
     vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
     vec3 finalColor = ambient + Lo + sunlight;
-    // finalColor = worldNorm;
+    
     finalColor = finalColor / (finalColor + vec3(1.0));     //HDR tone mapping
     outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);   //Gamma correction
 }

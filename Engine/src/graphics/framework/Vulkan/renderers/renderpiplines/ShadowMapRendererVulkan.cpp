@@ -72,6 +72,8 @@ void ShadowMapRendererVulkan::onUpdate()
 
 void ShadowMapRendererVulkan::render(Camera& camera)
 {
+	RendererVulkan::render(camera);
+
 	glm::mat4 lightProjection;
 
 	if(!useOrtho) {

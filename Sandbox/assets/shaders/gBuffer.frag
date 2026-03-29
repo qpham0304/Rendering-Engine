@@ -38,13 +38,15 @@ layout(set = 1, binding = 5) uniform sampler2D emissiveMaps;
 
 vec3 getNormalFromMap() {
     vec3 tangentNormal = texture(normalMap, inTexCoord).xyz * 2.0 - 1.0;
-    // tangentNormal.y *= -1.0;
-    mat3 tbn = mat3(
-        normalize(inTBN[0]),
-        normalize(inTBN[1]),
-        normalize(inTBN[2])
-    );
 
+    vec3 N = normalize(inTBN[2]);
+    vec3 T = normalize(inTBN[0]);
+    // Re-orthogonalize T with respect to N
+    T = normalize(T - dot(T, N) * N);
+    // Reconstruct B
+    vec3 B = cross(N, T);
+
+    mat3 tbn = mat3(T, B, N);
     return normalize(tbn * tangentNormal);
 }
 
@@ -52,14 +54,14 @@ void main() {
     outPos = vec4(inWorldPos, 1.0);
     
     vec3 N = getNormalFromMap();
-    // outNorm = vec4(N, 1.0);
-    outNorm = vec4(inNormal, 1.0);
+    outNorm = vec4(N, 1.0);
+    // outNorm = vec4(inNormal, 1.0);
     
     outAlbedo = texture(albedoMap, inTexCoord);
     
     // Sampling PBR maps
     float ao        = texture(aoMap, inTexCoord).r;
-    float roughness = texture(roughnessMap, inTexCoord).r;
-    float metallic  = texture(metallicMap, inTexCoord).r;
+    float roughness = texture(roughnessMap, inTexCoord).g;
+    float metallic  = texture(metallicMap, inTexCoord).b;
     outPBR = vec4(ao, roughness, metallic, 1.0);
 }

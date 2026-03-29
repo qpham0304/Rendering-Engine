@@ -2,6 +2,7 @@
 #include <core/scene/SceneManager.h>
 
 
+#include "core/features/Timer.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ApplicationRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
@@ -30,14 +31,14 @@ bool RendererManagerVulkan::init(WindowConfig config)
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
     shadowMapRenderer = addRenderer<ShadowMapRendererVulkan>("ShadowMapRendererVulkan");
-    // imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
+    imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
     // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererRendererVulkan");
 	
     applicationRenderer->init(config);
+	imageBasedRenderer->init(config);
+	shadowMapRenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
-	shadowMapRenderer->init(config);
-	// imageBasedRenderer->init(config);
 	// postProcessRenderer->init(config);
 
     return true;
@@ -55,7 +56,8 @@ bool RendererManagerVulkan::onClose()
 	forwardRenderer->onClose();
 	deferredRenderer->onClose();
 	shadowMapRenderer->onClose();
-	// imageBasedRenderer->onClose();
+	imageBasedRenderer->onClose();
+	// postProcessRenderer->onClose();
     return true;
 }
 
@@ -76,6 +78,7 @@ void RendererManagerVulkan::onUpdate()
 
 void RendererManagerVulkan::render()
 {
+    Timer timer("Renderer Manager", true);
     Scene* scene = SceneManager::getInstance().getActiveScene();
     Camera* camera = SceneManager::cameraController;
 
@@ -85,8 +88,8 @@ void RendererManagerVulkan::render()
 
     beginFrame();
     shadowMapRenderer->render(*camera);
-	forwardRenderer->render(*camera);
-    // deferredRenderer->render(*camera);
+	// forwardRenderer->render(*camera);
+    deferredRenderer->render(*camera);
     applicationRenderer->render(*camera);
     endFrame();
 }

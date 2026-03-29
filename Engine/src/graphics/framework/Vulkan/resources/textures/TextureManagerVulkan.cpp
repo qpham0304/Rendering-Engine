@@ -155,7 +155,7 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 		bytesPerChannel = sizeof(float);
 	} else {
 		pixels = stbi_load(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		format = VK_FORMAT_R8G8B8A8_SRGB;
+		format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
 		bytesPerChannel = sizeof(uint8_t);
 	}
 

@@ -8,21 +8,28 @@ const int MAX_BONE_INFLUENCE = 4;
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec2 inTexCoord;
-layout(location = 3) in vec2 inNormal;
-layout(location = 4) in vec2 inTangent;
-layout(location = 5) in vec2 inBitangent;
+layout(location = 3) in vec3 inNormal;
+layout(location = 4) in vec3 inTangent;
+layout(location = 5) in vec3 inBitangent;
 // layout(location = 6) in vec2 inBoneIDs;
 // layout(location = 7) in vec2 inBoneWeights;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) out vec3 fragWorldPos;
-layout(location = 3) out vec3 fragLightPos;
+layout(location = 3) out vec3 outNormal;
+layout(location = 4) out vec3 outTangent;
+layout(location = 5) out vec3 outBitangent;
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
-    mat4 model;
+    mat4 invNormal;
     mat4 view;
     mat4 proj;
+    vec4 cameraPos;
+    mat4 invView;
+    mat4 invProj;
+    float width;
+    float height;
 } ubo;
 
 
@@ -39,8 +46,13 @@ void main() {
     vec4 worldPos = modelMatrix * vec4(inPosition, 1.0);
     gl_Position = ubo.proj * ubo.view * worldPos;
 
+    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
+
+    outNormal = normalize(normalMatrix * inNormal);
+    outTangent   = normalize(normalMatrix * inTangent.xyz);
+    outBitangent = normalize(normalMatrix * inBitangent.xyz);
+
     fragColor = inColor;
     fragTexCoord = inTexCoord;
     fragWorldPos = worldPos.xyz;
-    fragLightPos =  modelMatrix[3].xyz;
 }

@@ -76,11 +76,12 @@ void Engine::init()
 		}
 	}
 	
-	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 }
 
 void Engine::start()
 {
+	pushLayer(new EditorLayer("EditorLayer", *guiManager));
+	
 	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		isRunning = false;
 	});

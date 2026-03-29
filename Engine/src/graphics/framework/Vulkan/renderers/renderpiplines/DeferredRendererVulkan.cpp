@@ -87,6 +87,8 @@ void DeferredRendererVulkan::onUpdate()
 
 void DeferredRendererVulkan::render(Camera& camera)
 {
+	RendererVulkan::render(camera);
+	
 	if(needResize) {
 		_recreateResources();
 		needResize = false;

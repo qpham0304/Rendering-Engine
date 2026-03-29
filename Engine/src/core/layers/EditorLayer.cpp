@@ -112,26 +112,27 @@ void EditorLayer::onAttach(LayerManager* manager)
 		SceneManager::getInstance().addScene("default scene");
 		Scene* scene = SceneManager::getInstance().getActiveScene();
 		if(scene) {
-			// scene->loadScene("assets/data/default-scene.json");
-			scene->loadScene("assets/data/level1-test.json");
-
-			editorCamera = new OrbitCamera();
-			editorCamera->init(
-				AppWindow::getWidth(),
-				AppWindow::getHeight(),
-				glm::vec3(3),
-				glm::vec3(0)
-			);
-
-			SceneManager::cameraController = editorCamera;
+			scene->loadScene("assets/data/default-scene.json");
+			// scene->loadScene("assets/data/level1-test.json");
 		}
+	}
+
+	if(!SceneManager::cameraController) {
+		editorCamera = std::make_unique<OrbitCamera>();
+		editorCamera->init(
+			AppWindow::getWidth(),
+			AppWindow::getHeight(),
+			glm::vec3(3),
+			glm::vec3(0)
+		);
+
+		SceneManager::cameraController = editorCamera.get();
 	}
 
 }
 
 void EditorLayer::onDetach()
 {
-	delete editorCamera;
 }
 
 void EditorLayer::onUpdate()

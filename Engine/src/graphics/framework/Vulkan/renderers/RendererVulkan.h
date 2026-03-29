@@ -21,7 +21,7 @@ class Camera;
 class RendererVulkan : public Renderer
 {
 public:
-	RendererVulkan(std::string serviceName = "RendererVulkan");
+	RendererVulkan(std::string name = "RendererVulkan");
 
 	virtual ~RendererVulkan() override;
 
