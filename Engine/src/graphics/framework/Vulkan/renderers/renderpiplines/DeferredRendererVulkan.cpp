@@ -20,6 +20,7 @@
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
+#include "graphics/framework/vulkan/renderers/renderpiplines/AlchemyAORendererVulkan.h"
 
 DeferredRendererVulkan::DeferredRendererVulkan() 
 	: RendererVulkan("DeferredRendererVulkan")
@@ -41,6 +42,16 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	_createRenderPasses();
 	_createFrameBuffers();
 
+	
+	RendererVulkan* renderer = nullptr;
+	// renderer = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
+	// shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(renderer);
+	// renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
+	// imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("AlchemyAORendererVulkan");
+	alchemyAORendererVulkan = dynamic_cast<AlchemyAORendererVulkan*>(renderer);
+	alchemyAORendererVulkan->init(config);
+
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 	
 	instanceData.resize(10000);
@@ -58,12 +69,14 @@ bool DeferredRendererVulkan::init(WindowConfig config)
     pushConstantLight.lintstepLow = 0.2f;
     pushConstantLight.linstepHigh = 1.0f;
     pushConstantLight.litBias = 0.0005f;
+	pushConstantLight.aoOn = 1;
 
 	_createDescriptor();
 	_createPipelines();
 
 	_createLightDescriptor();
 	_createLightPipeline();
+
 
 	return true;
 }
@@ -183,6 +196,10 @@ void DeferredRendererVulkan::renderGui()
 	uint32_t max_r = 64;
 	ImGui::SliderScalar("radius", ImGuiDataType_U32, &shadowMapRenderer.pushconstant.radius, &min_r, &max_r);
 	ImGui::SliderFloat("sigma", &shadowMapRenderer.pushconstant.sigma, 1.0f, 30.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+	bool aoChecked = (pushConstantLight.aoOn != 0);
+	if (ImGui::Checkbox("aoOn", &aoChecked)) {
+		pushConstantLight.aoOn = aoChecked ? 1 : 0;
+	}
 
 	int i = 0;
 	for (auto& entity : entities) {
@@ -232,7 +249,7 @@ void DeferredRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, ui
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	_renderGeometryPass(commandBuffer, currentFrame);
     vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);	// transition to next pass
-    _renderLightPass(commandBuffer, currentFrame);
+	_renderLightPass(commandBuffer, currentFrame);
 
 	endRecording(commandBuffer);
 }
@@ -841,13 +858,14 @@ void DeferredRendererVulkan::_createLightDescriptor()
 		{ 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 		{ 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 	});
 
 	uint32_t poolIDLayout_1 = descriptorManagerVulkan->createPool(
 		{
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount },
 			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 2},
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 5 },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 6 },
 		},
 		frameCount
 	);
@@ -917,6 +935,11 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 		hdrImageInfo.imageView = imageBasedRenderer.hdrImage->textureImageView;
 		hdrImageInfo.sampler = imageBasedRenderer.hdrImage->textureSampler;
 
+		VkDescriptorImageInfo aoImageInfo{};
+		aoImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		aoImageInfo.imageView = alchemyAORendererVulkan->aoMap->textureImageView;
+		aoImageInfo.sampler = alchemyAORendererVulkan->aoMap->textureSampler;
+	
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
 		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 1, ssboInfo);
@@ -926,6 +949,9 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 5, brdfLutImageInfo);
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 6, prefilterImageInfo);
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 7, hdrImageInfo);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 8, aoImageInfo);
+
+		
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 }

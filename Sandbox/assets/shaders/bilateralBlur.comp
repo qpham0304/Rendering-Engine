@@ -45,7 +45,7 @@ void main() {
         totalWeight += finalWeight;
     }
 
-    // Guard against division by zero
+    // prevent zero division
     float result = (totalWeight > 0.0) ? (totalAO / totalWeight) : centerAO;
     imageStore(outputImage, uv, vec4(result));
 }

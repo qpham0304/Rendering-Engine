@@ -40,7 +40,7 @@ layout(set = 1, binding = 4) readonly buffer SHData {
 layout(set = 1, binding = 5) uniform sampler2D brdfLUT;
 layout(set = 1, binding = 6) uniform samplerCube prefilterMap;
 layout(set = 1, binding = 7) uniform sampler2D hdrImage;
-
+layout(set = 1, binding = 8) uniform sampler2D aoImage;
 
 layout (push_constant) uniform LightData {
     mat4 sunlightMVP;
@@ -54,6 +54,7 @@ layout (push_constant) uniform LightData {
     float time;
     float numLights;
     float skyboxDetail;
+    int aoOn;
 } pcl;
 
 const float PI = 3.14159265359;
@@ -337,7 +338,7 @@ void main() {
     vec3 worldPos  = subpassLoad(inputPos).rgb;
     vec3 worldNorm = subpassLoad(inputNorm).rgb;
     vec4 albedo    = subpassLoad(inputAlbedo);
-    vec3 pbr       = subpassLoad(inputPBR).rgb; 
+    vec3 pbr       = subpassLoad(inputPBR).rgb;
 
     if(length(worldNorm) < 0.1) {
         vec2 texCoord = gl_FragCoord.xy / vec2(ubo.width, ubo.height); 
@@ -429,11 +430,23 @@ void main() {
     vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
     vec3 specularIBL = prefilteredColor * (F * brdf.x + brdf.y);
 
+    vec2 screenUV = gl_FragCoord.xy / vec2(ubo.width, ubo.height);
+    float ssao = texture(aoImage, screenUV).r;
+    
+    if(pcl.aoOn != 0) {
+        ao *= ssao;
+    }
+    
     vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
     vec3 finalColor = ambient + Lo + sunlight;
 
     vec3 V_dir = normalize(worldPos - ubo.cameraPos.xyz);
     float maxDist = length(worldPos - ubo.cameraPos.xyz);
+
+    // if(pcl.aoOn != 0) {
+    //     outColor = outColor = vec4(vec3(ssao * pbr.r), 1.0);
+    //     return;
+    // }
 
     // const int numSteps = 16;
     // float stepSize = maxDist / float(numSteps);
@@ -470,6 +483,6 @@ void main() {
     // volumetricLight *= 0.2;
     // finalColor += volumetricLight;
     
-    finalColor = finalColor / (finalColor + vec3(1.0));     //HDR tone mapping
-    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);   //Gamma correction
+    finalColor = finalColor / (finalColor + vec3(1.0));         //HDR tone mapping
+    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);  //Gamma correction
 }

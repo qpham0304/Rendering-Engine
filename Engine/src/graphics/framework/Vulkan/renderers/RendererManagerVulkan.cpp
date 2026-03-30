@@ -39,9 +39,9 @@ bool RendererManagerVulkan::init(WindowConfig config)
     applicationRenderer->init(config);
 	imageBasedRenderer->init(config);
 	shadowMapRenderer->init(config);
+    // alchemyAORenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
-    alchemyAORenderer->init(config);
 	// postProcessRenderer->init(config);
 
     return true;
@@ -93,8 +93,8 @@ void RendererManagerVulkan::render()
     beginFrame();
     shadowMapRenderer->render(*camera);
 	// forwardRenderer->render(*camera);
-    deferredRenderer->render(*camera);
     alchemyAORenderer->render(*camera);
+    deferredRenderer->render(*camera);
     applicationRenderer->render(*camera);
     endFrame();
 }

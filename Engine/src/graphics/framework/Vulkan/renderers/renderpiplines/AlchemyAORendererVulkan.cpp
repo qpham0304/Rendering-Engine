@@ -78,8 +78,8 @@ void AlchemyAORendererVulkan::render(Camera& camera)
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     writeAO(cmd, currentFrame);
     writeBlur(cmd, currentFrame);
-    renderDeviceVulkan->waitIdle();
-	rendererManagerVulkan->setDisplayImage(aoMap);
+    // renderDeviceVulkan->waitIdle();
+	// rendererManagerVulkan->setDisplayImage(aoMap);
 }
 
 void AlchemyAORendererVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFrame)

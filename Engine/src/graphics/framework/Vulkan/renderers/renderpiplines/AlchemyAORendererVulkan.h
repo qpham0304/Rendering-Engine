@@ -30,7 +30,7 @@ public:
 	void writeAO(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeBlur(VkCommandBuffer cmd, uint32_t currentFrame);
 
-private:
+public:	//TODO: make this private after test done
 	void _createOcclusionMap();
 	void _createPipelines();
 	void _createDescriptors();

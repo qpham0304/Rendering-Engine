@@ -10,6 +10,7 @@
 #include <vector>
 #include <unordered_map>
 
+class AlchemyAORendererVulkan;
 class DeferredRendererVulkan : public RendererVulkan
 {
 private:
@@ -40,6 +41,7 @@ private:
 		alignas(4)  float time;
 		alignas(4)	float numLights;
 		alignas(4)	float skyboxDetail;
+		alignas(4)	int aoOn;
 	};
 
 	struct LightSSBO {
@@ -96,6 +98,7 @@ public:	//TODO: make private once done testing
 
 	ShadowMapRendererVulkan shadowMapRenderer;
 	ImageBasedRendererVulkan imageBasedRenderer;
+	AlchemyAORendererVulkan* alchemyAORendererVulkan { nullptr };
 	
 	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
