@@ -302,8 +302,7 @@ void main() {
     vec3 V_dir = normalize(fragWorldPos - ubo.cameraPos.xyz);
     float maxDist = length(fragWorldPos - ubo.cameraPos.xyz);
     
-    /*
-    */
+/*
     const int numSteps = 16;
     float stepSize = maxDist / float(numSteps);
     
@@ -339,6 +338,7 @@ void main() {
     
     volumetricLight *= 0.2;
     color += volumetricLight;
+*/
 
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2));

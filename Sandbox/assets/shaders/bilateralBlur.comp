@@ -1,0 +1,51 @@
+#version 450
+layout (local_size_x = 16, local_size_y = 16) in;
+
+layout (binding = 0, r16f) uniform readonly image2D inputImage;
+layout (binding = 1, rgba16f) uniform readonly image2D inputPosition;
+layout (binding = 2, r16f) uniform writeonly image2D outputImage;
+
+layout(push_constant) uniform BlurPushConstants {
+    float isVertical; // 0.0 for horizontal, 1.0 for vertical
+} pc;
+
+void main() {
+    ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(inputImage);
+    if (uv.x >= size.x || uv.y >= size.y) return;
+
+    float centerAO = imageLoad(inputImage, uv).r;
+    float centerDepth = imageLoad(inputPosition, uv).r;
+
+    float totalAO = 0.0;
+    float totalWeight = 0.0;
+    int blurRadius = 4;
+
+    ivec2 direction = (pc.isVertical > 0.5) ? ivec2(0, 1) : ivec2(1, 0);
+
+    for (int i = -blurRadius; i <= blurRadius; i++) {
+        ivec2 sampleUV = uv + (direction * i);
+        
+        // Bounds check
+        if (sampleUV.x < 0 || sampleUV.x >= size.x || sampleUV.y < 0 || sampleUV.y >= size.y) continue;
+
+        float sampleAO = imageLoad(inputImage, sampleUV).r;
+        float sampleDepth = imageLoad(inputPosition, sampleUV).r;
+
+        // spatial Weight gaussian like
+        float weight = exp(-(i * i) / (2.0 * blurRadius * blurRadius));
+
+        // range Weight depth based bilateral
+        float depthDiff = abs(centerDepth - sampleDepth);
+        float rWeight = exp(-depthDiff * 100.0);
+
+        float finalWeight = weight * rWeight;
+        
+        totalAO += sampleAO * finalWeight;
+        totalWeight += finalWeight;
+    }
+
+    // Guard against division by zero
+    float result = (totalWeight > 0.0) ? (totalAO / totalWeight) : centerAO;
+    imageStore(outputImage, uv, vec4(result));
+}

@@ -286,7 +286,7 @@ void ImGuiManager::useLightTheme()
 void ImGuiManager::useDarkTheme()
 {
 	ImGuiThemes::darkTheme();
-
+/*
 	auto& colors = ImGui::GetStyle().Colors;
 	colors[ImGuiCol_Tab] = ImVec4(1.000f, 0.684f, 0.000f, 0.208f);
 	colors[ImGuiCol_TabHovered] = ImVec4(1.000f, 0.682f, 0.000f, 0.549f);
@@ -309,6 +309,7 @@ void ImGuiManager::useDarkTheme()
 	colors[ImGuiCol_ButtonHovered] = ImVec4(0.379f, 0.379f, 0.379f, 0.540f);
 	colors[ImGuiCol_ButtonActive] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
 	colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
+*/
 }
 
 void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)

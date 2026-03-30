@@ -8,6 +8,7 @@
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ShadowMapRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ImageBasedRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpiplines/AlchemyAORendererVulkan.h"
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include "RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
@@ -32,6 +33,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
     shadowMapRenderer = addRenderer<ShadowMapRendererVulkan>("ShadowMapRendererVulkan");
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
+    alchemyAORenderer = addRenderer<AlchemyAORendererVulkan>("AlchemyAORendererVulkan");
     // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererRendererVulkan");
 	
     applicationRenderer->init(config);
@@ -39,6 +41,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
 	shadowMapRenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
+    alchemyAORenderer->init(config);
 	// postProcessRenderer->init(config);
 
     return true;
@@ -57,6 +60,7 @@ bool RendererManagerVulkan::onClose()
 	deferredRenderer->onClose();
 	shadowMapRenderer->onClose();
 	imageBasedRenderer->onClose();
+    alchemyAORenderer->onClose();
 	// postProcessRenderer->onClose();
     return true;
 }
@@ -90,6 +94,7 @@ void RendererManagerVulkan::render()
     shadowMapRenderer->render(*camera);
 	// forwardRenderer->render(*camera);
     deferredRenderer->render(*camera);
+    alchemyAORenderer->render(*camera);
     applicationRenderer->render(*camera);
     endFrame();
 }

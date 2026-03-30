@@ -423,53 +423,52 @@ void main() {
     vec3 irradiance = getIrradiance(N);
     vec3 diffuseIBL = irradiance * albedo.rgb;
 
-    vec3 R = reflect(-V, N); 
     const float MAX_REFLECTION_LOD = 4.0; 
+    vec3 R = reflect(-V, N); 
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
     vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
     vec3 specularIBL = prefilteredColor * (F * brdf.x + brdf.y);
 
-    // vec3 ambient = vec3(0.03) * albedo.rgb * ao;
     vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
     vec3 finalColor = ambient + Lo + sunlight;
 
     vec3 V_dir = normalize(worldPos - ubo.cameraPos.xyz);
     float maxDist = length(worldPos - ubo.cameraPos.xyz);
 
-    const int numSteps = 16;
-    float stepSize = maxDist / float(numSteps);
+    // const int numSteps = 16;
+    // float stepSize = maxDist / float(numSteps);
     
-    // Dithering to hide banding
-    // gl_FragCoord is better than UV for screen-space dithering
-    // float dither = DITHER_PATTERN[int(gl_FragCoord.x) % 4][int(gl_FragCoord.y) % 4];
-    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
-    float dither = texture(blueNoise, noiseUV).r;
-    float worldOffset = mod(dot(ubo.cameraPos.xyz, V_dir), stepSize);
-    vec3 rayPos = ubo.cameraPos.xyz + V_dir * (stepSize * dither - worldOffset);
+    // // Dithering to hide banding
+    // // gl_FragCoord is better than UV for screen-space dithering
+    // // float dither = DITHER_PATTERN[int(gl_FragCoord.x) % 4][int(gl_FragCoord.y) % 4];
+    // vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
+    // float dither = texture(blueNoise, noiseUV).r;
+    // float worldOffset = mod(dot(ubo.cameraPos.xyz, V_dir), stepSize);
+    // vec3 rayPos = ubo.cameraPos.xyz + V_dir * (stepSize * dither - worldOffset);
 
-    vec3 volumetricLight = vec3(0.0);
+    // vec3 volumetricLight = vec3(0.0);
 
-    for(int i = 0; i < numSteps; i++) {
-        // check if this point in the fog is in shadow
-        vec4 shadowCoord = pcl.sunlightMVP * vec4(rayPos, 1.0);
-        vec3 proj = shadowCoord.xyz / shadowCoord.w * 0.5 + 0.5;
-        float depthSample = texture(shadowMap, proj.xy).r;
+    // for(int i = 0; i < numSteps; i++) {
+    //     // check if this point in the fog is in shadow
+    //     vec4 shadowCoord = pcl.sunlightMVP * vec4(rayPos, 1.0);
+    //     vec3 proj = shadowCoord.xyz / shadowCoord.w * 0.5 + 0.5;
+    //     float depthSample = texture(shadowMap, proj.xy).r;
         
-        // if the ray point is visible to the sun
-        if(depthSample > proj.z - 0.001) {
-            float cosTheta = dot(V_dir, L_sun);
-            float scattering = mieScattering(cosTheta, 0.7); // G value is 0.7
+    //     // if the ray point is visible to the sun
+    //     if(depthSample > proj.z - 0.001) {
+    //         float cosTheta = dot(V_dir, L_sun);
+    //         float scattering = mieScattering(cosTheta, 0.7); // G value is 0.7
             
-            float density = 1.0;
-            // density = simpleNoise(rayPos * 0.5 + pcl.time * 0.1); // density noise expensive, maybe use a 3D texture later
-            volumetricLight += pcl.color.rgb * scattering * density * stepSize;
+    //         float density = 1.0;
+    //         // density = simpleNoise(rayPos * 0.5 + pcl.time * 0.1); // density noise expensive, maybe use a 3D texture later
+    //         volumetricLight += pcl.color.rgb * scattering * density * stepSize;
             
-        }
-        rayPos += V_dir * stepSize;
-    }
+    //     }
+    //     rayPos += V_dir * stepSize;
+    // }
     
-    volumetricLight *= 0.2;
-    finalColor += volumetricLight;
+    // volumetricLight *= 0.2;
+    // finalColor += volumetricLight;
     
     finalColor = finalColor / (finalColor + vec3(1.0));     //HDR tone mapping
     outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);   //Gamma correction

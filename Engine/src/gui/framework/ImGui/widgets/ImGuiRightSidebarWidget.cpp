@@ -221,17 +221,15 @@ void ImGuiRightSidebarWidget::_listTextureManager()
 {
 	ImGui::Begin("Textures");
 
-	if(AppWindow::getWindowConfig().renderPlatform == RenderPlatform::VULKAN) {
-		std::vector<uint32_t> ids = textureManager->listIDs();
-		for (auto& id : ids) {
-			ImGui::Text("%s", std::to_string(id).c_str());
-			ImGui::Begin("Texture View");
-			ImGui::BeginChild("Image View");
-			ImGui::Image((ImTextureID)textureManager->inspectTexture(id), ImVec2(250, 250));
-			ImGui::EndChild();
-			ImGui::End();
-		}
-	}
+    std::vector<uint32_t> ids = textureManager->listIDs();
+    for (auto& id : ids) {
+        ImGui::Text("%s", std::to_string(id).c_str());
+        ImGui::Begin("Texture View");
+        ImGui::BeginChild("Image View");
+        ImGui::Image((ImTextureID)textureManager->inspectTexture(id), ImVec2(250, 250));
+        ImGui::EndChild();
+        ImGui::End();
+    }
 
 	ImGui::End();
 }

@@ -2,7 +2,6 @@
 #include "core/features/ServiceLocator.h"
 #include "core/events/EventManager.h"
 #include "graphics/renderers/RenderDevice.h"
-#include "logging/Logger.h"
 #include "window/AppWindow.h"
 
 #include <core/resources/managers/TextureManager.h>
@@ -18,7 +17,7 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
-#include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
+#include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
 
@@ -210,6 +209,7 @@ void DeferredRendererVulkan::renderGui()
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferNorm[currentFrame]->id()), ImVec2(256, 256));
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferAlbedo[currentFrame]->id()), ImVec2(256, 256));
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gPBR[currentFrame]->id()), ImVec2(256, 256));
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.depthTextures[currentFrame]->id()), ImVec2(256, 256));
 
 
 	// ImGui::Text("DEPTH MAP", names[i]);
@@ -417,7 +417,7 @@ void DeferredRendererVulkan::_createRenderPasses()
 	gBufferPos.format = VK_FORMAT_R16G16B16A16_SFLOAT;
 	gBufferPos.samples = VK_SAMPLE_COUNT_1_BIT;
 	gBufferPos.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	gBufferPos.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	gBufferPos.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	gBufferPos.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	gBufferPos.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -425,7 +425,7 @@ void DeferredRendererVulkan::_createRenderPasses()
 	gBufferNorm.format = VK_FORMAT_R16G16B16A16_SFLOAT;
 	gBufferNorm.samples = VK_SAMPLE_COUNT_1_BIT;
 	gBufferNorm.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	gBufferNorm.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	gBufferNorm.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	gBufferNorm.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	gBufferNorm.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -451,11 +451,11 @@ void DeferredRendererVulkan::_createRenderPasses()
 	depthAttachment.format = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	// gbuffer pass
 	std::vector<VkAttachmentReference> gBufferReferences = {
@@ -507,17 +507,17 @@ void DeferredRendererVulkan::_createRenderPasses()
 	// wait for gbuffer subpass before lighitng subpass reads
 	dependencies[1].srcSubpass = 0;
 	dependencies[1].dstSubpass = 1;
-	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	dependencies[1].dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+	dependencies[1].dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
 	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 	dependencies[2].srcSubpass = 1;
 	dependencies[2].dstSubpass = VK_SUBPASS_EXTERNAL;
-	dependencies[2].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependencies[2].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	dependencies[2].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependencies[2].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[2].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+	dependencies[2].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	dependencies[2].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	dependencies[2].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
@@ -631,13 +631,13 @@ void DeferredRendererVulkan::_createFrameBuffers()
 
 		renderTarget.gBufferPos[i] = createTexture(
 			VK_FORMAT_R16G16B16A16_SFLOAT, 
-			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, 
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
 
 		renderTarget.gBufferNorm[i] = createTexture(
 			VK_FORMAT_R16G16B16A16_SFLOAT,
-			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, 
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
 
@@ -663,7 +663,7 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			renderDeviceVulkan->swapchain.swapChainExtent.height,
 			depthFormat,
 			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			renderTarget.depthTextures[i]->textureImage,
 			renderTarget.depthTextures[i]->textureImageMemory,
@@ -679,6 +679,8 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			1,
 			renderDeviceVulkan->device
 		);
+
+		TextureManagerVulkan::createTextureSampler(renderTarget.depthTextures[i]->textureSampler, renderDeviceVulkan->device);
 
 		std::array<VkImageView, 6> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,

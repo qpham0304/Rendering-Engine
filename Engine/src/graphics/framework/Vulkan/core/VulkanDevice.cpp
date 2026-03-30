@@ -190,18 +190,21 @@ void VulkanDevice::createLogicalDevice() {
 	features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 	features13.dynamicRendering = VK_TRUE;
 	features13.synchronization2 = VK_TRUE;
-
 	
 	VkPhysicalDeviceVulkan12Features features12{};
 	features13.pNext = &features12;
 	features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 	features12.bufferDeviceAddress = this->rtSupported ? VK_TRUE : VK_FALSE;
-	features12.descriptorIndexing = this->rtSupported ? VK_TRUE : VK_FALSE;
+	features12.descriptorIndexing = VK_TRUE;
+	features12.runtimeDescriptorArray = VK_TRUE;
+	features12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+	features12.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
+	features12.descriptorBindingPartiallyBound = VK_TRUE;
 
 	VkPhysicalDeviceAccelerationStructureFeaturesKHR accelFeatures{};
 	accelFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
 	accelFeatures.accelerationStructure = this->rtSupported ? VK_TRUE : VK_FALSE;
-	accelFeatures.pNext = &features12;
+	accelFeatures.pNext = &features13;
 
 	if (this->rtSupported) {
 		submitDebugMessage(

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
