@@ -54,6 +54,9 @@ public:
 	glm::vec3 lightPos;
 	glm::vec3 lightDir;
 	glm::mat4 lightView;
+	float s;
+	float zNear;
+	float zFar;
 
 	std::unique_ptr<VulkanPipeline> computePipeline;
 	uint32_t compDescriptorLayoutID;

@@ -15,6 +15,8 @@ public:
 
 	struct BlurPushConstantInfo {
 		float isVertical;
+		int blurRadius;
+		float scale;
 	};
 
 public:

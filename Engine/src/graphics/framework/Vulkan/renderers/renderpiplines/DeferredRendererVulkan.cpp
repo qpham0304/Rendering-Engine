@@ -178,13 +178,20 @@ void DeferredRendererVulkan::renderGui()
 
 	
 	ImGui::Begin("Lights Control");
-	if(ImGui::Button("Chane Environment")) {
+	if(ImGui::Button("Change Environment")) {
 		std::string path;
 		path = Utils::fileDialog();
 		imageBasedRenderer.loadTexture(path);
 	}
 	ImGui::SliderFloat("skybox detail", &pushConstantLight.skyboxDetail, 0.0f, 1.0f);
 	ImGui::Checkbox("Light Perspective", &shadowMapRenderer.useOrtho);
+	ImGui::SameLine();
+	bool aoChecked = (pushConstantLight.aoOn != 0);
+	if (ImGui::Checkbox("aoOn", &aoChecked)) {
+		pushConstantLight.aoOn = aoChecked ? 1 : 0;
+	}
+	ImGui::SliderInt("aoBlurRadius", &alchemyAORendererVulkan->blurrPushConstant.blurRadius, 1.0f, 16.0f);
+	ImGui::SliderFloat("aoBlurScale", &alchemyAORendererVulkan->blurrPushConstant.scale, 1.0f, 100.0f);
 	ImGui::ColorEdit4("color", &sunColor[0]);
 	ImGui::SliderFloat("intensity", &sunIntensity, 1.0f, 15.0f);
 	ImGui::SliderFloat("Bias", &pushConstantLight.bias, 0.001f, 0.1f);
@@ -196,10 +203,7 @@ void DeferredRendererVulkan::renderGui()
 	uint32_t max_r = 64;
 	ImGui::SliderScalar("radius", ImGuiDataType_U32, &shadowMapRenderer.pushconstant.radius, &min_r, &max_r);
 	ImGui::SliderFloat("sigma", &shadowMapRenderer.pushconstant.sigma, 1.0f, 30.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
-	bool aoChecked = (pushConstantLight.aoOn != 0);
-	if (ImGui::Checkbox("aoOn", &aoChecked)) {
-		pushConstantLight.aoOn = aoChecked ? 1 : 0;
-	}
+
 
 	int i = 0;
 	for (auto& entity : entities) {

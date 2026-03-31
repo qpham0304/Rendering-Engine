@@ -45,6 +45,18 @@ bool SceneManager::init(WindowConfig config)
 		}
 	});
 
+	eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
+		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
+		if(!cameraController) {
+			return;
+		}
+
+		GuiManager* guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");
+		if(areaFocused) {
+			cameraController->processMouse();
+		}
+	});
+
 	eventManager.subscribe(EventType::GuiFocusedEvent, [this](Event& event) {
 		GuiFocusEvent& focusEvent = static_cast<GuiFocusEvent&>(event);
 		areaFocused = focusEvent.isFocused;
@@ -74,7 +86,7 @@ void SceneManager::onUpdate()
 	cameraController->onUpdate();
 
 	if(areaFocused) {
-		cameraController->processMouse();
+		// cameraController->processMouse();
 		cameraController->processKeyboard();
 	}
 }

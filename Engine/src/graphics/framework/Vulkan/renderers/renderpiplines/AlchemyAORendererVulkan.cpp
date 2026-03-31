@@ -39,6 +39,14 @@ bool AlchemyAORendererVulkan::init(WindowConfig config)
     _createDescriptors();
 	_createPipelines();
 
+    
+    pushConstant.radius = 1.0;
+    pushConstant.bias = 0.001;
+    pushConstant.intensity = 1.0;
+    
+    blurrPushConstant.blurRadius = 4;
+    blurrPushConstant.scale = 100.0f;
+
     return true;
 }
 bool AlchemyAORendererVulkan::onClose() 
@@ -67,19 +75,15 @@ void AlchemyAORendererVulkan::render(Camera& camera)
 
 
 	pushConstant.view = camera.getViewMatrix();
-    pushConstant.radius = 1.0;
-    pushConstant.bias = 0.001;
-    pushConstant.intensity = 1.0;
     pushConstant.projScale = camera.getViewHeight() / (2.0 * tan(camera.getFOV() / 2));
     
     float fovRadians = glm::radians(camera.getFOV()); 
     pushConstant.projScale = static_cast<float>(camera.getViewHeight()) / (2.0f * tanf(fovRadians * 0.5f));
 
+
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     writeAO(cmd, currentFrame);
     writeBlur(cmd, currentFrame);
-    // renderDeviceVulkan->waitIdle();
-	// rendererManagerVulkan->setDisplayImage(aoMap);
 }
 
 void AlchemyAORendererVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFrame)

@@ -94,7 +94,6 @@ void EditorLayer::onAttach(LayerManager* manager)
 
 	eventManager.subscribe(EventType::MouseScrolled, [&](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
-
 		if (guiController.isGuizmoFocus()) {
 			mouseEvent.Handled = true;	// block mouse event from other layers
 		}

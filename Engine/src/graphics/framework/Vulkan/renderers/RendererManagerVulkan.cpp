@@ -91,9 +91,12 @@ void RendererManagerVulkan::render()
 	}
 
     beginFrame();
-    shadowMapRenderer->render(*camera);
+    // shadowMapRenderer->render(*camera);
 	// forwardRenderer->render(*camera);
-    alchemyAORenderer->render(*camera);
+    auto tmp = (DeferredRendererVulkan*)deferredRenderer;
+    if(tmp->pushConstantLight.aoOn) {
+        alchemyAORenderer->render(*camera);
+    }
     deferredRenderer->render(*camera);
     applicationRenderer->render(*camera);
     endFrame();

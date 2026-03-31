@@ -86,9 +86,9 @@ void ShadowMapRendererVulkan::render(Camera& camera)
 		lightDir = glm::normalize(glm::vec3(1.0f));
 		lightPos = lightDir * 100.0f;
 		lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		float s = 5.0f;
-		float zNear = 0.01f;
-		float zFar = 105.0f;
+		s = 5.0f;
+		zNear = 0.01f;
+		zFar = 105.0f;
 		lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
 
 		// glm::vec3 followTarget = camera.getPosition();

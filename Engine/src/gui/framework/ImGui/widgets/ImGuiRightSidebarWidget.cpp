@@ -427,7 +427,7 @@ void ImGuiRightSidebarWidget::_transformControl(const Entity& entity)
         ImGui::PushID(label.c_str());
 
         ImGui::Columns(2);
-        // 1. Increased width to prevent "Translation" from cutting off
+        // Increased width to prevent "Translation" from cutting off
         ImGui::SetColumnWidth(0, 120.0f); 
         
         // Align text vertically with the input boxes
@@ -439,7 +439,7 @@ void ImGuiRightSidebarWidget::_transformControl(const Entity& entity)
         float totalWidth = ImGui::GetContentRegionAvail().x;
         float itemWidth = (totalWidth - (ImGui::GetStyle().ItemSpacing.x * 2.0f)) / 3.0f;
         
-        // 2. Control Spacing: Tighten the gap between the Colored Button and the Value Box
+        // Control Spacing: Tighten the gap between the Colored Button and the Value Box
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
         
         auto RenderAxis = [&](const char* axisLabel, float& value, ImVec4 color, ImVec4 hoverColor, bool isLast) {
@@ -462,7 +462,7 @@ void ImGuiRightSidebarWidget::_transformControl(const Entity& entity)
             // The DragFloat
             // Subtract button width from the segment width
             ImGui::SetNextItemWidth(itemWidth - 25.0f);
-            if (ImGui::DragFloat("##val", &value, 0.1f, 0.0f, 0.0f, "%.2f")) {
+            if (ImGui::DragFloat("##val", &value, 0.01f, 0.0f, 0.0f, "%.2f")) {
                 changed = true;
             }
 

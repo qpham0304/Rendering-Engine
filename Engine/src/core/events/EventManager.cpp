@@ -39,12 +39,13 @@ void EventManager::publish(Event& event)
 		return;
 	}
 
-	for (const auto& [id, callback] : callbacks[event.GetEventType()]) {
-		callback(event);
-		if (event.Handled) {
-			break;
-		}
-	}
+	auto it = callbacks.find(event.GetEventType());
+	for (const auto& [id, callback] : it->second | std::views::reverse) {
+        callback(event);
+        if (event.Handled) {
+            break;
+        }
+    }
 }
 
 void EventManager::publishAsync(EventListener& eventListener)
