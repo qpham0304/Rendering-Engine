@@ -1,6 +1,25 @@
 CompileFlags:
+  Remove: 
+    - /external:*
+    - /W*
+    - /Z*
+    - /G*
+    - /O*
+    - /M*
+    - /errorReport:*
+    - /nologo
+    - /diagnostics:*
+    - -fmodules-ts
+    - -fms-compatibility-commands
+  
   Add: 
     - "-fms-compatibility"
     - "-fms-extensions"
     - "-fdelayed-template-parsing"
     - "--target=x86_64-pc-windows-msvc"
+    - "-Wno-invalid-token-paste"
+    - "-Wno-unknown-pragmas"
+    - "-Wno-unused-command-line-argument"
+
+Index:
+  Background: Build

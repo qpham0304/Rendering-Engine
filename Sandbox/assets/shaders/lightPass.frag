@@ -443,24 +443,26 @@ void main() {
     vec3 V_dir = normalize(worldPos - ubo.cameraPos.xyz);
     float maxDist = length(worldPos - ubo.cameraPos.xyz);
 
-    // if(pcl.aoOn != 0) {
-    //     outColor = outColor = vec4(vec3(ssao * pbr.r), 1.0);
-    //     return;
-    // }
+    if(pcl.aoOn != 0) {
+        outColor = outColor = vec4(vec3(ssao * pbr.r), 1.0);
+        return;
+    }
 
-    // const int numSteps = 16;
-    // float stepSize = maxDist / float(numSteps);
+    const int numSteps = 16;
+    float stepSize = maxDist / float(numSteps);
     
-    // // Dithering to hide banding
-    // // gl_FragCoord is better than UV for screen-space dithering
-    // // float dither = DITHER_PATTERN[int(gl_FragCoord.x) % 4][int(gl_FragCoord.y) % 4];
-    // vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
-    // float dither = texture(blueNoise, noiseUV).r;
-    // float worldOffset = mod(dot(ubo.cameraPos.xyz, V_dir), stepSize);
-    // vec3 rayPos = ubo.cameraPos.xyz + V_dir * (stepSize * dither - worldOffset);
+    // Dithering to hide banding
+    // gl_FragCoord is better than UV for screen-space dithering
+    // float dither = DITHER_PATTERN[int(gl_FragCoord.x) % 4][int(gl_FragCoord.y) % 4];
+    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
+    float dither = texture(blueNoise, noiseUV).r;
+    float worldOffset = mod(dot(ubo.cameraPos.xyz, V_dir), stepSize);
+    vec3 rayPos = ubo.cameraPos.xyz + V_dir * (stepSize * dither - worldOffset);
 
-    // vec3 volumetricLight = vec3(0.0);
-
+    vec3 volumetricLight = vec3(0.0);
+    float cosTheta = dot(V_dir, L_sun);
+    float scattering = mieScattering(cosTheta, 0.7); // G value is 0.7
+            
     // for(int i = 0; i < numSteps; i++) {
     //     // check if this point in the fog is in shadow
     //     vec4 shadowCoord = pcl.sunlightMVP * vec4(rayPos, 1.0);
@@ -469,9 +471,6 @@ void main() {
         
     //     // if the ray point is visible to the sun
     //     if(depthSample > proj.z - 0.001) {
-    //         float cosTheta = dot(V_dir, L_sun);
-    //         float scattering = mieScattering(cosTheta, 0.7); // G value is 0.7
-            
     //         float density = 1.0;
     //         // density = simpleNoise(rayPos * 0.5 + pcl.time * 0.1); // density noise expensive, maybe use a 3D texture later
     //         volumetricLight += pcl.color.rgb * scattering * density * stepSize;

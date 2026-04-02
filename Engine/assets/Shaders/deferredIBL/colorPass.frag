@@ -210,8 +210,8 @@ vec4 calcLighting() {
     vec3 normal = texture(gNormal, uv).rgb;         // view space normal
     vec3 albedo = pow(texture(gAlbedo, uv).rgb, vec3(2.2));
     // vec3 metalRoughness = texture(gMetalRoughness, uv).rgb;
-    // float metallic = metalRoughness.b;
     // float roughness = metalRoughness.g;
+    // float metallic = metalRoughness.b;
     float ao = texture(gAlbedo, uv).a;
 	vec3 emissive = texture(gEmissive, uv).rgb;
     vec3 dudv = texture(gDUV, uv).rgb * 2.0 - 1.0;

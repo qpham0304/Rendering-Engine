@@ -211,8 +211,8 @@ void main() {
     float roughness = texture(roughnessMaps, fragTexCoord).g;
     float metallic  = texture(metalnessMaps, fragTexCoord).b;
     
-    float alphaRoughness = roughness * roughness;
-    alphaRoughness = clamp(alphaRoughness, 0.05, 1.0); 
+    // float alphaRoughness = roughness * roughness;
+    // alphaRoughness = clamp(alphaRoughness, 0.05, 1.0); 
 
     vec3 tangentNormal = texture(normalMaps, fragTexCoord).rgb * 2.0 - 1.0;
     mat3 TBN = mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal));
@@ -234,7 +234,8 @@ void main() {
 
     N = normalize(mix(N, V, 0.01)); 
 
-    float NdotV = clamp(dot(N, V), 0.001, 1.0);
+    // float NdotV = clamp(dot(N, V), 0.001, 1.0);
+    float NdotV = max(dot(N, V), 0.0);
 
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
     vec3 Lo = vec3(0.0);
@@ -248,8 +249,8 @@ void main() {
         float attenuation = lightSSBO.lights[i].intensity / (dist * dist + 1.0);
         vec3 radiance = lightSSBO.lights[i].color.rgb * attenuation;
 
-        float D = DistributionGGX(N, H, alphaRoughness);
-        float G = GeometrySmith(N, V, L, alphaRoughness);
+        float D = DistributionGGX(N, H, roughness);
+        float G = GeometrySmith(N, V, L, roughness);
         vec3  F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
         vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 0.0001);
@@ -280,7 +281,7 @@ void main() {
     Lo += (kD * albedo / PI + specular) * pcl.color.rgb * NdotL * shadow;
 
     vec3 R = reflect(-V, N);
-    vec3 F_ibl = fresnelSchlickRoughness(NdotV, F0, alphaRoughness);
+    vec3 F_ibl = fresnelSchlickRoughness(NdotV, F0, roughness);
     
     vec3 irradiance = sh.shCoeffs[0].rgb;
     if(length(irradiance) < 0.001) {
@@ -288,20 +289,36 @@ void main() {
     }
     vec3 diffuseAmbient = irradiance * albedo;
 
-    const float MAX_LOD = 5.0; 
+    // vec2 envBRDF = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+    vec2 envBRDF = texture(brdfLUT, vec2(NdotV, 1.0 - roughness)).rg;
+    const float MAX_LOD = 7.0; 
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_LOD).rgb;
-    vec2 envBRDF = texture(brdfLUT, vec2(NdotV, roughness)).rg;
     vec3 specularAmbient = prefilteredColor * (F_ibl * envBRDF.x + envBRDF.y);
 
     vec3 kD_ibl = (1.0 - F_ibl) * (1.0 - metallic);
     vec3 ambient = (kD_ibl * diffuseAmbient + specularAmbient) * ao;
+    // float specularOcclusion = clamp(pow(NdotV + ao, exp2(-16.0 * roughness - 1.0)) - 1.0 + ao, 0.0, 1.0);
+    // vec3 ambient = (kD_ibl * diffuseAmbient * ao) + (specularAmbient * specularOcclusion);
 
     vec3 emissive = texture(emissiveMaps, fragTexCoord).rgb;
     vec3 color = ambient + Lo + emissive;
 
     vec3 V_dir = normalize(fragWorldPos - ubo.cameraPos.xyz);
     float maxDist = length(fragWorldPos - ubo.cameraPos.xyz);
-    
+
+
+    // outColor = vec4(textureLod(prefilterMap, R, 1.0 * MAX_LOD).rgb, 1.0);
+    // return;
+    // outColor = vec4(F_ibl, 1.0);
+    // return;
+    // outColor = vec4(ambient, 1.0);
+    // return;
+    // outColor = vec4(kD_ibl, 1.0);
+    // return;
+    // outColor = vec4(specularAmbient, 1.0);
+    // return;
+    // outColor = vec4(vec3(1.0 - roughness), 1.0); 
+    // return;
 /*
     const int numSteps = 16;
     float stepSize = maxDist / float(numSteps);
