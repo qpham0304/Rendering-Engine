@@ -2,6 +2,7 @@
 
 #include "graphics/framework/Vulkan/core/WrapperStructs.h"
 #include "core/resources/managers/MaterialManager.h"
+#include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include <vulkan/vulkan.h>
 
 class RenderDeviceVulkan;
@@ -11,6 +12,21 @@ class DescriptorManagerVulkan;
 class MaterialManagerVulkan : public MaterialManager
 {
 public:
+
+#include <glm/glm.hpp>
+#include <cstdint>
+
+	struct MaterialUniform {
+		uint32_t materialIdx = 0;
+		alignas(8) glm::vec2 uv = glm::vec2(0.0f);
+		alignas(16) glm::vec4 albedo = glm::vec4(1.0f);
+		alignas(16) glm::vec4 normal = glm::vec4(0.0f);
+		alignas(4) float metallic  = 1.0f;
+		alignas(4) float roughness = 1.0f;
+		alignas(4) float ao        = 1.0f;
+		alignas(4) float emissive  = 1.0f;
+	};
+	
     struct MaterialVulkan {
 		uint32_t descriptorSetID;
 		uint32_t albedoID;
@@ -19,6 +35,7 @@ public:
 		uint32_t roughnessID;
 		uint32_t aoID;
 		uint32_t emissiveID;
+		std::vector<UniformBufferVulkan*> uniformbuffersList;
     };
 
 public:
@@ -32,6 +49,7 @@ public:
 	virtual uint32_t createMaterial(const MaterialDesc& materialDesc) override;
     virtual void bindMaterial(const uint32_t& id, void* cmdBuffer, void* pipeline) override;
     virtual MaterialDesc getMaterial(const uint32_t& id) override;
+	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc, uint32_t frameIndex);
 	virtual void* getMaterialLayout() override;
 
 private:
@@ -44,7 +62,7 @@ private:
 	DescriptorManagerVulkan* descriptorManagerVulkan;
 
 
-    std::unordered_map<uint32_t, MaterialVulkan> materials;
+    std::unordered_map<uint32_t, std::pair<MaterialVulkan, MaterialUniform>> materials;
 	uint32_t materialLayoutID;
 	uint32_t materialPoolID;
 

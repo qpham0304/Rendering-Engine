@@ -225,6 +225,15 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
 
     // process material
     MaterialDesc materialDesc{};
+    materialDesc.materialIdx = 0;
+    materialDesc.uv = glm::vec2(1.0f, 1.0f);
+    materialDesc.albedo = glm::vec4(1.0);
+    materialDesc.normal = glm::vec4(0.0);
+    materialDesc.metallic  = 0.0f;
+    materialDesc.roughness = 0.5f;
+    materialDesc.ao        = 1.0f;
+    materialDesc.emissive  = 1.0f;
+
 
     if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];

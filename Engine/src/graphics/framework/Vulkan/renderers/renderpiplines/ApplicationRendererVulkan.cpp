@@ -72,7 +72,7 @@ bool ApplicationRendererVulkan::onClose()
 
 void ApplicationRendererVulkan::onUpdate()
 {
-	render(*SceneManager::cameraController);
+	
 }
 
 void ApplicationRendererVulkan::render(Camera& camera)
@@ -190,7 +190,6 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 		forwardRendererVulkan && deferredRendererVulkan && 
 		"failed to retrieve renderer"
 	);
-
 
 	guiManager->start();
 	

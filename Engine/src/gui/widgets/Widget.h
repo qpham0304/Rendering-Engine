@@ -17,6 +17,7 @@ class Widget {
 public:
     virtual ~Widget() = default;
 	virtual void render() = 0;
+    virtual void update() {};
 
     const char* getName() { return m_name.c_str(); }
     bool isVisible() const { return m_isVisible; }

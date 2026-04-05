@@ -91,7 +91,9 @@ bool ImGuiManager::init(WindowConfig config)
 
 void ImGuiManager::onUpdate()
 {
-
+	for (const auto& widget : widgets) {
+		widget->update();
+	}
 }
 
 ImGuiManager::~ImGuiManager() = default;

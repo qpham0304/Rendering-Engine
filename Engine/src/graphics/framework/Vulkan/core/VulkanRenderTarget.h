@@ -20,6 +20,7 @@ public:
     std::vector<TextureVulkan*> gBufferNorm;
     std::vector<TextureVulkan*> gBufferAlbedo;
     std::vector<TextureVulkan*> gPBR;
+    std::vector<TextureVulkan*> gBufferEmissive;
     std::vector<TextureVulkan*> depthTextures;
 
     void destroy(VkDevice device) {
@@ -42,6 +43,9 @@ public:
             textureManager.destroy(texture->id());
         }
         for(auto& texture : gPBR){
+            textureManager.destroy(texture->id());
+        }
+        for(auto& texture : gBufferEmissive){
             textureManager.destroy(texture->id());
         }
         for(auto& texture : depthTextures){

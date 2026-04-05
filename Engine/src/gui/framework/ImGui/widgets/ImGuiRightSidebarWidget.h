@@ -20,6 +20,7 @@ public:
 	virtual void textureInspector() override;
 	virtual void environmentControl() override;
 	virtual void render() override;
+	virtual void update() override;
 
 protected:
 	bool popupOpen;
@@ -30,6 +31,7 @@ protected:
 	uint32_t tempID;
 	Entity* myEntt;
 	std::future<uint32_t> m_loadingFuture;
+	std::vector<std::pair<const Mesh*, MaterialDesc>> m_meshesToUpdate;
 
 private:
 	Scene* scene{ nullptr };

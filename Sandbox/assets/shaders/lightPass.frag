@@ -6,6 +6,7 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput in
 layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput inputNorm;
 layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput inputAlbedo;
 layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput inputPBR;
+layout(input_attachment_index = 4, set = 0, binding = 4) uniform subpassInput inputEmissive;
 
 layout(location = 0) out vec4 outColor;
 
@@ -334,11 +335,71 @@ vec3 calcPBR(
     return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
+float RadicalInverse_VdC(uint bits) {
+    bits = (bits << 16u) | (bits >> 16u);
+    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+vec2 Hammersley(uint i, uint N) {
+    return vec2(float(i)/float(N), RadicalInverse_VdC(i));
+}
+
+// generates a sample vector biased towards the specular lobe (GGX)
+vec3 ImportanceSampleGGX(vec2 xi, vec3 N, float roughness) {
+    float a = roughness * roughness;
+    
+    float phi = 2.0 * PI * xi.x;
+    float cosTheta = sqrt((1.0 - xi.y) / (1.0 + (a*a - 1.0) * xi.y));
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    
+    // from spherical coordinates to cartesian coordinates
+    vec3 H;
+    H.x = cos(phi) * sinTheta;
+    H.y = sin(phi) * sinTheta;
+    H.z = cosTheta;
+    
+    // grom tangent-space vector to world-space sample vector
+    vec3 up          = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent     = normalize(cross(up, N));
+    vec3 bitangent   = cross(N, tangent);
+    
+    vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
+    return normalize(sampleVec);
+}
+
+// importance sampling specular function
+vec3 GetImportanceSampledSpecular(vec3 V, vec3 N, float roughness, vec3 F0) {
+    vec3 specularLighting = vec3(0.0);
+    const uint SAMPLE_COUNT = 32u; // Increase for quality, decrease for speed
+    
+    for(uint i = 0u; i < SAMPLE_COUNT; ++i) {
+        vec2 xi = Hammersley(i, SAMPLE_COUNT);
+        vec3 H  = ImportanceSampleGGX(xi, N, roughness);
+        vec3 L  = normalize(2.0 * dot(V, H) * H - V);
+
+        float NdotL = max(dot(N, L), 0.0);
+        if(NdotL > 0.0) {
+            vec3 lookupL = vec3(L.x, L.y, -L.z);
+            vec2 uv = sampleSphericalMap(lookupL);
+            vec3 sampleColor = texture(hdrImage, uv).rgb;
+
+            specularLighting += sampleColor * NdotL;
+        }
+    }
+    
+    return specularLighting / float(SAMPLE_COUNT);
+}
+
 void main() {
     vec3 worldPos  = subpassLoad(inputPos).rgb;
     vec3 worldNorm = subpassLoad(inputNorm).rgb;
     vec4 albedo    = subpassLoad(inputAlbedo);
     vec3 pbr       = subpassLoad(inputPBR).rgb;
+    vec4 emissive  = subpassLoad(inputEmissive);
 
     if(length(worldNorm) < 0.1) {
         vec2 texCoord = gl_FragCoord.xy / vec2(ubo.width, ubo.height); 
@@ -429,7 +490,8 @@ void main() {
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
     vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
     vec3 specularIBL = prefilteredColor * (F * brdf.x + brdf.y);
-
+    // vec3 specularIBL = GetImportanceSampledSpecular(V, N, roughness, F0) * F;
+    
     vec2 screenUV = gl_FragCoord.xy / vec2(ubo.width, ubo.height);
     float ssao = texture(aoImage, screenUV).r;
     
@@ -438,15 +500,16 @@ void main() {
     }
     
     vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
-    vec3 finalColor = ambient + Lo + sunlight;
+    vec3 finalColor = ambient + Lo + sunlight + emissive.rgb;
 
     vec3 V_dir = normalize(worldPos - ubo.cameraPos.xyz);
     float maxDist = length(worldPos - ubo.cameraPos.xyz);
 
-    if(pcl.aoOn != 0) {
-        outColor = outColor = vec4(vec3(ssao * pbr.r), 1.0);
-        return;
-    }
+    // if(pcl.aoOn != 0) {
+    //     outColor = outColor = vec4(vec3(ssao * pbr.r), 1.0);
+    //     outColor = emissive;
+    //     return;
+    // }
 
     const int numSteps = 16;
     float stepSize = maxDist / float(numSteps);
@@ -463,24 +526,24 @@ void main() {
     float cosTheta = dot(V_dir, L_sun);
     float scattering = mieScattering(cosTheta, 0.7); // G value is 0.7
             
-    // for(int i = 0; i < numSteps; i++) {
-    //     // check if this point in the fog is in shadow
-    //     vec4 shadowCoord = pcl.sunlightMVP * vec4(rayPos, 1.0);
-    //     vec3 proj = shadowCoord.xyz / shadowCoord.w * 0.5 + 0.5;
-    //     float depthSample = texture(shadowMap, proj.xy).r;
+    for(int i = 0; i < numSteps; i++) {
+        // check if this point in the fog is in shadow
+        vec4 shadowCoord = pcl.sunlightMVP * vec4(rayPos, 1.0);
+        vec3 proj = shadowCoord.xyz / shadowCoord.w * 0.5 + 0.5;
+        float depthSample = texture(shadowMap, proj.xy).r;
         
-    //     // if the ray point is visible to the sun
-    //     if(depthSample > proj.z - 0.001) {
-    //         float density = 1.0;
-    //         // density = simpleNoise(rayPos * 0.5 + pcl.time * 0.1); // density noise expensive, maybe use a 3D texture later
-    //         volumetricLight += pcl.color.rgb * scattering * density * stepSize;
+        // if the ray point is visible to the sun
+        if(depthSample > proj.z - 0.001) {
+            float density = 1.0;
+            // density = simpleNoise(rayPos * 0.5 + pcl.time * 0.1); // density noise expensive, maybe use a 3D texture later
+            volumetricLight += pcl.color.rgb * scattering * density * stepSize;
             
-    //     }
-    //     rayPos += V_dir * stepSize;
-    // }
+        }
+        rayPos += V_dir * stepSize;
+    }
     
-    // volumetricLight *= 0.2;
-    // finalColor += volumetricLight;
+    volumetricLight *= 0.2;
+    finalColor += volumetricLight;
     
     finalColor = finalColor / (finalColor + vec3(1.0));         //HDR tone mapping
     outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);  //Gamma correction

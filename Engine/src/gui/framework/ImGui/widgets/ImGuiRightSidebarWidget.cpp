@@ -155,7 +155,8 @@ void ImGuiRightSidebarWidget::textureInspector()
 
     ImGui::Begin("Texture View");
     TextureModal((ImTextureID)selectedTexture);
-
+    static float waveSpeed = 2.0f;
+    static float waveAmplitude = 0.5f;
     auto selectedEntities = scene->getSelectedEntities();
     for (auto& entity : selectedEntities) {
         ImVec2 wsize = ImGui::GetWindowSize();
@@ -163,38 +164,105 @@ void ImGuiRightSidebarWidget::textureInspector()
         wsize.y = wsize.x;
         if (scene->getSelectedMeshID() != 0) {
             const Mesh* mesh = meshManager->getMesh(scene->getSelectedMeshID());
-            MaterialDesc meshDesc = materialManager->getMaterial(mesh->materialID);
+            MaterialDesc materialDesc = materialManager->getMaterial(mesh->materialID);
 
             std::vector<uint32_t> ids = {
-                meshDesc.albedoIDs[0],
-                meshDesc.normalIDs[0],
-                meshDesc.metallicIDs[0],
-                meshDesc.roughnessIDs[0],
-                meshDesc.aoIDs[0],
-                meshDesc.emissiveIDs[0],
+                materialDesc.albedoIDs[0],
+                materialDesc.normalIDs[0],
+                materialDesc.metallicIDs[0],
+                materialDesc.roughnessIDs[0],
+                materialDesc.aoIDs[0],
+                materialDesc.emissiveIDs[0],
             };
 
+            bool changed = false;
+            if (ImGui::CollapsingHeader("Material Parameters", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f); 
+
+                changed |= ImGui::SliderFloat2("UV offset", &materialDesc.uv[0], 0.00f, 10.0f);
+                changed |= ImGui::ColorEdit4("Albedo Tint", &materialDesc.albedo[0]);
+                // changed |= ImGui::SliderFloat4("Normal", &materialDesc.normal[0], -10.0f, 10.0f);
+                changed |= ImGui::SliderFloat("Metallic", &materialDesc.metallic, 0.0f, 1.0f);
+                changed |= ImGui::SliderFloat("Roughness", &materialDesc.roughness, 0.0f, 1.0f);
+                changed |= ImGui::SliderFloat("AO", &materialDesc.ao, 0.0f, 1.0f);
+                changed |= ImGui::DragFloat("Emissive", &materialDesc.emissive, 0.1f, 0.0f, 10.0f);
+
+                changed |= ImGui::SliderFloat("Wave Speed", &waveSpeed, 0.0f, 10.0f);
+                changed |= ImGui::SliderFloat("Wave Amplitude", &waveAmplitude, 0.0f, 2.0f);
+                // Display the resulting vector (Read-only)
+                ImGui::Text("Active Normal: %.2f, %.2f, %.2f", materialDesc.normal.x, materialDesc.normal.y, materialDesc.normal.z);
+                ImGui::PopItemWidth();
+            }
+
+            ImGui::Separator();
+            int i = 0;
             for (auto& id : ids) {
                 Texture* texture = textureManager->getTexture(id);
+                const char* mapNames[] = { "Albedo", "Normal", "Metallic", "Roughness", "AO", "Emissive" };
                 ImGui::PushID(texture->path().c_str());
-                ImGui::Separator();
-                ImGui::Image(
-                    (ImTextureID)textureManager->inspectTexture(id), 
-                    wsize, 
-                    ImVec2(0, 1), 
-                    ImVec2(1, 0)
-                );
-                ImGui::PopID();
+                ImGui::BeginGroup();
+                std::string btnId = "thumb_" + std::to_string(i);
+                float thumbSize = ImGui::GetFrameHeight() * 2.0f;
                 
-                if (ImGui::IsItemClicked()) {
+                if (ImGui::ImageButton(btnId.c_str(), (ImTextureID)textureManager->inspectTexture(ids[i]), ImVec2(thumbSize, thumbSize), ImVec2(0, 1), ImVec2(1, 0))) {
                     selectedTexture = id;
                     ImGui::OpenPopup("Image View");
                     popupOpen = true;
                 }
+                ImGui::EndGroup();
 
                 ImGui::SameLine();
-                ImGui::TextWrapped(texture->path().c_str());
+
+                ImGui::BeginGroup();
+                ImGui::TextDisabled("%s Map", mapNames[i]);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.8f, 1.0f, 1.0f));
+
+                if (ImGui::Selectable(texture->path().c_str(), false, 0, ImVec2(0, 0))) {
+                }
+
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Click change texture source");
+                }
+
+                ImGui::PopStyleColor();
+                ImGui::EndGroup();
+                ImGui::PopID();
+                
+                if (ImGui::IsItemClicked()) {
+                    // selectedTexture = id;
+                    // ImGui::OpenPopup("Image View");
+                    // popupOpen = true;
+                    
+                    std::string path = Utils::fileDialog();
+                    if(!path.empty()) {
+                        switch (i) {    // assume that there are 6 materials in pbr pipelines
+                            case 0: materialDesc.albedoIDs[0] = textureManager->loadTexture(path, 1, false); break;
+                            case 1: materialDesc.normalIDs[0] = textureManager->loadTexture(path, 1, true); break;
+                            case 2: materialDesc.metallicIDs[0] = textureManager->loadTexture(path, 1, true); break;
+                            case 3: materialDesc.roughnessIDs[0] = textureManager->loadTexture(path, 1, true); break;
+                            case 4: materialDesc.aoIDs[0] = textureManager->loadTexture(path, 1, true); break;
+                            case 5: materialDesc.emissiveIDs[0] = textureManager->loadTexture(path, 1, false); break;
+                            default: break;
+                        }
+                        
+                        changed |= true;
+                    }
+                }
+                i++;
             }
+            
+            // if(changed) {
+            //     m_meshesToUpdate.push_back(std::make_pair(mesh, materialDesc));
+            // }
+
+            float time = static_cast<float>(AppWindow::getTime());
+            materialDesc.uv = glm::vec2(time, time);
+
+            materialDesc.normal.x = std::sin(time * waveSpeed) * waveAmplitude;
+            materialDesc.normal.y = std::cos(time * waveSpeed) * waveAmplitude;
+            materialDesc.normal.z = 1.0f;
+
+            m_meshesToUpdate.push_back(std::make_pair(mesh, materialDesc));
         }
     }
     ImGui::End();
@@ -215,6 +283,14 @@ void ImGuiRightSidebarWidget::render()
         environmentControl();
         ImGui::EndGroup();
     }
+}
+
+void ImGuiRightSidebarWidget::update()
+{
+    for(auto& [mesh, material] : m_meshesToUpdate) {
+        materialManager->updateMaterial(mesh->materialID, material);
+    }
+    m_meshesToUpdate.clear();
 }
 
 void ImGuiRightSidebarWidget::_listTextureManager()
@@ -276,8 +352,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
         EventManager& eventManager = EventManager::getInstance();
         if (ImGui::Selectable("Model")) { 
             
-            // std::string path;
-            // path = Utils::fileDialog();
+            // std::string path = Utils::fileDialog();
             // if (!path.empty()) {
                 auto function = [&](AsyncEvent& event) mutable {
                     modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
