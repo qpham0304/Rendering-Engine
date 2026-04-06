@@ -259,7 +259,9 @@ void Camera::reCalculateView()
 
 void Camera::reCalculateProjection()
 {
-	projection = glm::perspective(glm::radians(fov), (float)width / height, nearPlane, farPlane);
+	if(height > 0) {
+		projection = glm::perspective(glm::radians(fov), (float)width / height, nearPlane, farPlane);
+	}
 	inProjection = glm::inverse(projection);
 }
 

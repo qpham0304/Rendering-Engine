@@ -95,20 +95,19 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
 	Timer timer("CPU render submission time", true);
 
     TextureVulkan* texture = rendererManagerVulkan->getDisplayImage();
-    if (!texture) {
+    if (!showGui && !texture) {
         beginRecording(commandBuffer, renderDeviceVulkan->swapchain.renderPass, 
                        renderDeviceVulkan->swapchain.currentFrameBuffer());
         endRecording(commandBuffer);
         return; 
     }
 
-    if (texture->textureImageView != lastView) {
+    if (texture && texture->textureImageView != lastView) {
 		renderDeviceVulkan->waitIdle(); 
     
 		for (uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
 			_updateDescriptorSets(i);
 		}
-		// _updateDescriptorSets(renderDeviceVulkan->getCurrentFrameIndex());
         lastView = texture->textureImageView;
     }
 

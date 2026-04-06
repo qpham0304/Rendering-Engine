@@ -50,6 +50,7 @@ bool ShadowMapRendererVulkan::init(WindowConfig config)
 
 	pushconstant.radius = 64;  	// range 1 to 64
     pushconstant.sigma = 15;  	// range 1.0 to 30.0
+	lightDir = glm::normalize(glm::vec3(1.0f));
 
 	return true;
 }
@@ -76,17 +77,26 @@ void ShadowMapRendererVulkan::render(Camera& camera)
 
 	glm::mat4 lightProjection;
 
-	if(!useOrtho) {
-		lightPos = glm::vec3(5.0f);
-		lightDir = glm::normalize(glm::vec3(1.0f));
-		glm::vec3 orientation = glm::vec3(-5.0f);
-		lightView = glm::lookAt(lightPos, lightPos + orientation, glm::vec3(0.0f, 1.0f, 0.0f));
-		lightProjection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 25.0f);
-	} else {
-		lightDir = glm::normalize(glm::vec3(1.0f));
-		lightPos = lightDir * 100.0f;
-		lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		s = 5.0f;
+	if(useOrtho) {
+		// lightPos = lightDir * 100.0f;
+		// lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		// s = 15.0f;
+		// zNear = 0.01f;
+		// zFar = 105.0f;
+		// lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
+
+		glm::vec3 baseDir = lightDir; 
+		glm::mat4 rotAzimuth = glm::rotate(glm::mat4(1.0f), sunAzimuth, glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::vec3 rightVector = glm::normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), baseDir));
+		glm::mat4 rotElevation = glm::rotate(glm::mat4(1.0f), sunElevation, rightVector);
+
+		glm::vec3 rotatedDir = glm::vec3(rotAzimuth * rotElevation * glm::vec4(baseDir, 0.0f));
+		lightPos = rotatedDir * 100.0f;
+		
+		glm::vec3 up = (glm::abs(glm::normalize(lightPos).y) > 0.99f) ? glm::vec3(0, 0, 1) : glm::vec3(0, 1, 0);
+		lightView = glm::lookAt(lightPos, glm::vec3(0.0f), up);
+		
+		s = 25.0f; 
 		zNear = 0.01f;
 		zFar = 105.0f;
 		lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
@@ -103,6 +113,13 @@ void ShadowMapRendererVulkan::render(Camera& camera)
 		// lightPos = followTarget + (lightDir * 100.0f);
 		// lightView = glm::lookAt(lightPos, followTarget, glm::vec3(0.0f, 1.0f, 0.0f));
 		// glm::mat4 lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
+	} else {
+		lightPos = glm::vec3(5.0f);
+		glm::vec3 orientation = glm::vec3(-5.0f);
+		lightView = glm::lookAt(lightPos, lightPos + orientation, glm::vec3(0.0f, 1.0f, 0.0f));
+		if(height > 0){
+			lightProjection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 25.0f);
+		}
 	}
 
 	lightProjection[1][1] *= -1;

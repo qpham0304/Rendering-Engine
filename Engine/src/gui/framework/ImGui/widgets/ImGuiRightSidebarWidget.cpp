@@ -251,18 +251,18 @@ void ImGuiRightSidebarWidget::textureInspector()
                 i++;
             }
             
-            // if(changed) {
-            //     m_meshesToUpdate.push_back(std::make_pair(mesh, materialDesc));
-            // }
+            if(changed) {
+                m_meshesToUpdate.push_back(std::make_pair(mesh, materialDesc));
+            }
 
-            float time = static_cast<float>(AppWindow::getTime());
-            materialDesc.uv = glm::vec2(time, time);
+            // float time = static_cast<float>(AppWindow::getTime());
+            // materialDesc.uv = glm::vec2(time, time);
 
-            materialDesc.normal.x = std::sin(time * waveSpeed) * waveAmplitude;
-            materialDesc.normal.y = std::cos(time * waveSpeed) * waveAmplitude;
-            materialDesc.normal.z = 1.0f;
+            // materialDesc.normal.x = std::sin(time * waveSpeed) * waveAmplitude;
+            // materialDesc.normal.y = std::cos(time * waveSpeed) * waveAmplitude;
+            // materialDesc.normal.z = 1.0f;
 
-            m_meshesToUpdate.push_back(std::make_pair(mesh, materialDesc));
+            // m_meshesToUpdate.push_back(std::make_pair(mesh, materialDesc));
         }
     }
     ImGui::End();
@@ -388,36 +388,44 @@ void ImGuiRightSidebarWidget::_componentsControl()
                 }
             */
 
-            auto loadMeshData = [] (Entity& entity, Mesh& mesh, TextureManager* textureManager, MaterialManager* materialManager, MeshManager* meshManager){
+            auto loadModelData = [] (
+                Entity& entity,
+                Mesh& mesh,
+                TextureManager* textureManager,
+                MaterialManager* materialManager,
+                MeshManager* meshManager,
+                ModelManager* modelManager
+            ){
                 MaterialDesc materialDesc;
                 materialDesc.albedoIDs.push_back(
                     textureManager->loadTexture(
-                    "assets/textures/mobi-padoru.png", 
-                    // "assets/textures/photo_studio_loft_hall_2k.hdr", 
+                    "assets/textures/mobi-padoru.png",
                     1, 
                     false
                 ));
                 mesh.materialID = materialManager->createMaterial(materialDesc);
-                
-                MeshComponent m{};
-                m.meshIDs.push_back(meshManager->loadMesh(mesh));
-                entity.addComponent<MeshComponent>(m);
+
+                Model model {};
+                model.meshIDs.push_back(meshManager->loadMesh(mesh));
+                ModelComponent modelComponent;
+                modelComponent.modelID = modelManager->addModel(model);
+                entity.addComponent<ModelComponent>(modelComponent);
             };
 
             if (ImGui::Selectable("Quad")) {
                 AsyncEvent asyncEvent;
                 eventManager.queue(asyncEvent, [&] (AsyncEvent event) {
                     Mesh mesh = EngineUtils::drawQuad();  
-                    loadMeshData(entity, mesh, textureManager, materialManager, meshManager);
+                    loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager);
                 });
             }
             if (ImGui::Selectable("Cube")) {
                 Mesh mesh = EngineUtils::drawCube(2.0f);
-                loadMeshData(entity, mesh, textureManager, materialManager, meshManager);
+                loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager);
             }
             if (ImGui::Selectable("Sphere")) { 
                 Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
-                loadMeshData(entity, mesh, textureManager, materialManager, meshManager);
+                loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager);
             }
             
             ImGui::EndMenu();

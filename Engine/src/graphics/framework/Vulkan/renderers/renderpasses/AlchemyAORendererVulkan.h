@@ -1,8 +1,8 @@
 #pragma once
 
-#include "graphics/framework/vulkan/renderers/RendererVulkan.h"
+#include "PostProcessRendererVulkan.h"
 
-class AlchemyAORendererVulkan : public RendererVulkan
+class AlchemyAORendererVulkan : public PostProcessRendererVulkan
 {
 public:
 	struct PushConstantInfo {
@@ -32,7 +32,10 @@ public:
 	void writeAO(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeBlur(VkCommandBuffer cmd, uint32_t currentFrame);
 
-public:	//TODO: make this private after test done
+	//TODO: make this private after test done or use a function instead
+	BlurPushConstantInfo blurrPushConstant;
+
+protected:	
 	void _createOcclusionMap();
 	void _createPipelines();
 	void _createDescriptors();
@@ -60,5 +63,5 @@ public:	//TODO: make this private after test done
 	uint32_t blurDescSetMtoT_ID;
 	uint32_t blurDescSetTtoM_ID;
 	std::unique_ptr<VulkanPipeline> blurPipeline;
-	BlurPushConstantInfo blurrPushConstant;
+	// BlurPushConstantInfo blurrPushConstant;
 };

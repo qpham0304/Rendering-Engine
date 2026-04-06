@@ -18,13 +18,13 @@ public:
 
 	struct MaterialUniform {
 		uint32_t materialIdx = 0;
-		alignas(8) glm::vec2 uv = glm::vec2(0.0f);
+		alignas(8) 	glm::vec2 uv = glm::vec2(0.0f);     // not the actual uv, just the offset
 		alignas(16) glm::vec4 albedo = glm::vec4(1.0f);
 		alignas(16) glm::vec4 normal = glm::vec4(0.0f);
-		alignas(4) float metallic  = 1.0f;
-		alignas(4) float roughness = 1.0f;
-		alignas(4) float ao        = 1.0f;
-		alignas(4) float emissive  = 1.0f;
+		alignas(4) 	float metallic  = 1.0f;
+		alignas(4) 	float roughness = 1.0f;
+		alignas(4) 	float ao        = 1.0f;
+		alignas(4) 	float emissive  = 1.0f;
 	};
 	
     struct MaterialVulkan {

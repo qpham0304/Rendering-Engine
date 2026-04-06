@@ -108,6 +108,12 @@ uint32_t ModelManager::loadModel(std::string_view path)
     return _assignID();
 }
 
+uint32_t ModelManager::addModel(Model& model)
+{
+    m_models[m_ids] = std::make_shared<Model>(std::move(model));
+    return _assignID();
+}
+
 Model* ModelManager::getModel(uint32_t id) const
 {
     if (m_models.find(id) == m_models.end()) {

@@ -12,7 +12,7 @@
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 
 AlchemyAORendererVulkan::AlchemyAORendererVulkan(std::string serviceName)
-	:	RendererVulkan(serviceName)
+	:	PostProcessRendererVulkan(serviceName)
 {
 
 }
@@ -24,7 +24,7 @@ AlchemyAORendererVulkan::~AlchemyAORendererVulkan()
 
 bool AlchemyAORendererVulkan::init(WindowConfig config) 
 {
-    RendererVulkan::init(config);
+    PostProcessRendererVulkan::init(config);
     
     RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
@@ -38,7 +38,6 @@ bool AlchemyAORendererVulkan::init(WindowConfig config)
     _createOcclusionMap();
     _createDescriptors();
 	_createPipelines();
-
     
     pushConstant.radius = 1.0;
     pushConstant.bias = 0.001;
@@ -51,7 +50,7 @@ bool AlchemyAORendererVulkan::init(WindowConfig config)
 }
 bool AlchemyAORendererVulkan::onClose() 
 {
-    RendererVulkan::onClose();
+    PostProcessRendererVulkan::onClose();
 
     _cleanupResources();
 
@@ -59,11 +58,18 @@ bool AlchemyAORendererVulkan::onClose()
 }
 void AlchemyAORendererVulkan::onUpdate() 
 {
+    PostProcessRendererVulkan::onUpdate();
 
 }
 
 void AlchemyAORendererVulkan::render(Camera& camera) 
 {
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
 	RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
@@ -89,36 +95,17 @@ void AlchemyAORendererVulkan::render(Camera& camera)
 void AlchemyAORendererVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     TextureManagerVulkan::transitionImageLayout(
-        cmd,
-        aoMap->textureImage,
-        VK_FORMAT_R16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_GENERAL, 
-        1,
-        1,
-        renderDeviceVulkan
-    );
-    TextureManagerVulkan::transitionImageLayout(
-        cmd,
-        positionImage->textureImage,
-        VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_IMAGE_LAYOUT_GENERAL,
-        1,
-        1,
-        renderDeviceVulkan
-    );
+        cmd, aoMap->textureImage, VK_FORMAT_R16_SFLOAT, 
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,  1, 1, renderDeviceVulkan);
     
     TextureManagerVulkan::transitionImageLayout(
-        cmd,
-        normalImage->textureImage,
-        VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_IMAGE_LAYOUT_GENERAL,
-        1,
-        1,
-        renderDeviceVulkan
-    );
+        cmd, positionImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
+    
+    TextureManagerVulkan::transitionImageLayout(
+        cmd, normalImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
+
     _updateDescriptorSetsAO(currentFrame);
     
     VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
@@ -138,46 +125,29 @@ void AlchemyAORendererVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFrame
         cmd, 
         VK_PIPELINE_BIND_POINT_COMPUTE, 
         occlusionPipeline->pipelineLayout, 
-        0, 1, 
+        0, 
+        1, 
         &sets[currentFrame], 
         0, nullptr
     );
 
-    uint32_t groupX = (swapchain.swapChainExtent.width + 15) / 16;
-    uint32_t groupY = (swapchain.swapChainExtent.height + 15) / 16;
+	RendererVulkan* renderer = nullptr;
+    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
+	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+    uint32_t groupX = (deferredRendererVulkan->renderTarget.width + 15) / 16;
+    uint32_t groupY = (deferredRendererVulkan->renderTarget.height + 15) / 16;
 	vkCmdDispatch(cmd, groupX, groupY, 1);
 
     TextureManagerVulkan::transitionImageLayout(
-        cmd,
-        positionImage->textureImage,
-        VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        1,
-        1,
-        renderDeviceVulkan
-    );
+        cmd, positionImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
     
     TextureManagerVulkan::transitionImageLayout(
-        cmd,
-        normalImage->textureImage,
-        VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        1,
-        1,
-        renderDeviceVulkan
-    );
+        cmd, normalImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT, 
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 
-    TextureManagerVulkan::transitionImageLayout(
-        cmd,
-        aoMap->textureImage,
-        VK_FORMAT_R16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        1,
-        1,
-        renderDeviceVulkan
+    TextureManagerVulkan::transitionImageLayout(cmd, aoMap->textureImage, VK_FORMAT_R16_SFLOAT,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
     );
 }
 
@@ -287,6 +257,7 @@ void AlchemyAORendererVulkan::_createOcclusionMap()
  
     createTexture(aoMapID, aoMap);
     createTexture(aoMapTempID, aoMapTemp);
+    outputImage = aoMap;
 }
 
 void AlchemyAORendererVulkan::_createDescriptors()
@@ -310,7 +281,7 @@ void AlchemyAORendererVulkan::_createDescriptors()
     }
 
 
-blurDescriptorLayoutID = descriptorManagerVulkan->createLayout({
+    blurDescriptorLayoutID = descriptorManagerVulkan->createLayout({
         { 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }, // Input
         { 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }, // Depth (for bilateral)
         { 2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }  // Output
@@ -402,11 +373,18 @@ void AlchemyAORendererVulkan::_updateDescriptorSetsBlur(uint32_t index)
 
 void AlchemyAORendererVulkan::_recreateResources()
 {
-    
+	renderDeviceVulkan->waitIdle();
+    _cleanupResources();
+    _createOcclusionMap();
+    _createDescriptors();
+	_createPipelines();
 }
 
 void AlchemyAORendererVulkan::_cleanupResources()
 {
+    textureManagerVulkan->destroy(aoMap->id());
+    textureManagerVulkan->destroy(aoMapTemp->id());
     occlusionPipeline->destroy();
     blurPipeline->destroy();
+
 }

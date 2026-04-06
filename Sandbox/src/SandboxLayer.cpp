@@ -4,6 +4,7 @@
 #include "window/AppWindow.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
+#include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/TextureManager.h"
 #include "core/features/ServiceLocator.h"
 #include "core/features/Mesh.h"
@@ -21,6 +22,7 @@ bool SandBoxLayer::init()
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
+    modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
 
     // camera = std::make_unique<Camera>();
     // camera->init(
@@ -41,7 +43,7 @@ bool SandBoxLayer::init()
     setLogScopeEngine();
     scene->loadScene("assets/data/Level1-test.json");
 
-    const int numLights = 0;
+    const int numLights = 1;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(-numLights, numLights);
@@ -70,9 +72,15 @@ bool SandBoxLayer::init()
         Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
         mesh.materialID = materialManager->createMaterial(materialDesc);
 
-        MeshComponent m{};
-        m.meshIDs.push_back(meshManager->loadMesh(mesh));
-        lightEntity.addComponent<MeshComponent>(m);
+        // MeshComponent m{};
+        // m.meshIDs.push_back(meshManager->loadMesh(mesh));
+        // lightEntity.addComponent<MeshComponent>(m);
+
+        Model model {};
+        model.meshIDs.push_back(meshManager->loadMesh(mesh));
+        ModelComponent modelComponent;
+        modelComponent.modelID = modelManager->addModel(model);
+        lightEntity.addComponent<ModelComponent>(modelComponent);
 
         glm::vec4 randomColor(colorDist(gen), colorDist(gen), colorDist(gen), 1.0f);
 

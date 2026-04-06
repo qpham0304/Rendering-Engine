@@ -13,6 +13,8 @@ int main()
         windowConfig.width = 1920;
         windowConfig.height = 1080;
         windowConfig.vsync = false;
+        windowConfig.targetRenderFPS = 360.0f;
+        windowConfig.targetUpdateFPS = 360.0f;
 
         Engine app(windowConfig);
         app.init();

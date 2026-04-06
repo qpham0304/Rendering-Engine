@@ -20,7 +20,7 @@
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
-#include "graphics/framework/vulkan/renderers/renderpiplines/AlchemyAORendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
 
 DeferredRendererVulkan::DeferredRendererVulkan() 
 	: RendererVulkan("DeferredRendererVulkan")
@@ -37,19 +37,19 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 {
 	RendererVulkan::init(config);
 
-	shadowMapRenderer.init(config);
-	imageBasedRenderer.init(config);
 	_createRenderPasses();
 	_createFrameBuffers();
 
-	
 	RendererVulkan* renderer = nullptr;
-	// renderer = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
-	// shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(renderer);
-	// renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
-	// imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
+	shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
+	imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("AlchemyAORendererVulkan");
 	alchemyAORendererVulkan = dynamic_cast<AlchemyAORendererVulkan*>(renderer);
+
+	assert(shadowMapRenderer && imageBasedRenderer && alchemyAORendererVulkan && "failed to retrieve renderer");
+
 	alchemyAORendererVulkan->init(config);
 
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
@@ -70,6 +70,8 @@ bool DeferredRendererVulkan::init(WindowConfig config)
     pushConstantLight.linstepHigh = 1.0f;
     pushConstantLight.litBias = 0.0005f;
 	pushConstantLight.aoOn = 1;
+	pushConstantLight.G = 0.7f;
+	pushConstantLight.scatteringScale = 0.2f;
 
 	_createDescriptor();
 	_createPipelines();
@@ -86,15 +88,12 @@ bool DeferredRendererVulkan::onClose()
 	renderDeviceVulkan->waitIdle();
 	_cleanupResources();
 	
-	shadowMapRenderer.onClose();
-	imageBasedRenderer.onClose();
-
 	return true;
 }
 
 void DeferredRendererVulkan::onUpdate()
 {
-	shadowMapRenderer.onUpdate();
+	
 }
 
 void DeferredRendererVulkan::render(Camera& camera)
@@ -141,8 +140,8 @@ void DeferredRendererVulkan::render(Camera& camera)
 	ubo.height = renderTarget.height;
 	
 	pushConstantLight.color = sunColor * sunIntensity;
-	pushConstantLight.direction = glm::vec4(shadowMapRenderer.lightDir, 0.0f);
-	pushConstantLight.sunlightMVP = shadowMapRenderer.lightSpaceMatrix;
+	pushConstantLight.direction = glm::vec4(shadowMapRenderer->lightDir, 0.0f);
+	pushConstantLight.sunlightMVP = shadowMapRenderer->lightSpaceMatrix;
     pushConstantLight.time = AppWindow::getTime();
 	pushConstantLight.numLights = lights.size();
 	
@@ -156,10 +155,10 @@ void DeferredRendererVulkan::render(Camera& camera)
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 	
-	shadowMapRenderer.render(camera);
-	imageBasedRenderer.onUpdate();
-	imageBasedRenderer.computeSH(cmdBuffer, currentFrame);
-	imageBasedRenderer.computePrefilter(cmdBuffer, currentFrame);
+	shadowMapRenderer->render(camera);
+	imageBasedRenderer->onUpdate();
+	imageBasedRenderer->computeSH(cmdBuffer, currentFrame);
+	imageBasedRenderer->computePrefilter(cmdBuffer, currentFrame);
 	
 	// recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 	recordDrawCommand(cmdBuffer, currentFrame);
@@ -182,11 +181,17 @@ void DeferredRendererVulkan::renderGui()
 		std::string path;
 		path = Utils::fileDialog();
 		if(!path.empty()) {
-			imageBasedRenderer.loadTexture(path);
+			imageBasedRenderer->loadTexture(path);
 		}
 	}
 	ImGui::SliderFloat("skybox detail", &pushConstantLight.skyboxDetail, 0.0f, 1.0f);
-	ImGui::Checkbox("Light Perspective", &shadowMapRenderer.useOrtho);
+	ImGui::SliderFloat3("Base Light Dir", &shadowMapRenderer->lightDir[0], -1.0f, 1.0f);
+	ImGui::SliderFloat("Sun Azimuth", &shadowMapRenderer->sunAzimuth, 0.0f, 6.28f);
+	ImGui::SliderFloat("Sun Elevation", &shadowMapRenderer->sunElevation, -1.5f, 1.5f);
+	ImGui::DragFloat("G phase function", &pushConstantLight.G, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat("scattering Scale", &pushConstantLight.scatteringScale, 0.01f, 0.0f, 5.0f);
+	
+	ImGui::Checkbox("Light Ortho", &shadowMapRenderer->useOrtho);
 	ImGui::SameLine();
 	bool aoChecked = (pushConstantLight.aoOn != 0);
 	if (ImGui::Checkbox("aoOn", &aoChecked)) {
@@ -203,8 +208,8 @@ void DeferredRendererVulkan::renderGui()
 	ImGui::SliderFloat("Lit Bias", &pushConstantLight.litBias, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags_Logarithmic);
 	uint32_t min_r = 1;
 	uint32_t max_r = 64;
-	ImGui::SliderScalar("radius", ImGuiDataType_U32, &shadowMapRenderer.pushconstant.radius, &min_r, &max_r);
-	ImGui::SliderFloat("sigma", &shadowMapRenderer.pushconstant.sigma, 1.0f, 30.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+	ImGui::SliderScalar("radius", ImGuiDataType_U32, &shadowMapRenderer->pushconstant.radius, &min_r, &max_r);
+	ImGui::SliderFloat("sigma", &shadowMapRenderer->pushconstant.sigma, 1.0f, 30.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
 
 
 	int i = 0;
@@ -212,7 +217,8 @@ void DeferredRendererVulkan::renderGui()
 		TransformComponent& transform = entity.getComponent<TransformComponent>();
 		LightComponent& light = entity.getComponent<LightComponent>();
 
-		if (ImGui::CollapsingHeader(entity.getComponent<NameComponent>().name.c_str())) {
+		std::string name = entity.getComponent<NameComponent>().name + std::to_string(i);
+		if (ImGui::CollapsingHeader(name.c_str())) {
 			ImGui::SliderFloat4("Position", &transform.translateVec[0], -50.0, 50.0);
 			ImGui::ColorEdit4("Color", &light.color[0]);
 		}
@@ -227,23 +233,14 @@ void DeferredRendererVulkan::renderGui()
 	ImGui::Begin("G-Buffer Debug");
 	
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.colorTextures[currentFrame]->id()), ImVec2(256, 256));
-	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferPos[currentFrame]->id()), ImVec2(256, 256));
-	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferNorm[currentFrame]->id()), ImVec2(256, 256));
-	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferAlbedo[currentFrame]->id()), ImVec2(256, 256));
-	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gPBR[currentFrame]->id()), ImVec2(256, 256));
-	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.depthTextures[currentFrame]->id()), ImVec2(256, 256));
-
-
-	// ImGui::Text("DEPTH MAP", names[i]);
-	ImGui::Image(reinterpret_cast<ImTextureID>(textureManagerVulkan->inspectTexture(shadowMapRenderer.depthID)), ImVec2(256, 256));
-	
-	// void* irradianceImage = textureManagerVulkan->inspectTexture(imageBasedRenderer.hdrImageID);
-	// ImGui::Image(reinterpret_cast<ImTextureID>(irradianceImage), ImVec2(256, 256));
-
-	//ImGui::SliderFloat4("Sunlight Direction", &pushConstantLight.direction[0], -1.0f, 1.0f);
-	//ImGui::SliderFloat4("Sunlight Color", &pushConstantLight.color[0], 0.0f, 1.0f);
-
+	ImVec2 size(256, 144);
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.colorTextures[currentFrame]->id()), ImVec2(256, 144));
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferPos[currentFrame]->id()), ImVec2(256, 144));
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferNorm[currentFrame]->id()), ImVec2(256, 144));
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferAlbedo[currentFrame]->id()), ImVec2(256, 144));
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gPBR[currentFrame]->id()), ImVec2(256, 144));
+	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.depthTextures[currentFrame]->id()), ImVec2(256, 144));
+	ImGui::Image(reinterpret_cast<ImTextureID>(textureManagerVulkan->inspectTexture(shadowMapRenderer->depthID)), ImVec2(256, 144));
 
 	ImGui::End();
 }
@@ -936,40 +933,40 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		// imageInfo.imageView = shadowMapRenderer.depthMap->textureImageView;
-		// imageInfo.sampler = shadowMapRenderer.depthMap->textureSampler;
-		imageInfo.imageView = shadowMapRenderer.momentImage->textureImageView;
-		imageInfo.sampler = shadowMapRenderer.momentImage->textureSampler;
+		// imageInfo.imageView = shadowMapRenderer->depthMap->textureImageView;
+		// imageInfo.sampler = shadowMapRenderer->depthMap->textureSampler;
+		imageInfo.imageView = shadowMapRenderer->momentImage->textureImageView;
+		imageInfo.sampler = shadowMapRenderer->momentImage->textureSampler;
 
 		VkDescriptorImageInfo noiseImageInfo{};
 		noiseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		noiseImageInfo.imageView = shadowMapRenderer.blueNoiseImage->textureImageView;
-		noiseImageInfo.sampler = shadowMapRenderer.blueNoiseImage->textureSampler;
+		noiseImageInfo.imageView = shadowMapRenderer->blueNoiseImage->textureImageView;
+		noiseImageInfo.sampler = shadowMapRenderer->blueNoiseImage->textureSampler;
 
 		VkDescriptorBufferInfo bufferInfoSH{};
-		bufferInfoSH.buffer = static_cast<VkBuffer>(*imageBasedRenderer.finalSumBuffers[i]);
+		bufferInfoSH.buffer = static_cast<VkBuffer>(*imageBasedRenderer->finalSumBuffers[i]);
 		bufferInfoSH.offset = 0;
 		bufferInfoSH.range = VK_WHOLE_SIZE;
 
 		VkDescriptorImageInfo brdfLutImageInfo{};
 		brdfLutImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		brdfLutImageInfo.imageView = imageBasedRenderer.brdfLUT->textureImageView;
-		brdfLutImageInfo.sampler = imageBasedRenderer.brdfLUT->textureSampler;
+		brdfLutImageInfo.imageView = imageBasedRenderer->brdfLUT->textureImageView;
+		brdfLutImageInfo.sampler = imageBasedRenderer->brdfLUT->textureSampler;
 
 		VkDescriptorImageInfo prefilterImageInfo{};
 		prefilterImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		prefilterImageInfo.imageView = imageBasedRenderer.prefilterMap->textureImageView;
-		prefilterImageInfo.sampler = imageBasedRenderer.prefilterMap->textureSampler;
+		prefilterImageInfo.imageView = imageBasedRenderer->prefilterMap->textureImageView;
+		prefilterImageInfo.sampler = imageBasedRenderer->prefilterMap->textureSampler;
 
 		VkDescriptorImageInfo hdrImageInfo{};
 		hdrImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		hdrImageInfo.imageView = imageBasedRenderer.hdrImage->textureImageView;
-		hdrImageInfo.sampler = imageBasedRenderer.hdrImage->textureSampler;
+		hdrImageInfo.imageView = imageBasedRenderer->hdrImage->textureImageView;
+		hdrImageInfo.sampler = imageBasedRenderer->hdrImage->textureSampler;
 
 		VkDescriptorImageInfo aoImageInfo{};
 		aoImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		aoImageInfo.imageView = alchemyAORendererVulkan->aoMap->textureImageView;
-		aoImageInfo.sampler = alchemyAORendererVulkan->aoMap->textureSampler;
+		aoImageInfo.imageView = alchemyAORendererVulkan->getOutputImage()->textureImageView;
+		aoImageInfo.sampler = alchemyAORendererVulkan->getOutputImage()->textureSampler;
 	
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);

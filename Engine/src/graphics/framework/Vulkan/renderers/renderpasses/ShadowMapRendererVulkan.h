@@ -45,10 +45,11 @@ public:
 	TextureVulkan* blueNoiseImage;
 	VkRenderPass shadowRenderPass;
 	VkFramebuffer shadowFramebuffer;
-
+	float sunAzimuth = 0.0f;   // Horizontal rotation
+	float sunElevation = 0.5f; // Vertical height
 	//TODO: allow client spcify the shadow map size
-	uint32_t width = 2048;
-	uint32_t height = 2048;
+	uint32_t width = 1024;
+	uint32_t height = 1024;
 
 	glm::mat4 lightSpaceMatrix;
 	glm::vec3 lightPos;

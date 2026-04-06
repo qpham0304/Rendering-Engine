@@ -6,9 +6,9 @@
 #include "graphics/framework/vulkan/renderers/renderpiplines/ApplicationRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpiplines/ShadowMapRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpiplines/ImageBasedRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpiplines/AlchemyAORendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include "RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"

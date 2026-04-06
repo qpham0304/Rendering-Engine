@@ -56,6 +56,8 @@ layout (push_constant) uniform LightData {
     float numLights;
     float skyboxDetail;
     int aoOn;
+    float G;
+    float scatteringScale;
 } pcl;
 
 const float PI = 3.14159265359;
@@ -249,9 +251,11 @@ const mat4 DITHER_PATTERN = mat4(
     vec4(0.9375, 0.4375, 0.8125, 0.3125)
 );
 
-float mieScattering(float cosTheta, float g) {
-    float g2 = g * g;
-    return (1.0 - g2) / (4.0 * PI * pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5));
+// Henyey-Greenstein phase function
+float mieScattering(float cosTheta, float G) {
+	float numerator = (1.0f - G*G);
+	float denominator =  (4.0f * PI * pow(1.0f + G * G - 2.0f * G * cosTheta, 1.5f));
+	return numerator / denominator;
 }
 
 float rand(vec3 p) {
@@ -267,6 +271,34 @@ float simpleNoise(vec3 p) {
                mix(rand(i + vec3(0, 1, 0)), rand(i + vec3(1, 1, 0)), f.x), f.y),
                mix(mix(rand(i + vec3(0, 0, 1)), rand(i + vec3(1, 0, 1)), f.x),
                mix(rand(i + vec3(0, 1, 1)), rand(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+
+float fbm(vec3 p) 
+{
+    vec3 q = p;
+    int numOctaves = 8;
+    float weight = 0.5;
+    float ret = 0.0;
+    
+    for (int i = 0; i < numOctaves; i++)
+    {
+        ret += weight * simpleNoise(q); 
+        q *= 2.0;
+        weight *= 0.5;
+    }
+    return clamp(ret, 0.0, 1.0);
+}
+
+float linearizeDepth(float depth) {
+	float near = 0.1f;
+	float far = 100.0f;
+    float z = depth * 2.0 - 1.0;
+    return (2.0 * near * far) / (far + near - z * (far - near));
+}
+
+float logDepth(float depth, float steepness, float offset) {
+	float zVal = linearizeDepth(depth);
+	return (1 / (1 + exp(-steepness * (zVal - offset))));
 }
 
 
@@ -394,6 +426,15 @@ vec3 GetImportanceSampledSpecular(vec3 V, vec3 N, float roughness, vec3 F0) {
     return specularLighting / float(SAMPLE_COUNT);
 }
 
+vec3 aces(vec3 x) {
+  const float a = 2.51;
+  const float b = 0.03;
+  const float c = 2.43;
+  const float d = 0.59;
+  const float e = 0.14;
+  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
 void main() {
     vec3 worldPos  = subpassLoad(inputPos).rgb;
     vec3 worldNorm = subpassLoad(inputNorm).rgb;
@@ -502,48 +543,47 @@ void main() {
     vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
     vec3 finalColor = ambient + Lo + sunlight + emissive.rgb;
 
-    vec3 V_dir = normalize(worldPos - ubo.cameraPos.xyz);
-    float maxDist = length(worldPos - ubo.cameraPos.xyz);
-
     // if(pcl.aoOn != 0) {
     //     outColor = outColor = vec4(vec3(ssao * pbr.r), 1.0);
     //     outColor = emissive;
     //     return;
     // }
 
+    // vec3 V_dir = normalize(worldPos - ubo.cameraPos.xyz);
+    vec3 V_ray = normalize(worldPos - ubo.cameraPos.xyz);
+    float maxDist = length(worldPos - ubo.cameraPos.xyz);
+
     const int numSteps = 16;
     float stepSize = maxDist / float(numSteps);
-    
+
     // Dithering to hide banding
-    // gl_FragCoord is better than UV for screen-space dithering
     // float dither = DITHER_PATTERN[int(gl_FragCoord.x) % 4][int(gl_FragCoord.y) % 4];
     vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
     float dither = texture(blueNoise, noiseUV).r;
-    float worldOffset = mod(dot(ubo.cameraPos.xyz, V_dir), stepSize);
-    vec3 rayPos = ubo.cameraPos.xyz + V_dir * (stepSize * dither - worldOffset);
+    vec3 rayPos = ubo.cameraPos.xyz + (V_ray * stepSize * dither);
+    // vec3 rayPos = ubo.cameraPos.xyz;
+    vec3 step = V_ray * stepSize;
+    rayPos += step * dither;
+    vec3 volume = vec3(0.0f);
+	vec4 color = vec4(0.0f);
 
-    vec3 volumetricLight = vec3(0.0);
-    float cosTheta = dot(V_dir, L_sun);
-    float scattering = mieScattering(cosTheta, 0.7); // G value is 0.7
-            
     for(int i = 0; i < numSteps; i++) {
-        // check if this point in the fog is in shadow
-        vec4 shadowCoord = pcl.sunlightMVP * vec4(rayPos, 1.0);
-        vec3 proj = shadowCoord.xyz / shadowCoord.w * 0.5 + 0.5;
-        float depthSample = texture(shadowMap, proj.xy).r;
-        
-        // if the ray point is visible to the sun
-        if(depthSample > proj.z - 0.001) {
-            float density = 1.0;
-            // density = simpleNoise(rayPos * 0.5 + pcl.time * 0.1); // density noise expensive, maybe use a 3D texture later
-            volumetricLight += pcl.color.rgb * scattering * density * stepSize;
-            
+        vec4 fragPosLight = pcl.sunlightMVP * vec4(rayPos, 1.0);
+        vec3 projCoords = fragPosLight.xyz / fragPosLight.w;
+        projCoords.xy = projCoords.xy * 0.5 + 0.5;
+
+        float shadowDepth = texture(shadowMap, projCoords.xy).r;
+
+        // Vulkan comparison: is the air-point closer to sun than the shadow-map?
+        if(shadowDepth > projCoords.z - 0.0005) {
+            float phase = mieScattering(dot(V_ray, L_sun), pcl.G); 
+            volume += pcl.color.rgb * phase;
         }
-        rayPos += V_dir * stepSize;
+        rayPos += step;
     }
-    
-    volumetricLight *= 0.2;
-    finalColor += volumetricLight;
+
+    vec3 finalVolume = (volume / float(numSteps)) * pcl.scatteringScale;
+    finalColor += finalVolume;
     
     finalColor = finalColor / (finalColor + vec3(1.0));         //HDR tone mapping
     outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);  //Gamma correction

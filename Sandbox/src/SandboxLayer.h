@@ -4,6 +4,7 @@
 
 class Camera;
 class MeshManager;
+class ModelManager;
 class MaterialManager;
 class TextureManager;
 
@@ -24,6 +25,7 @@ private:
 	std::unique_ptr<Camera> camera;
 
 	MeshManager* meshManager{ nullptr };
+	ModelManager* modelManager{ nullptr };
 	MaterialManager* materialManager{ nullptr };
 	TextureManager* textureManager{ nullptr };
 	
