@@ -1,5 +1,4 @@
 /*
-*/
 #version 450
 layout (local_size_x = 16, local_size_y = 16) in;
 
@@ -65,8 +64,9 @@ void main() {
     ao = clamp(1.0 - (ao * n.intensity / float(samples)), 0.0, 1.0);
     imageStore(outputRawAO, uv, vec4(ao));
 }
+*/
 
-/*
+// /*
 #version 450
 layout (local_size_x = 16, local_size_y = 16) in;
 
@@ -76,10 +76,10 @@ layout (binding = 2, rgba16f) uniform readonly image2D inputNorm;
 
 layout (push_constant) uniform Params {
     mat4 view;
-    float radius;    // World space radius (e.g., 0.5)
+    float radius;    // World space radius
     float bias;      // Small value like 0.01
     float intensity; // 1.0 to 2.0
-    float projScale; // camera.getViewHeight() / (2.0 * tan(fov/2))
+    float projScale;
 } n;
 
 void main() {
@@ -90,7 +90,7 @@ void main() {
     vec3 worldP = imageLoad(inputPos, uv).rgb;
     vec3 worldN = imageLoad(inputNorm, uv).rgb;
 
-    // View Space conversion
+    // position is in world space so convert to view space or use depth map construction
     vec3 P = (n.view * vec4(worldP, 1.0)).xyz;
     vec3 N = mat3(n.view) * worldN;
 
@@ -105,9 +105,8 @@ void main() {
     float randomAngle = fract(sin(dot(vec2(uv), vec2(12.9898, 78.233))) * 43758.5453) * 6.283185;
 
     for (int i = 0; i < SAMPLES; i++) {
-        // Spiral Step
-        float alpha = (float(i) + 0.5) / float(SAMPLES);
-        float angle = alpha * (7.0 * 6.283185) + randomAngle; // 7 revolutions
+        float alpha = (float(i) + 0.5) / float(SAMPLES);        // Spiral Step
+        float angle = alpha * (7.0 * 6.283185) + randomAngle;   // 7 revolutions
         
         // Screen-space offset scaled by projection and distance
         // n.projScale / P.z turns world-space radius into screen-space pixels
@@ -120,7 +119,7 @@ void main() {
         vec3 worldQ = imageLoad(inputPos, sampleUV).rgb;
         vec3 Q = (n.view * vec4(worldQ, 1.0)).xyz;
 
-        // --- The Improved Alchemy Estimator ---
+        // better estimator
         vec3 v = Q - P;
         float vv = dot(v, v);
         float vn = dot(v, N);
@@ -131,14 +130,12 @@ void main() {
         sum += (f * f * f) * max(0.0, vn - n.bias) / (vv + epsilon);
     }
 
-    // k = 1.0, sigma = 2.0 (standard for Alchemy)
     float sigma = 2.0;
     float k = 1.0;
     float ao = max(0.0, 1.0 - (2.0 * sigma / float(SAMPLES)) * sum);
     
-    // Apply intensity power
     ao = pow(ao, n.intensity);
 
     imageStore(outputRawAO, uv, vec4(ao));
 }
-*/
+// */

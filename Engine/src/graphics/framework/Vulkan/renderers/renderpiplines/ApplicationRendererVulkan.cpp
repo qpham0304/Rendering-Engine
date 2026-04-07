@@ -42,7 +42,7 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 
 	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
-		if (keyPressedEvent.keyCode == KEY_2) {
+		if (keyPressedEvent.keyCode == KEY_F11) {
 			showGui = !showGui;
 			
 			GuiManager* guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");

@@ -46,13 +46,6 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	
 	assert(shadowMapRenderer && imageBasedRenderer && "failed to retrieve renderer");
 
-	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
-		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
-		if (keyPressedEvent.keyCode == KEY_2) {
-			showGui = !showGui;
-		}
-	});
-
 	pushConstantLight.skyboxDetail = 0.0f;
 	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.bias = 0.001f;

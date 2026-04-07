@@ -47,6 +47,9 @@ public:
 	VkFramebuffer shadowFramebuffer;
 	float sunAzimuth = 0.0f;   // Horizontal rotation
 	float sunElevation = 0.5f; // Vertical height
+	float sunAzimuthDeg = 0.0f;   	// 0 to 360
+	float sunElevationDeg = 45.0f; 	// 0 to 90 (0 is horizon, 90 is overhead)
+
 	//TODO: allow client spcify the shadow map size
 	uint32_t width = 1024;
 	uint32_t height = 1024;

@@ -39,9 +39,9 @@ bool AlchemyAORendererVulkan::init(WindowConfig config)
     _createDescriptors();
 	_createPipelines();
     
-    pushConstant.radius = 1.0;
-    pushConstant.bias = 0.001;
-    pushConstant.intensity = 1.0;
+    pushConstant.radius = 0.75f;
+    pushConstant.bias = 0.01f;
+    pushConstant.intensity = 2.0f;
     
     blurrPushConstant.blurRadius = 4;
     blurrPushConstant.scale = 100.0f;

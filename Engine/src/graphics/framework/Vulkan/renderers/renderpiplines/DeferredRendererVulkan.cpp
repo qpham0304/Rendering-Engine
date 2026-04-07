@@ -187,7 +187,13 @@ void DeferredRendererVulkan::renderGui()
 	ImGui::SliderFloat("skybox detail", &pushConstantLight.skyboxDetail, 0.0f, 1.0f);
 	ImGui::SliderFloat3("Base Light Dir", &shadowMapRenderer->lightDir[0], -1.0f, 1.0f);
 	ImGui::SliderFloat("Sun Azimuth", &shadowMapRenderer->sunAzimuth, 0.0f, 6.28f);
-	ImGui::SliderFloat("Sun Elevation", &shadowMapRenderer->sunElevation, -1.5f, 1.5f);
+	ImGui::SliderFloat("Sun Elevation", &shadowMapRenderer->sunElevation, -3.14f, 3.14f);
+	ImGui::SliderFloat("Sun view Area", &shadowMapRenderer->s, 1.0f, 25.0f);
+	ImGui::SliderFloat("Sun zNear", &shadowMapRenderer->zNear, 0.01f, 15.0f);
+	ImGui::SliderFloat("Sun zFar", &shadowMapRenderer->zFar, 50.0f, 200.0f);
+
+	// ImGui::SliderFloat("Sun Azimuth", &shadowMapRenderer->sunAzimuthDeg, 0.0f, 360.0f);
+	// ImGui::SliderFloat("Sun Elevation", &shadowMapRenderer->sunElevationDeg, 0.0f, 90.0f);
 	ImGui::DragFloat("G phase function", &pushConstantLight.G, 0.01f, 0.0f, 1.0f);
 	ImGui::DragFloat("scattering Scale", &pushConstantLight.scatteringScale, 0.01f, 0.0f, 5.0f);
 	
@@ -933,10 +939,10 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		// imageInfo.imageView = shadowMapRenderer->depthMap->textureImageView;
-		// imageInfo.sampler = shadowMapRenderer->depthMap->textureSampler;
-		imageInfo.imageView = shadowMapRenderer->momentImage->textureImageView;
-		imageInfo.sampler = shadowMapRenderer->momentImage->textureSampler;
+		imageInfo.imageView = shadowMapRenderer->depthMap->textureImageView;
+		imageInfo.sampler = shadowMapRenderer->depthMap->textureSampler;
+		// imageInfo.imageView = shadowMapRenderer->momentImage->textureImageView;
+		// imageInfo.sampler = shadowMapRenderer->momentImage->textureSampler;
 
 		VkDescriptorImageInfo noiseImageInfo{};
 		noiseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

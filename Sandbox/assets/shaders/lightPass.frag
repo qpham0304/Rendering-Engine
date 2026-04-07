@@ -157,90 +157,77 @@ float random(vec3 seed) {
     return fract(sin(dot(seed, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
 }
 
-const vec2 poissonDisk32[16] = vec2[](
-    vec2( -0.94201624, -0.39906216 ), vec2( 0.94558609, -0.76890725 ), 
-    vec2( -0.094184101, -0.92938870 ), vec2( 0.34495938, 0.29387760 ), 
-    vec2( -0.91588581, 0.45771432 ), vec2( -0.81544232, -0.87912464 ), 
-    vec2( -0.38277543, 0.27676845 ), vec2( 0.97484398, 0.75648379 ), 
-    vec2( 0.44323325, -0.97511554 ), vec2( 0.53742981, -0.47373420 ), 
-    vec2( -0.65433973, 0.025204695 ), vec2( -0.43765828, -0.46990421 ), 
-    vec2( 0.35489357, -0.27411318 ), vec2( -0.21171454, -0.11072331 ), 
-    vec2( 0.73039985, -0.23011690 ), vec2( 0.51726257, 0.43840042 )
+const vec2 poissonDisk16[16] = vec2[](
+    vec2(-0.1741, 0.0197), vec2(0.0263, -0.1667),
+    vec2(0.1556, 0.1533), vec2(-0.2520, -0.3392),
+    vec2(0.4209, -0.0654), vec2(-0.1610, 0.4448),
+    vec2(-0.4557, 0.1623), vec2(0.2057, -0.5641),
+    vec2(0.4706, 0.4578), vec2(-0.6861, -0.2227),
+    vec2(0.3204, 0.6955), vec2(0.6874, -0.4045),
+    vec2(-0.3541, -0.7423), vec2(-0.8354, 0.3582),
+    vec2(0.7936, 0.3807), vec2(-0.1172, 0.9525)
 );
+
 
 float calcPCSS(vec3 worldPos) {
     vec3 worldNorm = normalize(subpassLoad(inputNorm).rgb);
     vec3 L = normalize(pcl.direction.xyz);
-    
-    // UVs are nudged to sample clean areas of the shadow map
-    vec3 offsetWorldPos = worldPos + worldNorm * pcl.bias;
-    vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(offsetWorldPos, 1.0);
+    float NdotL = dot(worldNorm, L);
+
+    float biasScale = max(0.05 * (1.0 - NdotL), 0.005); 
+    vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(worldPos + worldNorm * biasScale, 1.0);
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords.xy = projCoords.xy * 0.5 + 0.5;
-    
-    // True depth for contact hardening math
-    vec4 fragPosTrue = pcl.sunlightMVP * vec4(worldPos, 1.0);
-    float currentDepth = fragPosTrue.z / fragPosTrue.w;
 
-    if(projCoords.z > 1.0) {
-        return 0.0;
-    }
+    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
+    float noiseValue = texture(blueNoise, noiseUV).r;
 
+    const float LIGHT_SIZE_UV = 0.005; 
     float avgBlockerDepth = 0.0;
     int blockers = 0;
-    const float LIGHT_SIZE_UV = 0.05; 
-    float searchRegion = LIGHT_SIZE_UV * (currentDepth); 
-
-    float searchBias = max(0.002 * (1.0 - dot(worldNorm, L)), 0.0005);
+    float searchRegion = LIGHT_SIZE_UV * (projCoords.z); 
 
     for(int i = -2; i <= 2; ++i) {
         for(int j = -2; j <= 2; ++j) {
-            vec2 offset = vec2(i, j) * (searchRegion / 5.0);
+            vec2 offset = (vec2(i, j) + (noiseValue - 0.5)) * (searchRegion / 5.0);
             float depth = texture(shadowMap, projCoords.xy + offset).r;
-            
-            if(depth < currentDepth - searchBias) { 
+            float distanceToBlocker = projCoords.z - depth;
+            if(depth < projCoords.z - 0.0005 && distanceToBlocker > 0.001) { 
                 avgBlockerDepth += depth;
                 blockers++;
             }
         }
     }
 
-    float blockerRatio = float(blockers) / 25.0;
-    if(blockerRatio <= 0.0) {
+    if(blockers < 1) {
         return 0.0;
     }
     avgBlockerDepth /= float(blockers);
 
-    // float penumbra = ((currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV) / avgBlockerDepth;
-    float penumbra = (currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV;
-    penumbra = clamp(penumbra, 0.0, 0.02); 
+    // contact hardening penumbra
+    float penumbra = (projCoords.z - avgBlockerDepth) * LIGHT_SIZE_UV / avgBlockerDepth;
+    penumbra = clamp(penumbra, 0.0, 0.01);
 
-    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
-    float noiseValue = texture(blueNoise, noiseUV).r;
-
-    float angle = noiseValue * 6.283185;
-    float s = sin(angle);
-    float c = cos(angle);
-    mat2 rotation = mat2(c, -s, s, c);
+    float texelSize = 1.25 / 1024.0;    // fall back blur for low detail shadow
+    penumbra = max(penumbra, texelSize * 1.25);
 
     float shadow = 0.0;
-    
-    float pcfBias = max(0.001 * (1.0 - dot(worldNorm, L)), 0.0001);
+    float angle = noiseValue * 2 * PI;
+    mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
     for (int i = 0; i < 16; i++) {
-        vec2 offset = (rotation * poissonDisk32[i]) * penumbra;
+        // rotate and jitter the disk to eliminate banding
+        vec2 offset = (rotation * poissonDisk16[i]) * penumbra;
         float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
         
-        if (currentDepth - pcfBias > pcfDepth) {
+        if (projCoords.z - 0.0005 > pcfDepth) {
             shadow += 1.0;
         }
     }
 
-    shadow /= 16.0;
-    float edgeFade = smoothstep(0.0, 0.2, float(blockers) / 25.0);
-    
-    return shadow * edgeFade;
+    return shadow / 16.0;
 }
+
 
 
 
@@ -511,9 +498,9 @@ void main() {
         Lo += contribution;
     }
     
-    // float shadow = calcShadow(worldPos);
-    float shadow = 1.0 - calcMSMShadow(worldPos + N * pcl.bias);
-    // float shadow = 1.0 - calcPCSS(worldPos);
+    // float shadow = 1.0 - calcShadow(worldPos);
+    // float shadow = 1.0 - calcMSMShadow(worldPos + N * pcl.bias);
+    float shadow = 1.0 - calcPCSS(worldPos);
     vec3 L_sun = normalize(pcl.direction.xyz); 
     vec3 sunRadiance = pcl.color.rgb * shadow;
     vec3 sunlight = calcPBR(L_sun, V, N, F0, albedo.rgb, roughness, metallic, sunRadiance);
@@ -545,7 +532,6 @@ void main() {
 
     // if(pcl.aoOn != 0) {
     //     outColor = outColor = vec4(vec3(ssao * pbr.r), 1.0);
-    //     outColor = emissive;
     //     return;
     // }
 

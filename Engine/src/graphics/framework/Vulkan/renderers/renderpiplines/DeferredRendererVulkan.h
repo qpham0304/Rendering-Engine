@@ -69,7 +69,6 @@ public:
 public:	//TODO: make private once done testing	
 	const int numInstances = 1;
 	const int numLights = 1000;
-
 	bool showGui{ true };
 	
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
