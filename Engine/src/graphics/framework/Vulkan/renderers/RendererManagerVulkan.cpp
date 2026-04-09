@@ -9,7 +9,9 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
-#include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
+#include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
+#include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
 #include "RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
 
@@ -34,12 +36,15 @@ bool RendererManagerVulkan::init(WindowConfig config)
     shadowMapRenderer = addRenderer<ShadowMapRendererVulkan>("ShadowMapRendererVulkan");
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
     alchemyAORenderer = addRenderer<AlchemyAORendererVulkan>("AlchemyAORendererVulkan");
+    hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
+    SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
     // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererRendererVulkan");
 	
     applicationRenderer->init(config);
 	imageBasedRenderer->init(config);
 	shadowMapRenderer->init(config);
     // alchemyAORenderer->init(config);
+    // hiZPassRenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
 	// postProcessRenderer->init(config);
@@ -61,6 +66,8 @@ bool RendererManagerVulkan::onClose()
 	shadowMapRenderer->onClose();
 	imageBasedRenderer->onClose();
     alchemyAORenderer->onClose();
+    hiZPassRenderer->onClose();
+    SSRGIPassRenderer->onClose();
 	// postProcessRenderer->onClose();
     return true;
 }
@@ -97,6 +104,8 @@ void RendererManagerVulkan::render()
     if(tmp->pushConstantLight.aoOn) {
         alchemyAORenderer->render(*camera);
     }
+    hiZPassRenderer->render(*camera);
+    SSRGIPassRenderer->render(*camera);
     deferredRenderer->render(*camera);
     applicationRenderer->render(*camera);
     endFrame();

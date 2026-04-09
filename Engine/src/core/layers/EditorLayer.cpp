@@ -15,31 +15,6 @@
 #include "src/gui/framework/ImGui/widgets/ImGuiMenuWidget.h"
 #include "src/gui/framework/ImGui/widgets/ImGuiMathWidget.h"
 
-void EditorLayer::mockThreadTasks()
-{
-	AsyncEvent addComponentEvent;
-	auto func = [](Event& event) -> void {
-		//Component reimu("assets/Models/reimu/reimu.obj");
-		//SceneManager::addComponent(reimu);
-	};
-	eventManager.queue(addComponentEvent, func);
-
-	AsyncEvent addComponentEvent1;
-	auto func1 = [](Event& event) -> void {
-		//Component reimu("assets/Models/sponza/sponza.obj");
-		//SceneManager::addComponent(reimu);
-	};
-	eventManager.queue(addComponentEvent1, func1);
-
-	AsyncEvent addComponentEvent2;
-	auto func2 = [](Event& event) -> void {
-		//Component reimu("assets/Models/aru/aru.gltf");
-		//SceneManager::addComponent(reimu);
-	};
-	eventManager.queue(addComponentEvent2, func2);
-
-}
-
 void EditorLayer::renderGuizmo()
 {
 	Scene* scene = SceneManager::getInstance().getActiveScene();

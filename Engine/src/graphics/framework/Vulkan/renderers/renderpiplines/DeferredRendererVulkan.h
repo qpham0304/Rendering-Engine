@@ -11,6 +11,8 @@
 #include <unordered_map>
 
 class AlchemyAORendererVulkan;
+class HiZPassVulkan;
+class SSRGIPassVulkan;
 class DeferredRendererVulkan : public RendererVulkan
 {
 private:
@@ -100,7 +102,11 @@ public:	//TODO: make private once done testing
 	ShadowMapRendererVulkan* shadowMapRenderer { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 	AlchemyAORendererVulkan* alchemyAORendererVulkan { nullptr };
+	HiZPassVulkan* hiZPassRenderer { nullptr };
+	SSRGIPassVulkan* SSRGIPassRenderer { nullptr };
 	
+	std::unique_ptr<VulkanPipeline> tempPipeline { nullptr };
+
 	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _createRenderPasses();

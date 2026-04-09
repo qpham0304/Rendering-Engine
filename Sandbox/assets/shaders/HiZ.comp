@@ -1,0 +1,40 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// the previous finer mip level
+layout(binding = 0) uniform sampler2D u_PreviousLevel;
+
+// the current coarser mip level being written to
+layout(binding = 1, r32f) uniform writeonly image2D u_CurrentLevel;
+
+layout(push_constant) uniform PushConstants {
+    vec2 u_PreviousLevelDimensions;
+    int u_MipLevel;
+} params;
+
+void main() {
+    ivec2 currCoord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 prevSize = ivec2(params.u_PreviousLevelDimensions);
+    
+    float depth;
+
+    if (params.u_MipLevel == 0) {
+        // map 0-1023 range to 0.0-1.0 range
+        vec2 uv = (vec2(currCoord) + 0.5) / 1024.0; 
+        depth = texture(u_PreviousLevel, uv).r; 
+    } else {
+        // for all other mips, the ratio is exactly 2:1, so texelFetch is better
+        ivec2 prevCoord = currCoord * 2;
+        
+        float d0 = texelFetch(u_PreviousLevel, prevCoord, 0).r;
+        float d1 = texelFetch(u_PreviousLevel, min(prevCoord + ivec2(1, 0), prevSize - 1), 0).r;
+        float d2 = texelFetch(u_PreviousLevel, min(prevCoord + ivec2(0, 1), prevSize - 1), 0).r;
+        float d3 = texelFetch(u_PreviousLevel, min(prevCoord + ivec2(1, 1), prevSize - 1), 0).r;
+
+        // using MAX for Reverse-Z (Closest point)
+        depth = max(max(d0, d1), max(d2, d3));
+    }
+    
+    imageStore(u_CurrentLevel, currCoord, vec4(depth));
+}

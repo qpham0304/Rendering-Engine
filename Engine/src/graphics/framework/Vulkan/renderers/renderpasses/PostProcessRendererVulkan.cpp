@@ -26,9 +26,9 @@ bool PostProcessRendererVulkan::init(WindowConfig config)
 {
     RendererVulkan::init(config);
     
-    createImage();
-    createDescriptors();
-	createPipelines();
+    // createResources();
+    // createDescriptors();
+	// createPipelines();
     
     return true;
 }
@@ -36,7 +36,7 @@ bool PostProcessRendererVulkan::onClose()
 {
     RendererVulkan::onClose();
 
-    cleanupResources();
+    // cleanupResources();  empty pipeline cleanup causes issue atm
 
     return true;
 }
@@ -57,7 +57,7 @@ TextureVulkan *PostProcessRendererVulkan::getOutputImage()
     return outputImage;
 }
 
-void PostProcessRendererVulkan::createImage()
+void PostProcessRendererVulkan::createResources()
 {
     auto createTexture = [this] (uint32_t& id, TextureVulkan*& texture){
         id = textureManagerVulkan->createTexture();
@@ -161,7 +161,7 @@ void PostProcessRendererVulkan::recreateResources()
 {
     renderDeviceVulkan->waitIdle();
     cleanupResources();
-    createImage();
+    createResources();
     createDescriptors();
     createPipelines();
 }

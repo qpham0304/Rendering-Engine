@@ -36,7 +36,8 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 
 	fallback_albedoID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/albedo.png", 1, false);
 	fallback_normalID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/normal.png", 1, true);
-	fallback_metallicID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/metallic.png", 1, true);
+	// fallback_metallicID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/metallic.png", 1, true);
+	fallback_metallicID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/roughness-2.png", 1, true);
 	fallback_roughnessID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/roughness.png", 1, true);
 	fallback_aoID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/ao.png", 1, true);
 	fallback_emissiveID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/emissive.png", 1, false);

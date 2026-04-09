@@ -22,7 +22,7 @@ public:
 	virtual void render(Camera& camera) override;
     virtual TextureVulkan* getOutputImage();
 
-	void createImage();
+	void createResources();
 	void createPipelines();
 	void createDescriptors();
 	void updateDescriptor(uint32_t index);

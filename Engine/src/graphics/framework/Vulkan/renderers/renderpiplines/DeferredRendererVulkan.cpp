@@ -21,6 +21,8 @@
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
 #include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
 
 DeferredRendererVulkan::DeferredRendererVulkan() 
 	: RendererVulkan("DeferredRendererVulkan")
@@ -47,10 +49,21 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("AlchemyAORendererVulkan");
 	alchemyAORendererVulkan = dynamic_cast<AlchemyAORendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
+	hiZPassRenderer = dynamic_cast<HiZPassVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
+	SSRGIPassRenderer = dynamic_cast<SSRGIPassVulkan*>(renderer);
 
-	assert(shadowMapRenderer && imageBasedRenderer && alchemyAORendererVulkan && "failed to retrieve renderer");
+	assert(shadowMapRenderer 
+		&& imageBasedRenderer 
+		&& alchemyAORendererVulkan 
+		&& hiZPassRenderer 
+		&& "failed to retrieve renderer"
+	);
 
 	alchemyAORendererVulkan->init(config);
+	hiZPassRenderer->init(config);
+	SSRGIPassRenderer->init(config);
 
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 	
@@ -132,10 +145,10 @@ void DeferredRendererVulkan::render(Camera& camera)
 	ubo.view = camera.getViewMatrix();
 	ubo.proj = camera.getProjectionMatrix();
 	ubo.cameraPos = glm::vec4(camera.getPosition(), 1.0);
-	ubo.proj[1][1] *= -1;
+	ubo.proj[1][1] *= -1.0;
 	ubo.invView = camera.getInViewMatrix();
 	ubo.invProj = camera.getInProjectionMatrix();
-	ubo.invProj[1][1] *= -1;
+	ubo.invProj[1][1] *= -1.0;
 	ubo.width = renderTarget.width;
 	ubo.height = renderTarget.height;
 	
@@ -162,7 +175,9 @@ void DeferredRendererVulkan::render(Camera& camera)
 	
 	// recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 	recordDrawCommand(cmdBuffer, currentFrame);
-	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
+	// rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
+	renderDeviceVulkan->waitIdle();
+	rendererManagerVulkan->setDisplayImage(SSRGIPassRenderer->getOutputImage());
 }
 
 void DeferredRendererVulkan::renderGui()
@@ -177,6 +192,44 @@ void DeferredRendererVulkan::renderGui()
 
 	
 	ImGui::Begin("Lights Control");
+	if(ImGui::Button("Add Pipeline")) {
+		AsyncEvent e;
+		EventManager::getInstance().queue(e, [this] (AsyncEvent& event) {
+			rendererManagerVulkan->addRenderer<DeferredRendererVulkan>("DeferredRendererVulkanTemp");
+
+			PipelineConfigInfo gBufferConfig = VulkanPipeline::defaultPipelineConfigInfo(5);
+			gBufferConfig.renderPass = renderTarget.renderPass;
+
+			auto bindingDescription = VulkanDevice::VertexVulkan::getBindingDescription();
+			auto attributeDescriptions = VulkanDevice::VertexVulkan::getAttributeDescriptions();
+			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+			vertexInputInfo.vertexBindingDescriptionCount = 1;
+			vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
+			vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+			vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+			VkDescriptorSetLayout descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
+			VkDescriptorPool descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
+			
+			void* handle = materialManager->getMaterialLayout();
+			auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
+			std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, materialLayout };
+			
+			tempPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+			tempPipeline->createGraphicsPipeline(
+				"assets/shaders/spv/gBuffer.vert.spv", 
+				"assets/shaders/spv/gBuffer.frag.spv", 
+				gBufferConfig, 
+				vertexInputInfo, 
+				layouts, 
+				0
+			);
+		});
+	}
+	ImGui::SameLine();
+	ImGui::Text(tempPipeline ? "loaded pipelien" : "loading...");
+	
 	if(ImGui::Button("Change Environment")) {
 		std::string path;
 		path = Utils::fileDialog();
@@ -246,7 +299,8 @@ void DeferredRendererVulkan::renderGui()
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferAlbedo[currentFrame]->id()), ImVec2(256, 144));
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gPBR[currentFrame]->id()), ImVec2(256, 144));
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.depthTextures[currentFrame]->id()), ImVec2(256, 144));
-	ImGui::Image(reinterpret_cast<ImTextureID>(textureManagerVulkan->inspectTexture(shadowMapRenderer->depthID)), ImVec2(256, 144));
+	ImGui::Image((ImTextureID)(textureManagerVulkan->inspectTexture(shadowMapRenderer->depthID)), ImVec2(256, 144));
+	ImGui::Image((ImTextureID)(textureManagerVulkan->inspectTexture(SSRGIPassRenderer->getOutputImage()->id())), ImVec2(256, 144));
 
 	ImGui::End();
 }

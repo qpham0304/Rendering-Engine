@@ -457,8 +457,9 @@ void main() {
             envColor = mix(prefilteredColor, irradiance, blendWeight);
         // }
 
-        envColor = envColor / (envColor + 1.0);
-        outColor = vec4(pow(envColor, vec3(1.0/2.2)), 1.0);
+        // envColor = envColor / (envColor + 1.0);
+        // outColor = vec4(pow(envColor, vec3(1.0/2.2)), 1.0);
+        outColor = vec4(envColor, 1.0); 
         return;
     }
     
@@ -543,16 +544,18 @@ void main() {
     float stepSize = maxDist / float(numSteps);
 
     // Dithering to hide banding
-    // float dither = DITHER_PATTERN[int(gl_FragCoord.x) % 4][int(gl_FragCoord.y) % 4];
+    float dither = DITHER_PATTERN[int(gl_FragCoord.x) % 4][int(gl_FragCoord.y) % 4];
     vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
-    float dither = texture(blueNoise, noiseUV).r;
-    vec3 rayPos = ubo.cameraPos.xyz + (V_ray * stepSize * dither);
-    // vec3 rayPos = ubo.cameraPos.xyz;
+    dither *= texture(blueNoise, noiseUV).r;
+    // vec3 rayPos = ubo.cameraPos.xyz + (V_ray * stepSize * dither);
+    vec3 rayPos = ubo.cameraPos.xyz;
     vec3 step = V_ray * stepSize;
     rayPos += step * dither;
+
     vec3 volume = vec3(0.0f);
 	vec4 color = vec4(0.0f);
-
+    float transparency = 1.0;
+    float absorptionCoefficient = 0.15;
     for(int i = 0; i < numSteps; i++) {
         vec4 fragPosLight = pcl.sunlightMVP * vec4(rayPos, 1.0);
         vec3 projCoords = fragPosLight.xyz / fragPosLight.w;
@@ -560,17 +563,23 @@ void main() {
 
         float shadowDepth = texture(shadowMap, projCoords.xy).r;
 
-        // Vulkan comparison: is the air-point closer to sun than the shadow-map?
+        // is the air-point closer to sun than the shadow-map
         if(shadowDepth > projCoords.z - 0.0005) {
-            float phase = mieScattering(dot(V_ray, L_sun), pcl.G); 
-            volume += pcl.color.rgb * phase;
+            float phase = mieScattering(dot(V_ray, L_sun), pcl.G);
+            vec3 scattering = pcl.color.rgb * phase * absorptionCoefficient;
+            volume += scattering * transparency * stepSize;
+        }
+        transparency *= exp(-absorptionCoefficient * stepSize);
+        
+        if(transparency <= 0.01) {
+            break;
         }
         rayPos += step;
     }
 
-    vec3 finalVolume = (volume / float(numSteps)) * pcl.scatteringScale;
+    vec3 finalVolume = (volume / float(numSteps)) * (pcl.scatteringScale*3);
     finalColor += finalVolume;
+    finalColor = finalColor / (finalColor + vec3(1.0));
     
-    finalColor = finalColor / (finalColor + vec3(1.0));         //HDR tone mapping
-    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);  //Gamma correction
+    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);
 }
