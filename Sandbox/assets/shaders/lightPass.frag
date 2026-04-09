@@ -501,10 +501,16 @@ void main() {
     
     // float shadow = 1.0 - calcShadow(worldPos);
     // float shadow = 1.0 - calcMSMShadow(worldPos + N * pcl.bias);
-    float shadow = 1.0 - calcPCSS(worldPos);
+    // float shadow = 1.0 - calcPCSS(worldPos);
     vec3 L_sun = normalize(pcl.direction.xyz); 
     vec3 sunRadiance = pcl.color.rgb * shadow;
+
+    float penumbraMask = smoothstep(0.0, 0.5, shadow) * smoothstep(1.0, 0.5, shadow);
+    float geometryGuard = smoothstep(0.0, 0.2, dot(N, L_sun));
+    vec3 penumbraTint = vec3(0.9, 0.2, 0.0) * 0.2;
+
     vec3 sunlight = calcPBR(L_sun, V, N, F0, albedo.rgb, roughness, metallic, sunRadiance);
+    sunlight += (penumbraTint * penumbraMask * geometryGuard);
 
     vec3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
     vec3 kS = F;
