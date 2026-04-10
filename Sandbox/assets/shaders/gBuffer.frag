@@ -4,13 +4,16 @@
 layout(location = 0) in vec3 inNormal;
 layout(location = 1) in vec2 inTexCoord;
 layout(location = 2) in vec3 inWorldPos;
-layout(location = 3) in mat3 inTBN;
+layout(location = 3) in mat3 inTBN;       // mat3 takes locations 3, 4, 5
+layout(location = 6) in vec4 outCurNDC ;
+layout(location = 7) in vec4 outPrevNDC;
 
 layout(location = 0) out vec4 outPos;    
 layout(location = 1) out vec4 outNorm;   
 layout(location = 2) out vec4 outAlbedo; 
 layout(location = 3) out vec4 outPBR;
 layout(location = 4) out vec4 outEmissive;
+layout(location = 5) out vec4 outMotion;
 
 layout(set = 1, binding = 0) uniform sampler2D albedoMap;
 layout(set = 1, binding = 1) uniform sampler2D normalMap;
@@ -57,4 +60,21 @@ void main() {
     outPBR = vec4(ao, roughness, metallic, 1.0);
 
     outEmissive = texture(emissiveMap, inTexCoord + material.uv) * material.emissive;
+
+    vec2 curNDC = outCurNDC.xy / outCurNDC.w;
+    vec2 prevNDC = outPrevNDC.xy / outPrevNDC.w;
+
+    vec2 curUV = curNDC * 0.5 + 0.5;
+    vec2 prevUV = prevNDC * 0.5 + 0.5;
+    vec2 velocity = curUV - prevUV;
+    
+    // edge Rejection
+    // if (prevUV.x < 0.0 || prevUV.x > 1.0 || prevUV.y < 0.0 || prevUV.y > 1.0) {
+    //     // don't accumulate noise if there's no history available
+    //     outMotion = vec4(0.0, 0.0, 0.0, 0.0); 
+    // } else {
+    //     outMotion = vec4(velocity, 0.0, 1.0);
+    // }
+    outMotion = vec4(velocity, 0.0, 1.0);
+    outMotion = vec4(velocity * 10.0 + 0.5, 0.0, 1.0);
 }

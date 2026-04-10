@@ -501,7 +501,7 @@ void main() {
     
     // float shadow = 1.0 - calcShadow(worldPos);
     // float shadow = 1.0 - calcMSMShadow(worldPos + N * pcl.bias);
-    // float shadow = 1.0 - calcPCSS(worldPos);
+    float shadow = 1.0 - calcPCSS(worldPos);
     vec3 L_sun = normalize(pcl.direction.xyz); 
     vec3 sunRadiance = pcl.color.rgb * shadow;
 

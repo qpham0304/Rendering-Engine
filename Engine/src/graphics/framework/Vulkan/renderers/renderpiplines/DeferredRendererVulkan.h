@@ -19,6 +19,7 @@ private:
 	struct UniformBufferObject {
 		glm::mat4 invNormal;
 		glm::mat4 view;
+		glm::mat4 prevViewProj;
 		glm::mat4 proj;
 		glm::vec4 cameraPos;
 		glm::mat4 invView;
@@ -72,10 +73,13 @@ public:	//TODO: make private once done testing
 	const int numInstances = 1;
 	const int numLights = 1000;
 	bool showGui{ true };
+	uint32_t frameCounter = 0;
 	
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
+	std::vector<StorageBufferVulkan*> prevStoragebufferList;
 	std::vector<StorageBufferObject> instanceData;
+	std::vector<StorageBufferObject> instanceDataPrev;
 	std::vector<StorageBufferVulkan*> lightStoragebuffers;
 	std::vector<LightSSBO> lights;
 	PushConstantLight pushConstantLight;
@@ -98,6 +102,8 @@ public:	//TODO: make private once done testing
 	glm::vec4 sunColor { 1.0 };
 
 	Camera* cam;
+	glm::mat4 lastViewProj;
+	bool firstFrame { true };
 
 	ShadowMapRendererVulkan* shadowMapRenderer { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };

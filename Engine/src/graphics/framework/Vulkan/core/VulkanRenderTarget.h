@@ -6,8 +6,6 @@
 #include "core/resources/managers/TextureManager.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureVulkan.h"
 
-// class TextureVulkan;
-
 class VulkanRenderTarget 
 {
 public:
@@ -21,6 +19,7 @@ public:
     std::vector<TextureVulkan*> gBufferAlbedo;
     std::vector<TextureVulkan*> gPBR;
     std::vector<TextureVulkan*> gBufferEmissive;
+    std::vector<TextureVulkan*> gBufferMotion;
     std::vector<TextureVulkan*> depthTextures;
 
     void destroy(VkDevice device) {
@@ -46,6 +45,9 @@ public:
             textureManager.destroy(texture->id());
         }
         for(auto& texture : gBufferEmissive){
+            textureManager.destroy(texture->id());
+        }
+        for(auto& texture : gBufferMotion){
             textureManager.destroy(texture->id());
         }
         for(auto& texture : depthTextures){
