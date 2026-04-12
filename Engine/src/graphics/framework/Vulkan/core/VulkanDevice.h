@@ -42,8 +42,6 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
 class VulkanDevice
 {
-	class Logger;
-	
 public:
 	VulkanDevice();
 	operator VkDevice() const noexcept;
@@ -184,9 +182,6 @@ public:
 #else
 	const bool enableValidationLayers = true;
 #endif
-
-private:
-	Logger* m_logger;
 
 };
 

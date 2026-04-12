@@ -510,7 +510,7 @@ void main() {
     vec3 penumbraTint = vec3(0.9, 0.2, 0.0) * 0.2;
 
     vec3 sunlight = calcPBR(L_sun, V, N, F0, albedo.rgb, roughness, metallic, sunRadiance);
-    sunlight += (penumbraTint * penumbraMask * geometryGuard);
+    // sunlight += (penumbraTint * penumbraMask * geometryGuard);
 
     vec3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
     vec3 kS = F;
@@ -585,7 +585,8 @@ void main() {
 
     vec3 finalVolume = (volume / float(numSteps)) * (pcl.scatteringScale*3);
     finalColor += finalVolume;
-    finalColor = finalColor / (finalColor + vec3(1.0));
+    // finalColor = finalColor / (finalColor + vec3(1.0));
+    // finalColor = pow(finalColor, vec3(1.0/2.2));
     
-    outColor = vec4(pow(finalColor, vec3(1.0/2.2)), albedo.a);
+    outColor = vec4(finalColor, albedo.a);
 }

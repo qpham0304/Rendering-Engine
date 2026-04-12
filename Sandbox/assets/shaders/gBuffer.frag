@@ -68,13 +68,10 @@ void main() {
     vec2 prevUV = prevNDC * 0.5 + 0.5;
     vec2 velocity = curUV - prevUV;
     
-    // edge Rejection
-    // if (prevUV.x < 0.0 || prevUV.x > 1.0 || prevUV.y < 0.0 || prevUV.y > 1.0) {
-    //     // don't accumulate noise if there's no history available
-    //     outMotion = vec4(0.0, 0.0, 0.0, 0.0); 
-    // } else {
-    //     outMotion = vec4(velocity, 0.0, 1.0);
-    // }
-    outMotion = vec4(velocity, 0.0, 1.0);
-    outMotion = vec4(velocity * 10.0 + 0.5, 0.0, 1.0);
+    // edge rejection don't accumulate noise if there's no history available
+    if (prevUV.x < 0.0 || prevUV.x > 1.0 || prevUV.y < 0.0 || prevUV.y > 1.0) {
+        outMotion = vec4(0.0, 0.0, 0.0, 0.0); 
+    } else {
+        outMotion = vec4(velocity, 0.0, 1.0);
+    }
 }

@@ -47,8 +47,6 @@ void main() {
 
     mat4 prevModelMatrix = prevSsbo.models[gl_InstanceIndex]; 
     vec4 prevWorldPos = prevModelMatrix * vec4(inPosition, 1.0);
-
-    // output NDC positions to the Fragment Shader
     outCurNDC = gl_Position;
     outPrevNDC = ubo.prevViewProj * prevWorldPos;
 }

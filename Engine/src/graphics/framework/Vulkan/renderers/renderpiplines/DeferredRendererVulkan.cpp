@@ -195,7 +195,6 @@ void DeferredRendererVulkan::render(Camera& camera)
 	// rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
 	renderDeviceVulkan->waitIdle();
 	rendererManagerVulkan->setDisplayImage(SSRGIPassRenderer->getOutputImage());
-
 }
 
 void DeferredRendererVulkan::renderGui()
@@ -273,6 +272,11 @@ void DeferredRendererVulkan::renderGui()
 	bool aoChecked = (pushConstantLight.aoOn != 0);
 	if (ImGui::Checkbox("aoOn", &aoChecked)) {
 		pushConstantLight.aoOn = aoChecked ? 1 : 0;
+	}
+	ImGui::SameLine();
+	bool denoiserChecked = (denoiserOn != 0);
+	if (ImGui::Checkbox("denoise", &denoiserChecked)) {
+		denoiserOn = denoiserChecked ? 1 : 0;
 	}
 	ImGui::SliderInt("aoBlurRadius", &alchemyAORendererVulkan->blurrPushConstant.blurRadius, 1.0f, 16.0f);
 	ImGui::SliderFloat("aoBlurScale", &alchemyAORendererVulkan->blurrPushConstant.scale, 1.0f, 100.0f);
@@ -803,7 +807,7 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			renderDeviceVulkan->swapchain.swapChainExtent.height,
 			depthFormat,
 			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			renderTarget.depthTextures[i]->textureImage,
 			renderTarget.depthTextures[i]->textureImageMemory,

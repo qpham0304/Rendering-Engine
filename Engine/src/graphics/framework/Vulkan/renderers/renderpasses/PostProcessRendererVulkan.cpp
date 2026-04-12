@@ -81,6 +81,7 @@ void PostProcessRendererVulkan::createResources()
             renderDeviceVulkan->device
         );
 
+        //TODO: remove general creation or change this to RGBA16FLOAT
         TextureManagerVulkan::createImageView(
             texture->textureImage,
             texture->textureImageView,

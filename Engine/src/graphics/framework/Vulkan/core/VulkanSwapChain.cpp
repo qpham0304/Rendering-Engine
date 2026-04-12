@@ -1,6 +1,5 @@
 #include "VulkanSwapChain.h"
 #include "window/AppWindow.h"
-#include "Logging/Logger.h"
 #include "../renderers/RenderDeviceVulkan.h"
 #include "../resources/textures/TextureManagerVulkan.h"
 #include <algorithm>

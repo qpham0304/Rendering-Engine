@@ -386,5 +386,4 @@ void AlchemyAORendererVulkan::_cleanupResources()
     textureManagerVulkan->destroy(aoMapTemp->id());
     occlusionPipeline->destroy();
     blurPipeline->destroy();
-
 }

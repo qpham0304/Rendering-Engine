@@ -1,6 +1,5 @@
 #include "VulkanCommandPool.h"
 #include "VulkanSwapChain.h"
-#include "logging/Logger.h"
 #include "core/features/ServiceLocator.h"
 #include "../renderers/RenderDeviceVulkan.h"
 

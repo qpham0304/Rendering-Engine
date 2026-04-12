@@ -3,14 +3,11 @@
 #include "PostProcessRendererVulkan.h"
 #include <vulkan/vulkan.h>
 
-class SSRGIPassVulkan : public PostProcessRendererVulkan
+class DeferredCombinePassVulkan : public PostProcessRendererVulkan
 {
 public:
 	struct PushConstant {
         alignas(8) glm::vec2 screenRes;
-        alignas(4) float maxDistance;
-        alignas(4) int maxMip;
-		alignas(4) float thickness;
 		alignas(4) float time;
 		alignas(4) float frameSeed;
 	};
@@ -23,24 +20,20 @@ public:
 	};
 
 public:
-	SSRGIPassVulkan(std::string serviceName = "SSRGIPassVulkan");
-	virtual ~SSRGIPassVulkan() override;
+	DeferredCombinePassVulkan(std::string serviceName = "DeferredCombinePassVulkan");
+	virtual ~DeferredCombinePassVulkan() override;
 
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
 
-    void writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame);
+    void writeCombinedImage(VkCommandBuffer cmd, uint32_t currentFrame);
 
 public: // TODO: consider make private
-	TextureVulkan* depthImageHiZ;
-	TextureVulkan* depthImageRaw;
-	TextureVulkan* normalImage;
+	TextureVulkan* denoisedGIImage;
+	TextureVulkan* sceneImage;
 	TextureVulkan* albedoImage;
-	TextureVulkan* pbrImage;
-	TextureVulkan* emissiveImage;
-	TextureVulkan* colorImage;
 
 protected:
 	void _createResources();
@@ -50,10 +43,6 @@ protected:
 	void _recreateResources();
 	void _cleanupResources();
 
-
-	uint32_t SSRGILayoutID;
-	uint32_t SSRGIPoolID;
-	uint32_t SSRGISetsID;
 	UniformBufferObject ubo;
 	PushConstant pushConstant;
 	std::vector<UniformBufferVulkan*> uniformbuffersList;

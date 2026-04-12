@@ -105,6 +105,8 @@ public:	//TODO: make private once done testing
 	glm::mat4 lastViewProj;
 	bool firstFrame { true };
 
+	bool denoiserOn { true };
+
 	ShadowMapRendererVulkan* shadowMapRenderer { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 	AlchemyAORendererVulkan* alchemyAORendererVulkan { nullptr };

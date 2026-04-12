@@ -36,7 +36,7 @@ VulkanDevice::VulkanDevice()
 		physicalDevice(VK_NULL_HANDLE),
 		device(VK_NULL_HANDLE)
 {
-	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
+	
 }
 
 VulkanDevice::operator VkDevice() const noexcept
