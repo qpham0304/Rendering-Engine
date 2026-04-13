@@ -33,10 +33,12 @@ protected:
 	Renderer* deferredRenderer { nullptr };
 	Renderer* shadowMapRenderer { nullptr };
 	Renderer* imageBasedRenderer { nullptr };
-	Renderer* postProcessRenderer { nullptr };
 	Renderer* alchemyAORenderer { nullptr };
 	Renderer* hiZPassRenderer { nullptr };
 	Renderer* SSRGIPassRenderer { nullptr };
+	Renderer* temporalPassRenderer { nullptr };
+	Renderer* deferredCombineRenderer { nullptr };
+	Renderer* postProcessRenderer { nullptr };
 
 	TextureVulkan* displayImage { nullptr };
 };

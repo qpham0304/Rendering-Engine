@@ -7,7 +7,6 @@
 RenderDeviceVulkan::RenderDeviceVulkan()
 	: RenderDevice("RenderDeviceVulkan"),
 	swapchain(device, *this),
-	pipeline(device),
 	commandPool(device),
 	transferPool(device)
 {

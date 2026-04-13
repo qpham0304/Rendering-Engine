@@ -1,0 +1,42 @@
+#version 460
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+
+layout(set = 0, binding = 0) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    mat4 invProj;
+    mat4 invView;
+} camera;
+
+layout(set = 0, binding = 1, rgba16f) writeonly uniform image2D outImage;
+layout(set = 0, binding = 2) uniform sampler2D giImage; 
+layout(set = 0, binding = 3) uniform sampler2D sceneImage; 
+layout(set = 0, binding = 4) uniform sampler2D albedoImage; 
+
+layout(push_constant) uniform Constants {
+    vec2 screenRes;
+    float time;
+    float frameSeed;
+} pc;
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    if (pixelCoord.x >= pc.screenRes.x || pixelCoord.y >= pc.screenRes.y) return;
+
+    vec2 uv = (vec2(pixelCoord) + 0.5) / imageSize(outImage);
+
+    vec3 gi = texture(giImage, uv).rgb;
+    vec3 sceneColor = texture(sceneImage, uv).rgb;
+    vec3 albedo = texture(albedoImage, uv).rgb;
+
+    // vec3 ambient = gi;
+    // vec3 finalColor = sceneColor + ambient;
+    vec3 finalColor = sceneColor + gi;
+    finalColor = finalColor / (finalColor + vec3(1.0));
+    finalColor = pow(finalColor, vec3(1.0/2.2));
+
+    vec4 outColor = vec4(gi, 1.0);
+    imageStore(outImage, pixelCoord, outColor);
+}

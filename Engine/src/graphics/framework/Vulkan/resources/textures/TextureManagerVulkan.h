@@ -138,6 +138,15 @@ public:
 		VkPipelineStageFlags dstStage
 	);
 
+	static void copyImage(
+		VkCommandBuffer cmd,
+		TextureVulkan* srcImage,
+		TextureVulkan* dstImage,
+		VkFormat format,
+		VkImageAspectFlags aspect,
+		RenderDeviceVulkan* renderDeviceVulkan
+	);
+
 public:
 	TextureManagerVulkan(std::string serviceName = "TextureManagerVulkan");	
 	~TextureManagerVulkan();

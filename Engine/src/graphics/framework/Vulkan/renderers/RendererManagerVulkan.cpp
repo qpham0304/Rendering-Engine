@@ -11,6 +11,8 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/TemporalPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/DeferredCombinePassVulkan.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
 #include "RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
@@ -38,6 +40,8 @@ bool RendererManagerVulkan::init(WindowConfig config)
     alchemyAORenderer = addRenderer<AlchemyAORendererVulkan>("AlchemyAORendererVulkan");
     hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
     SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
+    temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
+    deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
     // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererRendererVulkan");
 	
     applicationRenderer->init(config);
@@ -47,6 +51,8 @@ bool RendererManagerVulkan::init(WindowConfig config)
     // hiZPassRenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
+    temporalPassRenderer->init(config);
+    deferredCombineRenderer->init(config);
 	// postProcessRenderer->init(config);
 
     return true;
@@ -68,6 +74,8 @@ bool RendererManagerVulkan::onClose()
     alchemyAORenderer->onClose();
     hiZPassRenderer->onClose();
     SSRGIPassRenderer->onClose();
+    temporalPassRenderer->onClose();
+    deferredCombineRenderer->onClose();
 	// postProcessRenderer->onClose();
     return true;
 }
@@ -107,6 +115,10 @@ void RendererManagerVulkan::render()
     hiZPassRenderer->render(*camera);
     SSRGIPassRenderer->render(*camera);
     deferredRenderer->render(*camera);
+    if(tmp->denoiserOn) {
+        temporalPassRenderer->render(*camera);
+    }
+    deferredCombineRenderer->render(*camera);
     applicationRenderer->render(*camera);
     endFrame();
 }
