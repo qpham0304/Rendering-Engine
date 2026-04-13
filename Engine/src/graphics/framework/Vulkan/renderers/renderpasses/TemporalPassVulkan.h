@@ -42,9 +42,12 @@ protected:
 	TextureVulkan* motionImage;
 	TextureVulkan* depthImage;
 	TextureVulkan* prevDepthImage;
+	TextureVulkan* normalImage;
+	TextureVulkan* prevNormalImage;
 
 	uint32_t ssrgiHistoryImageID;
 	uint32_t prevDepthImageID;
+	uint32_t prevNormalImageID;
 
 	uint32_t TemporalLayoutID;
 	uint32_t TemporalPoolID;

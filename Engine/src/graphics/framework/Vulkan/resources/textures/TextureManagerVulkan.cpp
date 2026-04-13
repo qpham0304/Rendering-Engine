@@ -916,3 +916,46 @@ void TextureManagerVulkan::createBarrier(
 		1, &barrier
 	);
 }
+
+//TODO: only copy image of the screen size at the moment
+// only support copy the same image type
+void TextureManagerVulkan::copyImage(
+	VkCommandBuffer cmd, 
+	TextureVulkan *srcImage, 
+	TextureVulkan *dstImage, 
+	VkFormat format, 
+	VkImageAspectFlags aspect,
+	RenderDeviceVulkan *renderDeviceVulkan
+){
+    TextureManagerVulkan::transitionImageLayout(
+        cmd, srcImage->textureImage, format,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 1, 1, renderDeviceVulkan);
+
+    TextureManagerVulkan::transitionImageLayout(
+        cmd, dstImage->textureImage, format,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, 1, renderDeviceVulkan);
+
+    VkImageCopy copyRegion{};
+    copyRegion.srcSubresource = { aspect, 0, 0, 1 };
+    copyRegion.dstSubresource = { aspect, 0, 0, 1 };
+    copyRegion.extent = { 	
+        renderDeviceVulkan->swapchain.swapChainExtent.width, 
+        renderDeviceVulkan->swapchain.swapChainExtent.height, 
+        1 
+    };
+
+    vkCmdCopyImage(
+        cmd, srcImage->textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dstImage->textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &copyRegion
+    );
+
+    TextureManagerVulkan::transitionImageLayout(
+        cmd, srcImage->textureImage, format,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
+
+    TextureManagerVulkan::transitionImageLayout(
+        cmd, dstImage->textureImage, format,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
+
+}

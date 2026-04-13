@@ -190,9 +190,9 @@ void main() {
 
     // ray direction spread roughness
     vec3 reflectDir = reflect(viewDir, normalV);
-    vec3 giDir = normalize(mat3(camera.view) * SampleBrdf(seed, normalW));
     vec3 H = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
     vec3 rayDir = reflect(viewDir, H);
+    // vec3 giDir = normalize(mat3(camera.view) * SampleBrdf(seed, normalW));
     // vec3 rayDir = normalize(mix(reflectDir, giDir, roughness * roughness));
     // ivec2 jitter = ivec2((seed % 127) * 17 * h, (seed % 131) * 31 * h);
     // ivec2 noiseSize = textureSize(blueNoise, 0);
@@ -206,7 +206,7 @@ void main() {
     // vec3 marchingPos = viewPos + (normalV * 0.2) + (currentStepVec * bn.b);
 
     const float GOLDEN_RATIO = 0.61803398875;
-    float jitter = fract(float(seed));   //get more light in from importance sampling
+    float jitter = fract(float(seed) * GOLDEN_RATIO);   //get more light in from importance sampling
     float viewDotNormal = clamp(abs(dot(viewDir, normalV)), 0.0, 1.0);
     float bias = 0.05 / max(viewDotNormal, 0.1);
     vec3 marchingPos = viewPos + (normalV * bias) + (currentStepVec * jitter);
@@ -261,16 +261,23 @@ void main() {
     if (hit) {
         vec3 hitColor = texture(u_SceneColor, hitUV).rgb;
         vec3 hitEmissive = texture(emissiveImage, hitUV).rgb;
+        vec3 radiance = hitColor + (hitEmissive * 10.0);
+
+        float luma = dot(radiance, vec3(0.2126, 0.7152, 0.0722));
+        float maxSafeLuma = mix(20.0, 2.0, roughness);
+        if (luma > maxSafeLuma) {
+            radiance *= (maxSafeLuma / luma);
+        }
 
         // SSR Specular
         vec3 F0 = mix(vec3(0.04), albedo, metallic);
         float cosTheta = clamp(dot(normalV, -viewDir), 0.0, 1.0);
         vec3 fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-        vec3 ssr = hitColor * fresnel;
+        vec3 ssr = radiance * fresnel;
 
         // SSGI Diffuse
         // with high distance, we need a high multiplier to keep the light visible
-        vec3 ssgi = (hitColor + (hitEmissive * 10.0)) * albedo * 2.5;
+        vec3 ssgi = radiance * albedo * 2.5;
 
         indirect = mix(ssr, ssgi, roughness);
     }
@@ -278,13 +285,13 @@ void main() {
     vec2 boundary = smoothstep(vec2(0.0), vec2(0.05), hitUV) * smoothstep(vec2(1.0), vec2(0.95), hitUV);
     float dist = length(marchingPos - viewPos);
     
-    // smooth Falloff for 500m distance inverse square-ish law to keep the glow natural
     float distFade = clamp(1.0 - (dist / pc.maxDistance), 0.0, 1.0);
-
     float attenuation = 1.0 / (1.0 + dist * 0.01);
 
     vec3 finalColor = (indirect * boundary.x * boundary.y * distFade * attenuation);
     finalColor += emissive; 
     // finalColor += sceneColor; 
+
+    // finalColor /= (1.0 + dot(finalColor, vec3(0.2126, 0.7152, 0.0722)));
     imageStore(u_ResultImage, pixelCoord, vec4(finalColor, 1.0));
 }

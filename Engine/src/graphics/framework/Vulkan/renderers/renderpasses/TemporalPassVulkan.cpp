@@ -40,6 +40,7 @@ bool TemporalPassVulkan::init(WindowConfig config)
     ssrgiImage = SSRGIPassRenderer->getOutputImage();
     motionImage = deferredRendererVulkan->renderTarget.gBufferMotion[currentFrame];
     depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
+    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
@@ -85,6 +86,7 @@ void TemporalPassVulkan::render(Camera &camera)
     ssrgiImage = SSRGIPassRenderer->getOutputImage();
     motionImage = deferredRendererVulkan->renderTarget.gBufferMotion[currentFrame];
     depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
+    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
 
     
     _updateDescriptor(TemporalSetsID, currentFrame, outputImage, ssrgiHistoryImage);
@@ -216,6 +218,7 @@ void TemporalPassVulkan::_createResources()
     createTexture(outputImageID, outputImage, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0);
     createTexture(ssrgiHistoryImageID, ssrgiHistoryImage, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0);
     createTexture(prevDepthImageID, prevDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+    createTexture(prevNormalImageID, prevNormalImage, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
     VkCommandBuffer tempCmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 
@@ -229,6 +232,10 @@ void TemporalPassVulkan::_createResources()
 
     TextureManagerVulkan::transitionImageLayout(tempCmd, prevDepthImage->textureImage, 
         depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, 
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
+
+    TextureManagerVulkan::transitionImageLayout(tempCmd, prevNormalImage->textureImage, 
+        VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED, 
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 
     renderDeviceVulkan->commandPool.endSingleTimeCommand(tempCmd);
@@ -256,13 +263,15 @@ void TemporalPassVulkan::_createDescriptors()
 		{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     };
 
 	uint32_t frameCount = VulkanUtils::numFrames();
     uint32_t totalSetsNeeded = frameCount * 2;
     std::vector<VkDescriptorPoolSize> poolSizes {
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1 * totalSetsNeeded},
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 5  * totalSetsNeeded},
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 7  * totalSetsNeeded},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1  * totalSetsNeeded},
 	};
 	
@@ -316,6 +325,16 @@ void TemporalPassVulkan::_updateDescriptor(uint32_t currentSetsID, uint32_t inde
 	bufferInfo.offset = 0;
 	bufferInfo.range = VK_WHOLE_SIZE;
 
+    VkDescriptorImageInfo currNormalImageInfo{};
+	currNormalImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	currNormalImageInfo.imageView = normalImage->textureImageView;
+	currNormalImageInfo.sampler = normalImage->textureSampler;
+
+    VkDescriptorImageInfo prevNormalImageInfo{};
+	prevNormalImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	prevNormalImageInfo.imageView = prevNormalImage->textureImageView;
+	prevNormalImageInfo.sampler = prevNormalImage->textureSampler;
+
 	std::vector<VkWriteDescriptorSet> writes;
 	descriptorManagerVulkan->writeStorageImage(&writes, descriptorSets[index], 0, outputImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 1, ssrgiImageInfo);
@@ -324,6 +343,8 @@ void TemporalPassVulkan::_updateDescriptor(uint32_t currentSetsID, uint32_t inde
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 4, currDepthImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 5, prevDepthImageInfo);
 	descriptorManagerVulkan->writeUniform(&writes, descriptorSets[index], 6, bufferInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 7, currNormalImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 8, prevNormalImageInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
@@ -343,35 +364,6 @@ void TemporalPassVulkan::_cleanupResources()
 }
 
 void TemporalPassVulkan::_copyDepthToHistory(VkCommandBuffer cmd) {
-    
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, depthImage->textureImage, VK_FORMAT_D32_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, prevDepthImage->textureImage, VK_FORMAT_D32_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    VkImageCopy copyRegion{};
-    copyRegion.srcSubresource = { VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1 };
-    copyRegion.dstSubresource = { VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1 };
-    copyRegion.extent = { 
-        renderDeviceVulkan->swapchain.swapChainExtent.width, 
-        renderDeviceVulkan->swapchain.swapChainExtent.height, 
-        1 
-    };
-
-    vkCmdCopyImage(
-        cmd, depthImage->textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        prevDepthImage->textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1, &copyRegion
-    );
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, depthImage->textureImage, VK_FORMAT_D32_SFLOAT,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, prevDepthImage->textureImage, VK_FORMAT_D32_SFLOAT,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
+    TextureManagerVulkan::copyImage(cmd, depthImage, prevDepthImage, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT, renderDeviceVulkan);
+    TextureManagerVulkan::copyImage(cmd, normalImage, prevNormalImage, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, renderDeviceVulkan);
 }
