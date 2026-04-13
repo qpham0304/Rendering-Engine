@@ -13,6 +13,8 @@ int main()
         windowConfig.width = 1920;
         windowConfig.height = 1080;
         windowConfig.vsync = false;
+        windowConfig.targetRenderFPS = 360.0f;
+        windowConfig.targetUpdateFPS = 360.0f;
 
         Engine app(windowConfig);
         app.init();
@@ -23,9 +25,8 @@ int main()
     }
     catch (const std::runtime_error& e) {
         std::cerr << "Exception caught by main: " << e.what() << std::endl;
-    } 
-    catch (const std::exception& e) { // Catch by reference
-        std::cerr << "Error: " << e.what() << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Caught standard exception: " << e.what() << std::endl;
     }
     catch (...) {
         std::cerr << "Unknown exception caught by main" << std::endl;

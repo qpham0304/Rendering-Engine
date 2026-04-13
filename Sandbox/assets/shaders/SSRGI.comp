@@ -1,0 +1,182 @@
+#version 460
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D u_HiZBuffer;      
+layout(set = 0, binding = 1) uniform sampler2D u_GBufferNormals; 
+layout(set = 0, binding = 2) uniform sampler2D u_SceneColor; 
+layout(set = 0, binding = 3, rgba16f) writeonly uniform image2D u_ResultImage;
+
+layout(set = 0, binding = 4) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    mat4 invProj;
+    mat4 invView;
+} camera;
+
+layout(set = 0, binding = 5) uniform sampler2D depthImage;
+layout(set = 0, binding = 6) uniform sampler2D albedoImage;
+layout(set = 0, binding = 7) uniform sampler2D pbrImage;
+layout(set = 0, binding = 8) uniform sampler2D emissiveImage;
+layout(set = 0, binding = 9) uniform sampler2D blueNoise;
+
+layout(push_constant) uniform Constants {
+    vec2 screenRes;
+    float maxDistance;
+    int maxMip;
+    float thickness; 
+    float time;
+} pc;
+
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+
+vec3 sampleHemisphere(vec3 normal, vec2 uv) {
+    ivec2 noiseSize = textureSize(blueNoise, 0);
+    vec2 noiseUV = vec2(gl_GlobalInvocationID.xy) / vec2(noiseSize);
+    
+    // texelFetch is even better for noise as it avoids interpolation
+    vec4 blueNoise = texelFetch(blueNoise, ivec2(gl_GlobalInvocationID.xy) % noiseSize, 0);
+
+    float h1 = blueNoise.r;
+    float h2 = blueNoise.g;
+    
+    float phi = 2.0 * 3.14159 * h1;
+    float cosTheta = sqrt(1.0 - h2);
+    float sinTheta = sqrt(h2);
+    
+    vec3 up = abs(normal.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+    vec3 tangent = normalize(cross(up, normal));
+    vec3 bitangent = cross(normal, tangent);
+    
+    return tangent * (cos(phi) * sinTheta) + bitangent * (sin(phi) * sinTheta) + normal * cosTheta;
+}
+
+vec3 getPos(vec2 uv, float depth) {
+    vec4 clip = vec4(uv * 2.0 - 1.0, depth, 1.0);
+    vec4 view = camera.invProj * clip;
+    return view.xyz / view.w;
+}
+
+// project view space position to UV
+vec2 getUV(vec3 pos) {
+    vec4 clip = camera.projection * vec4(pos, 1.0);
+    vec3 ndc = clip.xyz / clip.w;
+    return ndc.xy * 0.5 + 0.5;
+}
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    if (pixelCoord.x >= pc.screenRes.x || pixelCoord.y >= pc.screenRes.y) return;
+
+    vec2 uv = (vec2(pixelCoord) + 0.5) / pc.screenRes;
+    float depth = texture(depthImage, uv).r;
+
+    if (depth >= 1.0 || depth <= 0.00001) {
+        imageStore(u_ResultImage, pixelCoord, texture(u_SceneColor, uv));
+        return;
+    }
+
+    vec3 normalW = normalize(texture(u_GBufferNormals, uv).xyz);
+    vec3 normalV = normalize(mat3(camera.view) * normalW);
+    vec3 albedo = texture(albedoImage, uv).rgb;
+    float roughness = texture(pbrImage, uv).g;
+    float metallic = texture(pbrImage, uv).b;
+    vec3 emissive = texture(emissiveImage, uv).rgb;
+
+    vec3 viewPos = getPos(uv, depth);
+    vec3 viewDir = normalize(viewPos);
+
+    ivec2 noiseSize = textureSize(blueNoise, 0);
+    vec3 bn = texelFetch(blueNoise, pixelCoord % noiseSize, 0).rgb;
+
+    // ray direction spread roughness
+    vec3 reflectDir = reflect(viewDir, normalV);
+    vec3 giDir = normalize(mat3(camera.view) * sampleHemisphere(normalW, bn.rg));
+    vec3 rayDir = normalize(mix(reflectDir, giDir, roughness * roughness));
+
+    float rayStep = 0.5;   // increased base step for 500m reach
+    int maxSteps = 200;    // high step count for massive scenes
+    
+    vec3 currentStepVec = rayDir * rayStep;
+    // ray jittering
+    vec3 marchingPos = viewPos + (normalV * 0.2) + (currentStepVec * bn.b);
+    
+    bool hit = false;
+    vec2 hitUV = vec2(0.0);
+
+    for (int i = 0; i < maxSteps; i++) {
+        marchingPos += currentStepVec;
+        
+        // speed up the ray after it leaves the immediate area
+        if (i > 20) currentStepVec *= 1.018; 
+
+        hitUV = getUV(marchingPos);
+        if (hitUV.x < 0.0 || hitUV.x > 1.0 || hitUV.y < 0.0 || hitUV.y > 1.0) break;
+
+        float sceneRawDepth = texture(depthImage, hitUV).r;
+        if (sceneRawDepth >= 1.0) break;
+
+        vec3 scenePos = getPos(hitUV, sceneRawDepth);
+        float delta = scenePos.z - marchingPos.z;
+
+        // adptive thickness
+        // start with your 0.05, but grow as the ray travels.
+        // if the ray takes a 2-unit step, it needs at least 2 units of thickness to catch a hit
+        float thickness = pc.thickness + (length(currentStepVec) * 0.8);
+
+        if (delta > 0.0 && delta < thickness) { 
+            hit = true;
+            break;
+        }
+    }
+
+    if (hit) {
+        vec3 start = marchingPos - (currentStepVec / 1.018);
+        vec3 end = marchingPos;
+        for (int j = 0; j < 12; j++) {
+            vec3 mid = mix(start, end, 0.5);
+            vec2 mUV = getUV(mid);
+            float d = texture(depthImage, mUV).r;
+            vec3 p = getPos(mUV, d);
+            if ((p.z - mid.z) > 0.0) end = mid;
+            else start = mid;
+        }
+        hitUV = getUV(end);
+        marchingPos = end;
+    }
+
+    vec3 sceneColor = texture(u_SceneColor, uv).rgb;
+    vec3 indirect = vec3(0.0);
+
+    if (hit) {
+        vec3 hitColor = texture(u_SceneColor, hitUV).rgb;
+        vec3 hitEmissive = texture(emissiveImage, hitUV).rgb;
+
+        // SSR Specular
+        vec3 F0 = mix(vec3(0.04), albedo, metallic);
+        float cosTheta = clamp(dot(normalV, -viewDir), 0.0, 1.0);
+        vec3 fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+        vec3 ssr = hitColor * fresnel;
+
+        // SSGI Diffuse
+        // with high distance, we need a high multiplier to keep the light visible
+        vec3 ssgi = (hitColor + (hitEmissive * 15.0)) * albedo * 2.5;
+
+        indirect = mix(ssr, ssgi, roughness);
+    }
+
+    vec2 boundary = smoothstep(vec2(0.0), vec2(0.05), hitUV) * smoothstep(vec2(1.0), vec2(0.95), hitUV);
+    float dist = length(marchingPos - viewPos);
+    
+    // smooth Falloff for 500m distance
+    float distFade = clamp(1.0 - (dist / pc.maxDistance), 0.0, 1.0);
+    // inverse square-ish law to keep the glow natural
+    float attenuation = 1.0 / (1.0 + dist * 0.01);
+
+    vec3 finalColor = sceneColor + (indirect * boundary.x * boundary.y * distFade * attenuation) + emissive;
+    imageStore(u_ResultImage, pixelCoord, vec4(finalColor, 1.0));
+}

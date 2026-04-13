@@ -187,9 +187,10 @@ void ImGuiLeftSidebarWidget::EntityTab() {
 
         if (ImGui::BeginPopupContextItem("Add Component")) {
             _RenameMenuItem(entity);
+            _DuplicateMenuItem(entity);
             _AddModelMenuItem(entity, "Add Model Async");
-            _AddLightMenuItem();
-            _AddCameraMenuItem();
+            _AddLightMenuItem(entity);
+            _AddCameraMenuItem(entity);
             _LoadAnimationMenuItem(entity);
             _DeleteEntityMenuItem(entity, scene);
             ImGui::EndPopup();
@@ -349,6 +350,17 @@ void ImGuiLeftSidebarWidget::_RenameMenuItem(Entity& entity)
     }
 }
 
+void ImGuiLeftSidebarWidget::_DuplicateMenuItem(Entity &entity)
+{
+    if (ImGui::MenuItem("Duplicate")) {
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        if(!scene) {
+            return;
+        }
+        scene->duplicateEntity(entity);
+    }
+}
+
 void ImGuiLeftSidebarWidget::_AddModelMenuItem(Entity& entity, std::string_view text)
 {
     ImGui::BeginDisabled(true);
@@ -358,20 +370,15 @@ void ImGuiLeftSidebarWidget::_AddModelMenuItem(Entity& entity, std::string_view 
     ImGui::EndDisabled();
 }
 
-void ImGuiLeftSidebarWidget::_AddLightMenuItem()
+void ImGuiLeftSidebarWidget::_AddLightMenuItem(Entity& entity)
 {
     if (ImGui::MenuItem("Add Light")) {
-        //auto& light = entity.addComponent<MLightComponent>();
-        //light.color = glm::vec3(500, 500, 400);
-        //light.position = entity.getComponent<TransformComponent>().translateVec;
-        //entity.getComponent<NameComponent>().name = "light";
-        //entity.addComponent<LightComponent>(glm::vec4(500, 500, 400, 1.0), 15.0f, 1.0f);
-
-        m_logger->warn("add light not implemented yet");
+        entity.getComponent<NameComponent>().name = "light";
+        LightComponent& light = entity.addComponent<LightComponent>(glm::vec4(200, 200, 200, 1.0), 15.0f, 1.0f);
     }
 }
 
-void ImGuiLeftSidebarWidget::_AddCameraMenuItem()
+void ImGuiLeftSidebarWidget::_AddCameraMenuItem(Entity& entity)
 {
     if (ImGui::MenuItem("Add Camera")) {
         //light.position = transform.translateVec;

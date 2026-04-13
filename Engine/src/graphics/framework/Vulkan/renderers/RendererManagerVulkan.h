@@ -34,6 +34,9 @@ protected:
 	Renderer* shadowMapRenderer { nullptr };
 	Renderer* imageBasedRenderer { nullptr };
 	Renderer* postProcessRenderer { nullptr };
+	Renderer* alchemyAORenderer { nullptr };
+	Renderer* hiZPassRenderer { nullptr };
+	Renderer* SSRGIPassRenderer { nullptr };
 
 	TextureVulkan* displayImage { nullptr };
 };

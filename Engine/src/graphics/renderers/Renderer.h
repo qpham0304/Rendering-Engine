@@ -21,7 +21,8 @@ public:
 	virtual void render(Camera& camera) = 0;
 
 protected:
-	Renderer(std::string name = "Renderer") {};
+	Renderer(std::string name = "Renderer") : m_name(name) {};
 
+	std::string m_name;
 };
 

@@ -186,18 +186,9 @@ void Camera::translate(const glm::vec3& position)
 	this->position = position;
 }
 
-
-void Camera::processInput()
-{
-	bool isMouseMoved = processMouse();
-	bool isKeyboardMoved = processKeyboard();
-	cameraMove = isMouseMoved || isKeyboardMoved;
-}
-
 void Camera::mouseControl()
 {
-	double x;
-	double y;
+	double x, y;
 	AppWindow::getCursorPos(&x, &y);
 
 	float xpos = static_cast<float>(x);
@@ -224,7 +215,6 @@ void Camera::mouseControl()
 
 	// Update camera orientation based on mouse movement
 	// Example: Adjust yaw and pitch of the camera
-
 	if(yaw == DEFAULT_YAW) {
 		orientation = glm::normalize(orientation);
 		pitch = glm::degrees(asin(orientation.y));
@@ -261,11 +251,6 @@ void Camera::scroll_callback(double xoffset, double yoffset)
 		fov = 45.0f;
 }
 
-void Camera::key_callback(int key, int scancode, int action, int mods) {
-	processKeyboard();
-}
-
-
 void Camera::reCalculateView()
 {
 	view = glm::lookAt(position, position + orientation, up);
@@ -274,7 +259,9 @@ void Camera::reCalculateView()
 
 void Camera::reCalculateProjection()
 {
-	projection = glm::perspective(glm::radians(fov), (float)width / height, nearPlane, farPlane);
+	if(height > 0) {
+		projection = glm::perspective(glm::radians(fov), (float)width / height, nearPlane, farPlane);
+	}
 	inProjection = glm::inverse(projection);
 }
 

@@ -6,6 +6,7 @@
 #include "core/layers/layerManager.h"
 #include "gui/GuiManager.h"
 #include "core/features/camera.h"
+#include "core/features/OrbitCamera.h"
 
 
 #include "src/gui/framework/ImGui/widgets/ImGuiConsoleLogWidget.h"
@@ -13,31 +14,6 @@
 #include "src/gui/framework/ImGui/widgets/ImGuiRightSidebarWidget.h"
 #include "src/gui/framework/ImGui/widgets/ImGuiMenuWidget.h"
 #include "src/gui/framework/ImGui/widgets/ImGuiMathWidget.h"
-
-void EditorLayer::mockThreadTasks()
-{
-	AsyncEvent addComponentEvent;
-	auto func = [](Event& event) -> void {
-		//Component reimu("assets/Models/reimu/reimu.obj");
-		//SceneManager::addComponent(reimu);
-	};
-	eventManager.queue(addComponentEvent, func);
-
-	AsyncEvent addComponentEvent1;
-	auto func1 = [](Event& event) -> void {
-		//Component reimu("assets/Models/sponza/sponza.obj");
-		//SceneManager::addComponent(reimu);
-	};
-	eventManager.queue(addComponentEvent1, func1);
-
-	AsyncEvent addComponentEvent2;
-	auto func2 = [](Event& event) -> void {
-		//Component reimu("assets/Models/aru/aru.gltf");
-		//SceneManager::addComponent(reimu);
-	};
-	eventManager.queue(addComponentEvent2, func2);
-
-}
 
 void EditorLayer::renderGuizmo()
 {
@@ -93,7 +69,6 @@ void EditorLayer::onAttach(LayerManager* manager)
 
 	eventManager.subscribe(EventType::MouseScrolled, [&](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
-
 		if (guiController.isGuizmoFocus()) {
 			mouseEvent.Handled = true;	// block mouse event from other layers
 		}
@@ -111,26 +86,27 @@ void EditorLayer::onAttach(LayerManager* manager)
 		SceneManager::getInstance().addScene("default scene");
 		Scene* scene = SceneManager::getInstance().getActiveScene();
 		if(scene) {
-			// scene->loadScene("assets/data/default-scene.json");
-			scene->loadScene("assets/data/level1-test.json");
-
-			editorCamera = new Camera();
-			editorCamera->init(
-				AppWindow::getWidth(),
-				AppWindow::getHeight(),
-				glm::vec3(-3.0, 10.0, 10.0),
-				glm::vec3(3.0, -10.0, -10.0)
-			);
-
-			SceneManager::cameraController = editorCamera;
+			scene->loadScene("assets/data/default-scene.json");
+			// scene->loadScene("assets/data/level1-test.json");
 		}
+	}
+
+	if(!SceneManager::cameraController) {
+		editorCamera = std::make_unique<OrbitCamera>();
+		editorCamera->init(
+			AppWindow::getWidth(),
+			AppWindow::getHeight(),
+			glm::vec3(3),
+			glm::vec3(0)
+		);
+
+		SceneManager::cameraController = editorCamera.get();
 	}
 
 }
 
 void EditorLayer::onDetach()
 {
-	delete editorCamera;
 }
 
 void EditorLayer::onUpdate()

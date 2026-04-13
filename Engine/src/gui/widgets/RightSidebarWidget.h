@@ -12,5 +12,6 @@ public:
 	virtual void textureInspector() = 0;
 	virtual void environmentControl() = 0;
 	virtual void render() override = 0;
+	virtual void update() override = 0;
 };
 

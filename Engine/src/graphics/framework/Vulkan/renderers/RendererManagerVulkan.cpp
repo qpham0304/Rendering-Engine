@@ -2,12 +2,16 @@
 #include <core/scene/SceneManager.h>
 
 
+#include "core/features/Timer.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ApplicationRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpiplines/ShadowMapRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpiplines/ImageBasedRendererVulkan.h"
-#include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
+#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
+#include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
 #include "RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
 
@@ -29,15 +33,20 @@ bool RendererManagerVulkan::init(WindowConfig config)
     applicationRenderer = addRenderer<ApplicationRendererVulkan>("ApplicationRendererVulkan");
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
-    // shadowMapRenderer = addRenderer<ShadowMapRendererVulkan>("ShadowMapRendererVulkan");
-    // imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
+    shadowMapRenderer = addRenderer<ShadowMapRendererVulkan>("ShadowMapRendererVulkan");
+    imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
+    alchemyAORenderer = addRenderer<AlchemyAORendererVulkan>("AlchemyAORendererVulkan");
+    hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
+    SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
     // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererRendererVulkan");
 	
     applicationRenderer->init(config);
+	imageBasedRenderer->init(config);
+	shadowMapRenderer->init(config);
+    // alchemyAORenderer->init(config);
+    // hiZPassRenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
-	// shadowMapRenderer->init(config);
-	// imageBasedRenderer->init(config);
 	// postProcessRenderer->init(config);
 
     return true;
@@ -54,8 +63,12 @@ bool RendererManagerVulkan::onClose()
     applicationRenderer->onClose();
 	forwardRenderer->onClose();
 	deferredRenderer->onClose();
-	// shadowMapRenderer->onClose();
-	// imageBasedRenderer->onClose();
+	shadowMapRenderer->onClose();
+	imageBasedRenderer->onClose();
+    alchemyAORenderer->onClose();
+    hiZPassRenderer->onClose();
+    SSRGIPassRenderer->onClose();
+	// postProcessRenderer->onClose();
     return true;
 }
 
@@ -71,11 +84,12 @@ std::vector<uint32_t> RendererManagerVulkan::listIDs() const
 
 void RendererManagerVulkan::onUpdate()
 {
-    render();
+    
 }
 
 void RendererManagerVulkan::render()
 {
+    Timer timer("Renderer Manager", true);
     Scene* scene = SceneManager::getInstance().getActiveScene();
     Camera* camera = SceneManager::cameraController;
 
@@ -84,8 +98,15 @@ void RendererManagerVulkan::render()
 	}
 
     beginFrame();
-    // deferredRenderer->render(*camera);
-	forwardRenderer->render(*camera);
+    // shadowMapRenderer->render(*camera);
+	// forwardRenderer->render(*camera);
+    auto tmp = (DeferredRendererVulkan*)deferredRenderer;
+    if(tmp->pushConstantLight.aoOn) {
+        alchemyAORenderer->render(*camera);
+    }
+    hiZPassRenderer->render(*camera);
+    SSRGIPassRenderer->render(*camera);
+    deferredRenderer->render(*camera);
     applicationRenderer->render(*camera);
     endFrame();
 }

@@ -108,6 +108,12 @@ uint32_t ModelManager::loadModel(std::string_view path)
     return _assignID();
 }
 
+uint32_t ModelManager::addModel(Model& model)
+{
+    m_models[m_ids] = std::make_shared<Model>(std::move(model));
+    return _assignID();
+}
+
 Model* ModelManager::getModel(uint32_t id) const
 {
     if (m_models.find(id) == m_models.end()) {
@@ -148,6 +154,7 @@ bool ModelManager::_loadModel(std::string_view path)
     }
 
     std::vector<uint32_t> meshes = {};
+    
     _processNode(scene->mRootNode, scene, meshes, directory);
     
     m_modelData[path.data()] = m_ids;
@@ -224,6 +231,15 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
 
     // process material
     MaterialDesc materialDesc{};
+    materialDesc.materialIdx = 0;
+    materialDesc.uv = glm::vec2(1.0f, 1.0f);
+    materialDesc.albedo = glm::vec4(1.0);
+    materialDesc.normal = glm::vec4(0.0);
+    materialDesc.metallic  = 0.0f;
+    materialDesc.roughness = 1.0f;
+    materialDesc.ao        = 1.0f;
+    materialDesc.emissive  = 1.0f;
+
 
     if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
@@ -263,6 +279,13 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
 
 std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, aiTextureType type, std::string typeName, std::string_view directory)
 {
+    bool isData = (type == aiTextureType_NORMALS || 
+                   type == aiTextureType_METALNESS || 
+                   type == aiTextureType_DIFFUSE_ROUGHNESS || 
+                   type == aiTextureType_AMBIENT_OCCLUSION || 
+                   type == aiTextureType_HEIGHT || 
+                   type == aiTextureType_SHININESS);
+                   
     std::vector<uint32_t> textureIDs;
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
     {
@@ -270,7 +293,7 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, aiTextureType
         mat->GetTexture(type, i, &str);
 
         std::string path = std::string(directory) + '/' + std::string(str.C_Str());
-        uint32_t textureID = textureManager->loadTexture(path.data(), 5, false);
+        uint32_t textureID = textureManager->loadTexture(path.data(), 5, isData);
         textureIDs.push_back(textureID);
     }
 

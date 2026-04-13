@@ -4,9 +4,8 @@
 #include "window/AppWindow.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
-#include "core/resources/managers/TextureManager.h"
 #include "core/resources/managers/ModelManager.h"
-#include "core/events/EventManager.h"
+#include "core/resources/managers/TextureManager.h"
 #include "core/features/ServiceLocator.h"
 #include "core/features/Mesh.h"
 #include "core/features/EngineUtils.h"
@@ -23,16 +22,17 @@ bool SandBoxLayer::init()
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
+    modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
 
-    camera = std::make_unique<Camera>();
-    camera->init(
-        AppWindow::getWidth(),
-        AppWindow::getHeight(),
-        glm::vec3(5.0),
-        glm::vec3(-5.0)
-    );
+    // camera = std::make_unique<Camera>();
+    // camera->init(
+    //     AppWindow::getWidth(),
+    //     AppWindow::getHeight(),
+    //     glm::vec3(5.0),
+    //     glm::vec3(-5.0)
+    // );
 
-    SceneManager::cameraController = camera.get();
+    // SceneManager::cameraController = camera.get();
 
     SceneManager::getInstance().addScene("Sanbox scene");
     Scene* scene = SceneManager::getInstance().getActiveScene();
@@ -43,35 +43,7 @@ bool SandBoxLayer::init()
     setLogScopeEngine();
     scene->loadScene("assets/data/Level1-test.json");
 
-    uint32_t planeID = scene->addEntity("light");
-    Entity planeEntity = scene->getEntity(planeID);
-    TransformComponent& transform = planeEntity.getComponent<TransformComponent>();
-    transform.translate(glm::vec3(2.0));
-
-    MaterialDesc materialDesc;
-    materialDesc.albedoIDs.push_back(textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false));
-
-    
-    Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
-    mesh.materialID = materialManager->createMaterial(materialDesc);
-    
-    MeshComponent m{};
-    m.meshIDs.push_back(meshManager->loadMesh(mesh));
-    planeEntity.addComponent<MeshComponent>(m);
-    planeEntity.addComponent<LightComponent>(glm::vec4(1.0, 0.0, 1.0, 1.0), 2.0f, 1.0f);
-
-	EventManager& eventManager = EventManager::getInstance();
-
-    // Entity sponza = scene->getEntity(scene->addEntity("sponza"));
-    // sponza.addComponent<ModelComponent>();
-
-    // eventManager.queue(AsyncEvent("sponza load"), [&] (AsyncEvent& e) {
-    //     ModelManager* modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-    //         modelManager->loadModel("assets/models/sponza/sponza.obj");
-    // });
-
-
-    const int numLights = 100;
+    const int numLights = 1;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(-numLights, numLights);
@@ -100,14 +72,21 @@ bool SandBoxLayer::init()
         Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
         mesh.materialID = materialManager->createMaterial(materialDesc);
 
-        MeshComponent m{};
-        m.meshIDs.push_back(meshManager->loadMesh(mesh));
-        lightEntity.addComponent<MeshComponent>(m);
+        // MeshComponent m{};
+        // m.meshIDs.push_back(meshManager->loadMesh(mesh));
+        // lightEntity.addComponent<MeshComponent>(m);
+
+        Model model {};
+        model.meshIDs.push_back(meshManager->loadMesh(mesh));
+        ModelComponent modelComponent;
+        modelComponent.modelID = modelManager->addModel(model);
+        lightEntity.addComponent<ModelComponent>(modelComponent);
 
         glm::vec4 randomColor(colorDist(gen), colorDist(gen), colorDist(gen), 1.0f);
 
         lightEntity.addComponent<LightComponent>(randomColor, 15.0f, 1.0f);
     }
+
 	return true;
 }
 
@@ -118,13 +97,6 @@ void SandBoxLayer::onAttach(LayerManager *manager)
 
 void SandBoxLayer::onDetach()
 {
-    Scene* scene = SceneManager::getInstance().getScene("Sanbox scene");
-    if(scene) {
-        // std::string directory = "../../";
-        // scene->saveScene(directory + "assets/data/Level1-test.json");
-        Log().info("layer detached");
-        SceneManager::getInstance().removeScene("Sanbox scene");
-    }
 
 }
 

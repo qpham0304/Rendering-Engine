@@ -4,7 +4,7 @@
 
 class Camera
 {
-private:
+protected:
 	const float DEFAULT_SPEED = 0.1f;
 	const float DEFAULT_SENSITIVITY = 0.1f;
 	const float DEFAULT_YAW = -90.0f;
@@ -64,7 +64,7 @@ public:
 	Camera();
 	Camera(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation);
 	Camera(unsigned int width, unsigned int height, glm::vec3 position);
-	~Camera() = default;
+	virtual ~Camera() = default;
 
 	glm::vec3 getPosition();
 	glm::vec3 getOrientation();
@@ -80,21 +80,16 @@ public:
 	bool isMoving();
 	float getDeltaTime();
 	
-	void init(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation);
-	void onUpdate();
-	void updateViewResize(int width, int height);
-	void processInput();
-	void resetCamera();
-	void setCameraSpeed(int speedMultiplier);
-	void translate(const glm::vec3& position);
+	virtual void init(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation);
+	virtual void onUpdate();
+	virtual void updateViewResize(int width, int height);
+	virtual void resetCamera();
+	virtual void setCameraSpeed(int speedMultiplier);
+	virtual void translate(const glm::vec3& position);
 
-	//TODO: refactor by moving these to global
-	// create a singleton camera that control and manage the view
-	// swap to other camera on selected
-	bool processKeyboard();	//TODO: refactor to not depend upon glfw window
-	bool processMouse();		//same here
-	void scroll_callback(double xoffset, double yoffset);
-	void key_callback(int key, int scancode, int action, int mods);
+	virtual bool processKeyboard();
+	virtual bool processMouse();
+	virtual void scroll_callback(double xoffset, double yoffset);
 
 private:
 	void mouseControl();

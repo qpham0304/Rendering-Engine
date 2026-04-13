@@ -10,13 +10,91 @@
 #include "core/features/ServiceLocator.h"
 #include "core/components/MComponent.h"
 #include "core/features/EngineUtils.h"
+#include "core/events/EventManager.h"
+#include "core/resources/managers/modelManager.h"
+
 
 ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
     :   RightSidebarWidget(),
         popupOpen(false),
+        errorPopupOpen(false),
         selectedTexture(0)
 {
 
+}
+
+void ImGuiRightSidebarWidget::_addModelDialog(Entity& entity) {
+#if defined(_WIN32)
+    std::string path = Utils::fileDialog();
+#elif defined(__APPLE__) && defined(__MACH__)
+    // macOS specific code
+#elif defined(__linux__)
+    // Linux specific code
+#else
+    // Unknown or unsupported platform
+#endif
+
+
+    if (!path.empty()) {
+        entity.addComponent<ModelComponent>();
+        //NOTE: disable for opengl since it doesn't like buffer generation on a separate thread
+#define USE_THREAD        
+#ifdef USE_THREAD
+        AsyncEvent event(path);
+        auto func = [&entity](AsyncEvent& event) {
+            printf("unimplemented async event");
+        };
+        EventManager::getInstance().queue(event, func);
+#else
+        ModelLoadEvent event(path, entity);
+        EventManager::getInstance().publish(event);
+#endif
+        ModelComponent& component = entity.getComponent<ModelComponent>();
+        if (component.path == "None") {
+            ImGui::OpenPopup("Model loading error");
+            errorPopupOpen = true;
+        }
+    }
+}
+
+void ImGuiRightSidebarWidget::errorModal(const char* message) {
+    if (ImGui::BeginPopupModal("Model loading error", &errorPopupOpen, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text(message);
+        ImGui::Separator();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+        ImGui::PopStyleVar();
+
+        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - ImGui::GetWindowContentRegionMax().x / 2);
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SetItemDefaultFocus();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+void ImGuiRightSidebarWidget::environmentControl()
+{
+    if(!scene) {
+        m_logger->warn("could not find active scene");
+        return;
+    }
+
+    auto list = scene->getEntitiesWith<CubeMapComponent>();
+    CubeMapComponent* cubeMap = nullptr;
+
+    if (!list.empty() && list[0].hasComponent<CubeMapComponent>()) {
+        cubeMap = &list[0].getComponent<CubeMapComponent>();
+    }
+
+    ImGui::Begin("Environment Control");
+
+    ImGui::End();
 }
 
 void ImGuiRightSidebarWidget::TextureModal(const ImTextureID& id) {
@@ -77,7 +155,8 @@ void ImGuiRightSidebarWidget::textureInspector()
 
     ImGui::Begin("Texture View");
     TextureModal((ImTextureID)selectedTexture);
-
+    static float waveSpeed = 2.0f;
+    static float waveAmplitude = 0.5f;
     auto selectedEntities = scene->getSelectedEntities();
     for (auto& entity : selectedEntities) {
         ImVec2 wsize = ImGui::GetWindowSize();
@@ -85,114 +164,107 @@ void ImGuiRightSidebarWidget::textureInspector()
         wsize.y = wsize.x;
         if (scene->getSelectedMeshID() != 0) {
             const Mesh* mesh = meshManager->getMesh(scene->getSelectedMeshID());
-            MaterialDesc meshDesc = materialManager->getMaterial(mesh->materialID);
+            MaterialDesc materialDesc = materialManager->getMaterial(mesh->materialID);
 
             std::vector<uint32_t> ids = {
-                meshDesc.albedoIDs[0],
-                meshDesc.normalIDs[0],
-                meshDesc.metallicIDs[0],
-                meshDesc.roughnessIDs[0],
-                meshDesc.aoIDs[0],
-                meshDesc.emissiveIDs[0],
+                materialDesc.albedoIDs[0],
+                materialDesc.normalIDs[0],
+                materialDesc.metallicIDs[0],
+                materialDesc.roughnessIDs[0],
+                materialDesc.aoIDs[0],
+                materialDesc.emissiveIDs[0],
             };
 
+            bool changed = false;
+            if (ImGui::CollapsingHeader("Material Parameters", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f); 
+
+                changed |= ImGui::SliderFloat2("UV offset", &materialDesc.uv[0], 0.00f, 10.0f);
+                changed |= ImGui::ColorEdit4("Albedo Tint", &materialDesc.albedo[0]);
+                // changed |= ImGui::SliderFloat4("Normal", &materialDesc.normal[0], -10.0f, 10.0f);
+                changed |= ImGui::SliderFloat("Metallic", &materialDesc.metallic, 0.0f, 1.0f);
+                changed |= ImGui::SliderFloat("Roughness", &materialDesc.roughness, 0.0f, 1.0f);
+                changed |= ImGui::SliderFloat("AO", &materialDesc.ao, 0.0f, 1.0f);
+                changed |= ImGui::DragFloat("Emissive", &materialDesc.emissive, 0.1f, 0.0f, 10.0f);
+
+                changed |= ImGui::SliderFloat("Wave Speed", &waveSpeed, 0.0f, 10.0f);
+                changed |= ImGui::SliderFloat("Wave Amplitude", &waveAmplitude, 0.0f, 2.0f);
+                // Display the resulting vector (Read-only)
+                ImGui::Text("Active Normal: %.2f, %.2f, %.2f", materialDesc.normal.x, materialDesc.normal.y, materialDesc.normal.z);
+                ImGui::PopItemWidth();
+            }
+
+            ImGui::Separator();
+            int i = 0;
             for (auto& id : ids) {
                 Texture* texture = textureManager->getTexture(id);
+                const char* mapNames[] = { "Albedo", "Normal", "Metallic", "Roughness", "AO", "Emissive" };
                 ImGui::PushID(texture->path().c_str());
-                ImGui::Separator();
-                ImGui::Image(
-                    (ImTextureID)textureManager->inspectTexture(id), 
-                    wsize, 
-                    ImVec2(0, 1), 
-                    ImVec2(1, 0)
-                );
-                ImGui::PopID();
+                ImGui::BeginGroup();
+                std::string btnId = "thumb_" + std::to_string(i);
+                float thumbSize = ImGui::GetFrameHeight() * 2.0f;
                 
-                if (ImGui::IsItemClicked()) {
+                if (ImGui::ImageButton(btnId.c_str(), (ImTextureID)textureManager->inspectTexture(ids[i]), ImVec2(thumbSize, thumbSize), ImVec2(0, 1), ImVec2(1, 0))) {
                     selectedTexture = id;
                     ImGui::OpenPopup("Image View");
                     popupOpen = true;
                 }
+                ImGui::EndGroup();
 
                 ImGui::SameLine();
-                ImGui::TextWrapped(texture->path().c_str());
-            }
-        }
-    }
-    ImGui::End();
-}
 
-void ImGuiRightSidebarWidget::environmentControl()
-{
-    if(!scene) {
-        m_logger->warn("could not find active scene");
-        return;
-    }
+                ImGui::BeginGroup();
+                ImGui::TextDisabled("%s Map", mapNames[i]);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.8f, 1.0f, 1.0f));
 
-    auto list = scene->getEntitiesWith<CubeMapComponent>();
-    CubeMapComponent* cubeMap = nullptr;
-
-    if (!list.empty() && list[0].hasComponent<CubeMapComponent>()) {
-        cubeMap = &list[0].getComponent<CubeMapComponent>();
-    }
-
-    ImGui::Begin("Environment Control");
-
-    ImVec2 wsize = ImGui::GetWindowSize();
-    int wWidth = static_cast<int>(ImGui::GetWindowWidth());
-    int wHeight = static_cast<int>(ImGui::GetWindowHeight());
-
-    if (cubeMap) {
-
-        if (ImGui::Button("Change Cubemap Texture", ImVec2(-1.0, 0.0))) {
-            auto list = scene->getEntitiesWith<CubeMapComponent>();
-
-            std::string path;
-            path = Utils::fileDialog();
-            if (!path.empty()) {
-
-                //#define USE_THREAD
-#ifdef USE_THREAD
-                AsyncEvent event;
-                auto function = [this, cubeMap, path](AsyncEvent& event) mutable {
-                    glfwMakeContextCurrent(AppWindow::sharedWindow);            //EXPERIMENTATION
-                    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-                        std::cerr << "Failed to initialize GLAD for shared context" << std::endl;
-                        return;
-                    }
-                    if (cubeMap) {
-                        cubeMap->reloadTexture(path);
-                    }
-                    glfwMakeContextCurrent(AppWindow::window);
-                    };
-                EventManager::getInstance().queue(event, function);
-#else
-                if (cubeMap) {
-                    cubeMap->reloadTexture(path);
+                if (ImGui::Selectable(texture->path().c_str(), false, 0, ImVec2(0, 0))) {
                 }
-#endif
 
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Click change texture source");
+                }
+
+                ImGui::PopStyleColor();
+                ImGui::EndGroup();
+                ImGui::PopID();
+                
+                if (ImGui::IsItemClicked()) {
+                    // selectedTexture = id;
+                    // ImGui::OpenPopup("Image View");
+                    // popupOpen = true;
+                    
+                    std::string path = Utils::fileDialog();
+                    if(!path.empty()) {
+                        switch (i) {    // assume that there are 6 materials in pbr pipelines
+                            case 0: materialDesc.albedoIDs[0] = textureManager->loadTexture(path, 1, false); break;
+                            case 1: materialDesc.normalIDs[0] = textureManager->loadTexture(path, 1, true); break;
+                            case 2: materialDesc.metallicIDs[0] = textureManager->loadTexture(path, 1, true); break;
+                            case 3: materialDesc.roughnessIDs[0] = textureManager->loadTexture(path, 1, true); break;
+                            case 4: materialDesc.aoIDs[0] = textureManager->loadTexture(path, 1, true); break;
+                            case 5: materialDesc.emissiveIDs[0] = textureManager->loadTexture(path, 1, false); break;
+                            default: break;
+                        }
+                        
+                        changed |= true;
+                    }
+                }
+                i++;
+            }
+            
+            if(changed) {
+                m_meshesToUpdate.push_back(std::make_pair(mesh, materialDesc));
             }
 
-            else {
-                cubeMap->reloadTexture();
-            }
-        }
+            // float time = static_cast<float>(AppWindow::getTime());
+            // materialDesc.uv = glm::vec2(time, time);
 
-    }
+            // materialDesc.normal.x = std::sin(time * waveSpeed) * waveAmplitude;
+            // materialDesc.normal.y = std::cos(time * waveSpeed) * waveAmplitude;
+            // materialDesc.normal.z = 1.0f;
 
-    else {
-        if (ImGui::Button("+ Add Cubemap", ImVec2(-1.0, 0.0))) {
-            // uint32_t cubemapID = scene->addEntity("cubemap");
-            // Entity cubemapEntity = scene->getEntity(cubemapID);
-            // std::string path = Utils::fileDialog();
-            // cubemapEntity.addComponent<CubeMapComponent>(path);
-            std::runtime_error("add cubemap unimplemented");
+            // m_meshesToUpdate.push_back(std::make_pair(mesh, materialDesc));
         }
     }
-
-
-
     ImGui::End();
 }
 
@@ -213,21 +285,27 @@ void ImGuiRightSidebarWidget::render()
     }
 }
 
+void ImGuiRightSidebarWidget::update()
+{
+    for(auto& [mesh, material] : m_meshesToUpdate) {
+        materialManager->updateMaterial(mesh->materialID, material);
+    }
+    m_meshesToUpdate.clear();
+}
+
 void ImGuiRightSidebarWidget::_listTextureManager()
 {
 	ImGui::Begin("Textures");
 
-	if(AppWindow::getWindowConfig().renderPlatform == RenderPlatform::VULKAN) {
-		std::vector<uint32_t> ids = textureManager->listIDs();
-		for (auto& id : ids) {
-			ImGui::Text("%s", std::to_string(id).c_str());
-			ImGui::Begin("Texture View");
-			ImGui::BeginChild("Image View");
-			ImGui::Image((ImTextureID)textureManager->inspectTexture(id), ImVec2(250, 250));
-			ImGui::EndChild();
-			ImGui::End();
-		}
-	}
+    std::vector<uint32_t> ids = textureManager->listIDs();
+    for (auto& id : ids) {
+        ImGui::Text("%s", std::to_string(id).c_str());
+        ImGui::Begin("Texture View");
+        ImGui::BeginChild("Image View");
+        ImGui::Image((ImTextureID)textureManager->inspectTexture(id), ImVec2(250, 250));
+        ImGui::EndChild();
+        ImGui::End();
+    }
 
 	ImGui::End();
 }
@@ -271,39 +349,83 @@ void ImGuiRightSidebarWidget::_componentsControl()
         ImGui::TextDisabled("Select Category");
         ImGui::Separator();
 
+        EventManager& eventManager = EventManager::getInstance();
         if (ImGui::Selectable("Model")) { 
-            entity.addComponent<ModelComponent>();
+            
+            // std::string path = Utils::fileDialog();
+            // if (!path.empty()) {
+                auto function = [&](AsyncEvent& event) mutable {
+                    modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+                    modelManager->loadModel("assets/models/reimu/reimu.obj");
+                    // entity.addComponent<ModelComponent>(path);
+                    // entity.addComponent<ModelComponent>("assets/models/reimu/reimu.obj");
+                    // entity.onModelComponentAdded();
+                };
+                eventManager.queue(asyncE, function);
+            // }
         }
+        
+        
 
         if (ImGui::BeginMenu("Mesh")) {
-            Mesh mesh{};
+            /*
+            	EventManager& eventManager = EventManager::getInstance();
+                AsyncEvent asyncEvent;
+                eventManager.queue(asyncEvent, [this] (AsyncEvent event) {
+                    hdrImageID = textureManagerVulkan->loadTexture(
+                        "assets/textures/hdr/farm_field_puresky_2k.hdr", 
+                        // "assets/textures/hdr/newport_loft.hdr", 
+                        1, 
+                        false
+                    );
+                    EventManager& eventManager = EventManager::getInstance();
 
-            auto loadMeshData = [&] (){
+                    eventManager.publish(event);
+                });
+
+                eventManager.subscribe(EventType::AsyncEvent, [](Event& event)) {
+                    AsyncEvent& e =
+                }
+            */
+
+            auto loadModelData = [] (
+                Entity& entity,
+                Mesh& mesh,
+                TextureManager* textureManager,
+                MaterialManager* materialManager,
+                MeshManager* meshManager,
+                ModelManager* modelManager
+            ){
                 MaterialDesc materialDesc;
                 materialDesc.albedoIDs.push_back(
                     textureManager->loadTexture(
-                    "assets/textures/mobi-padoru.png", 
+                    "assets/textures/mobi-padoru.png",
                     1, 
                     false
                 ));
                 mesh.materialID = materialManager->createMaterial(materialDesc);
-                
-                MeshComponent m{};
-                m.meshIDs.push_back(meshManager->loadMesh(mesh));
-                entity.addComponent<MeshComponent>(m);
+
+                Model model {};
+                model.meshIDs.push_back(meshManager->loadMesh(mesh));
+                ModelComponent modelComponent;
+                modelComponent.modelID = modelManager->addModel(model);
+                entity.addComponent<ModelComponent>(modelComponent);
             };
 
-            if (ImGui::Selectable("Quad")) { 
-                mesh = EngineUtils::drawQuad();  
-                loadMeshData();
+            if (ImGui::Selectable("Quad")) {
+                AsyncEvent asyncEvent;
+                eventManager.queue(asyncEvent, [&] (AsyncEvent event) {
+                    Mesh mesh = EngineUtils::drawQuad();  
+                    loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager);
+                });
             }
             if (ImGui::Selectable("Cube")) {
-                mesh = EngineUtils::drawCube(2.0f);
-                loadMeshData();
+                Mesh mesh = EngineUtils::drawCube(2.0f);
+                loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager);
             }
             if (ImGui::Selectable("Sphere")) { 
-                mesh = EngineUtils::drawSphere(0.5f, 36, 36);
-                loadMeshData();
+                Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
+                loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager);
             }
             
             ImGui::EndMenu();
@@ -388,7 +510,7 @@ void ImGuiRightSidebarWidget::_transformControl(const Entity& entity)
         ImGui::PushID(label.c_str());
 
         ImGui::Columns(2);
-        // 1. Increased width to prevent "Translation" from cutting off
+        // Increased width to prevent "Translation" from cutting off
         ImGui::SetColumnWidth(0, 120.0f); 
         
         // Align text vertically with the input boxes
@@ -400,7 +522,7 @@ void ImGuiRightSidebarWidget::_transformControl(const Entity& entity)
         float totalWidth = ImGui::GetContentRegionAvail().x;
         float itemWidth = (totalWidth - (ImGui::GetStyle().ItemSpacing.x * 2.0f)) / 3.0f;
         
-        // 2. Control Spacing: Tighten the gap between the Colored Button and the Value Box
+        // Control Spacing: Tighten the gap between the Colored Button and the Value Box
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
         
         auto RenderAxis = [&](const char* axisLabel, float& value, ImVec4 color, ImVec4 hoverColor, bool isLast) {
@@ -423,7 +545,7 @@ void ImGuiRightSidebarWidget::_transformControl(const Entity& entity)
             // The DragFloat
             // Subtract button width from the segment width
             ImGui::SetNextItemWidth(itemWidth - 25.0f);
-            if (ImGui::DragFloat("##val", &value, 0.1f, 0.0f, 0.0f, "%.2f")) {
+            if (ImGui::DragFloat("##val", &value, 0.01f, 0.0f, 0.0f, "%.2f")) {
                 changed = true;
             }
 

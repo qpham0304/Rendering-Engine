@@ -24,6 +24,7 @@ public:
     Scene& operator=(Scene&& other) = delete;
 
 	uint32_t addEntity(const std::string& name = "Entity");
+	uint32_t duplicateEntity(Entity source);
 	bool removeEntity(const uint32_t& uuid);
 	bool hasEntity(const uint32_t& id);
 	Entity getEntity(const uint32_t& id);
@@ -80,6 +81,7 @@ private:
 	Serializer m_serializer;
 
 	bool controlPressed = false;
+	bool shiftPressed = false;
 	bool processing = false;
 
 	void _addEntity(Entity& entity);

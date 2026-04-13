@@ -2,14 +2,17 @@
 
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
-#include "ShadowMapRendererVulkan.h"
-#include "ImageBasedRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>
 #include <unordered_map>
 
+class AlchemyAORendererVulkan;
+class HiZPassVulkan;
+class SSRGIPassVulkan;
 class DeferredRendererVulkan : public RendererVulkan
 {
 private:
@@ -40,6 +43,9 @@ private:
 		alignas(4)  float time;
 		alignas(4)	float numLights;
 		alignas(4)	float skyboxDetail;
+		alignas(4)	int aoOn;
+		alignas(4)	float G;
+		alignas(4)	float scatteringScale;
 	};
 
 	struct LightSSBO {
@@ -65,7 +71,6 @@ public:
 public:	//TODO: make private once done testing	
 	const int numInstances = 1;
 	const int numLights = 1000;
-
 	bool showGui{ true };
 	
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
@@ -94,9 +99,14 @@ public:	//TODO: make private once done testing
 
 	Camera* cam;
 
-	ShadowMapRendererVulkan shadowMapRenderer;
-	ImageBasedRendererVulkan imageBasedRenderer;
+	ShadowMapRendererVulkan* shadowMapRenderer { nullptr };
+	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
+	AlchemyAORendererVulkan* alchemyAORendererVulkan { nullptr };
+	HiZPassVulkan* hiZPassRenderer { nullptr };
+	SSRGIPassVulkan* SSRGIPassRenderer { nullptr };
 	
+	std::unique_ptr<VulkanPipeline> tempPipeline { nullptr };
+
 	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _createRenderPasses();

@@ -26,6 +26,8 @@ public:
 	static bool isKeyPressed(KeyCodes keyCode);
 	static int getMouseButton(MouseCodes mouseCode);
 	static void getCursorPos(double* x, double* y);
+	static void enableCursor();
+	static void disableCursor();
 	static int getKey(KeyCodes keyCode);
 	static double getTime();
 	static unsigned int getWidth();

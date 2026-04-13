@@ -19,8 +19,8 @@ public:
 	virtual std::vector<uint32_t> listLayoutIDs() const override;
 	virtual std::vector<uint32_t> listPoolIDs() const override;
 
-	uint32_t createLayout(std::vector<VkDescriptorSetLayoutBinding> bindings);
-	uint32_t createPool(std::vector<VkDescriptorPoolSize> poolSizes, uint32_t maxSets);
+	uint32_t createLayout(std::vector<VkDescriptorSetLayoutBinding> bindings, VkDescriptorSetLayoutCreateFlags flags = 0);
+	uint32_t createPool(std::vector<VkDescriptorPoolSize> poolSizes, uint32_t maxSets, VkDescriptorPoolCreateFlags flags = 0);
 	uint32_t createSets(uint32_t layoutID, uint32_t poolID, uint32_t setsCount);
 	void writeUniform(
 		std::vector<VkWriteDescriptorSet>* writes,

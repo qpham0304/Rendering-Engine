@@ -3,14 +3,22 @@
         {
             "name": "Win32",
             "includePath": [],
-            "defines": ["_DEBUG", "UNICODE", "_UNICODE", "WIN32_LEAN_AND_MEAN", "NOMINMAX"],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "WIN32_LEAN_AND_MEAN",
+                "NOMINMAX"
+            ],
             "windowsSdkVersion": "10.0.26100.0",
-            "compilerPath": "cl.exe", 
+            "compilerPath": "cl.exe",
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "windows-msvc-x64",
             "configurationProvider": "ms-vscode.cmake-tools",
-            "compileCommands": "${workspaceFolder}/out/build/x64-debug/compile_commands.json",
+            "compileCommands": [
+                "${workspaceFolder}/out/build/x64-debug/compile_commands.json"
+            ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": "${workspaceFolder}/.vscode/vc.db"

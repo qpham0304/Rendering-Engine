@@ -82,30 +82,45 @@ std::vector<uint32_t> DescriptorManagerVulkan::listPoolIDs() const
 	return list;
 }
 
-uint32_t DescriptorManagerVulkan::createLayout(std::vector<VkDescriptorSetLayoutBinding> bindings)
+uint32_t DescriptorManagerVulkan::createLayout(std::vector<VkDescriptorSetLayoutBinding> bindings, VkDescriptorSetLayoutCreateFlags flags)
 {
-	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-	layoutInfo.pBindings = bindings.data();
-	//layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
+    std::vector<VkDescriptorBindingFlags> bindingFlags(bindings.size(), 0);
 
-	descriptorSetLayouts[m_ids] = VkDescriptorSetLayout();
+    if (flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT) {
+        for (auto& f : bindingFlags) {
+            f = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+        }
+    }
 
-	if (vkCreateDescriptorSetLayout(renderDeviceVulkan->device, &layoutInfo, nullptr, &descriptorSetLayouts[m_ids]) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create descriptor set layout!");
-	}
+    VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{};
+    bindingFlagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+    bindingFlagsInfo.bindingCount = static_cast<uint32_t>(bindingFlags.size());
+    bindingFlagsInfo.pBindingFlags = bindingFlags.data();
 
-	return _assignID();
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+    layoutInfo.flags = flags;
+    layoutInfo.pNext = &bindingFlagsInfo;
+
+    descriptorSetLayouts[m_ids] = VkDescriptorSetLayout();
+
+    if (vkCreateDescriptorSetLayout(renderDeviceVulkan->device, &layoutInfo, nullptr, &descriptorSetLayouts[m_ids]) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+
+    return _assignID();
 }
 
-uint32_t DescriptorManagerVulkan::createPool(std::vector<VkDescriptorPoolSize> poolSizes, uint32_t maxSets)
+uint32_t DescriptorManagerVulkan::createPool(std::vector<VkDescriptorPoolSize> poolSizes, uint32_t maxSets, VkDescriptorPoolCreateFlags flags)
 {
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 	poolInfo.pPoolSizes = poolSizes.data();
 	poolInfo.maxSets = maxSets;
+	poolInfo.flags = flags;
 
 	descriptorPools[m_ids] = VkDescriptorPool();
 

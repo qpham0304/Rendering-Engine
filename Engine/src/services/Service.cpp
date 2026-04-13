@@ -7,6 +7,11 @@ Service::Service()
 	
 }
 
+Service::Service(std::string_view name) : m_serviceName(name)
+{
+	
+}
+
 Service::~Service()
 {
 
@@ -31,6 +36,11 @@ bool Service::init(WindowConfig config)
 bool Service::onClose()
 {
     return true;
+}
+
+void Service::onUpdate()
+{
+
 }
 
 const std::string& Service::getServiceName() const

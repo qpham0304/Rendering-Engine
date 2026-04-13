@@ -47,9 +47,4 @@ private:
 
 private:
     std::vector<Service*> services;
-
-    uint32_t aruID;
-    uint32_t reimuID;
-    std::pair<std::vector<uint32_t>, std::vector<uint32_t>> aruMeshIDs;
-    std::pair<std::vector<uint32_t>, std::vector<uint32_t>> reimuMeshIDs;
 };

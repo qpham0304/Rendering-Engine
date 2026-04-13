@@ -44,16 +44,15 @@ bool SceneManager::init(WindowConfig config)
 			cameraController->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
 		}
 	});
-	
+
 	eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 		if(!cameraController) {
 			return;
 		}
 
-
 		GuiManager* guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");
-		if(areaFocused || (guiManager && !guiManager->isActive())) {
+		if(areaFocused) {
 			cameraController->processMouse();
 		}
 	});
@@ -80,12 +79,15 @@ void SceneManager::onUpdate()
 		scene->onUpdate(AppWindow::getTime());
 	}
 
-	if(cameraController){
-		cameraController->onUpdate();
+	if(!cameraController){
+		return;
+	}
 
-		if(areaFocused) {
-			cameraController->processKeyboard();
-		}
+	cameraController->onUpdate();
+
+	if(areaFocused) {
+		// cameraController->processMouse();
+		cameraController->processKeyboard();
 	}
 }
 

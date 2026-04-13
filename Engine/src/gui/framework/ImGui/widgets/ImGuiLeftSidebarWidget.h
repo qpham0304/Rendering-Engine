@@ -31,9 +31,10 @@ private:
 	void _SearchFilter();
 
 	void _RenameMenuItem(Entity& entity);
+	void _DuplicateMenuItem(Entity& entity);
 	void _AddModelMenuItem(Entity& entity, std::string_view text);
-	void _AddLightMenuItem();
-	void _AddCameraMenuItem();
+	void _AddLightMenuItem(Entity& entity);
+	void _AddCameraMenuItem(Entity& entity);
 	void _LoadAnimationMenuItem(Entity& entity);
 	void _DeleteEntityMenuItem(Entity &entity, Scene* scene);
 };

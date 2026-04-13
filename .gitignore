@@ -373,6 +373,8 @@ out
 
 # CMake build artifacts
 .vscode/VC.DB
+.vscode/VC.DB-shm
+.vscode/VC.DB-wal
 .vscode/ipch/
 **/*.db
 

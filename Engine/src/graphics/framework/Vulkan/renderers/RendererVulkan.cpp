@@ -21,8 +21,8 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <core/scene/SceneManager.h>
 
-RendererVulkan::RendererVulkan(std::string serviceName) 
-	:	Renderer(serviceName)
+RendererVulkan::RendererVulkan(std::string name) 
+	:	Renderer(name)
 {
 
 }
@@ -86,5 +86,5 @@ void RendererVulkan::onUpdate()
 
 void RendererVulkan::render(Camera& camera)
 {
-
+	
 }

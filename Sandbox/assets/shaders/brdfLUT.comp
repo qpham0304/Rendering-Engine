@@ -46,6 +46,14 @@ void main() {
     float B = 0.0;
     vec3 N = vec3(0.0, 0.0, 1.0);
 
+    // ivec2 texSize = imageSize(outLUT);
+    // if(gl_GlobalInvocationID.x >= texSize.x || gl_GlobalInvocationID.y >= texSize.y) return;
+    // // uv.x = NdotV
+    // float NdotV = (float(gl_GlobalInvocationID.x) + 0.5) / float(texSize.x);
+    // // expect Roughness 0.0 at the bottom and 1.0 at the top.
+    // float roughness = 1.0 - ((float(gl_GlobalInvocationID.y) + 0.5) / float(texSize.y));
+
+
     const uint SAMPLE_COUNT = 1024u;
     for(uint i = 0u; i < SAMPLE_COUNT; ++i) {
         vec2 Xi = Hammersley(i, SAMPLE_COUNT);

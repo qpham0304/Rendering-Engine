@@ -20,6 +20,7 @@ public:
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
 	uint32_t loadModel(std::string_view path);
+	uint32_t addModel(Model& model);
 	Model* getModel(uint32_t id) const;
 
 private:

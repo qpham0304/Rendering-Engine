@@ -89,7 +89,7 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE ${PCH_HEADERS})
 set_target_properties(${PROJECT_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>"
 )
-
+add_definitions(-DNOMINMAX)
 # Dependencies
 add_subdirectory(Libraries/include/glad)
 add_subdirectory(Libraries/include/spdlog)

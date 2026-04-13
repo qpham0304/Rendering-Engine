@@ -1,6 +1,17 @@
 CompileFlags:
   Add: 
+    - "-std=c++23"
+    - "--target=x86_64-pc-windows-msvc"
     - "-fms-compatibility"
     - "-fms-extensions"
     - "-fdelayed-template-parsing"
-    - "--target=x86_64-pc-windows-msvc"
+    - "-Wno-unknown-pragmas"
+    - "-Wno-pragma-once-outside-header"
+    - "-Wno-unused-command-line-argument"
+  Remove: ["-W*", "/W*", "-fmodules-ts"]
+
+Diagnostics:
+  Suppress: ["pp_pragma_once_in_main_file"]
+
+Index:
+  Background: Build

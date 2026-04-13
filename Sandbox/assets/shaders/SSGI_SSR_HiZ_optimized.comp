@@ -1,0 +1,267 @@
+#version 460
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D u_HiZBuffer;      
+layout(set = 0, binding = 1) uniform sampler2D u_GBufferNormals; 
+layout(set = 0, binding = 2) uniform sampler2D u_SceneColor; 
+layout(set = 0, binding = 3, rgba16f) writeonly uniform image2D u_ResultImage;
+
+layout(set = 0, binding = 4) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    mat4 invProj;
+    mat4 invView;
+} camera;
+
+layout(set = 0, binding = 5) uniform sampler2D depthImage;
+layout(set = 0, binding = 6) uniform sampler2D albedoImage;
+layout(set = 0, binding = 7) uniform sampler2D pbrImage;
+layout(set = 0, binding = 8) uniform sampler2D emissiveImage;
+
+layout(push_constant) uniform Constants {
+    vec2 screenRes;
+    float maxDistance;
+    int maxMip;
+    float thickness; 
+} pc;
+
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+
+vec3 sampleHemisphere(vec3 normal, vec2 uv) {
+    float h1 = hash(uv + vec2(pc.thickness, 0.123));
+    float h2 = hash(uv + vec2(0.456, pc.maxDistance));
+    
+    float phi = 2.0 * 3.14159 * h1;
+    float cosTheta = sqrt(1.0 - h2);
+    float sinTheta = sqrt(h2);
+    
+    vec3 up = abs(normal.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+    vec3 tangent = normalize(cross(up, normal));
+    vec3 bitangent = cross(normal, tangent);
+    
+    return tangent * (cos(phi) * sinTheta) + bitangent * (sin(phi) * sinTheta) + normal * cosTheta;
+}
+
+// Fixed Projection Helper
+vec3 project(vec3 worldPos) {
+    vec4 clip = camera.projection * camera.view * vec4(worldPos, 1.0);
+    vec3 ndc = clip.xyz / clip.w;
+    // Map NDC [-1, 1] to UV [0, 1]
+    return vec3(ndc.xy * 0.5 + 0.5, ndc.z);
+}
+vec3 getPos(vec2 uv, float depth) {
+    vec4 clip = vec4(uv * 2.0 - 1.0, depth, 1.0);
+    vec4 view = camera.invProj * clip;
+    return view.xyz / view.w;
+}
+
+// Project View Space Position to UV
+vec2 getUV(vec3 pos) {
+    vec4 clip = camera.projection * vec4(pos, 1.0);
+    vec3 ndc = clip.xyz / clip.w;
+    return ndc.xy * 0.5 + 0.5;
+}
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    if (pixelCoord.x >= pc.screenRes.x || pixelCoord.y >= pc.screenRes.y) return;
+
+    vec2 uv = (vec2(pixelCoord) + 0.5) / pc.screenRes;
+    float depth = texture(depthImage, uv).r;
+
+    if (depth <= 0.00001) {
+        imageStore(u_ResultImage, pixelCoord, texture(u_SceneColor, uv));
+        return;
+    }
+
+    // Data Fetch
+    vec3 normalW = normalize(texture(u_GBufferNormals, uv).xyz);
+    vec3 normalV = normalize(mat3(camera.view) * normalW);
+    vec3 albedo = texture(albedoImage, uv).rgb;
+    float roughness = texture(pbrImage, uv).g;
+    float metallic = texture(pbrImage, uv).b;
+    vec3 emissive = texture(emissiveImage, uv).rgb;
+
+    vec3 viewPos = getPos(uv, depth);
+    vec3 viewDir = normalize(viewPos);
+
+    // If surface is smooth, use reflection. If rough, use hemisphere jitter.
+    vec3 reflectDir = reflect(viewDir, normalV);
+    vec3 giDir = normalize(mat3(camera.view) * sampleHemisphere(normalW, uv));
+    
+    // Use a threshold or a more aggressive mix to keep reflections visible
+    // This ensures smooth surfaces don't lose their mirror look
+    vec3 rayDir = normalize(mix(reflectDir, giDir, roughness * roughness));
+
+    float rayStep = 0.2; 
+    int maxSteps = 100;
+    vec3 stepVec = rayDir * rayStep;
+    vec3 marchingPos = viewPos + normalV * 0.15;
+    
+    bool hit = false;
+    vec2 hitUV;
+
+    for (int i = 0; i < maxSteps; i++) {
+        marchingPos += stepVec;
+        stepVec *= 1.02;
+
+        hitUV = getUV(marchingPos);
+        if (hitUV.x < 0 || hitUV.x > 1 || hitUV.y < 0 || hitUV.y > 1) break;
+
+        float sceneDepth = texture(depthImage, hitUV).r;
+        vec3 scenePos = getPos(hitUV, sceneDepth);
+        float delta = scenePos.z - marchingPos.z;
+
+        if (delta > 0 && delta < 1.2) { 
+            hit = true;
+            break;
+        }
+    }
+
+    // binary search
+    if (hit) {
+        for (int j = 0; j < 8; j++) {
+            stepVec *= 0.5;
+            vec2 bUV = getUV(marchingPos);
+            float sDepth = texture(depthImage, bUV).r;
+            vec3 sPos = getPos(bUV, sDepth);
+            if ((sPos.z - marchingPos.z) > 0) marchingPos -= stepVec;
+            else marchingPos += stepVec;
+        }
+        hitUV = getUV(marchingPos);
+    }
+
+    vec3 sceneColor = texture(u_SceneColor, uv).rgb;
+    vec3 indirectResult = vec3(0.0);
+
+    if (hit) {
+        vec3 hitColor = texture(u_SceneColor, hitUV).rgb;
+
+        // SSR Specular
+        vec3 F0 = mix(vec3(0.04), albedo, metallic);
+        float cosTheta = clamp(dot(normalV, -viewDir), 0.0, 1.0);
+        vec3 fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+        vec3 ssr = hitColor * fresnel;
+
+        // SSGI Diffuse
+        // boost the light to make it more visible
+        vec3 ssgi = hitColor * albedo * 1.5; 
+
+        indirectResult = mix(ssr, ssgi, roughness);
+    }
+
+    // edge fading
+    vec2 boundary = smoothstep(vec2(0.0), vec2(0.1), hitUV) * smoothstep(vec2(1.0), vec2(0.9), hitUV);
+    float fade = boundary.x * boundary.y;
+
+    vec3 finalColor = sceneColor + (indirectResult * fade) + emissive;
+    imageStore(u_ResultImage, pixelCoord, vec4(finalColor, 1.0));
+}
+
+/*
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    if (pixelCoord.x >= pc.screenRes.x || pixelCoord.y >= pc.screenRes.y) return;
+
+    vec2 uv = (vec2(pixelCoord) + 0.5) / pc.screenRes;
+    float depth = texture(depthImage, uv).r;
+
+    if (depth <= 0.00001) {
+        imageStore(u_ResultImage, pixelCoord, texture(u_SceneColor, uv));
+        return;
+    }
+
+    // G-Buffer Fetch
+    vec3 normalW = normalize(texture(u_GBufferNormals, uv).xyz);
+    vec3 normalV = normalize(mat3(camera.view) * normalW);
+    vec3 albedo = texture(albedoImage, uv).rgb;
+    float roughness = texture(pbrImage, uv).g;
+    float metallic = texture(pbrImage, uv).b;
+
+    vec3 viewPos = getPos(uv, depth);
+    vec3 viewDir = normalize(viewPos);
+    vec3 reflectDir = normalize(reflect(viewDir, normalV));
+
+    float rayStep = 0.2; 
+    float distanceBias = 0.02; // Tightened for accuracy
+    int maxSteps = 100;
+    int binarySteps = 8;
+
+    vec3 stepVec = reflectDir * rayStep;
+    vec3 marchingPos = viewPos + normalV * 0.1; // Initial offset
+    
+    bool hit = false;
+    vec2 hitUV;
+
+    // linear Search
+    for (int i = 0; i < maxSteps; i++) {
+        marchingPos += stepVec;
+        
+        // Exponential step (from your reference)
+        stepVec *= 1.02;
+
+        hitUV = getUV(marchingPos);
+        if (hitUV.x < 0 || hitUV.x > 1 || hitUV.y < 0 || hitUV.y > 1) break;
+
+        float sceneDepth = texture(depthImage, hitUV).r;
+        vec3 scenePos = getPos(hitUV, sceneDepth);
+
+        // REVERSE-Z: marchingPos.z is further if < scenePos.z
+        float delta = scenePos.z - marchingPos.z;
+
+        if (delta > 0 && delta < 1.5) { // We found a potential intersection
+            hit = true;
+            break;
+        }
+    }
+
+    // binary Search
+    if (hit) {
+        for (int j = 0; j < binarySteps; j++) {
+            stepVec *= 0.5;
+            
+            hitUV = getUV(marchingPos);
+            float sceneDepth = texture(depthImage, hitUV).r;
+            vec3 scenePos = getPos(hitUV, sceneDepth);
+            float delta = scenePos.z - marchingPos.z;
+
+            if (delta > 0) {
+                // We are behind the surface, move back
+                marchingPos -= stepVec;
+            } else {
+                // We are in front of the surface, move forward
+                marchingPos += stepVec;
+            }
+        }
+        // Final UV after refinement
+        hitUV = getUV(marchingPos);
+    }
+
+    vec3 sceneColor = texture(u_SceneColor, uv).rgb;
+    vec3 finalColor = sceneColor;
+
+    if (hit) {
+        vec3 sampledColor = texture(u_SceneColor, hitUV).rgb;
+        
+        // Fresnel
+        vec3 F0 = mix(vec3(0.04), albedo, metallic);
+        float cosTheta = clamp(dot(normalV, -viewDir), 0.0, 1.0);
+        vec3 fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+
+        // Edge fade
+        vec2 boundary = smoothstep(vec2(0.0), vec2(0.1), hitUV) * smoothstep(vec2(1.0), vec2(0.9), hitUV);
+        float fade = boundary.x * boundary.y;
+
+        // Metallic/Roughness attenuation
+        vec3 reflection = sampledColor * fresnel * (1.0 - roughness);
+        finalColor += reflection * fade;
+    }
+
+    imageStore(u_ResultImage, pixelCoord, vec4(finalColor, 1.0));
+}
+*/

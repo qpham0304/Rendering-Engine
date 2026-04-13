@@ -50,6 +50,10 @@ bool ShadowMapRendererVulkan::init(WindowConfig config)
 
 	pushconstant.radius = 64;  	// range 1 to 64
     pushconstant.sigma = 15;  	// range 1.0 to 30.0
+	lightDir = glm::normalize(glm::vec3(1.0f));
+	s = 25.0f; 
+	zNear = 0.01f;
+	zFar = 105.0f;
 
 	return true;
 }
@@ -72,27 +76,35 @@ void ShadowMapRendererVulkan::onUpdate()
 
 void ShadowMapRendererVulkan::render(Camera& camera)
 {
-	glm::mat4 lightProjection;
+	RendererVulkan::render(camera);
 
-	if(!useOrtho) {
-		lightPos = glm::vec3(5.0f);
-		lightDir = glm::normalize(glm::vec3(1.0f));
-		glm::vec3 orientation = glm::vec3(-5.0f);
-		lightView = glm::lookAt(lightPos, lightPos + orientation, glm::vec3(0.0f, 1.0f, 0.0f));
-		lightProjection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 25.0f);
-	} else {
-		lightDir = glm::normalize(glm::vec3(1.0f));
-		lightPos = lightDir * 100.0f;
-		lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		float s = 5.0f;
-		float zNear = 0.01f;
-		float zFar = 105.0f;
+	glm::mat4 lightProjection;
+	if(useOrtho) {
+		glm::mat4 rotElevation = glm::rotate(glm::mat4(1.0f), -sunElevation, glm::vec3(1.0f, 0.0f, 0.0f));
+		glm::mat4 rotAzimuth = glm::rotate(glm::mat4(1.0f), sunAzimuth, glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::mat4 sunRotation = rotAzimuth * rotElevation;
+
+		lightPos = glm::vec3(sunRotation * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f)) * 100.0f;
+
+		glm::vec3 right   = glm::vec3(sunRotation[0]); 
+		glm::vec3 up      = glm::vec3(sunRotation[1]);
+		glm::vec3 forward = glm::vec3(sunRotation[2]);
+
+		// manually construct the view / lookAt without flip logic
+		lightView = glm::mat4(1.0f);
+		lightView[0][0] = right.x;   lightView[1][0] = right.y;   lightView[2][0] = right.z;
+		lightView[0][1] = up.x;      lightView[1][1] = up.y;      lightView[2][1] = up.z;
+		lightView[0][2] = forward.x; lightView[1][2] = forward.y; lightView[2][2] = forward.z;
+		lightView[3][0] = -glm::dot(right, lightPos);
+		lightView[3][1] = -glm::dot(up, lightPos);
+		lightView[3][2] = -glm::dot(forward, lightPos);
+		
 		lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
 
 		// glm::vec3 followTarget = camera.getPosition();
-		// float s = 5.0f;
-		// float zNear = 15.0f;
-		// float zFar = 150.0f;
+		// float s = 25.0f;
+		// float zNear = 0.01f;
+		// float zFar = 105.0f;
 		// float worldUnitsPerTexel = (2.0f * s) / width;
 		// followTarget.x = std::floor(followTarget.x / worldUnitsPerTexel) * worldUnitsPerTexel;
 		// followTarget.y = std::floor(followTarget.y / worldUnitsPerTexel) * worldUnitsPerTexel;
@@ -101,6 +113,13 @@ void ShadowMapRendererVulkan::render(Camera& camera)
 		// lightPos = followTarget + (lightDir * 100.0f);
 		// lightView = glm::lookAt(lightPos, followTarget, glm::vec3(0.0f, 1.0f, 0.0f));
 		// glm::mat4 lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
+	} else {
+		lightPos = glm::vec3(5.0f);
+		glm::vec3 orientation = glm::vec3(-5.0f);
+		lightView = glm::lookAt(lightPos, lightPos + orientation, glm::vec3(0.0f, 1.0f, 0.0f));
+		if(height > 0){
+			lightProjection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 25.0f);
+		}
 	}
 
 	lightProjection[1][1] *= -1;
@@ -134,7 +153,6 @@ void ShadowMapRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
-	//basic draw commands
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	pipelinePtr->bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);

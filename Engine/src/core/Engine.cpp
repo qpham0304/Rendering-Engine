@@ -4,7 +4,8 @@
 #include <ranges>
 #include "window/AppWindow.h"
 #include "core/events/EventManager.h"
-
+#include <chrono>
+#include <thread>
 
 #include <core/layers/EditorLayer.h>
 #include <core/scene/SceneManager.h>
@@ -75,11 +76,12 @@ void Engine::init()
 		}
 	}
 	
-	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 }
 
 void Engine::start()
 {
+	pushLayer(new EditorLayer("EditorLayer", *guiManager));
+	
 	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		isRunning = false;
 	});
@@ -93,11 +95,38 @@ void Engine::start()
 }
 
 void Engine::run() {
-	while (isRunning) {
-		for (Service*& service : services) {
-			service->onUpdate();
-		}
-	}
+    const int maxUpdates = 5;
+    const double targetUpdateTime = 1.0 / windowConfig.targetUpdateFPS;
+    const double targetRenderTime = 1.0 / windowConfig.targetRenderFPS;
+
+    double accumulator = 0.0;
+    double lastTime = AppWindow::getTime();
+    double lastRenderTime = lastTime;
+	int updatesThisFrame = 0;
+
+	// fixed timestep update and variable rendering
+    while (isRunning) {
+        double currentTime = AppWindow::getTime();
+        double deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+		deltaTime = deltaTime > 0.25 ? 0.25 : deltaTime;
+        accumulator += deltaTime;
+		updatesThisFrame = 0;
+		
+        while(accumulator >= targetUpdateTime && updatesThisFrame < maxUpdates) {
+            for (Service* service : services) {
+                service->onUpdate();
+            }
+            accumulator -= targetUpdateTime;
+            updatesThisFrame++;
+        }
+
+        double timeSinceLastRender = currentTime - lastRenderTime;
+        if(timeSinceLastRender >= targetRenderTime) {
+            rendererManager->render();
+            lastRenderTime = currentTime;
+        }
+    }
 }
 
 void Engine::close()

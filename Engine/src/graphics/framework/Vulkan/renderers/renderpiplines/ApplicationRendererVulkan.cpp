@@ -1,24 +1,27 @@
 #include "ApplicationRendererVulkan.h"
+#include "logging/Logger.h"
+#include "core/events/EventManager.h"
+#include "gui/GuiManager.h"
 #include "core/features/ServiceLocator.h"
+#include "core/features/Camera.h"
 #include "window/AppWindow.h"
 #include "graphics/renderers/RenderDevice.h"
 #include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
-#include "logging/Logger.h"
-#include "core/events/EventManager.h"
+#include "core/features/Mesh.h"
 
 #include <core/resources/managers/TextureManager.h>
 #include <core/resources/managers/MeshManager.h>
 #include <core/resources/managers/ModelManager.h>
 #include <core/resources/managers/DescriptorManager.h>
-#include <gui/GuiManager.h>
-#include <core/features/Mesh.h>
-#include <core/features/Camera.h>
+
 #include <graphics/framework/Vulkan/resources/textures/TextureVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
+#include <graphics/framework/Vulkan/renderers/renderpiplines/ForwardRendererVulkan.h>
+#include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
 #include <core/scene/SceneManager.h>
 #include "imgui.h" // TODO: remove it once done
 
@@ -39,7 +42,7 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 
 	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
-		if (keyPressedEvent.keyCode == KEY_2) {
+		if (keyPressedEvent.keyCode == KEY_F11) {
 			showGui = !showGui;
 			
 			GuiManager* guiManager = &ServiceLocator::GetService<GuiManager>("ImGuiManager");
@@ -69,7 +72,7 @@ bool ApplicationRendererVulkan::onClose()
 
 void ApplicationRendererVulkan::onUpdate()
 {
-	render(*SceneManager::cameraController);
+	
 }
 
 void ApplicationRendererVulkan::render(Camera& camera)
@@ -92,20 +95,19 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
 	Timer timer("CPU render submission time", true);
 
     TextureVulkan* texture = rendererManagerVulkan->getDisplayImage();
-    if (!texture) {
+    if (!showGui && !texture) {
         beginRecording(commandBuffer, renderDeviceVulkan->swapchain.renderPass, 
                        renderDeviceVulkan->swapchain.currentFrameBuffer());
         endRecording(commandBuffer);
         return; 
     }
 
-    if (texture->textureImageView != lastView) {
+    if (texture && texture->textureImageView != lastView) {
 		renderDeviceVulkan->waitIdle(); 
     
 		for (uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
 			_updateDescriptorSets(i);
 		}
-		// _updateDescriptorSets(renderDeviceVulkan->getCurrentFrameIndex());
         lastView = texture->textureImageView;
     }
 
@@ -173,7 +175,26 @@ void ApplicationRendererVulkan::endRecording(void* cmdBuffer)
 
 void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 {
+	RendererVulkan* renderer = nullptr;
+	renderer = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
+	auto shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
+	auto imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("ForwardRendererVulkan");
+	auto forwardRendererVulkan = dynamic_cast<ForwardRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
+	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+
+	assert(shadowMapRenderer && imageBasedRenderer && 
+		forwardRendererVulkan && deferredRendererVulkan && 
+		"failed to retrieve renderer"
+	);
+
 	guiManager->start();
+	
+	//TODO: temporarily use imgui renderer, abstract to gui service and remove these
+	deferredRendererVulkan->renderGui();
+
 	ImGui::Begin("Application");
 	ImGui::BeginChild("Application View");
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();

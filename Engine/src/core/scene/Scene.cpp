@@ -31,6 +31,13 @@ Scene::Scene(std::string name)
 				controlPressed = false;
 			}
 		}
+
+		if(keyCode == KEY_D) {
+			if(controlPressed){
+				duplicateEntity(selectedEntities[0]);
+				controlPressed = false;
+			}
+		}
 	});
 
 	// entities.reserve(1000);
@@ -50,6 +57,40 @@ uint32_t Scene::addEntity(const std::string& name)
 
     return id;
 }
+
+template<typename T>
+void copyComponentIfExists(Entity source, Entity dest) {
+    if (source.hasComponent<T>()) {
+        T componentData = source.getComponent<T>();
+        if constexpr (std::is_same_v<T, TransformComponent>) {
+			glm::vec3 translation = componentData.translateVec;
+			translation.x += 0.25;
+			translation.y += 0.0;
+			translation.z += 0.0;
+			componentData.translate(translation);
+        }
+        dest.addComponent<T>(componentData); 
+    }
+}
+
+uint32_t Scene::duplicateEntity(Entity source)
+{
+    Entity destination(registry.create(), registry);
+
+    // ideally want to use reflection to get all the components
+    copyComponentIfExists<TransformComponent>(source, destination);
+    copyComponentIfExists<NameComponent>(source, destination);
+    copyComponentIfExists<MeshComponent>(source, destination);
+    copyComponentIfExists<ModelComponent>(source, destination);
+    copyComponentIfExists<LightComponent>(source, destination);
+
+    // if (destination.hasComponent<MeshComponent>()) {
+	// 	destination.onMeshComponentAdded();
+	// }
+    
+    return destination.getID();
+}
+
 
 bool Scene::removeEntity(const uint32_t& uuid)
 {
