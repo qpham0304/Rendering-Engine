@@ -27,8 +27,7 @@ int main()
         std::cerr << "Exception caught by main: " << e.what() << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Caught standard exception: " << e.what() << std::endl;
-    }
-    catch (...) {
+    } catch (...) {
         std::cerr << "Unknown exception caught by main" << std::endl;
     }
 }

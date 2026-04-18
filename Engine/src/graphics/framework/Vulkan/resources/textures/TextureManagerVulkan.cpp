@@ -917,8 +917,9 @@ void TextureManagerVulkan::createBarrier(
 	);
 }
 
-//TODO: only copy image of the screen size at the moment
+// only copy image of the screen size at the moment
 // only support copy the same image type
+// TODO: support down scaled imaged copy and down sample instead of swapchain size
 void TextureManagerVulkan::copyImage(
 	VkCommandBuffer cmd, 
 	TextureVulkan *srcImage, 

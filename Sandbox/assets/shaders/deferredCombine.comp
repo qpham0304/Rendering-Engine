@@ -19,6 +19,7 @@ layout(push_constant) uniform Constants {
     vec2 screenRes;
     float time;
     float frameSeed;
+    int shouldCombine;
 } pc;
 
 void main() {
@@ -27,16 +28,19 @@ void main() {
 
     vec2 uv = (vec2(pixelCoord) + 0.5) / imageSize(outImage);
 
-    vec3 gi = texture(giImage, uv).rgb;
+    vec3 ambient = texture(giImage, uv).rgb;
     vec3 sceneColor = texture(sceneImage, uv).rgb;
     vec3 albedo = texture(albedoImage, uv).rgb;
 
-    // vec3 ambient = gi;
-    // vec3 finalColor = sceneColor + ambient;
-    vec3 finalColor = sceneColor + gi;
+    vec3 finalColor = sceneColor + ambient;
     finalColor = finalColor / (finalColor + vec3(1.0));
     finalColor = pow(finalColor, vec3(1.0/2.2));
 
-    vec4 outColor = vec4(gi, 1.0);
+    vec4 outColor;
+    if(pc.shouldCombine == 1) {
+        outColor = vec4(finalColor, 1.0);
+    } else {
+        outColor = vec4(ambient, 1.0);
+    }
     imageStore(outImage, pixelCoord, outColor);
 }

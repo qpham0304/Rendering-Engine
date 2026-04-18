@@ -2,6 +2,7 @@
 #include <core/features/camera.h>
 #include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h>
+#include <graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
@@ -79,9 +80,19 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
     renderer = rendererManagerVulkan->getRenderer("TemporalPassVulkan");
 	auto temporalPassRenderer = dynamic_cast<TemporalPassVulkan*>(renderer);
+    renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
+	auto SSRGIPassRenderer = dynamic_cast<SSRGIPassVulkan*>(renderer);
+    
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    denoisedGIImage = temporalPassRenderer->getOutputImage();
+    if(deferredRendererVulkan->denoiserOn) {
+        denoisedGIImage = temporalPassRenderer->getOutputImage();
+    } else {
+        denoisedGIImage = SSRGIPassRenderer->getOutputImage();
+    }
+
+    pushConstant.shouldCombine = deferredRendererVulkan->shouldCombine ? 1 : 0;
+
     sceneImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
     albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
 

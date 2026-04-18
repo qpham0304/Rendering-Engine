@@ -192,9 +192,9 @@ void DeferredRendererVulkan::render(Camera& camera)
 
 	// recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 	recordDrawCommand(cmdBuffer, currentFrame);
-	// rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
-	renderDeviceVulkan->waitIdle();
-	rendererManagerVulkan->setDisplayImage(SSRGIPassRenderer->getOutputImage());
+	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
+	// renderDeviceVulkan->waitIdle();
+	// rendererManagerVulkan->setDisplayImage(SSRGIPassRenderer->getOutputImage());
 }
 
 void DeferredRendererVulkan::renderGui()
@@ -275,8 +275,13 @@ void DeferredRendererVulkan::renderGui()
 	}
 	ImGui::SameLine();
 	bool denoiserChecked = (denoiserOn != 0);
-	if (ImGui::Checkbox("denoise", &denoiserChecked)) {
+	if (ImGui::Checkbox("reproject", &denoiserChecked)) {
 		denoiserOn = denoiserChecked ? 1 : 0;
+	}
+	ImGui::SameLine();
+	bool shouldCombineChecked = (shouldCombine != 0);
+	if (ImGui::Checkbox("combine", &shouldCombineChecked)) {
+		shouldCombine = shouldCombineChecked ? 1 : 0;
 	}
 	ImGui::SliderInt("aoBlurRadius", &alchemyAORendererVulkan->blurrPushConstant.blurRadius, 1.0f, 16.0f);
 	ImGui::SliderFloat("aoBlurScale", &alchemyAORendererVulkan->blurrPushConstant.scale, 1.0f, 100.0f);

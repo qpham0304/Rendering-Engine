@@ -126,8 +126,6 @@ float calcMSMShadow(vec3 worldPos) {
     vec4 m = (1.0 - pcl.alpha) * b + pcl.alpha * vec4(0.5, 0.5, 0.5, 0.5);
 
     float d = projCoords.z;
-    // float d = projCoords.z * 2.0 - 1.0;
-    
     
     if (d <= m.x + pcl.litBias) { //self shadow bias
         return 0.0;
@@ -537,10 +535,10 @@ void main() {
     vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
     vec3 finalColor = ambient + Lo + sunlight + emissive.rgb;
 
-    // if(pcl.aoOn != 0) {
-    //     outColor = outColor = vec4(vec3(ssao * pbr.r), 1.0);
-    //     return;
-    // }
+    if(pcl.aoOn != 0) {
+        outColor = outColor = vec4(vec3(ssao * pbr.r), 1.0);
+        return;
+    }
 
     // vec3 V_dir = normalize(worldPos - ubo.cameraPos.xyz);
     vec3 V_ray = normalize(worldPos - ubo.cameraPos.xyz);
@@ -585,8 +583,8 @@ void main() {
 
     vec3 finalVolume = (volume / float(numSteps)) * (pcl.scatteringScale*3);
     finalColor += finalVolume;
-    // finalColor = finalColor / (finalColor + vec3(1.0));
-    // finalColor = pow(finalColor, vec3(1.0/2.2));
+    finalColor = finalColor / (finalColor + vec3(1.0));
+    finalColor = pow(finalColor, vec3(1.0/2.2));
     
     outColor = vec4(finalColor, albedo.a);
 }

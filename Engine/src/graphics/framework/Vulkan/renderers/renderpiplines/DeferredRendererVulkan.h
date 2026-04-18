@@ -106,6 +106,7 @@ public:	//TODO: make private once done testing
 	bool firstFrame { true };
 
 	bool denoiserOn { true };
+	bool shouldCombine { true };
 
 	ShadowMapRendererVulkan* shadowMapRenderer { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };

@@ -40,7 +40,8 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	hdrImageID = textureManagerVulkan->loadTexture(
 		// "assets/textures/hdr/farm_field_puresky_2k.hdr", 
 		// "assets/textures/hdr/newport_loft.hdr", 
-		"assets/textures/hdr/meadow_1k.hdr", 
+		// "assets/textures/hdr/meadow_1k.hdr", 
+		"assets/textures/night-skybox/top.jpg", 
 		// "assets/textures/hdr/photo_studio_loft_hall_2k.hdr", 
 		1, 
 		false

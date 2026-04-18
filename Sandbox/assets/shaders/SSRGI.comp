@@ -192,6 +192,15 @@ void main() {
     vec3 reflectDir = reflect(viewDir, normalV);
     vec3 H = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
     vec3 rayDir = reflect(viewDir, H);
+    float specChance = 1.0 - roughness;
+    // if (rnd(seed) < specChance) {
+    //     // Trace a Specular Ray (GGX Importance)
+    //     rayDir = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
+    // } else {
+    //     // Trace a Diffuse Ray (Cosine Weighted)
+    //     rayDir = sampleHemisphere(normalV, vec2(r1, r2));
+    // }
+
     // vec3 giDir = normalize(mat3(camera.view) * SampleBrdf(seed, normalW));
     // vec3 rayDir = normalize(mix(reflectDir, giDir, roughness * roughness));
     // ivec2 jitter = ivec2((seed % 127) * 17 * h, (seed % 131) * 31 * h);
@@ -230,7 +239,7 @@ void main() {
         float delta = scenePos.z - marchingPos.z;
 
         // adptive thickness
-        // start with your 0.05, but grow as the ray travels.
+        // start with 0.05, but grow as the ray travels.
         // if the ray takes a 2-unit step, it needs at least 2 units of thickness to catch a hit
         float thickness = pc.thickness + (length(currentStepVec) * 0.8);
 
@@ -276,8 +285,7 @@ void main() {
         vec3 ssr = radiance * fresnel;
 
         // SSGI Diffuse
-        // with high distance, we need a high multiplier to keep the light visible
-        vec3 ssgi = radiance * albedo * 2.5;
+        vec3 ssgi = radiance * albedo * 20.0;   // scale up the gi term
 
         indirect = mix(ssr, ssgi, roughness);
     }
@@ -290,8 +298,6 @@ void main() {
 
     vec3 finalColor = (indirect * boundary.x * boundary.y * distFade * attenuation);
     finalColor += emissive; 
-    // finalColor += sceneColor; 
 
-    // finalColor /= (1.0 + dot(finalColor, vec3(0.2126, 0.7152, 0.0722)));
     imageStore(u_ResultImage, pixelCoord, vec4(finalColor, 1.0));
 }

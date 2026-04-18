@@ -115,10 +115,10 @@ void RendererManagerVulkan::render()
     hiZPassRenderer->render(*camera);
     SSRGIPassRenderer->render(*camera);
     deferredRenderer->render(*camera);
-    if(tmp->denoiserOn) {
-        temporalPassRenderer->render(*camera);
-    }
-    deferredCombineRenderer->render(*camera);
+    // if(tmp->denoiserOn) {
+    //     temporalPassRenderer->render(*camera);
+    // }
+    // deferredCombineRenderer->render(*camera);
     applicationRenderer->render(*camera);
     endFrame();
 }
