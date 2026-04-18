@@ -19,6 +19,7 @@ struct Light {
 layout(set = 1, binding = 0)  uniform UniformBufferObject {
     mat4 invNormal;
     mat4 view;
+    mat4 prevViewProj;
     mat4 proj;
     vec4 cameraPos;
     mat4 invView;
