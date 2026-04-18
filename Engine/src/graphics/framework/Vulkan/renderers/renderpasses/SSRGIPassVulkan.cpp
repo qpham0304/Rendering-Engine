@@ -1,7 +1,7 @@
 #include "SSRGIPassVulkan.h"
 #include <core/features/camera.h>
-#include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
+#include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
+#include <graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
@@ -11,6 +11,8 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <window/AppWindow.h>
+#include <math.h>
+#include <algorithm>
 
 SSRGIPassVulkan::SSRGIPassVulkan(std::string serviceName)
 	:	PostProcessRendererVulkan(serviceName)
@@ -89,6 +91,7 @@ void SSRGIPassVulkan::render(Camera &camera)
     pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
     emissiveImage = deferredRendererVulkan->renderTarget.gBufferEmissive[currentFrame];
 
+    
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
     ubo.view = camera.getViewMatrix();
@@ -102,6 +105,7 @@ void SSRGIPassVulkan::render(Camera &camera)
     pushConstant.maxMip = 11;          
     pushConstant.thickness = 0.05f;
     pushConstant.time = AppWindow::getTime();
+    pushConstant.frameSeed = rand() % 32768;
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     writeSSRGI(cmd, currentFrame);
@@ -221,7 +225,7 @@ void SSRGIPassVulkan::_createResources()
         samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         samplerInfo.mipLodBias = 0.0f;
         samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = 11.0f;
+        samplerInfo.maxLod = 1.0f;
 
         TextureManagerVulkan::createTextureSampler(
             texture->textureSampler, 

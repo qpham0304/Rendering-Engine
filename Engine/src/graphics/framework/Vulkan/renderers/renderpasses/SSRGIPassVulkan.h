@@ -12,6 +12,7 @@ public:
         alignas(4) int maxMip;
 		alignas(4) float thickness;
 		alignas(4) float time;
+		alignas(4) float frameSeed;
 	};
 
 	struct UniformBufferObject {
