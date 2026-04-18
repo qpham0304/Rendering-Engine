@@ -151,10 +151,11 @@ void main() {
         vec3 currentYCoCg = RGBToYCoCg(currentRGB);
 
         // hack monte carlos and clamp the currnet pixel, not history to stops accumulating into firefly
-        // questionable accuracy
+        // questionable physical accuracy
         currentYCoCg = clamp(currentYCoCg, minColor, maxColor);
         
-        nextAccum = min(n + 1.0, 32.0); // lowest possble before noise become noticable
+        // lowest possble before noise become noticable, TODO: try 16 on laptop
+        nextAccum = min(n + 1.0, 32.0); 
         float alpha = 1.0 / nextAccum;
 
         // Karis weights

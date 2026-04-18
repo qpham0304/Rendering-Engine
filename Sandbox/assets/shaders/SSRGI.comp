@@ -192,7 +192,7 @@ void main() {
     vec3 reflectDir = reflect(viewDir, normalV);
     vec3 H = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
     vec3 rayDir = reflect(viewDir, H);
-    float specChance = 1.0 - roughness;
+    // float specChance = 1.0 - roughness;
     // if (rnd(seed) < specChance) {
     //     // Trace a Specular Ray (GGX Importance)
     //     rayDir = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
@@ -285,7 +285,7 @@ void main() {
         vec3 ssr = radiance * fresnel;
 
         // SSGI Diffuse
-        vec3 ssgi = radiance * albedo * 20.0;   // scale up the gi term
+        vec3 ssgi = radiance * albedo * 5.0;   // scale up the gi term
 
         indirect = mix(ssr, ssgi, roughness);
     }

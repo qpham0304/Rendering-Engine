@@ -13,6 +13,10 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 prevViewProj;
     mat4 proj;
     vec4 cameraPos;
+    mat4 invView;
+    mat4 invProj;
+    float width;
+    float height;
 } ubo;
 
 layout(set = 0, binding = 1, std430) readonly buffer StorageBufferObject {
