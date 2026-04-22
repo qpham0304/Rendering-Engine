@@ -41,7 +41,8 @@ public: // TODO: consider make private
 	TextureVulkan* pbrImage;
 	TextureVulkan* emissiveImage;
 	TextureVulkan* colorImage;
-
+	std::vector<TextureVulkan*> outputImages;
+	
 protected:
 	void _createResources();
 	void _createPipelines();

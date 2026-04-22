@@ -133,7 +133,8 @@ void ImageBasedRendererVulkan::onUpdate()
 {
 	if(hdrImage_temp) {
 		uint32_t frameCount = VulkanUtils::numFrames();
-		vkDeviceWaitIdle(renderDeviceVulkan->device);
+		renderDeviceVulkan->waitIdle();
+		VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 		
 		//update spherical harmonic descriptors
 		auto projectionSets = descriptorManagerVulkan->getDescriptorSet(projectionSH_descriptorSetID);
@@ -142,6 +143,7 @@ void ImageBasedRendererVulkan::onUpdate()
 			std::vector<VkWriteDescriptorSet> writes;
 			descriptorManagerVulkan->writeImage(&writes, projectionSets[i], 0, imageInfo);
 			descriptorManagerVulkan->updateDescriptorSets(&writes);
+			computeSH(cmdBuffer, i);
 		}
 
 		//update prefilter descriptors
@@ -150,6 +152,7 @@ void ImageBasedRendererVulkan::onUpdate()
 			std::vector<VkWriteDescriptorSet> writes;
 			descriptorManagerVulkan->writeImage(&writes, prefilterSets[i], 0, imageInfo);
 			descriptorManagerVulkan->updateDescriptorSets(&writes);
+			computePrefilter(cmdBuffer, i);
 		}
 		hdrImage_temp = nullptr;
 	}
@@ -371,6 +374,7 @@ void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
 		// textureManagerVulkan->destroy(temp);
 	}
 	
+	onUpdate();
 }
 
 

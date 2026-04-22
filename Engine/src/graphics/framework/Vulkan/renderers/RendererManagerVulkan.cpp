@@ -51,6 +51,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     // hiZPassRenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
+    SSRGIPassRenderer->init(config);
     temporalPassRenderer->init(config);
     deferredCombineRenderer->init(config);
 	// postProcessRenderer->init(config);
@@ -112,9 +113,9 @@ void RendererManagerVulkan::render()
     if(tmp->pushConstantLight.aoOn) {
         alchemyAORenderer->render(*camera);
     }
+    deferredRenderer->render(*camera);
     hiZPassRenderer->render(*camera);
     SSRGIPassRenderer->render(*camera);
-    deferredRenderer->render(*camera);
     if(tmp->denoiserOn) {
         temporalPassRenderer->render(*camera);
     }

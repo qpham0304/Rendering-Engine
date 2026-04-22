@@ -63,7 +63,6 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 
 	alchemyAORendererVulkan->init(config);
 	hiZPassRenderer->init(config);
-	SSRGIPassRenderer->init(config);
 
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 	
@@ -184,9 +183,6 @@ void DeferredRendererVulkan::render(Camera& camera)
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 	
 	shadowMapRenderer->render(camera);
-	imageBasedRenderer->onUpdate();
-	imageBasedRenderer->computeSH(cmdBuffer, currentFrame);
-	imageBasedRenderer->computePrefilter(cmdBuffer, currentFrame);
 
 	lastViewProj = ubo.proj * ubo.view;
 
