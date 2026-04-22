@@ -114,21 +114,6 @@ vec3 sampleHemisphere(vec3 normal, vec2 noise) {
     return tangent * (cos(phi) * sinTheta) + bitangent * (sin(phi) * sinTheta) + normal * cosTheta;
 }
 
-
-float RadicalInverse_VdC(uint bits) {
-    bits = (bits << 16u) | (bits >> 16u);
-    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
-}
-
-vec2 Hammersley(uint i, uint N) {
-    return vec2(float(i)/float(N), RadicalInverse_VdC(i));
-}
-
-
 vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness) {
     float a = roughness * roughness;
     float phi = 2.0 * PI * Xi.x;
@@ -165,6 +150,7 @@ void main() {
     if (pixelCoord.x >= pc.screenRes.x || pixelCoord.y >= pc.screenRes.y) return;
 
     vec2 uv = (vec2(pixelCoord) + 0.5) / pc.screenRes;
+    
     float depth = texture(depthImage, uv).r;
 
     if (depth >= 1.0 || depth <= 0.00001) {
@@ -182,91 +168,73 @@ void main() {
     vec3 viewPos = getPos(uv, depth);
     vec3 viewDir = normalize(viewPos);
 
-    // uint seed = tea(pixelCoord.y * uint(pc.screenRes.x) + pixelCoord.x, uint(pc.time * 1000.0));
     uint seed = tea(pixelCoord.y * uint(pc.screenRes.x) + (pixelCoord.x), uint(pc.frameSeed));
-    float h = hash(vec2(pixelCoord) + pc.time); 
     float r1 = rnd(seed);
     float r2 = rnd(seed);
 
-    // ray direction spread roughness
-    vec3 reflectDir = reflect(viewDir, normalV);
     vec3 H = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
     vec3 rayDir = reflect(viewDir, H);
-    // float specChance = 1.0 - roughness;
-    // if (rnd(seed) < specChance) {
-    //     // Trace a Specular Ray (GGX Importance)
-    //     rayDir = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
-    // } else {
-    //     // Trace a Diffuse Ray (Cosine Weighted)
-    //     rayDir = sampleHemisphere(normalV, vec2(r1, r2));
-    // }
 
-    // vec3 giDir = normalize(mat3(camera.view) * SampleBrdf(seed, normalW));
-    // vec3 rayDir = normalize(mix(reflectDir, giDir, roughness * roughness));
-    // ivec2 jitter = ivec2((seed % 127) * 17 * h, (seed % 131) * 31 * h);
-    // ivec2 noiseSize = textureSize(blueNoise, 0);
-    // vec3 rayDir = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
-
-    float rayStep = 0.5;   // increased base step for 500m reach
-    int maxSteps = 200;    // high step count for massive scenes
-    
+    float rayStep = 1.2; 
+    int maxSteps = 40;
     vec3 currentStepVec = rayDir * rayStep;
-    // vec3 bn = texelFetch(blueNoise, pixelCoord, 0).rgb;
-    // vec3 marchingPos = viewPos + (normalV * 0.2) + (currentStepVec * bn.b);
 
     const float GOLDEN_RATIO = 0.61803398875;
-    float jitter = fract(float(seed) * GOLDEN_RATIO);   //get more light in from importance sampling
+    float jitter = fract(float(seed) * GOLDEN_RATIO); 
     float viewDotNormal = clamp(abs(dot(viewDir, normalV)), 0.0, 1.0);
-    float bias = 0.05 / max(viewDotNormal, 0.1);
+    float bias = 0.2 / max(viewDotNormal, 0.2); // self intersect bias
+
     vec3 marchingPos = viewPos + (normalV * bias) + (currentStepVec * jitter);
     
     bool hit = false;
     vec2 hitUV = vec2(0.0);
+    int currentMip = 0;
+    vec3 currentPos = marchingPos;
 
     for (int i = 0; i < maxSteps; i++) {
-        marchingPos += currentStepVec;
+        hitUV = getUV(currentPos);
         
-        // speed up the ray after it leaves the immediate area
-        if (i > 20) currentStepVec *= 1.018; 
-
-        hitUV = getUV(marchingPos);
         if (hitUV.x < 0.0 || hitUV.x > 1.0 || hitUV.y < 0.0 || hitUV.y > 1.0) break;
 
-        float sceneRawDepth = texture(depthImage, hitUV).r;
-        if (sceneRawDepth >= 1.0) break;
-
-        vec3 scenePos = getPos(hitUV, sceneRawDepth);
-        float delta = scenePos.z - marchingPos.z;
-
-        // adptive thickness
-        // start with 0.05, but grow as the ray travels.
-        // if the ray takes a 2-unit step, it needs at least 2 units of thickness to catch a hit
-        float thickness = pc.thickness + (length(currentStepVec) * 0.8);
+        float zPrepass = textureLod(u_HiZBuffer, hitUV, float(currentMip)).r;
+        vec3 prepassPos = getPos(hitUV, zPrepass);
+        
+        float delta = prepassPos.z - currentPos.z;
+        
+        float thickness = pc.thickness + (length(currentStepVec) * 1.1);
 
         if (delta > 0.0 && delta < thickness) { 
-            hit = true;
-            break;
+            if (currentMip <= 0) {
+                hit = true;
+                break;
+            } else {
+                currentMip = 0; 
+                currentPos -= currentStepVec;
+                currentStepVec = rayDir * 0.5;
+            }
+        } else {
+            currentPos += currentStepVec;
+            if (i % 4 == 0) currentMip = min(currentMip + 1, pc.maxMip);
         }
     }
 
     if (hit) {
-        vec3 start = marchingPos - (currentStepVec / 1.018);
-        vec3 end = marchingPos;
-        for (int j = 0; j < 12; j++) {
+        vec3 start = currentPos - currentStepVec;
+        vec3 end = currentPos;
+        for (int j = 0; j < 10; j++) {
             vec3 mid = mix(start, end, 0.5);
             vec2 mUV = getUV(mid);
-            float d = texture(depthImage, mUV).r;
+            float d = textureLod(u_HiZBuffer, mUV, 0.0).r; 
             vec3 p = getPos(mUV, d);
+            
             if ((p.z - mid.z) > 0.0) end = mid;
             else start = mid;
         }
         hitUV = getUV(end);
-        marchingPos = end;
+        currentPos = end;
     }
 
-    vec3 sceneColor = texture(u_SceneColor, uv).rgb;
     vec3 indirect = vec3(0.0);
-
     if (hit) {
         vec3 hitColor = texture(u_SceneColor, hitUV).rgb;
         vec3 hitEmissive = texture(emissiveImage, hitUV).rgb;
@@ -274,30 +242,23 @@ void main() {
 
         float luma = dot(radiance, vec3(0.2126, 0.7152, 0.0722));
         float maxSafeLuma = mix(20.0, 2.0, roughness);
-        if (luma > maxSafeLuma) {
-            radiance *= (maxSafeLuma / luma);
-        }
+        if (luma > maxSafeLuma) radiance *= (maxSafeLuma / luma);
 
-        // SSR Specular
         vec3 F0 = mix(vec3(0.04), albedo, metallic);
         float cosTheta = clamp(dot(normalV, -viewDir), 0.0, 1.0);
         vec3 fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+        
         vec3 ssr = radiance * fresnel;
-
-        // SSGI Diffuse
-        vec3 ssgi = radiance * albedo * 5.0;   // scale up the gi term
-
+        vec3 ssgi = radiance * albedo * 5.0; 
         indirect = mix(ssr, ssgi, roughness);
     }
 
     vec2 boundary = smoothstep(vec2(0.0), vec2(0.05), hitUV) * smoothstep(vec2(1.0), vec2(0.95), hitUV);
-    float dist = length(marchingPos - viewPos);
-    
+    float dist = length(currentPos - viewPos);
     float distFade = clamp(1.0 - (dist / pc.maxDistance), 0.0, 1.0);
     float attenuation = 1.0 / (1.0 + dist * 0.01);
 
-    vec3 finalColor = (indirect * boundary.x * boundary.y * distFade * attenuation);
-    finalColor += emissive; 
+    vec3 finalColor = (indirect * boundary.x * boundary.y * distFade * attenuation) + emissive; 
 
     imageStore(u_ResultImage, pixelCoord, vec4(finalColor, 1.0));
 }

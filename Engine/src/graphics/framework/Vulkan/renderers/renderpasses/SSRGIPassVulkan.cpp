@@ -36,7 +36,7 @@ bool SSRGIPassVulkan::init(WindowConfig config)
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImageHiZ = highZRendererVulkan->hiZImage;
+    depthImageHiZ = highZRendererVulkan->outputImages[currentFrame];
     depthImageRaw = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
     colorImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
@@ -83,7 +83,7 @@ void SSRGIPassVulkan::render(Camera &camera)
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImageHiZ = highZRendererVulkan->hiZImage;
+    depthImageHiZ = highZRendererVulkan->outputImages[currentFrame];
     depthImageRaw = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
     colorImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
@@ -254,7 +254,7 @@ void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
     renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
-    depthImageHiZ = highZRendererVulkan->hiZImage;
+    depthImageHiZ = highZRendererVulkan->outputImages[index];
     depthImageRaw = deferredRendererVulkan->renderTarget.depthTextures[index];
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[index];
     colorImage = deferredRendererVulkan->renderTarget.colorTextures[index];
