@@ -186,11 +186,8 @@ void DeferredRendererVulkan::render(Camera& camera)
 
 	lastViewProj = ubo.proj * ubo.view;
 
-	// recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 	recordDrawCommand(cmdBuffer, currentFrame);
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
-	// renderDeviceVulkan->waitIdle();
-	// rendererManagerVulkan->setDisplayImage(SSRGIPassRenderer->getOutputImage());
 }
 
 void DeferredRendererVulkan::renderGui()

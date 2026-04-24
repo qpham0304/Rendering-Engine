@@ -49,11 +49,11 @@ void RenderDeviceVulkan::onUpdate()
 
 void RenderDeviceVulkan::beginFrame()
 {
-	vkWaitForFences(device.device, 1, &swapchain.inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+	vkWaitForFences(device, 1, &swapchain.inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	swapchain.accquireNextImage(currentFrame);
 	
-	vkResetFences(device.device, 1, &swapchain.inFlightFences[currentFrame]);
+	vkResetFences(device, 1, &swapchain.inFlightFences[currentFrame]);
 	vkResetCommandBuffer(commandPool.currentBuffer(), 0);
 }
 
@@ -94,17 +94,17 @@ const uint32_t& RenderDeviceVulkan::getImageIndex() const
 
 void* RenderDeviceVulkan::getNativeInstance()
 {
-	return static_cast<void*>(device.instance);
+	return static_cast<void*>(device.getInstance());
 }
 
 void* RenderDeviceVulkan::getNativeDevice()
 {
-	return static_cast<void*>(device.device);
+	return static_cast<void*>(device);
 }
 
 void* RenderDeviceVulkan::getPhysicalDevice()
 {
-	return static_cast<void*>(device.physicalDevice);
+	return static_cast<void*>(device.getPhysicalDevice());
 }
 
 uint16_t RenderDeviceVulkan::_assignID()
@@ -123,7 +123,7 @@ void RenderDeviceVulkan::_cleanup()
 
 RenderDeviceVulkan::DeviceInfo RenderDeviceVulkan::getDeviceInfo() const
 {
-	auto queueIndices = device.findQueueFamilies(device.physicalDevice);
+	auto queueIndices = device.findQueueFamilies(device.getPhysicalDevice());
 	if (!queueIndices.graphicsFamily.has_value()) {
 		throw std::runtime_error("Graphics queue family not found");
 	}
@@ -131,7 +131,7 @@ RenderDeviceVulkan::DeviceInfo RenderDeviceVulkan::getDeviceInfo() const
 	DeviceInfo deviceInfo{};
 	deviceInfo.apiVersion = VK_API_VERSION_1_4;
 	deviceInfo.queueFamilyIndex = queueIndices.graphicsFamily.value();
-	deviceInfo.queueHandle = device.graphicsQueue;
+	deviceInfo.queueHandle = device.getGraphicsQueue();
 	deviceInfo.minImageCount = swapchain.MAX_FRAMES_IN_FLIGHT;
 	deviceInfo.imageCount = swapchain.swapChainImages.size();
 
@@ -147,10 +147,6 @@ RenderDeviceVulkan::PipelineInfo RenderDeviceVulkan::getPipelineInfo() const
 	pipelineInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	return pipelineInfo;
-}
-
-bool RenderDeviceVulkan::hasStencilComponent(VkFormat format) {
-	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
 void RenderDeviceVulkan::setViewport()

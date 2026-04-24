@@ -237,6 +237,28 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 
 	ImGui::EndChild();
 	ImGui::End();
+
+	ImGui::Begin("Render Mode");
+	int currentMode = rendererManagerVulkan->getRenderMode(); 
+	const char* modeNames[] = { "Forward", "Deferred", "Ray Traced" };
+	const char* previewValue = modeNames[currentMode];
+
+	if (ImGui::BeginCombo("Current Mode", previewValue)) {
+		for (int n = 0; n < 3; n++) {
+			const bool isSelected = (currentMode == n);
+			
+			if (ImGui::Selectable(modeNames[n], isSelected)) {
+				rendererManagerVulkan->setRenderMode(n);
+			}
+
+			if (isSelected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::End();
+
 	guiManager->render(commandBuffer);
 	guiManager->end();
 }

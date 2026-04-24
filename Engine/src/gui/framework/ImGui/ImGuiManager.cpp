@@ -110,7 +110,12 @@ void ImGuiManager::start(void* handle)
 		case RenderPlatform::VULKAN: ImGui_ImplVulkan_NewFrame(); break;
 	}
 
-	ImGui_ImplGlfw_NewFrame();
+	if (m_config.windowPlatform == WindowPlatform::GLFW) {
+		ImGui_ImplGlfw_NewFrame();
+	} else {
+		throw std::runtime_error("unsupported window platform");
+	}
+	
 	ImGui::NewFrame();
 
 	// Create a dock space

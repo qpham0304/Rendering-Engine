@@ -108,18 +108,27 @@ void RendererManagerVulkan::render()
 
     beginFrame();
     // shadowMapRenderer->render(*camera);
-	// forwardRenderer->render(*camera);
-    auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-    if(tmp->pushConstantLight.aoOn) {
-        alchemyAORenderer->render(*camera);
+    
+    if(currentRenderMode == 0) {
+        forwardRenderer->render(*camera);
+    } 
+    else if(currentRenderMode == 1) {
+        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
+        if(tmp->pushConstantLight.aoOn) {
+            alchemyAORenderer->render(*camera);
+        }
+        deferredRenderer->render(*camera);
+        hiZPassRenderer->render(*camera);
+        SSRGIPassRenderer->render(*camera);
+        if(tmp->denoiserOn) {
+            temporalPassRenderer->render(*camera);
+        }
+        deferredCombineRenderer->render(*camera);
+    } 
+    else {
+        
     }
-    deferredRenderer->render(*camera);
-    hiZPassRenderer->render(*camera);
-    SSRGIPassRenderer->render(*camera);
-    if(tmp->denoiserOn) {
-        temporalPassRenderer->render(*camera);
-    }
-    deferredCombineRenderer->render(*camera);
+
     applicationRenderer->render(*camera);
     endFrame();
 }
@@ -131,6 +140,16 @@ RendererVulkan* RendererManagerVulkan::getRenderer(std::string_view name)
         return nullptr;
     }
     return dynamic_cast<RendererVulkan*>(it->second.get());
+}
+
+void RendererManagerVulkan::setRenderMode(uint32_t mode)
+{
+    currentRenderMode = mode;
+}
+
+int RendererManagerVulkan::getRenderMode()
+{
+    return currentRenderMode;
 }
 
 void RendererManagerVulkan::beginFrame()

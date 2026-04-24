@@ -21,12 +21,15 @@ public:
 
     virtual RendererVulkan* getRenderer(std::string_view name) override;
 
+	void setRenderMode(uint32_t mode);
+	int getRenderMode();
 	void beginFrame();
 	void endFrame();
 	void setDisplayImage(TextureVulkan* image);
 	TextureVulkan* getDisplayImage();
 
 protected:
+	uint32_t currentRenderMode { 1 };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	Renderer* applicationRenderer { nullptr };
 	Renderer* forwardRenderer { nullptr };

@@ -40,8 +40,6 @@ public:
 	virtual DeviceInfo getDeviceInfo() const override;
 	virtual PipelineInfo getPipelineInfo() const override;
 
-	bool hasStencilComponent(VkFormat format);
-
 	void setViewport();
 	void setScissor();
 

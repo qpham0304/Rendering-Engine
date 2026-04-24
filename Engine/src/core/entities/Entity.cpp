@@ -43,8 +43,3 @@ void Entity::onModelComponentAdded()
     ModelLoadEvent event(modelComponent.path, *this);
     EventManager::getInstance().publish(event);
 }
-
-void Entity::onMeshComponentAdded()
-{
-    throw std::runtime_error("onMeshComponentAdded unimplemented");
-}

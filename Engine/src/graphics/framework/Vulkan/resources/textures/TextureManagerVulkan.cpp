@@ -344,7 +344,7 @@ void TextureManagerVulkan::createImage(
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = VulkanUtils::findMemoryType(device.physicalDevice, memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = VulkanUtils::findMemoryType(device.getPhysicalDevice(), memRequirements.memoryTypeBits, properties);
 
 	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate image memory!");
@@ -396,7 +396,7 @@ void TextureManagerVulkan::createImageView(
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = layerCount;
 
-    if (vkCreateImageView(device.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+    if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image view!");
     }
 }
@@ -404,7 +404,7 @@ void TextureManagerVulkan::createImageView(
 void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, VulkanDevice& device)
 {
 	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(device.physicalDevice, &properties);
+	vkGetPhysicalDeviceProperties(device.getPhysicalDevice(), &properties);
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -432,7 +432,7 @@ void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, Vulka
 void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, VulkanDevice& device, VkSamplerCreateInfo samplerInfo)
 {
 	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(device.physicalDevice, &properties);
+	vkGetPhysicalDeviceProperties(device.getPhysicalDevice(), &properties);
 
 	samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
 	
@@ -765,7 +765,7 @@ VkFormat TextureManagerVulkan::findSupportedFormat(
 	for (VkFormat format : candidates
 	) {
 		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(device.physicalDevice, format, &props);
+		vkGetPhysicalDeviceFormatProperties(device.getPhysicalDevice(), format, &props);
 
 		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
 			return format;
@@ -787,7 +787,7 @@ void TextureManagerVulkan::generateMipmaps(
 	RenderDeviceVulkan* renderDeviceVulkan
 ) {
 	VkFormatProperties formatProperties;
-    vkGetPhysicalDeviceFormatProperties(renderDeviceVulkan->device.physicalDevice, imageFormat, &formatProperties);
+    vkGetPhysicalDeviceFormatProperties(renderDeviceVulkan->device.getPhysicalDevice(), imageFormat, &formatProperties);
 	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
 		throw std::runtime_error("texture image format does not support linear blitting!");
 	}

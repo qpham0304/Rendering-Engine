@@ -233,9 +233,6 @@ bool Scene::loadScene(std::string_view filePath)
 			if (entity.hasComponent<ModelComponent>()) {
 				entity.onModelComponentAdded();
 			}
-			if(entity.hasComponent<MeshComponent>()) {
-				entity.onMeshComponentAdded();
-			}
 		}
     	m_logger.info("scene loaded with {} entities", entities.size());
 	}

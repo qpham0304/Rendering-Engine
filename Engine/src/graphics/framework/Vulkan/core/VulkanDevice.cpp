@@ -370,6 +370,30 @@ VulkanDevice::SwapChainSupportDetails VulkanDevice::querySwapChainSupport(VkPhys
 	return details;
 }
 
+VkSurfaceKHR VulkanDevice::getSurface() const
+{
+    return surface;
+}
+
+VkInstance VulkanDevice::getInstance() const
+{
+    return instance;
+}
+
+VkPhysicalDevice VulkanDevice::getPhysicalDevice() const
+{
+    return physicalDevice;
+}
+
+VkQueue VulkanDevice::getGraphicsQueue() const
+{
+    return graphicsQueue;
+}
+
+VkQueue VulkanDevice::getPresentQueue() const
+{
+    return presentQueue;
+}
 
 bool VulkanDevice::checkValidationLayerSupport()
 {
