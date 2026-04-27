@@ -25,6 +25,9 @@ public:
 	VkImageView textureImageView;
 	VkSampler textureSampler;
 
+	VkImageLayout layout;
+	VkFormat format;
+
 private:
 	void destroy(VkDevice device);
 

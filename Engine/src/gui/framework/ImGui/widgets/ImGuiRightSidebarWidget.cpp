@@ -221,7 +221,7 @@ void ImGuiRightSidebarWidget::textureInspector()
                 }
 
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Click change texture source");
+                    ImGui::SetTooltip(std::string(std::to_string(id) + " Click change texture source").c_str());
                 }
 
                 ImGui::PopStyleColor();

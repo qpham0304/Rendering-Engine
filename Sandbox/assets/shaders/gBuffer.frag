@@ -1,5 +1,7 @@
 #version 460
-#extension GL_EXT_vulkan_glsl : enable
+
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference2 : require
 
 layout(location = 0) in vec3 inNormal;
 layout(location = 1) in vec2 inTexCoord;
@@ -15,14 +17,10 @@ layout(location = 3) out vec4 outPBR;
 layout(location = 4) out vec4 outEmissive;
 layout(location = 5) out vec4 outMotion;
 
-layout(set = 1, binding = 0) uniform sampler2D albedoMap;
-layout(set = 1, binding = 1) uniform sampler2D normalMap;
-layout(set = 1, binding = 2) uniform sampler2D metallicMap;
-layout(set = 1, binding = 3) uniform sampler2D roughnessMap;
-layout(set = 1, binding = 4) uniform sampler2D aoMap;
-layout(set = 1, binding = 5) uniform sampler2D emissiveMap;
 
-layout(set = 1, binding = 6)  uniform MaterialUniform {
+layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
+
+layout(set = 2, binding = 0)  uniform MaterialUniform {
     int materialIdx;
     vec2 uv;
     vec4 albedo;
@@ -33,8 +31,22 @@ layout(set = 1, binding = 6)  uniform MaterialUniform {
     float emissive;
 } material;
 
+layout(buffer_reference, std430) readonly buffer MaterialBlock { 
+    uint albedoIdx;
+    uint normalIdx;
+    uint metalnessIdx;
+    uint roughnessIdx;
+    uint aoIdx;
+    uint emissiveIdx;
+};
+
+layout(push_constant) uniform PushConstant {
+    MaterialBlock ref;
+} pc;
+
+
 vec3 getNormalFromMap() {
-    vec3 texNormal = texture(normalMap, inTexCoord).xyz * 2.0 - 1.0;
+    vec3 texNormal = texture(samplerImages[pc.ref.normalIdx], inTexCoord).xyz * 2.0 - 1.0;
 
     float ripple = sin(inWorldPos.x * 5.0 + inWorldPos.z * 5.0 + material.emissive * 10.0); 
     
@@ -52,14 +64,14 @@ void main() {
     vec3 N = getNormalFromMap();
     outNorm = vec4(N, 1.0);
     
-    outAlbedo = texture(albedoMap, inTexCoord + material.uv) * material.albedo;
+    outAlbedo = texture(samplerImages[pc.ref.albedoIdx], inTexCoord + material.uv) * material.albedo;
     
-    float ao        = texture(aoMap, inTexCoord + material.uv).r        * material.ao;
-    float roughness = texture(roughnessMap, inTexCoord + material.uv).g * material.roughness;
-    float metallic  = texture(metallicMap, inTexCoord + material.uv).b  * material.metallic;
+    float ao        = texture(samplerImages[pc.ref.aoIdx], inTexCoord + material.uv).r        * material.ao;
+    float roughness = texture(samplerImages[pc.ref.roughnessIdx], inTexCoord + material.uv).g * material.roughness;
+    float metallic  = texture(samplerImages[pc.ref.metalnessIdx], inTexCoord + material.uv).b  * material.metallic;
     outPBR = vec4(ao, roughness, metallic, 1.0);
 
-    outEmissive = texture(emissiveMap, inTexCoord + material.uv) * material.emissive;
+    outEmissive = texture(samplerImages[pc.ref.emissiveIdx], inTexCoord + material.uv) * material.emissive;
 
     vec2 curNDC = outCurNDC.xy / outCurNDC.w;
     vec2 prevNDC = outPrevNDC.xy / outPrevNDC.w;

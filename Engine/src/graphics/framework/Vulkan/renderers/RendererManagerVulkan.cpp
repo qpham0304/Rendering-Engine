@@ -126,7 +126,7 @@ void RendererManagerVulkan::render()
         deferredCombineRenderer->render(*camera);
     } 
     else {
-        
+   
     }
 
     applicationRenderer->render(*camera);

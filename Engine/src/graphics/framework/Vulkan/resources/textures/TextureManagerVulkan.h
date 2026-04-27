@@ -162,11 +162,17 @@ public:
 	virtual void* inspectTexture(uint32_t id) override;
 	virtual uint32_t getInspectorLayout();
 
+	void registerTextureSampler(uint32_t textureID);
+	void registerTextureStorage(uint32_t textureID, VkImageLayout layout);
+	uint32_t getBindlessTextureLayout();
+	uint32_t getBindlessSet();
+
 private:
 	void _loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture);
 
 	// the id of the raw texture, returned back to user the inspectable texture
 	void _createInspectorDescriptorBind();
+	void _createBindlessDescriptor();
 
 private:
 
@@ -177,5 +183,9 @@ private:
 	uint32_t inspectorLayoutID;
 	uint32_t inspectorPoolID;
 	uint32_t inspectorSetID;
+
+	uint32_t globalBindlessLayoutID;
+	uint32_t globalBindlessPoolID;
+	uint32_t globalBindlessSetID;
 };
 

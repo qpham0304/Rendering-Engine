@@ -230,8 +230,8 @@ bool Scene::loadScene(std::string_view filePath)
 		}
 
 		for (auto& [id, entity] : entities) {
-			if (entity.hasComponent<ModelComponent>()) {
-				entity.onModelComponentAdded();
+			if (entity.hasComponent<ModelComponent>()) { 
+				entity.onModelComponentAdded();	// TODO: might better be serialized and called by the component itself
 			}
 		}
     	m_logger.info("scene loaded with {} entities", entities.size());

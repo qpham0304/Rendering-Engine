@@ -162,6 +162,7 @@ void DeferredRendererVulkan::render(Camera& camera)
 	ubo.width = renderTarget.width;
 	ubo.height = renderTarget.height;
 	
+
 	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.direction = glm::vec4(shadowMapRenderer->lightDir, 0.0f);
 	pushConstantLight.sunlightMVP = shadowMapRenderer->lightSpaceMatrix;
@@ -222,9 +223,13 @@ void DeferredRendererVulkan::renderGui()
 			VkDescriptorSetLayout descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
 			VkDescriptorPool descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
 			
+			uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
+			auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
+
 			void* handle = materialManager->getMaterialLayout();
 			auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
-			std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, materialLayout };
+
+			std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, bindlessLayout, materialLayout };
 			
 			tempPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 			tempPipeline->createGraphicsPipeline(
@@ -233,7 +238,7 @@ void DeferredRendererVulkan::renderGui()
 				gBufferConfig, 
 				vertexInputInfo, 
 				layouts, 
-				0
+				sizeof(PushConstant)
 			);
 		});
 	}
@@ -409,16 +414,6 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 		TransformComponent& transform = entity.getComponent<TransformComponent>();
 		const glm::mat4& entityTransform = transform.getModelMatrix();
 		glm::vec3& translation = transform.translateVec;
-		
-		// if(index >= instanceData.size()) {
-		// 	instanceData.push_back({entityTransform});
-		// 	continue;
-		// }
-
-		// // TODO: copy the multiple all transforms to ssbo would be slow
-		// if (instanceData[index].model != entityTransform) {
-		// 	instanceData[index].model = entityTransform;
-		// }
 
 		if (entity.hasComponent<LightComponent>()) {
 			lightIndex++;
@@ -433,26 +428,26 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 			}
 			for (uint32_t meshID : model->meshIDs) {
 				const Mesh* mesh = meshManager->getMesh(meshID);
+
+				auto materialManagerVulkan = static_cast<MaterialManagerVulkan*>(materialManager);
+				pushConstant.materialRef = materialManagerVulkan->getMaterialAddress(mesh->materialID);
+
 				materialManager->bindMaterial(mesh->materialID, cmd, (void*)gPassPipeline.get());
 				meshManager->bindMesh(meshID);
+
+				vkCmdPushConstants(
+					cmd,
+					gPassPipeline->pipelineLayout,
+					VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+					0,
+					sizeof(PushConstant),
+					&pushConstant
+				);
 
 				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
 				renderDeviceVulkan->draw(indexCount, numInstances, index);
 			}
 		} 
-		
-		if (entity.hasComponent<MeshComponent>()) {
-			MeshComponent meshComponent = entity.getComponent<MeshComponent>();
-			for (uint32_t meshID : meshComponent.meshIDs) {
-				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, cmd, (void*)gPassPipeline.get());
-				meshManager->bindMesh(meshID);
-
-				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				renderDeviceVulkan->draw(indexCount, numInstances, index);
-			}
-		}
-		
 		index++;
 	}
 }
@@ -915,10 +910,14 @@ void DeferredRendererVulkan::_createPipelines()
 
 	VkDescriptorSetLayout descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
 	VkDescriptorPool descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
-	
+
+	uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
+	auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
+
 	void* handle = materialManager->getMaterialLayout();
 	auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
-	std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, materialLayout };
+
+	std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, bindlessLayout, materialLayout };
 	
 	gPassPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	gPassPipeline->createGraphicsPipeline(
@@ -927,7 +926,7 @@ void DeferredRendererVulkan::_createPipelines()
 		gBufferConfig, 
 		vertexInputInfo, 
 		layouts, 
-		0
+		sizeof(PushConstant)
 	);
 }
 

@@ -49,10 +49,6 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	pushConstantLight.skyboxDetail = 0.0f;
 	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.bias = 0.001f;
-	pushConstantLight.alpha = 0.0001f;
-    pushConstantLight.lintstepLow = 0.2f;
-    pushConstantLight.linstepHigh = 1.0f;
-    pushConstantLight.litBias = 0.0005f;
 
 	_createDescriptorSetLayout();
 	descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
@@ -60,9 +56,6 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	_createDescriptorPool();
 	descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
 	
-	void* handle = materialManager->getMaterialLayout();
-	VkDescriptorSetLayout materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
-
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
 	instanceData.resize(10000);
@@ -81,6 +74,9 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	_createOffscreenTarget();
 	_createPipeline();
 
+	textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[0]->id());
+	textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[1]->id());
+
 	return true;
 }
 
@@ -94,7 +90,7 @@ bool ForwardRendererVulkan::onClose()
 
 void ForwardRendererVulkan::onUpdate()
 {
-	
+
 }
 
 void ForwardRendererVulkan::render(Camera& camera)
@@ -190,14 +186,6 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 		nullptr
 	);
 
-	vkCmdPushConstants(
-		cmd,
-		offscreenPipeline->pipelineLayout,
-		VK_SHADER_STAGE_FRAGMENT_BIT,
-		0,
-		sizeof(PushConstantLight),
-		&pushConstantLight
-	);
 
 
 	SceneManager& sceneManager = SceneManager::getInstance();
@@ -218,15 +206,6 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 			continue;
 		}
 
-		// TODO: copy the multiple all transforms to ssbo would be slow
-		if (instanceData[index].model != entityTransform) {
-			instanceData[index].model = entityTransform;
-		}
-
-		if (entity.hasComponent<LightComponent>()) {
-			lightIndex++;
-		}
-
 		if(entity.hasComponent<ModelComponent>()) {
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 			const Model* model = modelManager->getModel(modelID);
@@ -234,28 +213,30 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 			if (!model) {
 				continue;
 			}
+			
+			auto materialManagerVulkan = (MaterialManagerVulkan*)materialManager;
 			for (uint32_t meshID : model->meshIDs) {
 				const Mesh* mesh = meshManager->getMesh(meshID);
+				
+				pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress(mesh->materialID);
+
 				materialManager->bindMaterial(mesh->materialID, cmd, (void*)offscreenPipeline.get());
 				meshManager->bindMesh(meshID);
 
-				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				renderDeviceVulkan->draw(indexCount, numInstances, index);
-			}
-		} 
-		
-		if (entity.hasComponent<MeshComponent>()) {
-			MeshComponent meshComponent = entity.getComponent<MeshComponent>();
-			for (uint32_t meshID : meshComponent.meshIDs) {
-				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, cmd, (void*)offscreenPipeline.get());
-				meshManager->bindMesh(meshID);
+				vkCmdPushConstants(
+					cmd,
+					offscreenPipeline->pipelineLayout,
+					VK_SHADER_STAGE_FRAGMENT_BIT,
+					0,
+					sizeof(PushConstantLight),
+					&pushConstantLight
+				);
+				
 
 				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
 				renderDeviceVulkan->draw(indexCount, numInstances, index);
 			}
 		}
-		
 		index++;
 	}
 
@@ -295,14 +276,14 @@ void ForwardRendererVulkan::endRecording(void* cmdBuffer)
 
 void ForwardRendererVulkan::_createPipeline()
 {
-	void* handle = materialManager->getMaterialLayout();
-	VkDescriptorSetLayout materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
+	uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
+	auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
 
 	offscreenPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	offscreenPipeline->createGraphicsPipeline(
 		"assets/shaders/spv/forwardLightPass.vert.spv",
 		"assets/shaders/spv/forwardLightPass.frag.spv",
-		{ descriptorSetLayout, materialLayout }, 
+		{ descriptorSetLayout, bindlessLayout }, 
 		renderTarget.renderPass, 
 		sizeof(PushConstantLight)
 	);

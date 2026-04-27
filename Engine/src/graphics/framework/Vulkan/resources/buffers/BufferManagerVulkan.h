@@ -53,6 +53,8 @@ public:
     void createStorageBuffers(std::vector<StorageBufferVulkan*>& storageBuffers, size_t bufferSize);
     uint32_t createStorageBuffer(VkBuffer& buffer, VkDeviceMemory& buffersMemory, size_t bufferSize);
 
+    virtual uint32_t createBufferDeviceAddress(size_t bufferSize);
+
 private:
     BufferManagerVulkan(const BufferManagerVulkan& other) = delete;
     BufferManagerVulkan& operator=(const BufferManagerVulkan& other) = delete;

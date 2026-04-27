@@ -6,7 +6,7 @@
 #define MAX_BONE_INFLUENCE 4
 
 //TODO: no way to get attribute descriptions here yet
-// use the one mirrored in vulkan device for now
+// use the one mirrored in vulkan device for now until buffer device address is implmented
 
 struct Vertex {
 	glm::vec3 positions;

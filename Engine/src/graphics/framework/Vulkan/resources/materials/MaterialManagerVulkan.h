@@ -8,6 +8,7 @@
 class RenderDeviceVulkan;
 class TextureManagerVulkan;
 class DescriptorManagerVulkan;
+class DeviceAddressBufferVulkan;
 
 class MaterialManagerVulkan : public MaterialManager
 {
@@ -17,7 +18,7 @@ public:
 #include <cstdint>
 
 	struct MaterialUniform {
-		uint32_t materialIdx = 0;
+		alignas(4) uint32_t materialIdx = 0;
 		alignas(8) 	glm::vec2 uv = glm::vec2(0.0f);     // not the actual uv, just the offset
 		alignas(16) glm::vec4 albedo = glm::vec4(1.0f);
 		alignas(16) glm::vec4 normal = glm::vec4(0.0f);
@@ -43,6 +44,7 @@ public:
 	~MaterialManagerVulkan();
 
 	virtual bool init(WindowConfig config) override;
+	virtual void onUpdate() override;
 	virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
@@ -51,10 +53,15 @@ public:
     virtual MaterialDesc getMaterial(const uint32_t& id) override;
 	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc, uint32_t frameIndex);
 	virtual void* getMaterialLayout() override;
+	
+	uint64_t getMaterialAddress(uint32_t id);
+	
 
 private:
 	uint32_t _checkMaterial(const std::vector<uint32_t>& textures, uint32_t fallbackID) const;
 	void _createMaterialDescriptorSet();
+	void _buildMaterialCache();
+	void _updateGPUBuffer();
 
 private:
 	RenderDeviceVulkan* renderDeviceVulkan;
@@ -63,6 +70,10 @@ private:
 
 
     std::unordered_map<uint32_t, std::pair<MaterialVulkan, MaterialUniform>> materials;
+	
+	std::vector<GPUMaterialData> materialsGPU;
+	DeviceAddressBufferVulkan* materialDeviceAddress;
+	
 	uint32_t materialLayoutID;
 	uint32_t materialPoolID;
 

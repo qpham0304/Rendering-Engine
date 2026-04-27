@@ -16,6 +16,10 @@ class SSRGIPassVulkan;
 class DeferredRendererVulkan : public RendererVulkan
 {
 private:
+	struct PushConstant {
+		uint64_t materialRef;
+	};
+
 	struct UniformBufferObject {
 		glm::mat4 invNormal;
 		glm::mat4 view;
@@ -81,6 +85,7 @@ public:	//TODO: make private once done testing
 	std::vector<StorageBufferObject> instanceData;
 	std::vector<StorageBufferObject> instanceDataPrev;
 	std::vector<StorageBufferVulkan*> lightStoragebuffers;
+	PushConstant pushConstant;
 	std::vector<LightSSBO> lights;
 	PushConstantLight pushConstantLight;
 

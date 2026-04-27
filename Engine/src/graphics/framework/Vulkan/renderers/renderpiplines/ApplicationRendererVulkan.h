@@ -9,10 +9,7 @@ class ApplicationRendererVulkan : public RendererVulkan
 {
 private:
     struct PushConstantData {
-        alignas(16) glm::vec3 color;
-        alignas(16) glm::vec3 range;
-        alignas(4)  bool flag;
-        alignas(4)  float data;
+        alignas(4)  int index;
     };
 	
 	struct UniformBufferObject {

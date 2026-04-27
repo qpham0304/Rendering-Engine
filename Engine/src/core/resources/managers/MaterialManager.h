@@ -12,6 +12,7 @@ public:
 
     virtual bool init(WindowConfig config) = 0;
     virtual bool onClose() = 0;
+	virtual void onUpdate() = 0;
     virtual void destroy(uint32_t id) = 0;
     virtual std::vector<uint32_t> listIDs() const = 0;
     virtual uint32_t createMaterial(const MaterialDesc& material) = 0;

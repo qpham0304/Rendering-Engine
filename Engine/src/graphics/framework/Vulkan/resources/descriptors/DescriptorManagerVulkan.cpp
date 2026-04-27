@@ -88,7 +88,7 @@ uint32_t DescriptorManagerVulkan::createLayout(std::vector<VkDescriptorSetLayout
 
     if (flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT) {
         for (auto& f : bindingFlags) {
-            f = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+            f = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
         }
     }
 
@@ -177,13 +177,14 @@ void DescriptorManagerVulkan::writeImage(
 	std::vector<VkWriteDescriptorSet>* writes,
 	const VkDescriptorSet& dstSet,
 	uint32_t binding,
-	const VkDescriptorImageInfo& imageInfo
+	const VkDescriptorImageInfo& imageInfo,
+	uint32_t arrayIndex
 ) {
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.dstSet = dstSet;
 	write.dstBinding = binding;
-	write.dstArrayElement = 0;
+	write.dstArrayElement = arrayIndex;
 	write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	write.descriptorCount = 1;
 	write.pImageInfo = &imageInfo;
@@ -195,13 +196,14 @@ void DescriptorManagerVulkan::writeStorageImage(
 	std::vector<VkWriteDescriptorSet>* writes,
 	const VkDescriptorSet& dstSet,
 	uint32_t binding,
-	const VkDescriptorImageInfo& imageInfo
+	const VkDescriptorImageInfo& imageInfo,
+	uint32_t arrayIndex
 ) {
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.dstSet = dstSet;
 	write.dstBinding = binding;
-	write.dstArrayElement = 0;
+	write.dstArrayElement = arrayIndex;
 	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	write.descriptorCount = 1;
 	write.pImageInfo = &imageInfo;

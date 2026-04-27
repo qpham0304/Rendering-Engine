@@ -5,6 +5,7 @@
 #include "core/features/ServiceLocator.h"
 #include "core/features/Material.h"
 #include "logging/Logger.h"
+#include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
 
 MaterialManagerVulkan::MaterialManagerVulkan(std::string serviceName)
 	: MaterialManager(serviceName)
@@ -43,8 +44,25 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 	fallback_emissiveID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/emissive.png", 1, false);
 
 	_createMaterialDescriptorSet();
+	
+	materialsGPU.resize(10000);
+	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
+    auto bufferManagerVulkan = &dynamic_cast<BufferManagerVulkan&>(bufferManager);
+
+	
+	//TODO: might abstract this behind the bufferManager for resue
+    VkDeviceSize bufferSize = sizeof(GPUMaterialData) * materialsGPU.size();
+	uint32_t bufferID = bufferManagerVulkan->createBufferDeviceAddress(bufferSize);
+	materialDeviceAddress = (DeviceAddressBufferVulkan*)bufferManagerVulkan->getBuffer(bufferID);
 
     return true;
+}
+
+void MaterialManagerVulkan::onUpdate()
+{
+	//TODO: conditional update would be better in case of thousands materials
+	_buildMaterialCache();
+	_updateGPUBuffer();
 }
 
 bool MaterialManagerVulkan::onClose()
@@ -71,6 +89,7 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 	materials[m_ids] = { MaterialVulkan(), MaterialUniform() };
 	MaterialVulkan& material = materials[m_ids].first;
 
+
 	//TODO: each mesh owns a set now, hash to prevent duplicate material set
 	uint32_t frameCount = VulkanUtils::numFrames();
 	material.descriptorSetID = descriptorManagerVulkan->createSets(materialLayoutID, materialPoolID, frameCount);
@@ -84,6 +103,16 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 		updateMaterial(m_ids, materialDesc, i);
 	}
 
+	
+	GPUMaterialData materialGPU {};
+	materialGPU.albedoIdx = material.albedoID;
+	materialGPU.normalIdx = material.normalID;
+	materialGPU.metalnessIdx = material.metallicID;
+	materialGPU.roughnessIdx = material.roughnessID;
+	materialGPU.aoIdx = material.aoID;
+	materialGPU.emissiveIdx = material.emissiveID;
+	materialsGPU[m_ids] = materialGPU;
+
     return _assignID();
 }
 
@@ -96,17 +125,29 @@ void MaterialManagerVulkan::bindMaterial(const uint32_t &id, void* cmdBuffer, vo
 	VkDescriptorSet materialSet = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID)[frame];
 
 	VulkanPipeline* pipeline = static_cast<VulkanPipeline*>(p);
-
+	
 	vkCmdBindDescriptorSets(
 		reinterpret_cast<VkCommandBuffer>(cmdBuffer),
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		pipeline->pipelineLayout,
 		1,
 		1,
+		&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
+		0,
+		nullptr
+	);
+
+	vkCmdBindDescriptorSets(
+		reinterpret_cast<VkCommandBuffer>(cmdBuffer),
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipeline->pipelineLayout,
+		2,
+		1,
 		&materialSet,
 		0,
 		nullptr
 	);
+
 }
 
 MaterialDesc MaterialManagerVulkan::getMaterial(const uint32_t &id)
@@ -130,6 +171,32 @@ MaterialDesc MaterialManagerVulkan::getMaterial(const uint32_t &id)
 		{ materialControl.ao },
 		{ materialControl.emissive }
 	};
+}
+
+uint64_t MaterialManagerVulkan::getMaterialAddress(uint32_t id)
+{
+	return materialDeviceAddress->getReference() + (id * sizeof(GPUMaterialData));
+}
+
+void MaterialManagerVulkan::_buildMaterialCache()
+{
+	for (auto const& [id, pair] : materials) {
+		MaterialVulkan material = pair.first;
+        GPUMaterialData gpuMaterial {};
+        gpuMaterial.albedoIdx    = material.albedoID;
+        gpuMaterial.normalIdx    = material.normalID;
+        gpuMaterial.metalnessIdx = material.metallicID;
+        gpuMaterial.roughnessIdx = material.roughnessID;
+        gpuMaterial.aoIdx        = material.aoID;
+        gpuMaterial.emissiveIdx  = material.emissiveID;
+        
+        materialsGPU[id] = gpuMaterial;
+    }
+}
+
+void MaterialManagerVulkan::_updateGPUBuffer()
+{
+	materialDeviceAddress->update(materialsGPU.data(), sizeof(GPUMaterialData) * materialsGPU.size());
 }
 
 bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &materialDesc, uint32_t frameIndex)
@@ -159,36 +226,23 @@ bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &mate
 
     auto updateDescriptor = [&](uint32_t frame) {
         std::vector<VkWriteDescriptorSet> writes;
-        std::vector<VkDescriptorImageInfo> imageInfos;
         
-        // reserve space so pointers to elements remain valid/prevent reallocation
-        writes.reserve(7);
-        imageInfos.reserve(6); 
-
         auto writeMaterial = [&](uint32_t binding, uint32_t textureID) {
-            TextureVulkan* texture = textureManagerVulkan->getTexture(textureID);
-            VkDescriptorImageInfo imageInfo{};
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = texture->textureImageView;
-            imageInfo.sampler = texture->textureSampler;
-            
-            imageInfos.push_back(imageInfo);
-            descriptorManagerVulkan->writeImage(&writes, materialSets[frame], binding, imageInfos.back());
+			textureManagerVulkan->registerTextureSampler(textureID);
         };
-
-        writeMaterial(0, material.albedoID);
-        writeMaterial(1, material.normalID);
-        writeMaterial(2, material.metallicID);
-        writeMaterial(3, material.roughnessID);
-        writeMaterial(4, material.aoID);
-        writeMaterial(5, material.emissiveID);
+		textureManagerVulkan->registerTextureSampler(material.albedoID);
+		textureManagerVulkan->registerTextureSampler(material.normalID);
+		textureManagerVulkan->registerTextureSampler(material.metallicID);
+		textureManagerVulkan->registerTextureSampler(material.roughnessID);
+		textureManagerVulkan->registerTextureSampler(material.aoID);
+		textureManagerVulkan->registerTextureSampler(material.emissiveID);
 
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = static_cast<VkBuffer>(*material.uniformbuffersList[frame]);
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(MaterialUniform);
 
-        descriptorManagerVulkan->writeUniform(&writes, materialSets[frame], 6, bufferInfo);
+        descriptorManagerVulkan->writeUniform(&writes, materialSets[frame], 0, bufferInfo);
         descriptorManagerVulkan->updateDescriptorSets(&writes);
         material.uniformbuffersList[frame]->update(&materialUniform, sizeof(materialUniform));
     };
@@ -222,20 +276,13 @@ uint32_t MaterialManagerVulkan::_checkMaterial(const std::vector<uint32_t> &text
 void MaterialManagerVulkan::_createMaterialDescriptorSet()
 {
 	std::vector<VkDescriptorSetLayoutBinding> bindings = {
-		{ 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
+		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr}
 	};
 	materialLayoutID = descriptorManagerVulkan->createLayout(bindings);
 
 	uint32_t frameCount = VulkanUtils::numFrames();
 	uint32_t maxMaterial = 1024 * 8;
 	std::vector<VkDescriptorPoolSize> poolSizes = {
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6 * maxMaterial },
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * maxMaterial }
 	};
 	materialPoolID = descriptorManagerVulkan->createPool(poolSizes, maxMaterial);
