@@ -230,6 +230,7 @@ bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &mate
         auto writeMaterial = [&](uint32_t binding, uint32_t textureID) {
 			textureManagerVulkan->registerTextureSampler(textureID);
         };
+		
 		textureManagerVulkan->registerTextureSampler(material.albedoID);
 		textureManagerVulkan->registerTextureSampler(material.normalID);
 		textureManagerVulkan->registerTextureSampler(material.metallicID);

@@ -243,7 +243,7 @@ void DeferredRendererVulkan::renderGui()
 		});
 	}
 	ImGui::SameLine();
-	ImGui::Text(tempPipeline ? "loaded pipelien" : "loading...");
+	ImGui::Text(tempPipeline ? "loaded pipeline" : "loading...");
 	
 	if(ImGui::Button("Change Environment")) {
 		std::string path;

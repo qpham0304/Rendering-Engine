@@ -49,6 +49,17 @@ layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 // layout(set = 2, binding = 1) uniform image2D storageImages[];
 // layout(set = 2, binding = 2) uniform sampler storageImages[];
 
+layout(set = 2, binding = 0)  uniform MaterialUniform {
+    int materialIdx;
+    vec2 uv;
+    vec4 albedo;
+    vec4 normal;
+    float metallic;
+    float roughness;
+    float ao;
+    float emissive;
+} material;
+
 layout(buffer_reference, std430) readonly buffer MaterialBlock { 
     uint albedoIdx;
     uint normalIdx;

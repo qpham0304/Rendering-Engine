@@ -279,11 +279,14 @@ void ForwardRendererVulkan::_createPipeline()
 	uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
 	auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
 
+	void* handle = materialManager->getMaterialLayout();
+	auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
+
 	offscreenPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	offscreenPipeline->createGraphicsPipeline(
 		"assets/shaders/spv/forwardLightPass.vert.spv",
 		"assets/shaders/spv/forwardLightPass.frag.spv",
-		{ descriptorSetLayout, bindlessLayout }, 
+		{ descriptorSetLayout, bindlessLayout, materialLayout }, 
 		renderTarget.renderPass, 
 		sizeof(PushConstantLight)
 	);
