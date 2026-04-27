@@ -86,8 +86,8 @@ std::vector<uint32_t> MaterialManagerVulkan::listIDs() const
 
 uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 {
-	materials[m_ids] = { MaterialVulkan(), MaterialUniform() };
-	MaterialVulkan& material = materials[m_ids].first;
+	materials[m_ids] = MaterialVulkan();
+	MaterialVulkan& material = materials[m_ids];
 
 
 	//TODO: each mesh owns a set now, hash to prevent duplicate material set
@@ -96,8 +96,6 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
 	auto bufferManagerVulkan = &dynamic_cast<BufferManagerVulkan&>(bufferManager);
-	
-	bufferManagerVulkan->createUniformBuffers(material.uniformbuffersList, sizeof(MaterialUniform));
 	
 	for(int i = 0; i < VulkanUtils::numFrames(); i++) {
 		updateMaterial(m_ids, materialDesc, i);
@@ -121,7 +119,7 @@ void MaterialManagerVulkan::bindMaterial(const uint32_t &id, void* cmdBuffer, vo
 	assert(p && "pipeline required");
 
 	uint32_t frame = renderDeviceVulkan->getCurrentFrameIndex();
-	const MaterialVulkan& material = materials.at(id).first;
+	const MaterialVulkan& material = materials.at(id);
 	VkDescriptorSet materialSet = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID)[frame];
 
 	VulkanPipeline* pipeline = static_cast<VulkanPipeline*>(p);
@@ -137,23 +135,11 @@ void MaterialManagerVulkan::bindMaterial(const uint32_t &id, void* cmdBuffer, vo
 		nullptr
 	);
 
-	vkCmdBindDescriptorSets(
-		reinterpret_cast<VkCommandBuffer>(cmdBuffer),
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipeline->pipelineLayout,
-		2,
-		1,
-		&materialSet,
-		0,
-		nullptr
-	);
-
 }
 
 MaterialDesc MaterialManagerVulkan::getMaterial(const uint32_t &id)
 {
-	const MaterialVulkan& material = materials.at(id).first;
-	const MaterialUniform& materialControl = materials.at(id).second;
+	const MaterialVulkan& material = materials.at(id);
 
     return MaterialDesc {
 		{ material.albedoID },
@@ -162,26 +148,25 @@ MaterialDesc MaterialManagerVulkan::getMaterial(const uint32_t &id)
 		{ material.roughnessID },
 		{ material.aoID },
 		{ material.emissiveID },
-		{ materialControl.materialIdx }, // this is not currently used or set
-		{ materialControl.uv },
-		{ materialControl.albedo },
-		{ materialControl.normal },
-		{ materialControl.metallic },
-		{ materialControl.roughness },
-		{ materialControl.ao },
-		{ materialControl.emissive }
+		{ material.uv },
+		{ material.albedo },
+		{ material.normal },
+		{ material.metallic },
+		{ material.roughness },
+		{ material.ao },
+		{ material.emissive }
 	};
 }
 
-uint64_t MaterialManagerVulkan::getMaterialAddress(uint32_t id)
+uint64_t MaterialManagerVulkan::getMaterialAddress()
 {
-	return materialDeviceAddress->getReference() + (id * sizeof(GPUMaterialData));
+	return materialDeviceAddress->getReference();
 }
 
 void MaterialManagerVulkan::_buildMaterialCache()
 {
 	for (auto const& [id, pair] : materials) {
-		MaterialVulkan material = pair.first;
+		MaterialVulkan material = pair;
         GPUMaterialData gpuMaterial {};
         gpuMaterial.albedoIdx    = material.albedoID;
         gpuMaterial.normalIdx    = material.normalID;
@@ -189,7 +174,14 @@ void MaterialManagerVulkan::_buildMaterialCache()
         gpuMaterial.roughnessIdx = material.roughnessID;
         gpuMaterial.aoIdx        = material.aoID;
         gpuMaterial.emissiveIdx  = material.emissiveID;
-        
+
+		gpuMaterial.uv = material.uv;
+		gpuMaterial.albedo = material.albedo;
+		gpuMaterial.normal = material.normal;
+		gpuMaterial.metallic = material.metallic;
+		gpuMaterial.roughness = material.roughness;
+		gpuMaterial.ao = material.ao;
+		gpuMaterial.emissive = material.emissive;
         materialsGPU[id] = gpuMaterial;
     }
 }
@@ -204,58 +196,28 @@ bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &mate
     auto it = materials.find(id);
     if(it == materials.end()) return false;
     
-    MaterialVulkan& material = it->second.first;
+    MaterialVulkan& material = it->second;
     material.albedoID = _checkMaterial(materialDesc.albedoIDs, fallback_albedoID);
     material.normalID = _checkMaterial(materialDesc.normalIDs, fallback_normalID);
     material.metallicID = _checkMaterial(materialDesc.metallicIDs, fallback_metallicID);
     material.roughnessID = _checkMaterial(materialDesc.roughnessIDs, fallback_roughnessID);
     material.aoID = _checkMaterial(materialDesc.aoIDs, fallback_aoID);
     material.emissiveID = _checkMaterial(materialDesc.emissiveIDs, fallback_emissiveID);
-
-    MaterialUniform& materialUniform = it->second.second;
-    materialUniform.materialIdx = materialDesc.materialIdx;
-    materialUniform.uv = materialDesc.uv;
-    materialUniform.albedo = materialDesc.albedo;
-    materialUniform.normal = materialDesc.normal;
-    materialUniform.metallic  = materialDesc.metallic;
-    materialUniform.roughness = materialDesc.roughness;
-    materialUniform.ao         = materialDesc.ao;
-    materialUniform.emissive   = materialDesc.emissive;
+	material.uv = materialDesc.uv;
+	material.albedo = materialDesc.albedo;
+	material.normal = materialDesc.normal;
+	material.metallic  = materialDesc.metallic ;
+	material.roughness = materialDesc.roughness;
+	material.ao        = materialDesc.ao       ;
+	material.emissive  = materialDesc.emissive ;
 
     auto materialSets = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID);
-
-    auto updateDescriptor = [&](uint32_t frame) {
-        std::vector<VkWriteDescriptorSet> writes;
-        
-        auto writeMaterial = [&](uint32_t binding, uint32_t textureID) {
-			textureManagerVulkan->registerTextureSampler(textureID);
-        };
-		
-		textureManagerVulkan->registerTextureSampler(material.albedoID);
-		textureManagerVulkan->registerTextureSampler(material.normalID);
-		textureManagerVulkan->registerTextureSampler(material.metallicID);
-		textureManagerVulkan->registerTextureSampler(material.roughnessID);
-		textureManagerVulkan->registerTextureSampler(material.aoID);
-		textureManagerVulkan->registerTextureSampler(material.emissiveID);
-
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = static_cast<VkBuffer>(*material.uniformbuffersList[frame]);
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(MaterialUniform);
-
-        descriptorManagerVulkan->writeUniform(&writes, materialSets[frame], 0, bufferInfo);
-        descriptorManagerVulkan->updateDescriptorSets(&writes);
-        material.uniformbuffersList[frame]->update(&materialUniform, sizeof(materialUniform));
-    };
-
-    if(frameIndex == -1) {	// if no frameIndex provided use default value and update all in flight descriptors
-        renderDeviceVulkan->waitIdle();
-        for(uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
-            updateDescriptor(i);
-        }
-    } else {				// if frameIndex provided, only update in flight frame
-        updateDescriptor(frameIndex);
-    }
+	textureManagerVulkan->registerTextureSampler(material.albedoID);
+	textureManagerVulkan->registerTextureSampler(material.normalID);
+	textureManagerVulkan->registerTextureSampler(material.metallicID);
+	textureManagerVulkan->registerTextureSampler(material.roughnessID);
+	textureManagerVulkan->registerTextureSampler(material.aoID);
+	textureManagerVulkan->registerTextureSampler(material.emissiveID);
 
     return true;
 }

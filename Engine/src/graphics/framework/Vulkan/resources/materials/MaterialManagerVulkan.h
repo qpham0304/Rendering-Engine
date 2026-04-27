@@ -4,6 +4,8 @@
 #include "core/resources/managers/MaterialManager.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include <vulkan/vulkan.h>
+#include <glm/glm.hpp>
+#include <cstdint>
 
 class RenderDeviceVulkan;
 class TextureManagerVulkan;
@@ -13,21 +15,6 @@ class DeviceAddressBufferVulkan;
 class MaterialManagerVulkan : public MaterialManager
 {
 public:
-
-#include <glm/glm.hpp>
-#include <cstdint>
-
-	struct MaterialUniform {
-		alignas(4) uint32_t materialIdx = 0;
-		alignas(8) 	glm::vec2 uv = glm::vec2(0.0f);     // not the actual uv, just the offset
-		alignas(16) glm::vec4 albedo = glm::vec4(1.0f);
-		alignas(16) glm::vec4 normal = glm::vec4(0.0f);
-		alignas(4) 	float metallic  = 1.0f;
-		alignas(4) 	float roughness = 1.0f;
-		alignas(4) 	float ao        = 1.0f;
-		alignas(4) 	float emissive  = 1.0f;
-	};
-	
     struct MaterialVulkan {
 		uint32_t descriptorSetID;
 		uint32_t albedoID;
@@ -36,7 +23,14 @@ public:
 		uint32_t roughnessID;
 		uint32_t aoID;
 		uint32_t emissiveID;
-		std::vector<UniformBufferVulkan*> uniformbuffersList;
+
+		glm::vec2 uv;
+		glm::vec4 albedo;
+		glm::vec4 normal;
+		float metallic;
+		float roughness;
+		float ao;
+		float emissive ;
     };
 
 public:
@@ -54,7 +48,7 @@ public:
 	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc, uint32_t frameIndex);
 	virtual void* getMaterialLayout() override;
 	
-	uint64_t getMaterialAddress(uint32_t id);
+	uint64_t getMaterialAddress();
 	
 
 private:
@@ -69,7 +63,7 @@ private:
 	DescriptorManagerVulkan* descriptorManagerVulkan;
 
 
-    std::unordered_map<uint32_t, std::pair<MaterialVulkan, MaterialUniform>> materials;
+    std::unordered_map<uint32_t, MaterialVulkan> materials;
 	
 	std::vector<GPUMaterialData> materialsGPU;
 	DeviceAddressBufferVulkan* materialDeviceAddress;

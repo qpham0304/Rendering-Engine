@@ -430,7 +430,8 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 				const Mesh* mesh = meshManager->getMesh(meshID);
 
 				auto materialManagerVulkan = static_cast<MaterialManagerVulkan*>(materialManager);
-				pushConstant.materialRef = materialManagerVulkan->getMaterialAddress(mesh->materialID);
+				pushConstant.materialIdx = mesh->materialID;
+				pushConstant.materialsRef = materialManagerVulkan->getMaterialAddress();
 
 				materialManager->bindMaterial(mesh->materialID, cmd, (void*)gPassPipeline.get());
 				meshManager->bindMesh(meshID);

@@ -3,6 +3,7 @@
 
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_scalar_block_layout : enable
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
@@ -49,28 +50,30 @@ layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 // layout(set = 2, binding = 1) uniform image2D storageImages[];
 // layout(set = 2, binding = 2) uniform sampler storageImages[];
 
-layout(set = 2, binding = 0)  uniform MaterialUniform {
-    int materialIdx;
-    vec2 uv;
-    vec4 albedo;
-    vec4 normal;
-    float metallic;
-    float roughness;
-    float ao;
-    float emissive;
-} material;
 
-layout(buffer_reference, std430) readonly buffer MaterialBlock { 
+struct Material {
     uint albedoIdx;
     uint normalIdx;
     uint metalnessIdx;
     uint roughnessIdx;
     uint aoIdx;
     uint emissiveIdx;
+
+    vec2 uvOffset;
+    vec4 albedoFactor;
+    vec4 normalFactor;
+    float metallicFactor;
+    float roughnessFactor;
+    float aoFactor;
+    float emissiveFactor;
+};
+
+layout(buffer_reference, scalar) buffer Materials{ 
+    Material m[];
 };
 
 layout(push_constant) uniform PushConstant {
-    MaterialBlock ref;
+    Materials materialsRef;
     float bias;
     float time;
     mat4 sunlightMVP;
@@ -78,6 +81,7 @@ layout(push_constant) uniform PushConstant {
     vec4 color;
     float numLights;
     float skyboxDetail;
+    uint materialIdx;
 } pc;
 
 
@@ -225,16 +229,18 @@ float simpleNoise(vec3 p) {
 }
 
 void main() {
-    vec3 albedo     = texture(samplerImages[pc.ref.albedoIdx], fragTexCoord).rgb;
-    float ao        = texture(samplerImages[pc.ref.aoIdx], fragTexCoord).r;
-    float roughness = texture(samplerImages[pc.ref.roughnessIdx], fragTexCoord).g;
-    float metallic  = texture(samplerImages[pc.ref.metalnessIdx], fragTexCoord).b;
+    Material mat = pc.materialsRef.m[pc.materialIdx];
+    
+    vec3 albedo     = texture(samplerImages[mat.albedoIdx], fragTexCoord).rgb;
+    float ao        = texture(samplerImages[mat.aoIdx], fragTexCoord).r;
+    float roughness = texture(samplerImages[mat.roughnessIdx], fragTexCoord).g;
+    float metallic  = texture(samplerImages[mat.metalnessIdx], fragTexCoord).b;
     
     // float alphaRoughness = roughness * roughness;
     // alphaRoughness = clamp(alphaRoughness, 0.05, 1.0); 
 
     // vec3 tangentNormal = texture(normalMaps, fragTexCoord).rgb * 2.0 - 1.0;
-    vec3 tangentNormal = texture(samplerImages[pc.ref.normalIdx], fragTexCoord).rgb * 2.0 - 1.0;
+    vec3 tangentNormal = texture(samplerImages[mat.normalIdx], fragTexCoord).rgb * 2.0 - 1.0;
     mat3 TBN = mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal));
     vec3 V = normalize(ubo.cameraPos.xyz - fragWorldPos);
     vec3 geomN = normalize(inNormal);
@@ -321,7 +327,7 @@ void main() {
     // vec3 ambient = (kD_ibl * diffuseAmbient * ao) + (specularAmbient * specularOcclusion);
 
     // vec3 emissive = texture(emissiveMaps, fragTexCoord).rgb;
-    vec3 emissive = texture(samplerImages[pc.ref.emissiveIdx], fragTexCoord).rgb;
+    vec3 emissive = texture(samplerImages[mat.emissiveIdx], fragTexCoord).rgb;
     vec3 color = ambient + Lo + emissive;
 
     vec3 V_dir = normalize(fragWorldPos - ubo.cameraPos.xyz);

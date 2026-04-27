@@ -218,7 +218,8 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 			for (uint32_t meshID : model->meshIDs) {
 				const Mesh* mesh = meshManager->getMesh(meshID);
 				
-				pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress(mesh->materialID);
+				pushConstantLight.materialIdx = mesh->materialID;
+				pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
 
 				materialManager->bindMaterial(mesh->materialID, cmd, (void*)offscreenPipeline.get());
 				meshManager->bindMesh(meshID);

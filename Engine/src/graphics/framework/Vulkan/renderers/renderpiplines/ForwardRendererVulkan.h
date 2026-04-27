@@ -38,6 +38,7 @@ private:
 		glm::vec4 color;
 		float numLights;
 		float skyboxDetail;
+		uint32_t materialIdx;
 	};
 
 	struct LightSSBO {

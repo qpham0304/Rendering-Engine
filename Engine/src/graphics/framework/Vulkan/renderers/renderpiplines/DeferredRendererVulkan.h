@@ -17,7 +17,8 @@ class DeferredRendererVulkan : public RendererVulkan
 {
 private:
 	struct PushConstant {
-		uint64_t materialRef;
+		uint64_t materialsRef;
+		uint32_t materialIdx;
 	};
 
 	struct UniformBufferObject {
