@@ -196,6 +196,9 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 
 	int index = 0;
 	int lightIndex = 0;
+
+	materialManager->bindMaterial(cmd, (void*)offscreenPipeline.get());
+
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 		TransformComponent& transform = entity.getComponent<TransformComponent>();
 		const glm::mat4& entityTransform = transform.getModelMatrix();
@@ -221,7 +224,6 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 				pushConstantLight.materialIdx = mesh->materialID;
 				pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
 
-				materialManager->bindMaterial(mesh->materialID, cmd, (void*)offscreenPipeline.get());
 				meshManager->bindMesh(meshID);
 
 				vkCmdPushConstants(

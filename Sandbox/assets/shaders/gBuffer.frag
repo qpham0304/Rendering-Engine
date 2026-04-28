@@ -3,6 +3,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
 layout(location = 0) in vec3 inNormal;
 layout(location = 1) in vec2 inTexCoord;
@@ -38,20 +39,48 @@ struct Material {
     float emissiveFactor;
 };
 
-layout(buffer_reference, scalar) buffer Materials{ 
+const uint MAX_BONE_INFLUENCE =  4;
+struct Vertex
+{
+    vec3 pos;
+    vec3 col;
+    vec2 uv;
+    vec3 normal;
+    vec3 tangent;
+    vec3 biTangent;
+    int m_BoneIDs[MAX_BONE_INFLUENCE];
+    float m_Weights[MAX_BONE_INFLUENCE];
+};
+
+struct Object {
+    uint64_t vertexAddress;
+    uint64_t indexAddress;
+    uint64_t materialsRef;
+    uint64_t materialIndiciesRef;
+};
+
+layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
+layout(buffer_reference, scalar) buffer Indices { uint i[]; };
+
+layout(buffer_reference, scalar) buffer ObjectsBuffer{ 
+    Object objects[];
+};
+
+layout(buffer_reference, scalar) buffer MaterialsBuffer{ 
     Material m[];
+};
+layout(buffer_reference, scalar) readonly buffer MatIndicesBuffer { 
+    uint i[];
 };
 
 layout(push_constant) uniform PushConstant {
-    Materials materialsRef;
-    uint materialIdx;
+    ObjectsBuffer objRef;
+    uint objIdx;
 } pc;
 
 
-vec3 getNormalFromMap() {
-    Material mat = pc.materialsRef.m[pc.materialIdx];
-
-    vec3 texNormal = texture(samplerImages[mat.normalIdx], inTexCoord).xyz * 2.0 - 1.0;
+vec3 getNormalFromMap(vec4 normalMap, Material mat) {
+    vec3 texNormal = normalMap.xyz * 2.0 - 1.0;
 
     float ripple = sin(inWorldPos.x * 5.0 + inWorldPos.z * 5.0 + mat.emissiveFactor * 10.0); 
     
@@ -64,12 +93,17 @@ vec3 getNormalFromMap() {
 }
 
 void main() {
-    Material mat = pc.materialsRef.m[pc.materialIdx];
+    Object obj = pc.objRef.objects[pc.objIdx];
 
+    MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
+    MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndiciesRef);
+    uint matID = matIndices.i[gl_PrimitiveID];
+    Material mat = materials.m[matID];
 
     outPos = vec4(inWorldPos, 1.0);
     
-    vec3 N = getNormalFromMap();
+    vec4 normalMap = texture(samplerImages[mat.normalIdx], inTexCoord + mat.uvOffset);
+    vec3 N = getNormalFromMap(normalMap, mat);
     outNorm = vec4(N, 1.0);
     
     outAlbedo = texture(samplerImages[mat.albedoIdx], inTexCoord + mat.uvOffset) * mat.albedoFactor;

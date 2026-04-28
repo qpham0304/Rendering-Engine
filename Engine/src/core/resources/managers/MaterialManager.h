@@ -16,10 +16,10 @@ public:
     virtual void destroy(uint32_t id) = 0;
     virtual std::vector<uint32_t> listIDs() const = 0;
     virtual uint32_t createMaterial(const MaterialDesc& material) = 0;
-    virtual void bindMaterial(const uint32_t& id, void* cmdBuffer = nullptr, void* pipeline = nullptr) = 0;
+    virtual void bindMaterial(void* cmdBuffer = nullptr, void* pipeline = nullptr) = 0;
     virtual MaterialDesc getMaterial(const uint32_t& id) = 0;
     virtual void* getMaterialLayout() = 0;
-	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc, uint32_t frameIndex = -1) = 0;
+	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc) = 0;
 
 protected:
     MaterialManager(std::string serviceName = "MaterialManager") : Manager(serviceName) {};

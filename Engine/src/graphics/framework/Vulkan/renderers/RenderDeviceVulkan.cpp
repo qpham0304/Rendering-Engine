@@ -70,7 +70,7 @@ void RenderDeviceVulkan::endFrame()
 
 void RenderDeviceVulkan::draw(uint32_t numIndicies, uint32_t numInstances, uint32_t offset)
 {
-	if (numInstances < 1) {
+	if (numInstances < 1 || numIndicies <= 0) {
 		return;
 	}
 

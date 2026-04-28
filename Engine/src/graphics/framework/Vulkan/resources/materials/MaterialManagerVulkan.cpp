@@ -89,18 +89,7 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 	materials[m_ids] = MaterialVulkan();
 	MaterialVulkan& material = materials[m_ids];
 
-
-	//TODO: each mesh owns a set now, hash to prevent duplicate material set
-	uint32_t frameCount = VulkanUtils::numFrames();
-	material.descriptorSetID = descriptorManagerVulkan->createSets(materialLayoutID, materialPoolID, frameCount);
-
-	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
-	auto bufferManagerVulkan = &dynamic_cast<BufferManagerVulkan&>(bufferManager);
-	
-	for(int i = 0; i < VulkanUtils::numFrames(); i++) {
-		updateMaterial(m_ids, materialDesc, i);
-	}
-
+	updateMaterial(m_ids, materialDesc);
 	
 	GPUMaterialData materialGPU {};
 	materialGPU.albedoIdx = material.albedoID;
@@ -114,13 +103,9 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
     return _assignID();
 }
 
-void MaterialManagerVulkan::bindMaterial(const uint32_t &id, void* cmdBuffer, void* p)
+void MaterialManagerVulkan::bindMaterial(void* cmdBuffer, void* p)
 {
 	assert(p && "pipeline required");
-
-	uint32_t frame = renderDeviceVulkan->getCurrentFrameIndex();
-	const MaterialVulkan& material = materials.at(id);
-	VkDescriptorSet materialSet = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID)[frame];
 
 	VulkanPipeline* pipeline = static_cast<VulkanPipeline*>(p);
 	
@@ -191,7 +176,7 @@ void MaterialManagerVulkan::_updateGPUBuffer()
 	materialDeviceAddress->update(materialsGPU.data(), sizeof(GPUMaterialData) * materialsGPU.size());
 }
 
-bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &materialDesc, uint32_t frameIndex)
+bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &materialDesc)
 {
     auto it = materials.find(id);
     if(it == materials.end()) return false;
@@ -211,7 +196,6 @@ bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &mate
 	material.ao        = materialDesc.ao       ;
 	material.emissive  = materialDesc.emissive ;
 
-    auto materialSets = descriptorManagerVulkan->getDescriptorSet(material.descriptorSetID);
 	textureManagerVulkan->registerTextureSampler(material.albedoID);
 	textureManagerVulkan->registerTextureSampler(material.normalID);
 	textureManagerVulkan->registerTextureSampler(material.metallicID);

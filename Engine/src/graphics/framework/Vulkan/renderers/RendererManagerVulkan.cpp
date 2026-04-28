@@ -93,7 +93,25 @@ std::vector<uint32_t> RendererManagerVulkan::listIDs() const
 
 void RendererManagerVulkan::onUpdate()
 {
-    
+    if(currentRenderMode == 0) {
+        forwardRenderer->onUpdate();
+    } 
+    else if(currentRenderMode == 1) {
+        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
+        if(tmp->pushConstantLight.aoOn) {
+            alchemyAORenderer->onUpdate();
+        }
+        deferredRenderer->onUpdate();
+        hiZPassRenderer->onUpdate();
+        SSRGIPassRenderer->onUpdate();
+        if(tmp->denoiserOn) {
+            temporalPassRenderer->onUpdate();
+        }
+        deferredCombineRenderer->onUpdate();
+    } 
+    else {
+   
+    }
 }
 
 void RendererManagerVulkan::render()

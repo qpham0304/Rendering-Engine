@@ -294,7 +294,7 @@ uint32_t BufferManagerVulkan::createBufferDeviceAddress(size_t bufferSize)
 	VkDeviceMemory bufferMemory;
 
 	createBuffer(
-        bufferSize, 
+        bufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         buffer, 
@@ -314,6 +314,15 @@ uint32_t BufferManagerVulkan::createBufferDeviceAddress(size_t bufferSize)
 	buffers[m_ids] = deviceAddressBuffer;
 
     return _assignID();
+}
+
+void BufferManagerVulkan::updateBufferDeviceAddress(uint32_t id, const void *src, size_t bufferSize)
+{
+    BufferVulkan* buffer = buffers.at(id).get();
+	auto deviceAddressBuffer = dynamic_cast<DeviceAddressBufferVulkan*>(buffer);
+	if(deviceAddressBuffer) {
+		deviceAddressBuffer->update(src, bufferSize);
+	}
 }
 
 void BufferManagerVulkan::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)

@@ -16,7 +16,6 @@ class MaterialManagerVulkan : public MaterialManager
 {
 public:
     struct MaterialVulkan {
-		uint32_t descriptorSetID;
 		uint32_t albedoID;
 		uint32_t normalID;
 		uint32_t metallicID;
@@ -43,9 +42,9 @@ public:
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
 	virtual uint32_t createMaterial(const MaterialDesc& materialDesc) override;
-    virtual void bindMaterial(const uint32_t& id, void* cmdBuffer, void* pipeline) override;
+    virtual void bindMaterial(void* cmdBuffer, void* pipeline) override;
     virtual MaterialDesc getMaterial(const uint32_t& id) override;
-	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc, uint32_t frameIndex);
+	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc);
 	virtual void* getMaterialLayout() override;
 	
 	uint64_t getMaterialAddress();

@@ -15,10 +15,18 @@ class HiZPassVulkan;
 class SSRGIPassVulkan;
 class DeferredRendererVulkan : public RendererVulkan
 {
+
 private:
 	struct PushConstant {
-		uint64_t materialsRef;
-		uint32_t materialIdx;
+		uint64_t objectsRef;
+		uint32_t objectIdx;
+	};
+
+	struct ObjectDesc {
+		uint64_t vertexAddress = 0;
+		uint64_t indexAddress = 0;
+		uint64_t materialsRef = 0;
+		uint64_t materialIndicesRef = 0;
 	};
 
 	struct UniformBufferObject {
@@ -60,6 +68,7 @@ private:
 		alignas(4) float intensity;
 	};
 
+
 public:
     DeferredRendererVulkan();
     virtual~DeferredRendererVulkan() override;
@@ -75,6 +84,7 @@ public:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 public:	//TODO: make private once done testing	
+	const int MAX_INSTANCES = 10000;
 	const int numInstances = 1;
 	const int numLights = 1000;
 	bool showGui{ true };
@@ -121,6 +131,12 @@ public:	//TODO: make private once done testing
 	SSRGIPassVulkan* SSRGIPassRenderer { nullptr };
 	
 	std::unique_ptr<VulkanPipeline> tempPipeline { nullptr };
+
+	
+	uint32_t objDeviceAddressBufferID;
+	uint64_t objDeviceAddress;
+	uint64_t materialsAddress;
+	std::vector<ObjectDesc> objects;
 
 	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
