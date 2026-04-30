@@ -26,11 +26,11 @@ bool RenderDeviceVulkan::init(WindowConfig config)
 	Service::init(config);
 
 	device.create();
-	swapchain.create();
 	commandPool.create();
 	transferPool.create();
+	swapchain.create();
 
-	swapchain.createFramebuffers();
+    load_VK_EXTENSIONS(device.getInstance(), vkGetInstanceProcAddr, device, vkGetDeviceProcAddr);
 
 	return true;
 }

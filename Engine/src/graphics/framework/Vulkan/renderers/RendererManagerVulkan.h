@@ -82,6 +82,7 @@ protected:
 	Renderer* applicationRenderer { nullptr };
 	Renderer* forwardRenderer { nullptr };
 	Renderer* deferredRenderer { nullptr };
+	Renderer* raytracingRenderer { nullptr };
 	Renderer* shadowMapRenderer { nullptr };
 	Renderer* imageBasedRenderer { nullptr };
 	Renderer* alchemyAORenderer { nullptr };

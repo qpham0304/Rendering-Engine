@@ -14,6 +14,7 @@
 #include "StorageBufferVulkan.h"
 #include "BufferVulkan.h"
 #include "DeviceAddressBufferVulkan.h"
+#include "AccelStructureBufferVulkan.h"
 
 BufferManagerVulkan::BufferManagerVulkan(std::string serviceName)
 	: BufferManager(serviceName)
@@ -50,6 +51,58 @@ uint32_t BufferManagerVulkan::findMemoryType(uint32_t typeFilter, VkMemoryProper
 	}
 
 	throw std::runtime_error("failed to find suitable memory type!");
+}
+
+//TODO: only support for ray tracing at the moment might want more supports for generic types
+uint32_t BufferManagerVulkan::createInstanceBuffer(const VkAccelerationStructureInstanceKHR* instances, uint32_t numInstnaces)
+{
+	VkDeviceSize bufferSize = sizeof(VkAccelerationStructureInstanceKHR) * numInstnaces;
+
+
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer,
+		stagingBufferMemory
+	);
+
+	void* data;
+	vkMapMemory(renderDeviceVulkan->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, instances, (size_t)bufferSize);
+	vkUnmapMemory(renderDeviceVulkan->device, stagingBufferMemory);
+
+	VkBuffer buffer;
+    VkDeviceMemory bufferMemory;
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT 
+			| VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+			| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		buffer,
+		bufferMemory
+	);
+
+	copyBuffer(stagingBuffer, buffer, bufferSize);
+
+	vkDestroyBuffer(renderDeviceVulkan->device, stagingBuffer, nullptr);
+	vkFreeMemory(renderDeviceVulkan->device, stagingBufferMemory, nullptr);
+
+	auto bufferObject = std::make_shared<BufferVulkan>(m_ids, buffer, bufferMemory);
+    
+	VkBufferDeviceAddressInfo addressInfo {};
+	addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+	addressInfo.pNext = nullptr;
+    addressInfo.buffer = buffer;
+    bufferObject->deviceAddress = vkGetBufferDeviceAddress(renderDeviceVulkan->device, &addressInfo);
+	
+	buffers[m_ids] = bufferObject;
+	
+	return _assignID();
 }
 
 bool BufferManagerVulkan::onClose()
@@ -156,10 +209,12 @@ uint32_t BufferManagerVulkan::createVertexBuffer(const Vertex* vertices, int siz
 	memcpy(data, vertices, (size_t)bufferSize);
 	vkUnmapMemory(renderDeviceVulkan->device, stagingBufferMemory);
 
-
 	createBuffer(
 		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT 
+			| VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+			| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+			| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		vertexBuffer,
 		vertexBufferMemory
@@ -203,7 +258,10 @@ uint32_t BufferManagerVulkan::createIndexBuffer(const uint32_t* indices, int siz
 
 	createBuffer(
 		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT 
+			| VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+			| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+			| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		indexBuffer,
 		indexBufferMemory
@@ -295,7 +353,9 @@ uint32_t BufferManagerVulkan::createBufferDeviceAddress(size_t bufferSize)
 
 	createBuffer(
         bufferSize,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
+			| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT 
+			| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         buffer, 
         bufferMemory
@@ -313,6 +373,93 @@ uint32_t BufferManagerVulkan::createBufferDeviceAddress(size_t bufferSize)
 	
 	buffers[m_ids] = deviceAddressBuffer;
 
+    return _assignID();
+}
+
+uint32_t BufferManagerVulkan::createAccelStructureBuffer(
+	uint64_t maxSize, 
+	VkAccelerationStructureCreateInfoKHR& accelInfo
+){
+
+	VkBuffer buffer;
+	VkDeviceMemory bufferMemory;
+
+
+	//TODO: check if this fail on machine that does not support acceleration structure
+	createBuffer(
+        maxSize,
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR 
+			| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+			| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        buffer, 
+        bufferMemory
+    );
+
+	auto accelStructureBuffer = std::make_shared<AccelStructureBufferVulkan>(m_ids, buffer, bufferMemory);
+    
+	VkBufferDeviceAddressInfo addressInfo {};
+	addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+	addressInfo.pNext = nullptr;
+    addressInfo.buffer = buffer;
+    accelStructureBuffer->deviceAddress = vkGetBufferDeviceAddress(renderDeviceVulkan->device, &addressInfo);
+	
+	accelInfo.buffer = static_cast<VkBuffer>(*accelStructureBuffer);
+    vkCreateAccelerationStructureKHR(renderDeviceVulkan->device, &accelInfo, nullptr, &accelStructureBuffer->accelStr);
+
+	buffers[m_ids] = accelStructureBuffer;
+
+	return _assignID();
+}
+
+uint32_t BufferManagerVulkan::createBufferObject(uint64_t maxSize)
+{
+	VkBuffer buffer;
+	VkDeviceMemory bufferMemory;
+
+	createBuffer(
+        maxSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
+			| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT 
+			| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        buffer, 
+        bufferMemory
+    );
+
+	auto bufferObject = std::make_shared<BufferVulkan>(m_ids, buffer, bufferMemory);
+    
+	VkBufferDeviceAddressInfo addressInfo {};
+	addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+	addressInfo.pNext = nullptr;
+    addressInfo.buffer = buffer;
+    bufferObject->deviceAddress = vkGetBufferDeviceAddress(renderDeviceVulkan->device, &addressInfo);
+	
+	buffers[m_ids] = bufferObject;
+
+    return _assignID();
+}
+
+uint32_t BufferManagerVulkan::createBuffer2(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
+{
+	VkBuffer buffer;
+	VkDeviceMemory memory;
+
+	createBuffer(size, usage, properties, buffer, memory);
+	
+	buffers[m_ids] = std::make_shared<BufferVulkan>(m_ids, buffer, memory);
+	if (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+        VkBufferDeviceAddressInfo addressInfo {};
+        addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+		addressInfo.pNext = nullptr;
+        addressInfo.buffer = buffer;
+
+        buffers[m_ids]->deviceAddress = vkGetBufferDeviceAddress(renderDeviceVulkan->device, &addressInfo);
+    }
+    else {
+        buffers[m_ids]->deviceAddress = 0;
+    }
+	
     return _assignID();
 }
 

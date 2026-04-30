@@ -41,7 +41,8 @@ bool SandBoxLayer::init()
     }
     
     setLogScopeEngine();
-    scene->loadScene("assets/data/Level1-test.json");
+    // scene->loadScene("assets/data/Level1-test.json");
+    scene->loadScene("assets/data/default-scene.json");
 
     const int numLights = 1;
     std::random_device rd;

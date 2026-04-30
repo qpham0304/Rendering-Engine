@@ -43,7 +43,7 @@ void MeshManager::destroy(uint32_t id)
 std::vector<uint32_t> MeshManager::listIDs() const
 {
     std::vector<uint32_t> list;
-    for(const auto& [id, texture] : m_meshes) {
+    for(const auto& [id, mesh] : m_meshes) {
         list.emplace_back(id);
     }
     return list;
@@ -113,7 +113,7 @@ uint32_t MeshManager::loadMesh(Mesh& mesh)
 }
 
 
-const Mesh* MeshManager::getMesh(uint32_t id) const
+Mesh* MeshManager::getMesh(uint32_t id) const
 {
     if (m_meshes.find(id) == m_meshes.end()) {
         return nullptr;

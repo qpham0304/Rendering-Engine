@@ -1,4 +1,4 @@
-/*
+// /*
 #version 460
 
 layout(location = 0) in vec3 inPosition;
@@ -55,9 +55,10 @@ void main() {
     outCurNDC = gl_Position;
     outPrevNDC = ubo.prevViewProj * prevWorldPos;
 }
-*/
+// */
 
-// /*
+// working vertex pulling but performance is horrible
+/*
 #version 460
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_scalar_block_layout : require
@@ -151,4 +152,4 @@ void main() {
     outCurNDC = gl_Position;
     outPrevNDC = ubo.prevViewProj * prevWorldPos;
 }
-// */
+*/

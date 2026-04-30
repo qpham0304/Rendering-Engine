@@ -249,6 +249,27 @@ void DescriptorManagerVulkan::writeAttachment(
 	writes->push_back(write);
 }
 
+void DescriptorManagerVulkan::writeAccelStruct(
+	std::vector<VkWriteDescriptorSet> *writes, 
+	const VkDescriptorSet &dstSet, 
+	uint32_t binding, 
+	const std::vector<VkDescriptorSetLayoutBinding>& bindingTable,
+	VkWriteDescriptorSetAccelerationStructureKHR& descASInfo
+) {
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstSet          = dstSet;
+    write.dstBinding      = binding;
+    write.dstArrayElement = 0;
+    write.descriptorCount = 1;
+    write.descriptorType  = bindingTable[binding].descriptorType;
+    write.pNext      = &descASInfo;
+
+    assert(bindingTable[binding].binding == binding);
+
+    assert(write.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+
+	writes->push_back(write);
+}
 
 void DescriptorManagerVulkan::updateDescriptorSets(std::vector<VkWriteDescriptorSet>* const writes)
 {

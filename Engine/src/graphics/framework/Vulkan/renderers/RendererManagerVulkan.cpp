@@ -6,6 +6,7 @@
 #include "graphics/framework/vulkan/renderers/renderpiplines/ApplicationRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpiplines/RayTracingPipelineVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
@@ -35,6 +36,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     applicationRenderer = addRenderer<ApplicationRendererVulkan>("ApplicationRendererVulkan");
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
+    raytracingRenderer = addRenderer<RaytracingPipelineVulkan>("RaytracingPipelineVulkan");
     shadowMapRenderer = addRenderer<ShadowMapRendererVulkan>("ShadowMapRendererVulkan");
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
     alchemyAORenderer = addRenderer<AlchemyAORendererVulkan>("AlchemyAORendererVulkan");
@@ -51,6 +53,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     // hiZPassRenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
+	raytracingRenderer->init(config);
     SSRGIPassRenderer->init(config);
     temporalPassRenderer->init(config);
     deferredCombineRenderer->init(config);
@@ -70,6 +73,7 @@ bool RendererManagerVulkan::onClose()
     applicationRenderer->onClose();
 	forwardRenderer->onClose();
 	deferredRenderer->onClose();
+	raytracingRenderer->onClose();
 	shadowMapRenderer->onClose();
 	imageBasedRenderer->onClose();
     alchemyAORenderer->onClose();
@@ -108,7 +112,9 @@ void RendererManagerVulkan::onUpdate()
             temporalPassRenderer->onUpdate();
         }
         deferredCombineRenderer->onUpdate();
-    } 
+    } else if(currentRenderMode == 2) {
+        raytracingRenderer->onUpdate();
+    }
     else {
    
     }
@@ -142,7 +148,9 @@ void RendererManagerVulkan::render()
             temporalPassRenderer->render(*camera);
         }
         deferredCombineRenderer->render(*camera);
-    } 
+    } else if(currentRenderMode == 2) {
+        raytracingRenderer->render(*camera);
+    }
     else {
    
     }

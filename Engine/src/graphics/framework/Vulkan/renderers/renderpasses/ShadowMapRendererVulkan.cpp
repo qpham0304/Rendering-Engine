@@ -54,6 +54,7 @@ bool ShadowMapRendererVulkan::init(WindowConfig config)
 	s = 25.0f; 
 	zNear = 0.01f;
 	zFar = 105.0f;
+	sunElevation = 1.357;
 
 	return true;
 }

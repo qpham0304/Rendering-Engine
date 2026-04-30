@@ -56,6 +56,12 @@ public:
 		uint32_t pushConstantSize
 	);
 
+	void createRayTracePipeline(
+		const std::string& raytraceFilePath,
+		const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
+		uint32_t pushConstantSize
+	);
+
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 private:

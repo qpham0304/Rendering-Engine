@@ -18,6 +18,11 @@ const VkDeviceMemory& BufferVulkan::getMemory()
     return bufferMemory;
 }
 
+VkDeviceAddress BufferVulkan::getAddress()
+{
+    return deviceAddress;
+}
+
 BufferVulkan::operator VkBuffer() const
 {
     return buffer;
