@@ -151,6 +151,7 @@ public:
 	VkPhysicalDevice getPhysicalDevice() const;
 	VkQueue getGraphicsQueue() const;
 	VkQueue getPresentQueue() const;
+	bool raytracingSupport() const;
 	
 private:
 	VulkanDevice(const VulkanDevice&) = delete;

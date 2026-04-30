@@ -5,6 +5,7 @@
 #include "../../../../window/AppWindow.h"
 #include <windows.h>
 #include <vulkan/vulkan_win32.h>
+#include "VulkanExtensions.hpp"
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, 
 	const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, 
@@ -207,6 +208,17 @@ void VulkanDevice::createLogicalDevice() {
 	accelFeatures.accelerationStructure = this->rtSupported ? VK_TRUE : VK_FALSE;
 	accelFeatures.pNext = &features13;
 
+	VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{};
+	rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+	rayQueryFeatures.rayQuery = this->rtSupported ? VK_TRUE : VK_FALSE;
+	rayQueryFeatures.pNext = &accelFeatures;
+
+	VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature{};
+	rtPipelineFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+	rtPipelineFeature.rayTracingPipeline = this->rtSupported ? VK_TRUE : VK_FALSE;
+	rtPipelineFeature.pNext = &rayQueryFeatures;
+
+
 	if (this->rtSupported) {
 		submitDebugMessage(
 			VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT, 
@@ -219,11 +231,6 @@ void VulkanDevice::createLogicalDevice() {
 		);
 	}
 
-	VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{};
-	rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
-	rayQueryFeatures.rayQuery = this->rtSupported ? VK_TRUE : VK_FALSE;
-	rayQueryFeatures.pNext = &accelFeatures;
-
 	VkPhysicalDeviceFeatures deviceFeatures{};
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
 	deviceFeatures.geometryShader = VK_TRUE;
@@ -231,7 +238,7 @@ void VulkanDevice::createLogicalDevice() {
 
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	createInfo.pNext = &rayQueryFeatures;
+	createInfo.pNext = &rtPipelineFeature;
 
 	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 	createInfo.pQueueCreateInfos = queueCreateInfos.data();
@@ -396,6 +403,11 @@ VkQueue VulkanDevice::getGraphicsQueue() const
 VkQueue VulkanDevice::getPresentQueue() const
 {
     return presentQueue;
+}
+
+bool VulkanDevice::raytracingSupport() const
+{
+    return rtSupported;
 }
 
 bool VulkanDevice::checkValidationLayerSupport()
