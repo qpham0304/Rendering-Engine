@@ -36,7 +36,7 @@ bool SSRGIPassVulkan::init(WindowConfig config)
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImageHiZ = highZRendererVulkan->hiZImage;
+    depthImageHiZ = highZRendererVulkan->outputImages[currentFrame];
     depthImageRaw = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
     colorImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
@@ -83,13 +83,14 @@ void SSRGIPassVulkan::render(Camera &camera)
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImageHiZ = highZRendererVulkan->hiZImage;
+    depthImageHiZ = highZRendererVulkan->outputImages[currentFrame];
     depthImageRaw = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
     colorImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
     albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
     pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
     emissiveImage = deferredRendererVulkan->renderTarget.gBufferEmissive[currentFrame];
+    outputImage = outputImages[currentFrame];
 
     
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
@@ -109,37 +110,10 @@ void SSRGIPassVulkan::render(Camera &camera)
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     writeSSRGI(cmd, currentFrame);
-
-    // renderDeviceVulkan->waitIdle();
-    // rendererManagerVulkan->setDisplayImage(outputImage);
 }
 
 void SSRGIPassVulkan::writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-    VkImageMemoryBarrier barrier{};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = depthImageRaw->textureImage;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-    barrier.srcAccessMask = 0;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier(
-		cmd,
-		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		0,
-		0, nullptr,
-		0, nullptr,
-		1, &barrier
-	);
-
     TextureManagerVulkan::transitionImageLayout(
         cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT, 
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,  1, 1, renderDeviceVulkan);
@@ -164,17 +138,6 @@ void SSRGIPassVulkan::writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame)
     TextureManagerVulkan::transitionImageLayout(
         cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
         VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd,
-        depthImageRaw->textureImage, 
-        VK_FORMAT_D32_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,           // What Hi-Z just used
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,   // What the G-Buffer expects
-        1, 
-        1,
-        renderDeviceVulkan
-    );
 }
 
 void SSRGIPassVulkan::_createResources()
@@ -234,7 +197,10 @@ void SSRGIPassVulkan::_createResources()
         );
     };
  
-    createTexture(outputImageID, outputImage);
+    outputImages.resize(VulkanUtils::numFrames());
+    for(int i = 0; i < outputImages.size(); i++) {
+        createTexture(outputImageID, outputImages[i]);
+    }
 }
 
 void SSRGIPassVulkan::_createPipelines()
@@ -282,6 +248,21 @@ void SSRGIPassVulkan::_createDescriptors()
 
 void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
 {
+    RendererVulkan* renderer = nullptr;
+    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
+	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+    renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
+	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
+	
+    depthImageHiZ = highZRendererVulkan->outputImages[index];
+    depthImageRaw = deferredRendererVulkan->renderTarget.depthTextures[index];
+    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[index];
+    colorImage = deferredRendererVulkan->renderTarget.colorTextures[index];
+    albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[index];
+    pbrImage = deferredRendererVulkan->renderTarget.gPBR[index];
+    emissiveImage = deferredRendererVulkan->renderTarget.gBufferEmissive[index];
+    outputImage = outputImages[index];
+
 	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(SSRGISetsID);
     VkDescriptorImageInfo depthImageInfo{};
 	depthImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -360,6 +341,8 @@ void SSRGIPassVulkan::_recreateResources()
 
 void SSRGIPassVulkan::_cleanupResources()
 {
-    textureManagerVulkan->destroy(outputImage->id());
+    for(int i = 0; i < outputImages.size(); i++) {
+        textureManagerVulkan->destroy(outputImages[i]->id());
+    }
     pipeline->destroy();
 }

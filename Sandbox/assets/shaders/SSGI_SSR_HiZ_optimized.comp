@@ -18,13 +18,80 @@ layout(set = 0, binding = 5) uniform sampler2D depthImage;
 layout(set = 0, binding = 6) uniform sampler2D albedoImage;
 layout(set = 0, binding = 7) uniform sampler2D pbrImage;
 layout(set = 0, binding = 8) uniform sampler2D emissiveImage;
+layout(set = 0, binding = 9) uniform sampler2D blueNoise;
 
 layout(push_constant) uniform Constants {
     vec2 screenRes;
     float maxDistance;
     int maxMip;
     float thickness; 
+    float time;
+    float frameSeed;
 } pc;
+
+const float PI = 3.14159265359;
+
+
+// Generate a random unsigned int from two unsigned int values, using 16 pairs
+// of rounds of the Tiny Encryption Algorithm. See Zafar, Olano, and Curtis,
+// "GPU Random Numbers via the Tiny Encryption Algorithm"
+uint tea(uint val0, uint val1)
+{
+  uint v0 = val0;
+  uint v1 = val1;
+  uint s0 = 0;
+
+  for(uint n = 0; n < 16; n++)
+  {
+    s0 += 0x9e3779b9;
+    v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + s0) ^ ((v1 >> 5) + 0xc8013ea4);
+    v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + s0) ^ ((v0 >> 5) + 0x7e95761e);
+  }
+
+  return v0;
+}
+
+// Generate a random unsigned int in [0, 2^24) given the previous RNG state
+// using the Numerical Recipes linear congruential generator
+uint lcg(inout uint prev)
+{
+    uint LCG_A = 1664525u;
+    uint LCG_C = 1013904223u;
+    prev       = (LCG_A * prev + LCG_C);
+    return prev & 0x00FFFFFF;
+}
+
+// Generate a random float in [0, 1) given the previous RNG state
+float rnd(inout uint prev)
+{
+    return (float(lcg(prev)) / float(0x01000000));
+}
+
+vec3 toTangentSpace(vec3 v, vec3 N) {
+    vec3 up = abs(N.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+    vec3 tangentX = normalize(cross(up, N));
+    vec3 tangentY = cross(N, tangentX);
+
+    return v.x * tangentX + v.y * tangentY + v.z * N;
+}
+
+vec3 SampleLobe(vec3 N, float r1, float r2) {
+    float s = sqrt(1 - r1 * r1);
+    vec3 k = vec3(s*cos(r2), s*sin(r2), r1);
+    k = toTangentSpace(k, N);
+
+    return k;
+}
+
+
+vec3 SampleBrdf(inout uint seed, in vec3 N) {
+    float r1 = sqrt(rnd(seed));
+    float r2 = float(2*PI*rnd(seed));
+    vec3 Wi = SampleLobe(N, r1, r2);
+
+    return normalize(Wi);
+    return Wi;
+}
 
 float hash(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
@@ -32,11 +99,11 @@ float hash(vec2 p) {
     return fract(p.x * p.y);
 }
 
-vec3 sampleHemisphere(vec3 normal, vec2 uv) {
-    float h1 = hash(uv + vec2(pc.thickness, 0.123));
-    float h2 = hash(uv + vec2(0.456, pc.maxDistance));
+vec3 sampleHemisphere(vec3 normal, vec2 noise) {
+    float h1 = noise.x;
+    float h2 = noise.y;
     
-    float phi = 2.0 * 3.14159 * h1;
+    float phi = 2.0 * PI * h1;
     float cosTheta = sqrt(1.0 - h2);
     float sinTheta = sqrt(h2);
     
@@ -47,20 +114,46 @@ vec3 sampleHemisphere(vec3 normal, vec2 uv) {
     return tangent * (cos(phi) * sinTheta) + bitangent * (sin(phi) * sinTheta) + normal * cosTheta;
 }
 
-// Fixed Projection Helper
-vec3 project(vec3 worldPos) {
-    vec4 clip = camera.projection * camera.view * vec4(worldPos, 1.0);
-    vec3 ndc = clip.xyz / clip.w;
-    // Map NDC [-1, 1] to UV [0, 1]
-    return vec3(ndc.xy * 0.5 + 0.5, ndc.z);
+
+float RadicalInverse_VdC(uint bits) {
+    bits = (bits << 16u) | (bits >> 16u);
+    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
 }
+
+vec2 Hammersley(uint i, uint N) {
+    return vec2(float(i)/float(N), RadicalInverse_VdC(i));
+}
+
+
+vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness) {
+    float a = roughness * roughness;
+    float phi = 2.0 * PI * Xi.x;
+    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    
+    vec3 H;
+    H.x = cos(phi) * sinTheta;
+    H.y = sin(phi) * sinTheta;
+    H.z = cosTheta;
+    
+    vec3 up = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent = normalize(cross(up, N));
+    vec3 bitangent = cross(N, tangent);
+    
+    return normalize(tangent * H.x + bitangent * H.y + N * H.z);
+}
+
 vec3 getPos(vec2 uv, float depth) {
     vec4 clip = vec4(uv * 2.0 - 1.0, depth, 1.0);
     vec4 view = camera.invProj * clip;
     return view.xyz / view.w;
 }
 
-// Project View Space Position to UV
+// project view space position to UV
 vec2 getUV(vec3 pos) {
     vec4 clip = camera.projection * vec4(pos, 1.0);
     vec3 ndc = clip.xyz / clip.w;
@@ -74,12 +167,11 @@ void main() {
     vec2 uv = (vec2(pixelCoord) + 0.5) / pc.screenRes;
     float depth = texture(depthImage, uv).r;
 
-    if (depth <= 0.00001) {
+    if (depth >= 1.0 || depth <= 0.00001) {
         imageStore(u_ResultImage, pixelCoord, texture(u_SceneColor, uv));
         return;
     }
 
-    // Data Fetch
     vec3 normalW = normalize(texture(u_GBufferNormals, uv).xyz);
     vec3 normalV = normalize(mat3(camera.view) * normalW);
     vec3 albedo = texture(albedoImage, uv).rgb;
@@ -90,178 +182,122 @@ void main() {
     vec3 viewPos = getPos(uv, depth);
     vec3 viewDir = normalize(viewPos);
 
-    // If surface is smooth, use reflection. If rough, use hemisphere jitter.
-    vec3 reflectDir = reflect(viewDir, normalV);
-    vec3 giDir = normalize(mat3(camera.view) * sampleHemisphere(normalW, uv));
-    
-    // Use a threshold or a more aggressive mix to keep reflections visible
-    // This ensures smooth surfaces don't lose their mirror look
-    vec3 rayDir = normalize(mix(reflectDir, giDir, roughness * roughness));
+    // uint seed = tea(pixelCoord.y * uint(pc.screenRes.x) + pixelCoord.x, uint(pc.time * 1000.0));
+    uint seed = tea(pixelCoord.y * uint(pc.screenRes.x) + (pixelCoord.x), uint(pc.frameSeed));
+    float h = hash(vec2(pixelCoord) + pc.time); 
+    float r1 = rnd(seed);
+    float r2 = rnd(seed);
 
-    float rayStep = 0.2; 
-    int maxSteps = 100;
-    vec3 stepVec = rayDir * rayStep;
-    vec3 marchingPos = viewPos + normalV * 0.15;
+    // ray direction spread roughness
+    vec3 reflectDir = reflect(viewDir, normalV);
+    vec3 H = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
+    vec3 rayDir = reflect(viewDir, H);
+    // float specChance = 1.0 - roughness;
+    // if (rnd(seed) < specChance) {
+    //     // Trace a Specular Ray (GGX Importance)
+    //     rayDir = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
+    // } else {
+    //     // Trace a Diffuse Ray (Cosine Weighted)
+    //     rayDir = sampleHemisphere(normalV, vec2(r1, r2));
+    // }
+
+    // vec3 giDir = normalize(mat3(camera.view) * SampleBrdf(seed, normalW));
+    // vec3 rayDir = normalize(mix(reflectDir, giDir, roughness * roughness));
+    // ivec2 jitter = ivec2((seed % 127) * 17 * h, (seed % 131) * 31 * h);
+    // ivec2 noiseSize = textureSize(blueNoise, 0);
+    // vec3 rayDir = ImportanceSampleGGX(vec2(r1, r2), normalV, roughness);
+
+    float rayStep = 0.5;   // increased base step for 500m reach
+    int maxSteps = 200;    // high step count for massive scenes
+    
+    vec3 currentStepVec = rayDir * rayStep;
+    // vec3 bn = texelFetch(blueNoise, pixelCoord, 0).rgb;
+    // vec3 marchingPos = viewPos + (normalV * 0.2) + (currentStepVec * bn.b);
+
+    const float GOLDEN_RATIO = 0.61803398875;
+    float jitter = fract(float(seed) * GOLDEN_RATIO);   //get more light in from importance sampling
+    float viewDotNormal = clamp(abs(dot(viewDir, normalV)), 0.0, 1.0);
+    float bias = 0.05 / max(viewDotNormal, 0.1);
+    vec3 marchingPos = viewPos + (normalV * bias) + (currentStepVec * jitter);
     
     bool hit = false;
-    vec2 hitUV;
+    vec2 hitUV = vec2(0.0);
 
     for (int i = 0; i < maxSteps; i++) {
-        marchingPos += stepVec;
-        stepVec *= 1.02;
+        marchingPos += currentStepVec;
+        
+        // speed up the ray after it leaves the immediate area
+        if (i > 20) currentStepVec *= 1.018; 
 
         hitUV = getUV(marchingPos);
-        if (hitUV.x < 0 || hitUV.x > 1 || hitUV.y < 0 || hitUV.y > 1) break;
+        if (hitUV.x < 0.0 || hitUV.x > 1.0 || hitUV.y < 0.0 || hitUV.y > 1.0) break;
 
-        float sceneDepth = texture(depthImage, hitUV).r;
-        vec3 scenePos = getPos(hitUV, sceneDepth);
+        float sceneRawDepth = texture(depthImage, hitUV).r;
+        if (sceneRawDepth >= 1.0) break;
+
+        vec3 scenePos = getPos(hitUV, sceneRawDepth);
         float delta = scenePos.z - marchingPos.z;
 
-        if (delta > 0 && delta < 1.2) { 
+        // adptive thickness
+        // start with 0.05, but grow as the ray travels.
+        // if the ray takes a 2-unit step, it needs at least 2 units of thickness to catch a hit
+        float thickness = pc.thickness + (length(currentStepVec) * 0.8);
+
+        if (delta > 0.0 && delta < thickness) { 
             hit = true;
             break;
         }
     }
 
-    // binary search
     if (hit) {
-        for (int j = 0; j < 8; j++) {
-            stepVec *= 0.5;
-            vec2 bUV = getUV(marchingPos);
-            float sDepth = texture(depthImage, bUV).r;
-            vec3 sPos = getPos(bUV, sDepth);
-            if ((sPos.z - marchingPos.z) > 0) marchingPos -= stepVec;
-            else marchingPos += stepVec;
+        vec3 start = marchingPos - (currentStepVec / 1.018);
+        vec3 end = marchingPos;
+        for (int j = 0; j < 12; j++) {
+            vec3 mid = mix(start, end, 0.5);
+            vec2 mUV = getUV(mid);
+            float d = texture(depthImage, mUV).r;
+            vec3 p = getPos(mUV, d);
+            if ((p.z - mid.z) > 0.0) end = mid;
+            else start = mid;
         }
-        hitUV = getUV(marchingPos);
+        hitUV = getUV(end);
+        marchingPos = end;
     }
 
     vec3 sceneColor = texture(u_SceneColor, uv).rgb;
-    vec3 indirectResult = vec3(0.0);
+    vec3 indirect = vec3(0.0);
 
     if (hit) {
         vec3 hitColor = texture(u_SceneColor, hitUV).rgb;
+        vec3 hitEmissive = texture(emissiveImage, hitUV).rgb;
+        vec3 radiance = hitColor + (hitEmissive * 10.0);
+
+        float luma = dot(radiance, vec3(0.2126, 0.7152, 0.0722));
+        float maxSafeLuma = mix(20.0, 2.0, roughness);
+        if (luma > maxSafeLuma) {
+            radiance *= (maxSafeLuma / luma);
+        }
 
         // SSR Specular
         vec3 F0 = mix(vec3(0.04), albedo, metallic);
         float cosTheta = clamp(dot(normalV, -viewDir), 0.0, 1.0);
         vec3 fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-        vec3 ssr = hitColor * fresnel;
+        vec3 ssr = radiance * fresnel;
 
         // SSGI Diffuse
-        // boost the light to make it more visible
-        vec3 ssgi = hitColor * albedo * 1.5; 
+        vec3 ssgi = radiance * albedo * 5.0;   // scale up the gi term
 
-        indirectResult = mix(ssr, ssgi, roughness);
+        indirect = mix(ssr, ssgi, roughness);
     }
 
-    // edge fading
-    vec2 boundary = smoothstep(vec2(0.0), vec2(0.1), hitUV) * smoothstep(vec2(1.0), vec2(0.9), hitUV);
-    float fade = boundary.x * boundary.y;
-
-    vec3 finalColor = sceneColor + (indirectResult * fade) + emissive;
-    imageStore(u_ResultImage, pixelCoord, vec4(finalColor, 1.0));
-}
-
-/*
-void main() {
-    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
-    if (pixelCoord.x >= pc.screenRes.x || pixelCoord.y >= pc.screenRes.y) return;
-
-    vec2 uv = (vec2(pixelCoord) + 0.5) / pc.screenRes;
-    float depth = texture(depthImage, uv).r;
-
-    if (depth <= 0.00001) {
-        imageStore(u_ResultImage, pixelCoord, texture(u_SceneColor, uv));
-        return;
-    }
-
-    // G-Buffer Fetch
-    vec3 normalW = normalize(texture(u_GBufferNormals, uv).xyz);
-    vec3 normalV = normalize(mat3(camera.view) * normalW);
-    vec3 albedo = texture(albedoImage, uv).rgb;
-    float roughness = texture(pbrImage, uv).g;
-    float metallic = texture(pbrImage, uv).b;
-
-    vec3 viewPos = getPos(uv, depth);
-    vec3 viewDir = normalize(viewPos);
-    vec3 reflectDir = normalize(reflect(viewDir, normalV));
-
-    float rayStep = 0.2; 
-    float distanceBias = 0.02; // Tightened for accuracy
-    int maxSteps = 100;
-    int binarySteps = 8;
-
-    vec3 stepVec = reflectDir * rayStep;
-    vec3 marchingPos = viewPos + normalV * 0.1; // Initial offset
+    vec2 boundary = smoothstep(vec2(0.0), vec2(0.05), hitUV) * smoothstep(vec2(1.0), vec2(0.95), hitUV);
+    float dist = length(marchingPos - viewPos);
     
-    bool hit = false;
-    vec2 hitUV;
+    float distFade = clamp(1.0 - (dist / pc.maxDistance), 0.0, 1.0);
+    float attenuation = 1.0 / (1.0 + dist * 0.01);
 
-    // linear Search
-    for (int i = 0; i < maxSteps; i++) {
-        marchingPos += stepVec;
-        
-        // Exponential step (from your reference)
-        stepVec *= 1.02;
-
-        hitUV = getUV(marchingPos);
-        if (hitUV.x < 0 || hitUV.x > 1 || hitUV.y < 0 || hitUV.y > 1) break;
-
-        float sceneDepth = texture(depthImage, hitUV).r;
-        vec3 scenePos = getPos(hitUV, sceneDepth);
-
-        // REVERSE-Z: marchingPos.z is further if < scenePos.z
-        float delta = scenePos.z - marchingPos.z;
-
-        if (delta > 0 && delta < 1.5) { // We found a potential intersection
-            hit = true;
-            break;
-        }
-    }
-
-    // binary Search
-    if (hit) {
-        for (int j = 0; j < binarySteps; j++) {
-            stepVec *= 0.5;
-            
-            hitUV = getUV(marchingPos);
-            float sceneDepth = texture(depthImage, hitUV).r;
-            vec3 scenePos = getPos(hitUV, sceneDepth);
-            float delta = scenePos.z - marchingPos.z;
-
-            if (delta > 0) {
-                // We are behind the surface, move back
-                marchingPos -= stepVec;
-            } else {
-                // We are in front of the surface, move forward
-                marchingPos += stepVec;
-            }
-        }
-        // Final UV after refinement
-        hitUV = getUV(marchingPos);
-    }
-
-    vec3 sceneColor = texture(u_SceneColor, uv).rgb;
-    vec3 finalColor = sceneColor;
-
-    if (hit) {
-        vec3 sampledColor = texture(u_SceneColor, hitUV).rgb;
-        
-        // Fresnel
-        vec3 F0 = mix(vec3(0.04), albedo, metallic);
-        float cosTheta = clamp(dot(normalV, -viewDir), 0.0, 1.0);
-        vec3 fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-
-        // Edge fade
-        vec2 boundary = smoothstep(vec2(0.0), vec2(0.1), hitUV) * smoothstep(vec2(1.0), vec2(0.9), hitUV);
-        float fade = boundary.x * boundary.y;
-
-        // Metallic/Roughness attenuation
-        vec3 reflection = sampledColor * fresnel * (1.0 - roughness);
-        finalColor += reflection * fade;
-    }
+    vec3 finalColor = (indirect * boundary.x * boundary.y * distFade * attenuation);
+    finalColor += emissive; 
 
     imageStore(u_ResultImage, pixelCoord, vec4(finalColor, 1.0));
 }
-*/

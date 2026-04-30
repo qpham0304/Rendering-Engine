@@ -44,7 +44,7 @@ void VulkanSwapChain::destroy()
 
 
 void VulkanSwapChain::createSwapChain() {
-	VulkanDevice::SwapChainSupportDetails swapChainSupport = device.querySwapChainSupport(device.physicalDevice);
+	VulkanDevice::SwapChainSupportDetails swapChainSupport = device.querySwapChainSupport(device.getPhysicalDevice());
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
 	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -57,7 +57,7 @@ void VulkanSwapChain::createSwapChain() {
 
 	VkSwapchainCreateInfoKHR createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	createInfo.surface = device.surface;
+	createInfo.surface = device.getSurface();
 
 	createInfo.minImageCount = imageCount;
 	createInfo.imageFormat = surfaceFormat.format;
@@ -66,7 +66,7 @@ void VulkanSwapChain::createSwapChain() {
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	VulkanDevice::QueueFamilyIndices indices = device.findQueueFamilies(device.physicalDevice);
+	VulkanDevice::QueueFamilyIndices indices = device.findQueueFamilies(device.getPhysicalDevice());
 	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
 	if (indices.graphicsFamily != indices.presentFamily) {
@@ -329,7 +329,7 @@ void VulkanSwapChain::accquireNextImage(const uint32_t& currentFrame)
 	imageIndex = 0;
 
 	VkResult result = vkAcquireNextImageKHR(
-		device.device,
+		device,
 		swapChain,
 		UINT64_MAX,
 		imageAvailableSemaphores[currentFrame],
@@ -365,7 +365,7 @@ void VulkanSwapChain::submitAndPresent(const uint32_t& currentFrame, const VkCom
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	if (vkQueueSubmit(device.graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+	if (vkQueueSubmit(device.getGraphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
 		throw std::runtime_error("failed to submit draw command buffer!");
 	}
 
@@ -379,7 +379,7 @@ void VulkanSwapChain::submitAndPresent(const uint32_t& currentFrame, const VkCom
 	presentInfo.pSwapchains = swapChains;
 	presentInfo.pImageIndices = &imageIndex;
 
-	VkResult result = vkQueuePresentKHR(device.presentQueue, &presentInfo);
+	VkResult result = vkQueuePresentKHR(device.getPresentQueue(), &presentInfo);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		recreateSwapchain();

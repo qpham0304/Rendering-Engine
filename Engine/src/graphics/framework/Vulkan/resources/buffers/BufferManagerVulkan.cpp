@@ -13,6 +13,7 @@
 #include "UniformBufferVulkan.h"
 #include "StorageBufferVulkan.h"
 #include "BufferVulkan.h"
+#include "DeviceAddressBufferVulkan.h"
 
 BufferManagerVulkan::BufferManagerVulkan(std::string serviceName)
 	: BufferManager(serviceName)
@@ -40,7 +41,7 @@ bool BufferManagerVulkan::init(WindowConfig config)
 
 uint32_t BufferManagerVulkan::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(renderDeviceVulkan->device.physicalDevice, &memProperties);
+	vkGetPhysicalDeviceMemoryProperties(renderDeviceVulkan->device.getPhysicalDevice(), &memProperties);
 
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
 		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
@@ -101,8 +102,8 @@ void BufferManagerVulkan::createBuffer(
 	VkBufferUsageFlags usage,
 	VkMemoryPropertyFlags properties,
 	VkBuffer& buffer,
-	VkDeviceMemory& bufferMemory)
-{
+	VkDeviceMemory& bufferMemory
+) {
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = size;
@@ -116,8 +117,13 @@ void BufferManagerVulkan::createBuffer(
 	VkMemoryRequirements memRequirements;
 	vkGetBufferMemoryRequirements(renderDeviceVulkan->device, buffer, &memRequirements);
 
+	VkMemoryAllocateFlagsInfo flagsInfo{};
+	flagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+	flagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.pNext = &flagsInfo;
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
@@ -280,6 +286,43 @@ uint32_t BufferManagerVulkan::createStorageBuffer(VkBuffer& buffer, VkDeviceMemo
 	vkMapMemory(renderDeviceVulkan->device, buffersMemory, 0, bufferSize, 0, &ref->bufferMapped);
 
 	return _assignID();
+}
+
+uint32_t BufferManagerVulkan::createBufferDeviceAddress(size_t bufferSize)
+{
+	VkBuffer buffer;
+	VkDeviceMemory bufferMemory;
+
+	createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        buffer, 
+        bufferMemory
+    );
+	
+	auto deviceAddressBuffer = std::make_shared<DeviceAddressBufferVulkan>(m_ids, buffer, bufferMemory);
+
+    VkBufferDeviceAddressInfo addressInfo {};
+	addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+	addressInfo.pNext = nullptr;
+    addressInfo.buffer = buffer;
+    deviceAddressBuffer->bufferAddressRef = vkGetBufferDeviceAddress(renderDeviceVulkan->device, &addressInfo);
+
+    vkMapMemory(renderDeviceVulkan->device, deviceAddressBuffer->getMemory(), 0, bufferSize, 0, &deviceAddressBuffer->mappedBuffer);
+	
+	buffers[m_ids] = deviceAddressBuffer;
+
+    return _assignID();
+}
+
+void BufferManagerVulkan::updateBufferDeviceAddress(uint32_t id, const void *src, size_t bufferSize)
+{
+    BufferVulkan* buffer = buffers.at(id).get();
+	auto deviceAddressBuffer = dynamic_cast<DeviceAddressBufferVulkan*>(buffer);
+	if(deviceAddressBuffer) {
+		deviceAddressBuffer->update(src, bufferSize);
+	}
 }
 
 void BufferManagerVulkan::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)

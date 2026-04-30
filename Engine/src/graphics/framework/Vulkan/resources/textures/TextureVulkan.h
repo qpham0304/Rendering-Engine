@@ -19,11 +19,14 @@ public:
 protected:
 	virtual void loadTexture(const char* path, bool flip) {};
 
-public:	//TODO: temporary public only
+public:
 	VkImage textureImage;
 	VkDeviceMemory textureImageMemory;
 	VkImageView textureImageView;
 	VkSampler textureSampler;
+
+	VkImageLayout layout;
+	VkFormat format;
 
 private:
 	void destroy(VkDevice device);

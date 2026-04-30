@@ -23,6 +23,7 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
+#include "graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h"
 
 DeferredRendererVulkan::DeferredRendererVulkan() 
 	: RendererVulkan("DeferredRendererVulkan")
@@ -63,15 +64,20 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 
 	alchemyAORendererVulkan->init(config);
 	hiZPassRenderer->init(config);
-	SSRGIPassRenderer->init(config);
 
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 	
-	size_t bufferSize = 10000 * sizeof(StorageBufferObject);
-	instanceData.resize(10000);
-	instanceDataPrev.resize(10000);
+	size_t bufferSize = MAX_INSTANCES * sizeof(StorageBufferObject);
+	instanceData.resize(MAX_INSTANCES);
+	instanceDataPrev.resize(MAX_INSTANCES);
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
 	bufferManagerVulkan->createStorageBuffers(prevStoragebufferList, bufferSize);
+
+	objects.resize(MAX_INSTANCES);
+	size_t objectsBufferSize = MAX_INSTANCES * sizeof(ObjectDesc);
+	objDeviceAddressBufferID = bufferManagerVulkan->createBufferDeviceAddress(objectsBufferSize);
+	auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(objDeviceAddressBufferID));
+	objDeviceAddress = deviceAddress->getReference();
 
 	lights.reserve(numLights);
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
@@ -96,6 +102,9 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	_createLightDescriptor();
 	_createLightPipeline();
 
+	
+	auto materialManagerVulkan = static_cast<MaterialManagerVulkan*>(materialManager);
+	materialsAddress = materialManagerVulkan->getMaterialAddress();
 
 	return true;
 }
@@ -110,7 +119,7 @@ bool DeferredRendererVulkan::onClose()
 
 void DeferredRendererVulkan::onUpdate()
 {
-	
+
 }
 
 void DeferredRendererVulkan::render(Camera& camera)
@@ -125,6 +134,7 @@ void DeferredRendererVulkan::render(Camera& camera)
 
 	instanceDataPrev = std::move(instanceData);
 	instanceData.clear(); 
+	// objects.clear();
     lights.clear();
 
 	SceneManager& sceneManager = SceneManager::getInstance();
@@ -133,9 +143,36 @@ void DeferredRendererVulkan::render(Camera& camera)
 		m_logger->error("No scene to render");
 	}
     auto entities = scene->getEntitiesWith<TransformComponent>();
-    for (auto& entity : entities) {
-        auto& transform = entity.getComponent<TransformComponent>();
-        instanceData.push_back({ transform.getModelMatrix() });
+    int currentDrawIdx = 0; 
+
+	for (auto& entity : entities) {
+		auto& transform = entity.getComponent<TransformComponent>();
+		
+		if(entity.hasComponent<ModelComponent>()) {
+			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
+			const Model* model = modelManager->getModel(modelID);
+			
+			for (uint32_t meshID : model->meshIDs) {
+				instanceData.push_back({ transform.getModelMatrix() });
+
+				ObjectDesc desc{};
+				desc.materialsRef = materialsAddress;
+				const MeshManager::MeshData& meshData = meshManager->getMeshData(meshID);
+				auto* bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.matIndicesBDA_ID));
+				desc.materialIndicesRef = bdaBuffer->getReference();
+				bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.vertexBDA_ID));
+				desc.vertexAddress = bdaBuffer->getReference();
+				bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID));
+				desc.indexAddress = bdaBuffer->getReference();
+
+				objects[currentDrawIdx] = desc;
+				currentDrawIdx++;
+			}
+		} else {
+			instanceData.push_back({ transform.getModelMatrix() });
+			objects[currentDrawIdx] = {}; 
+			currentDrawIdx++;
+		}
 
         if (entity.hasComponent<LightComponent>()) {
             auto& light = entity.getComponent<LightComponent>();
@@ -163,6 +200,7 @@ void DeferredRendererVulkan::render(Camera& camera)
 	ubo.width = renderTarget.width;
 	ubo.height = renderTarget.height;
 	
+
 	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.direction = glm::vec4(shadowMapRenderer->lightDir, 0.0f);
 	pushConstantLight.sunlightMVP = shadowMapRenderer->lightSpaceMatrix;
@@ -178,23 +216,19 @@ void DeferredRendererVulkan::render(Camera& camera)
 
 	StorageBufferVulkan* ssboPrev = prevStoragebufferList[currentFrame];
 	ssboPrev->update(instanceDataPrev.data(), instanceDataPrev.size() * sizeof(StorageBufferObject));
-
+	
+	size_t buffersize = MAX_INSTANCES * sizeof(ObjectDesc);
+	bufferManagerVulkan->updateBufferDeviceAddress(objDeviceAddressBufferID, objects.data(), buffersize);
 
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 	
 	shadowMapRenderer->render(camera);
-	imageBasedRenderer->onUpdate();
-	imageBasedRenderer->computeSH(cmdBuffer, currentFrame);
-	imageBasedRenderer->computePrefilter(cmdBuffer, currentFrame);
 
 	lastViewProj = ubo.proj * ubo.view;
 
-	// recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
 	recordDrawCommand(cmdBuffer, currentFrame);
-	// rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
-	renderDeviceVulkan->waitIdle();
-	rendererManagerVulkan->setDisplayImage(SSRGIPassRenderer->getOutputImage());
+	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
 }
 
 void DeferredRendererVulkan::renderGui()
@@ -221,17 +255,21 @@ void DeferredRendererVulkan::renderGui()
 			auto attributeDescriptions = VulkanDevice::VertexVulkan::getAttributeDescriptions();
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-			vertexInputInfo.vertexBindingDescriptionCount = 1;
-			vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
-			vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-			vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+			vertexInputInfo.vertexBindingDescriptionCount = 0;   // No bindings
+			vertexInputInfo.vertexAttributeDescriptionCount = 0; // No attributes
+			vertexInputInfo.pVertexBindingDescriptions = nullptr;
+			vertexInputInfo.pVertexAttributeDescriptions = nullptr;
 
 			VkDescriptorSetLayout descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
 			VkDescriptorPool descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
 			
+			uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
+			auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
+
 			void* handle = materialManager->getMaterialLayout();
 			auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
-			std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, materialLayout };
+
+			std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, bindlessLayout, materialLayout };
 			
 			tempPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 			tempPipeline->createGraphicsPipeline(
@@ -240,12 +278,12 @@ void DeferredRendererVulkan::renderGui()
 				gBufferConfig, 
 				vertexInputInfo, 
 				layouts, 
-				0
+				sizeof(PushConstant)
 			);
 		});
 	}
 	ImGui::SameLine();
-	ImGui::Text(tempPipeline ? "loaded pipelien" : "loading...");
+	ImGui::Text(tempPipeline ? "loaded pipeline" : "loading...");
 	
 	if(ImGui::Button("Change Environment")) {
 		std::string path;
@@ -275,8 +313,13 @@ void DeferredRendererVulkan::renderGui()
 	}
 	ImGui::SameLine();
 	bool denoiserChecked = (denoiserOn != 0);
-	if (ImGui::Checkbox("denoise", &denoiserChecked)) {
+	if (ImGui::Checkbox("reproject", &denoiserChecked)) {
 		denoiserOn = denoiserChecked ? 1 : 0;
+	}
+	ImGui::SameLine();
+	bool shouldCombineChecked = (shouldCombine != 0);
+	if (ImGui::Checkbox("combine", &shouldCombineChecked)) {
+		shouldCombine = shouldCombineChecked ? 1 : 0;
 	}
 	ImGui::SliderInt("aoBlurRadius", &alchemyAORendererVulkan->blurrPushConstant.blurRadius, 1.0f, 16.0f);
 	ImGui::SliderFloat("aoBlurScale", &alchemyAORendererVulkan->blurrPushConstant.scale, 1.0f, 100.0f);
@@ -405,22 +448,15 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 		m_logger->error("No scene to render");
 	}
 
-	int index = 0;
 	int lightIndex = 0;
+	int objectsIndex = 0;
+
+	materialManager->bindMaterial(cmd, (void*)gPassPipeline.get());
+	
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 		TransformComponent& transform = entity.getComponent<TransformComponent>();
 		const glm::mat4& entityTransform = transform.getModelMatrix();
 		glm::vec3& translation = transform.translateVec;
-		
-		// if(index >= instanceData.size()) {
-		// 	instanceData.push_back({entityTransform});
-		// 	continue;
-		// }
-
-		// // TODO: copy the multiple all transforms to ssbo would be slow
-		// if (instanceData[index].model != entityTransform) {
-		// 	instanceData[index].model = entityTransform;
-		// }
 
 		if (entity.hasComponent<LightComponent>()) {
 			lightIndex++;
@@ -433,29 +469,32 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 			if (!model) {
 				continue;
 			}
+
 			for (uint32_t meshID : model->meshIDs) {
-				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, cmd, (void*)gPassPipeline.get());
-				meshManager->bindMesh(meshID);
+				Mesh* mesh = const_cast<Mesh*>(meshManager->getMesh(meshID));
+
+				pushConstant.objectsRef = objDeviceAddress; 
+				pushConstant.objectIdx  = objectsIndex;
+				// meshManager->bindMesh(meshID);
+
+				vkCmdPushConstants(
+					cmd,
+					gPassPipeline->pipelineLayout,
+					VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+					0,
+					sizeof(PushConstant),
+					&pushConstant
+				);
 
 				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				renderDeviceVulkan->draw(indexCount, numInstances, index);
-			}
-		} 
-		
-		if (entity.hasComponent<MeshComponent>()) {
-			MeshComponent meshComponent = entity.getComponent<MeshComponent>();
-			for (uint32_t meshID : meshComponent.meshIDs) {
-				const Mesh* mesh = meshManager->getMesh(meshID);
-				materialManager->bindMaterial(mesh->materialID, cmd, (void*)gPassPipeline.get());
-				meshManager->bindMesh(meshID);
+				// renderDeviceVulkan->draw(indexCount, numInstances, objectsIndex);
+				vkCmdDraw(cmd, static_cast<uint32_t>(mesh->indices.size()), 1, 0, objectsIndex);
 
-				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				renderDeviceVulkan->draw(indexCount, numInstances, index);
+				objectsIndex++;
 			}
+		} else {
+			objectsIndex++;
 		}
-		
-		index++;
 	}
 }
 
@@ -917,10 +956,14 @@ void DeferredRendererVulkan::_createPipelines()
 
 	VkDescriptorSetLayout descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
 	VkDescriptorPool descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
-	
+
+	uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
+	auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
+
 	void* handle = materialManager->getMaterialLayout();
 	auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
-	std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, materialLayout };
+
+	std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, bindlessLayout, materialLayout };
 	
 	gPassPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	gPassPipeline->createGraphicsPipeline(
@@ -929,7 +972,7 @@ void DeferredRendererVulkan::_createPipelines()
 		gBufferConfig, 
 		vertexInputInfo, 
 		layouts, 
-		0
+		sizeof(PushConstant)
 	);
 }
 

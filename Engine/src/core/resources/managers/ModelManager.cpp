@@ -184,7 +184,9 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
 {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    
+    std::vector<uint32_t> materialIndices;
+    materialIndices.reserve(mesh->mNumFaces);
+
     // process vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
         Vertex vertex;
@@ -220,26 +222,15 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         vertices.push_back(vertex);
     }
 
-    // process indices
-    for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-        aiFace face = mesh->mFaces[i];
-        
-        for (unsigned int j = 0; j < face.mNumIndices; j++) {
-            indices.push_back(face.mIndices[j]);
-        }
-    }
-
     // process material
     MaterialDesc materialDesc{};
-    materialDesc.materialIdx = 0;
     materialDesc.uv = glm::vec2(1.0f, 1.0f);
     materialDesc.albedo = glm::vec4(1.0);
     materialDesc.normal = glm::vec4(0.0);
     materialDesc.metallic  = 0.0f;
-    materialDesc.roughness = 1.0f;
+    materialDesc.roughness = 0.75f;
     materialDesc.ao        = 1.0f;
     materialDesc.emissive  = 1.0f;
-
 
     if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
@@ -267,13 +258,25 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         }
     }
 
+    uint32_t assignedMatID = materialManager->createMaterial(materialDesc);
+    
+    // process indices
+    for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+        materialIndices.push_back(assignedMatID);
+
+        aiFace face = mesh->mFaces[i];
+        for (unsigned int j = 0; j < face.mNumIndices; j++) {
+            indices.push_back(face.mIndices[j]);
+        }
+    }
+
     //ExtractBoneWeightForVertices(vertices, mesh, scene);
     
     Mesh m;
     m.vertices = vertices;
     m.indices = indices;
-    m.materialID = materialManager->createMaterial(materialDesc);
-    
+    m.materialID = assignedMatID;
+    m.materialIndices = materialIndices;
     return meshManager->loadMesh(m);
 }
 

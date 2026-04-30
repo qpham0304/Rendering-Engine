@@ -44,6 +44,7 @@ protected:
 	TextureVulkan* prevDepthImage;
 	TextureVulkan* normalImage;
 	TextureVulkan* prevNormalImage;
+	std::vector<TextureVulkan*> outputImages;
 
 	uint32_t ssrgiHistoryImageID;
 	uint32_t prevDepthImageID;

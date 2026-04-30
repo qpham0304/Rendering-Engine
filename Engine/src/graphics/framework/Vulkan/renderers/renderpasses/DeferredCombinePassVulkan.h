@@ -10,6 +10,7 @@ public:
         alignas(8) glm::vec2 screenRes;
 		alignas(4) float time;
 		alignas(4) float frameSeed;
+		alignas(4) int shouldCombine;
 	};
 
 	struct UniformBufferObject {

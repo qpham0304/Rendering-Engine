@@ -1,4 +1,9 @@
 #version 460
+// #extension GL_EXT_scalar_block_layout : enable   // scalar align better with C++ side no need for alignas
+
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_scalar_block_layout : enable
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
@@ -41,26 +46,44 @@ layout(set = 0, binding = 6) uniform sampler2D brdfLUT;
 layout(set = 0, binding = 7) uniform samplerCube prefilterMap;
 layout(set = 0, binding = 8) uniform sampler2D hdrImage;
 
-layout(set = 1, binding = 0) uniform sampler2D albedoMaps;
-layout(set = 1, binding = 1) uniform sampler2D normalMaps;
-layout(set = 1, binding = 2) uniform sampler2D metalnessMaps;
-layout(set = 1, binding = 3) uniform sampler2D roughnessMaps;
-layout(set = 1, binding = 4) uniform sampler2D aoMaps;
-layout(set = 1, binding = 5) uniform sampler2D emissiveMaps;
+layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
+// layout(set = 2, binding = 1) uniform image2D storageImages[];
+// layout(set = 2, binding = 2) uniform sampler storageImages[];
 
-layout(push_constant) uniform PushConstantLight {
+
+struct Material {
+    uint albedoIdx;
+    uint normalIdx;
+    uint metalnessIdx;
+    uint roughnessIdx;
+    uint aoIdx;
+    uint emissiveIdx;
+
+    vec2 uvOffset;
+    vec4 albedoFactor;
+    vec4 normalFactor;
+    float metallicFactor;
+    float roughnessFactor;
+    float aoFactor;
+    float emissiveFactor;
+};
+
+layout(buffer_reference, scalar) buffer Materials{ 
+    Material m[];
+};
+
+layout(push_constant) uniform PushConstant {
+    Materials materialsRef;
+    float bias;
+    float time;
     mat4 sunlightMVP;
     vec4 direction;
     vec4 color;
-    float bias;
-    float alpha;
-    float lintstepLow;
-    float linstepHigh;
-    float litBias;
-    float time;
     float numLights;
     float skyboxDetail;
-} pcl;
+    uint materialIdx;
+} pc;
+
 
 const float PI = 3.14159265359;
 
@@ -100,16 +123,16 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
 }
 
 float calcPCSS(vec3 worldPos, vec3 worldNorm) {
-    vec3 L = normalize(pcl.direction.xyz);
+    vec3 L = normalize(pc.direction.xyz);
     
     // UVs are nudged to sample clean areas of the shadow map
-    vec3 offsetWorldPos = worldPos + worldNorm * pcl.bias;
-    vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(offsetWorldPos, 1.0);
+    vec3 offsetWorldPos = worldPos + worldNorm * pc.bias;
+    vec4 fragPosLightSpace = pc.sunlightMVP * vec4(offsetWorldPos, 1.0);
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords.xy = projCoords.xy * 0.5 + 0.5;
     
     // true depth for contact hardening
-    vec4 fragPosTrue = pcl.sunlightMVP * vec4(worldPos, 1.0);
+    vec4 fragPosTrue = pc.sunlightMVP * vec4(worldPos, 1.0);
     float currentDepth = fragPosTrue.z / fragPosTrue.w;
 
     if(projCoords.z > 1.0) {
@@ -206,15 +229,18 @@ float simpleNoise(vec3 p) {
 }
 
 void main() {
-    vec3 albedo     = texture(albedoMaps, fragTexCoord).rgb;
-    float ao        = texture(aoMaps, fragTexCoord).r;
-    float roughness = texture(roughnessMaps, fragTexCoord).g;
-    float metallic  = texture(metalnessMaps, fragTexCoord).b;
+    Material mat = pc.materialsRef.m[pc.materialIdx];
+    
+    vec3 albedo     = texture(samplerImages[mat.albedoIdx], fragTexCoord).rgb;
+    float ao        = texture(samplerImages[mat.aoIdx], fragTexCoord).r;
+    float roughness = texture(samplerImages[mat.roughnessIdx], fragTexCoord).g;
+    float metallic  = texture(samplerImages[mat.metalnessIdx], fragTexCoord).b;
     
     // float alphaRoughness = roughness * roughness;
     // alphaRoughness = clamp(alphaRoughness, 0.05, 1.0); 
 
-    vec3 tangentNormal = texture(normalMaps, fragTexCoord).rgb * 2.0 - 1.0;
+    // vec3 tangentNormal = texture(normalMaps, fragTexCoord).rgb * 2.0 - 1.0;
+    vec3 tangentNormal = texture(samplerImages[mat.normalIdx], fragTexCoord).rgb * 2.0 - 1.0;
     mat3 TBN = mat3(normalize(inTangent), normalize(inBitangent), normalize(inNormal));
     vec3 V = normalize(ubo.cameraPos.xyz - fragWorldPos);
     vec3 geomN = normalize(inNormal);
@@ -240,7 +266,7 @@ void main() {
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
     vec3 Lo = vec3(0.0);
 
-    for(int i = 0; i < int(pcl.numLights); i++) {
+    for(int i = 0; i < int(pc.numLights); i++) {
         vec3 L = normalize(lightSSBO.lights[i].position.xyz - fragWorldPos);
         vec3 H = normalize(V + L);
         float NdotL = max(dot(N, L), 0.0001);
@@ -261,7 +287,7 @@ void main() {
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;
     }
 
-    vec3 L = normalize(pcl.direction.xyz);
+    vec3 L = normalize(pc.direction.xyz);
     vec3 H = normalize(V + L);
     float NdotL = max(dot(N, L), 0.0);
     
@@ -278,7 +304,7 @@ void main() {
     vec3 kS = F;
     vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
     
-    Lo += (kD * albedo / PI + specular) * pcl.color.rgb * NdotL * shadow;
+    Lo += (kD * albedo / PI + specular) * pc.color.rgb * NdotL * shadow;
 
     vec3 R = reflect(-V, N);
     vec3 F_ibl = fresnelSchlickRoughness(NdotV, F0, roughness);
@@ -300,7 +326,8 @@ void main() {
     // float specularOcclusion = clamp(pow(NdotV + ao, exp2(-16.0 * roughness - 1.0)) - 1.0 + ao, 0.0, 1.0);
     // vec3 ambient = (kD_ibl * diffuseAmbient * ao) + (specularAmbient * specularOcclusion);
 
-    vec3 emissive = texture(emissiveMaps, fragTexCoord).rgb;
+    // vec3 emissive = texture(emissiveMaps, fragTexCoord).rgb;
+    vec3 emissive = texture(samplerImages[mat.emissiveIdx], fragTexCoord).rgb;
     vec3 color = ambient + Lo + emissive;
 
     vec3 V_dir = normalize(fragWorldPos - ubo.cameraPos.xyz);

@@ -127,7 +127,7 @@ void ShadowMapRendererVulkan::render(Camera& camera)
 
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-	dispatchBlur(cmdBuffer, renderDeviceVulkan->getImageIndex());
+	// dispatchBlur(cmdBuffer, renderDeviceVulkan->getImageIndex());
 }
 
 void ShadowMapRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline)

@@ -37,7 +37,7 @@ bool ImGuiManager::init(WindowConfig config)
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;			// Enable Multi-Viewport / Platform Windows
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
 
-	io.IniFilename = "Assets/imgui.ini";
+	// io.IniFilename = "Assets/imgui.ini";
 
 	float fontSize = 16.0f;
 
@@ -110,7 +110,12 @@ void ImGuiManager::start(void* handle)
 		case RenderPlatform::VULKAN: ImGui_ImplVulkan_NewFrame(); break;
 	}
 
-	ImGui_ImplGlfw_NewFrame();
+	if (m_config.windowPlatform == WindowPlatform::GLFW) {
+		ImGui_ImplGlfw_NewFrame();
+	} else {
+		throw std::runtime_error("unsupported window platform");
+	}
+	
 	ImGui::NewFrame();
 
 	// Create a dock space

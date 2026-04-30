@@ -106,8 +106,8 @@ void TemporalPassVulkan::render(Camera &camera)
 
     ubo.priorViewProj = currentViewProj;
 
-    renderDeviceVulkan->waitIdle();
-    rendererManagerVulkan->setDisplayImage(outputImage);
+    // renderDeviceVulkan->waitIdle();
+    // rendererManagerVulkan->setDisplayImage(outputImage);
 }
 
 void TemporalPassVulkan::writeTP(VkCommandBuffer cmd, uint32_t currentFrame)

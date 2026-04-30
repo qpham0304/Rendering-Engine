@@ -21,12 +21,63 @@ public:
 
     virtual RendererVulkan* getRenderer(std::string_view name) override;
 
+	void setRenderMode(uint32_t mode);
+	int getRenderMode();
 	void beginFrame();
 	void endFrame();
 	void setDisplayImage(TextureVulkan* image);
 	TextureVulkan* getDisplayImage();
 
 protected:
+	struct UniformBufferObject {
+		glm::mat4 invNormal;
+		glm::mat4 view;
+		glm::mat4 prevViewProj;
+		glm::mat4 proj;
+		glm::vec4 cameraPos;
+		glm::mat4 invView;
+		glm::mat4 invProj;
+		float width;
+		float height;
+	};
+
+	// struct StorageBufferObject {
+	// 	glm::mat4 model;
+	// };
+	
+	// struct LightSSBO {
+	// 	alignas(16) glm::vec4 color;
+	// 	alignas(16) glm::vec4 position;
+	// 	alignas(4) float intensity;
+	// };
+
+	
+	// struct UniformBufferObject {
+	// 	glm::mat4 invNormal;
+	// 	glm::mat4 view;
+	// 	glm::mat4 proj;
+	// 	glm::vec4 cameraPos;
+	// 	glm::mat4 invView;
+	// 	glm::mat4 invProj;
+	// 	float width;
+	// 	float height;
+	// };
+
+	// struct StorageBufferObject {
+	// 	glm::mat4 model;
+	// };
+	
+	std::vector<UniformBufferVulkan*> uniformbuffersList;
+	uint32_t sharedLayoutID;
+	uint32_t sharedPoolID;
+	uint32_t sharedSetID;
+
+	// std::vector<StorageBufferVulkan*> storagebuffersList;
+	// std::vector<StorageBufferVulkan*> lightStoragebuffers;
+	// std::vector<StorageBufferObject> instanceData;
+	// std::vector<StorageBufferObject> instanceDataPrev;
+
+	uint32_t currentRenderMode { 1 };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	Renderer* applicationRenderer { nullptr };
 	Renderer* forwardRenderer { nullptr };

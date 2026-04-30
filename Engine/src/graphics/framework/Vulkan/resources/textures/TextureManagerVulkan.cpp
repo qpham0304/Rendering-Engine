@@ -39,6 +39,7 @@ bool TextureManagerVulkan::init(WindowConfig config)
 	}
 
 	_createInspectorDescriptorBind();
+	_createBindlessDescriptor();
 
 	return true;
 }
@@ -113,15 +114,15 @@ void* TextureManagerVulkan::inspectTexture(uint32_t id)
 		return nullptr;
 	}
 
-    uint32_t imguiSetID;
-    if(textureIDs.find(id) == textureIDs.end()) {
-        imguiSetID = descriptorManagerVulkan->createSets(inspectorLayoutID, inspectorPoolID, 1);
-        textureIDs[id] = imguiSetID;
-    } else {
-        imguiSetID = textureIDs[id];
-    }
+    if(textureIDs.find(id) != textureIDs.end()) {
+		VkDescriptorSet descriptorSet = descriptorManagerVulkan->getDescriptorSet(textureIDs[id])[0];
+		return (void*)descriptorSet;
+    } 
 
-    VkDescriptorSet imguiSet = descriptorManagerVulkan->getDescriptorSet(imguiSetID)[0];
+    uint32_t setID = descriptorManagerVulkan->createSets(inspectorLayoutID, inspectorPoolID, 1);
+	textureIDs[id] = setID;
+
+    VkDescriptorSet descriptorSet = descriptorManagerVulkan->getDescriptorSet(setID)[0];
 
     VkDescriptorImageInfo imageInfo{};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -129,10 +130,10 @@ void* TextureManagerVulkan::inspectTexture(uint32_t id)
     imageInfo.sampler = textureVulkan->textureSampler;
 
     std::vector<VkWriteDescriptorSet> writes{};
-    descriptorManagerVulkan->writeImage(&writes, imguiSet, 0, imageInfo);
+    descriptorManagerVulkan->writeImage(&writes, descriptorSet, 0, imageInfo);
     descriptorManagerVulkan->updateDescriptorSets(&writes);
 
-    return (void*)imguiSet;
+    return (void*)descriptorSet;
 }
 
 uint32_t TextureManagerVulkan::getInspectorLayout() {
@@ -275,6 +276,69 @@ void TextureManagerVulkan::_createInspectorDescriptorBind()
 	inspectorPoolID = descriptorManagerVulkan->createPool(poolSizes, MAX_NUM_SETS);
 }
 
+void TextureManagerVulkan::_createBindlessDescriptor()
+{
+    VkDescriptorSetLayoutBinding bindlessBinding{};
+    bindlessBinding.binding = 0;
+    bindlessBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindlessBinding.descriptorCount = 10000;
+    bindlessBinding.stageFlags = VK_SHADER_STAGE_ALL;
+
+    globalBindlessLayoutID = descriptorManagerVulkan->createLayout(
+        { bindlessBinding }, 
+        VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT
+    );
+
+    VkDescriptorPoolSize poolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10000 };
+    globalBindlessPoolID = descriptorManagerVulkan->createPool(
+        { poolSize }, 
+        1,
+        VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT
+    );
+
+    globalBindlessSetID = descriptorManagerVulkan->createSets(globalBindlessLayoutID, globalBindlessPoolID, 1);
+}
+
+void TextureManagerVulkan::registerTextureSampler(uint32_t textureID)
+{
+    TextureVulkan* tex = getTexture(textureID);
+    VkDescriptorSet globalSet = descriptorManagerVulkan->getDescriptorSet(globalBindlessSetID)[0];
+
+    VkDescriptorImageInfo imageInfo{};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = tex->textureImageView;
+    imageInfo.sampler = tex->textureSampler;
+
+	std::vector<VkWriteDescriptorSet> writes;
+	descriptorManagerVulkan->writeImage(&writes, globalSet, 0, imageInfo, textureID);
+	descriptorManagerVulkan->updateDescriptorSets(&writes);
+}
+
+void TextureManagerVulkan::registerTextureStorage(uint32_t textureID, VkImageLayout layout)
+{
+    TextureVulkan* tex = getTexture(textureID);
+    VkDescriptorSet globalSet = descriptorManagerVulkan->getDescriptorSet(globalBindlessSetID)[0];
+
+    VkDescriptorImageInfo imageInfo{};
+    imageInfo.imageLayout = layout;
+    imageInfo.imageView = tex->textureImageView;
+    imageInfo.sampler = tex->textureSampler;
+
+	std::vector<VkWriteDescriptorSet> writes;
+	descriptorManagerVulkan->writeStorageImage(&writes, globalSet, 0, imageInfo, textureID);
+	descriptorManagerVulkan->updateDescriptorSets(&writes);
+}
+
+uint32_t TextureManagerVulkan::getBindlessTextureLayout()
+{
+	return globalBindlessLayoutID;
+}
+
+uint32_t TextureManagerVulkan::getBindlessSet()
+{
+    return globalBindlessSetID;
+}
+
 void TextureManagerVulkan::createImage(
 	uint32_t width, 
 	uint32_t height, 
@@ -344,7 +408,7 @@ void TextureManagerVulkan::createImage(
 	VkMemoryAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = VulkanUtils::findMemoryType(device.physicalDevice, memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = VulkanUtils::findMemoryType(device.getPhysicalDevice(), memRequirements.memoryTypeBits, properties);
 
 	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate image memory!");
@@ -396,7 +460,7 @@ void TextureManagerVulkan::createImageView(
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = layerCount;
 
-    if (vkCreateImageView(device.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+    if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image view!");
     }
 }
@@ -404,7 +468,7 @@ void TextureManagerVulkan::createImageView(
 void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, VulkanDevice& device)
 {
 	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(device.physicalDevice, &properties);
+	vkGetPhysicalDeviceProperties(device.getPhysicalDevice(), &properties);
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -432,7 +496,7 @@ void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, Vulka
 void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, VulkanDevice& device, VkSamplerCreateInfo samplerInfo)
 {
 	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(device.physicalDevice, &properties);
+	vkGetPhysicalDeviceProperties(device.getPhysicalDevice(), &properties);
 
 	samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
 	
@@ -765,7 +829,7 @@ VkFormat TextureManagerVulkan::findSupportedFormat(
 	for (VkFormat format : candidates
 	) {
 		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(device.physicalDevice, format, &props);
+		vkGetPhysicalDeviceFormatProperties(device.getPhysicalDevice(), format, &props);
 
 		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
 			return format;
@@ -787,7 +851,7 @@ void TextureManagerVulkan::generateMipmaps(
 	RenderDeviceVulkan* renderDeviceVulkan
 ) {
 	VkFormatProperties formatProperties;
-    vkGetPhysicalDeviceFormatProperties(renderDeviceVulkan->device.physicalDevice, imageFormat, &formatProperties);
+    vkGetPhysicalDeviceFormatProperties(renderDeviceVulkan->device.getPhysicalDevice(), imageFormat, &formatProperties);
 	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
 		throw std::runtime_error("texture image format does not support linear blitting!");
 	}
@@ -917,8 +981,9 @@ void TextureManagerVulkan::createBarrier(
 	);
 }
 
-//TODO: only copy image of the screen size at the moment
+// only copy image of the screen size at the moment
 // only support copy the same image type
+// TODO: support down scaled imaged copy and down sample instead of swapchain size
 void TextureManagerVulkan::copyImage(
 	VkCommandBuffer cmd, 
 	TextureVulkan *srcImage, 

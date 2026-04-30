@@ -81,7 +81,7 @@ void VulkanDevice::createInstance()
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.pEngineName = "MyGraphicsEngine";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.apiVersion = VK_API_VERSION_1_4;
 
 	VkInstanceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -139,6 +139,7 @@ void VulkanDevice::submitDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT sev
 }
 
 void VulkanDevice::createSurface() {
+	//TODO: only window surface creation is supported now, add support for linux and android
 	VkWin32SurfaceCreateInfoKHR surfaceInfo = {};
 	surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	surfaceInfo.hinstance = GetModuleHandle(nullptr);
@@ -185,21 +186,21 @@ void VulkanDevice::createLogicalDevice() {
 		queueCreateInfo.pQueuePriorities = &queuePriority;
 		queueCreateInfos.push_back(queueCreateInfo);
 	}
-
-	VkPhysicalDeviceVulkan13Features features13{};
-	features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-	features13.dynamicRendering = VK_TRUE;
-	features13.synchronization2 = VK_TRUE;
 	
 	VkPhysicalDeviceVulkan12Features features12{};
-	features13.pNext = &features12;
 	features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-	features12.bufferDeviceAddress = this->rtSupported ? VK_TRUE : VK_FALSE;
+	features12.bufferDeviceAddress = VK_TRUE;
 	features12.descriptorIndexing = VK_TRUE;
 	features12.runtimeDescriptorArray = VK_TRUE;
 	features12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 	features12.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
 	features12.descriptorBindingPartiallyBound = VK_TRUE;
+
+	VkPhysicalDeviceVulkan13Features features13{};
+	features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+	features13.dynamicRendering = VK_TRUE;
+	features13.synchronization2 = VK_TRUE;
+	features13.pNext = &features12;
 
 	VkPhysicalDeviceAccelerationStructureFeaturesKHR accelFeatures{};
 	accelFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
@@ -225,6 +226,8 @@ void VulkanDevice::createLogicalDevice() {
 
 	VkPhysicalDeviceFeatures deviceFeatures{};
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
+	deviceFeatures.geometryShader = VK_TRUE;
+	deviceFeatures.shaderInt64 = VK_TRUE;
 
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -370,6 +373,30 @@ VulkanDevice::SwapChainSupportDetails VulkanDevice::querySwapChainSupport(VkPhys
 	return details;
 }
 
+VkSurfaceKHR VulkanDevice::getSurface() const
+{
+    return surface;
+}
+
+VkInstance VulkanDevice::getInstance() const
+{
+    return instance;
+}
+
+VkPhysicalDevice VulkanDevice::getPhysicalDevice() const
+{
+    return physicalDevice;
+}
+
+VkQueue VulkanDevice::getGraphicsQueue() const
+{
+    return graphicsQueue;
+}
+
+VkQueue VulkanDevice::getPresentQueue() const
+{
+    return presentQueue;
+}
 
 bool VulkanDevice::checkValidationLayerSupport()
 {

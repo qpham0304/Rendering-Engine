@@ -52,11 +52,6 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 		}
 	});
 
-	pushConstantData.flag = true;
-	pushConstantData.color = glm::vec3(1.0f, 1.0f, 0.0f);
-	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
-	pushConstantData.data = 0.1f;
-
 	_createDescriptors();
 	_createPipeline();
 
@@ -72,11 +67,12 @@ bool ApplicationRendererVulkan::onClose()
 
 void ApplicationRendererVulkan::onUpdate()
 {
-	
 }
 
 void ApplicationRendererVulkan::render(Camera& camera)
 {
+	pushConstantData.index = rendererManagerVulkan->getDisplayImage()->id();
+
 	// stop rendering as we can't record begin/endRecording because the manager's 
 	// command Buffer recording state is likely corrupted by the destruction inside
 	//  _recreateResources By returning, we let the manager call endFrame on an empty buffer
@@ -130,6 +126,26 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
 			&descriptorSets[renderDeviceVulkan->getCurrentFrameIndex()],
 			0,
 			nullptr
+		);
+
+		vkCmdBindDescriptorSets(
+			commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			appPipeline->pipelineLayout,
+			1, 
+			1, 
+			&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
+			0, 
+			nullptr
+		);
+
+		vkCmdPushConstants(
+			commandBuffer,
+			appPipeline->pipelineLayout,
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(PushConstantData),
+			&pushConstantData
 		);
 
 		vkCmdDraw(commandBuffer, 3, 1, 0, 0);
@@ -193,7 +209,10 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	guiManager->start();
 	
 	//TODO: temporarily use imgui renderer, abstract to gui service and remove these
-	deferredRendererVulkan->renderGui();
+	int currentMode = rendererManagerVulkan->getRenderMode(); 
+	if(currentMode == 1) {
+		deferredRendererVulkan->renderGui();
+	}
 
 	ImGui::Begin("Application");
 	ImGui::BeginChild("Application View");
@@ -237,6 +256,27 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 
 	ImGui::EndChild();
 	ImGui::End();
+
+	ImGui::Begin("Render Mode");
+	const char* modeNames[] = { "Forward", "Deferred", "Ray Traced" };
+	const char* previewValue = modeNames[currentMode];
+
+	if (ImGui::BeginCombo("Current Mode", previewValue)) {
+		for (int n = 0; n <= 2; n++) {
+			const bool isSelected = (currentMode == n);
+			
+			if (ImGui::Selectable(modeNames[n], isSelected)) {
+				rendererManagerVulkan->setRenderMode(n);
+			}
+
+			if (isSelected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::End();
+
 	guiManager->render(commandBuffer);
 	guiManager->end();
 }
@@ -270,6 +310,10 @@ void ApplicationRendererVulkan::_createPipeline()
 	void* handle = materialManager->getMaterialLayout();
 	VkDescriptorSetLayout materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
 
+	uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
+	auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
+
+
 	VkPipelineVertexInputStateCreateInfo emptyVertexInput{};
 	emptyVertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	emptyVertexInput.vertexAttributeDescriptionCount = 0;
@@ -289,8 +333,8 @@ void ApplicationRendererVulkan::_createPipeline()
 		"assets/shaders/spv/default.frag.spv",
 		pipelineConfig,
 		emptyVertexInput,
-		{ descriptorSetLayout }, 
-		0
+		{ descriptorSetLayout, bindlessLayout }, 
+		sizeof(PushConstantData)
 	);
 }
 

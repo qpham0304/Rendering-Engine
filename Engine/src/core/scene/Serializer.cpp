@@ -13,7 +13,6 @@ Serializer::Serializer()
     REGISTER_COMPONENT(TransformComponent, "TransformComponent");
     REGISTER_COMPONENT(ModelComponent, "ModelComponent");
     REGISTER_COMPONENT(PrefabComponent, "PrefabComponent");
-    REGISTER_COMPONENT(MeshComponent, "MeshComponent");
 
 }
 
@@ -76,11 +75,6 @@ nlohmann::json Serializer::saveEntity(Entity entity, entt::registry& world)
         }
 
         if (id == entt::type_id<RelationshipComponent>().hash()) {
-            continue;
-        }
-
-        if (id == entt::type_id<MeshComponent>().hash()) {  //TODO: will support later
-            m_logger->warn("skipping MeshComponent: Not supported yet");
             continue;
         }
 

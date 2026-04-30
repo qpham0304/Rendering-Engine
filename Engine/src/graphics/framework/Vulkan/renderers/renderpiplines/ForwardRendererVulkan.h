@@ -30,17 +30,15 @@ private:
 	};
 
 	struct PushConstantLight {
-		alignas(64) glm::mat4 sunlightMVP;
-		alignas(16) glm::vec4 direction;
-		alignas(16) glm::vec4 color;
-		alignas(4)  float bias;
-		alignas(4)  float alpha;
-		alignas(4)  float lintstepLow;
-		alignas(4)  float linstepHigh;
-		alignas(4)  float litBias;
-		alignas(4)  float time;
-		alignas(4)	float numLights;
-		alignas(4)	float skyboxDetail;
+		uint64_t materialRef;
+		float bias;
+		float time;
+		glm::mat4 sunlightMVP;
+		glm::vec4 direction;
+		glm::vec4 color;
+		float numLights;
+		float skyboxDetail;
+		uint32_t materialIdx;
 	};
 
 	struct LightSSBO {

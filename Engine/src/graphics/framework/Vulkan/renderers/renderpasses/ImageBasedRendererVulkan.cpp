@@ -39,8 +39,9 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 
 	hdrImageID = textureManagerVulkan->loadTexture(
 		// "assets/textures/hdr/farm_field_puresky_2k.hdr", 
-		// "assets/textures/hdr/newport_loft.hdr", 
-		"assets/textures/hdr/meadow_1k.hdr", 
+		"assets/textures/hdr/newport_loft.hdr", 
+		// "assets/textures/hdr/meadow_1k.hdr", 
+		// "assets/textures/night-skybox/top.jpg", 
 		// "assets/textures/hdr/photo_studio_loft_hall_2k.hdr", 
 		1, 
 		false
@@ -132,7 +133,8 @@ void ImageBasedRendererVulkan::onUpdate()
 {
 	if(hdrImage_temp) {
 		uint32_t frameCount = VulkanUtils::numFrames();
-		vkDeviceWaitIdle(renderDeviceVulkan->device);
+		renderDeviceVulkan->waitIdle();
+		VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 		
 		//update spherical harmonic descriptors
 		auto projectionSets = descriptorManagerVulkan->getDescriptorSet(projectionSH_descriptorSetID);
@@ -141,6 +143,7 @@ void ImageBasedRendererVulkan::onUpdate()
 			std::vector<VkWriteDescriptorSet> writes;
 			descriptorManagerVulkan->writeImage(&writes, projectionSets[i], 0, imageInfo);
 			descriptorManagerVulkan->updateDescriptorSets(&writes);
+			computeSH(cmdBuffer, i);
 		}
 
 		//update prefilter descriptors
@@ -149,6 +152,7 @@ void ImageBasedRendererVulkan::onUpdate()
 			std::vector<VkWriteDescriptorSet> writes;
 			descriptorManagerVulkan->writeImage(&writes, prefilterSets[i], 0, imageInfo);
 			descriptorManagerVulkan->updateDescriptorSets(&writes);
+			computePrefilter(cmdBuffer, i);
 		}
 		hdrImage_temp = nullptr;
 	}
@@ -370,6 +374,7 @@ void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
 		// textureManagerVulkan->destroy(temp);
 	}
 	
+	onUpdate();
 }
 
 

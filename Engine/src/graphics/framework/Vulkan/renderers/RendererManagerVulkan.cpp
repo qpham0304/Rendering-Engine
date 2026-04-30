@@ -51,6 +51,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     // hiZPassRenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
+    SSRGIPassRenderer->init(config);
     temporalPassRenderer->init(config);
     deferredCombineRenderer->init(config);
 	// postProcessRenderer->init(config);
@@ -92,7 +93,25 @@ std::vector<uint32_t> RendererManagerVulkan::listIDs() const
 
 void RendererManagerVulkan::onUpdate()
 {
-    
+    if(currentRenderMode == 0) {
+        forwardRenderer->onUpdate();
+    } 
+    else if(currentRenderMode == 1) {
+        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
+        if(tmp->pushConstantLight.aoOn) {
+            alchemyAORenderer->onUpdate();
+        }
+        deferredRenderer->onUpdate();
+        hiZPassRenderer->onUpdate();
+        SSRGIPassRenderer->onUpdate();
+        if(tmp->denoiserOn) {
+            temporalPassRenderer->onUpdate();
+        }
+        deferredCombineRenderer->onUpdate();
+    } 
+    else {
+   
+    }
 }
 
 void RendererManagerVulkan::render()
@@ -107,18 +126,27 @@ void RendererManagerVulkan::render()
 
     beginFrame();
     // shadowMapRenderer->render(*camera);
-	// forwardRenderer->render(*camera);
-    auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-    if(tmp->pushConstantLight.aoOn) {
-        alchemyAORenderer->render(*camera);
+    
+    if(currentRenderMode == 0) {
+        forwardRenderer->render(*camera);
+    } 
+    else if(currentRenderMode == 1) {
+        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
+        if(tmp->pushConstantLight.aoOn) {
+            alchemyAORenderer->render(*camera);
+        }
+        deferredRenderer->render(*camera);
+        hiZPassRenderer->render(*camera);
+        SSRGIPassRenderer->render(*camera);
+        if(tmp->denoiserOn) {
+            temporalPassRenderer->render(*camera);
+        }
+        deferredCombineRenderer->render(*camera);
+    } 
+    else {
+   
     }
-    hiZPassRenderer->render(*camera);
-    SSRGIPassRenderer->render(*camera);
-    deferredRenderer->render(*camera);
-    if(tmp->denoiserOn) {
-        temporalPassRenderer->render(*camera);
-    }
-    deferredCombineRenderer->render(*camera);
+
     applicationRenderer->render(*camera);
     endFrame();
 }
@@ -130,6 +158,16 @@ RendererVulkan* RendererManagerVulkan::getRenderer(std::string_view name)
         return nullptr;
     }
     return dynamic_cast<RendererVulkan*>(it->second.get());
+}
+
+void RendererManagerVulkan::setRenderMode(uint32_t mode)
+{
+    currentRenderMode = mode;
+}
+
+int RendererManagerVulkan::getRenderMode()
+{
+    return currentRenderMode;
 }
 
 void RendererManagerVulkan::beginFrame()

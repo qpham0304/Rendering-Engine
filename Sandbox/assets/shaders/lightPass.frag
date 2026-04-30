@@ -19,6 +19,7 @@ struct Light {
 layout(set = 1, binding = 0)  uniform UniformBufferObject {
     mat4 invNormal;
     mat4 view;
+    mat4 prevViewProj;
     mat4 proj;
     vec4 cameraPos;
     mat4 invView;
@@ -126,8 +127,6 @@ float calcMSMShadow(vec3 worldPos) {
     vec4 m = (1.0 - pcl.alpha) * b + pcl.alpha * vec4(0.5, 0.5, 0.5, 0.5);
 
     float d = projCoords.z;
-    // float d = projCoords.z * 2.0 - 1.0;
-    
     
     if (d <= m.x + pcl.litBias) { //self shadow bias
         return 0.0;

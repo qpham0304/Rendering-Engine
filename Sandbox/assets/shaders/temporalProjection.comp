@@ -23,6 +23,7 @@ layout(set = 0, binding = 8) uniform sampler2D u_PrevNormal;
 
 layout(push_constant) uniform Constants {
     vec2 screenRes;
+    int shouldCombine;
 } pc;
 
 vec3 RGBToYCoCg(vec3 rgb) {
@@ -131,10 +132,10 @@ void main() {
 
     float lumaMean = luminance(YCoCgToRGB(mean));
     if (luminance(currentRGB) > lumaMean * 8.0 + 0.1) {
-        currentRGB = YCoCgToRGB(mean); // Force it to be the neighborhood average
+        currentRGB = YCoCgToRGB(mean); // the neighborhood average
     }
     
-    // use a slightly more lenient threshold or check if we have ANY valid history
+    // use a slightly more lenient threshold or check if we have any valid history
     if(totalWeight > 0.001) { 
         vec4 historyData = historyAccum / totalWeight;
         
@@ -149,10 +150,12 @@ void main() {
         vec3 historyYCoCg = RGBToYCoCg(historyData.rgb);
         vec3 currentYCoCg = RGBToYCoCg(currentRGB);
 
-        // clamp the currnet pixel, not history to stops accumulating into firefly
+        // hack monte carlos and clamp the currnet pixel, not history to stops accumulating into firefly
+        // questionable physical accuracy
         currentYCoCg = clamp(currentYCoCg, minColor, maxColor);
         
-        nextAccum = min(n + 1.0, 32.0); // lowest possble before noise become noticable
+        // lowest possble before noise become noticable, TODO: try 16 on laptop
+        nextAccum = min(n + 1.0, 32.0); 
         float alpha = 1.0 / nextAccum;
 
         // Karis weights
