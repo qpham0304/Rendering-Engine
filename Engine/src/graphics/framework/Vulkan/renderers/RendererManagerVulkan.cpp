@@ -115,9 +115,6 @@ void RendererManagerVulkan::onUpdate()
     } else if(currentRenderMode == 2) {
         raytracingRenderer->onUpdate();
     }
-    else {
-   
-    }
 }
 
 void RendererManagerVulkan::render()
@@ -150,9 +147,6 @@ void RendererManagerVulkan::render()
         deferredCombineRenderer->render(*camera);
     } else if(currentRenderMode == 2) {
         raytracingRenderer->render(*camera);
-    }
-    else {
-   
     }
 
     applicationRenderer->render(*camera);

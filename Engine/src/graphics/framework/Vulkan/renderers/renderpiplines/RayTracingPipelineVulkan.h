@@ -62,11 +62,12 @@ public:
 	void writeRayTracing(VkCommandBuffer cmd, uint32_t currentFrame);
 
 public:	//TODO: make private once done testing	
-	const int MAX_INSTANCES = 100;	//keep at low, no VMA so 10k instances of scattered data is too much to handle
+	const int MAX_INSTANCES = 1000;	//keep at low, no VMA so 10k instances of scattered data is too much to handle
 	const int numInstances = 1;
 	const int numLights = 1000;
 	bool showGui{ true };
-	uint32_t frameCounter = 0;
+	uint32_t frameCounter { 0 };
+	bool m_tlasInitialized { false };
 	
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
@@ -147,4 +148,5 @@ public:	//TODO: make private once done testing
 	// void _buildTlas();
 	void _createAccelStructure();
 	void _createShaderBindingTable();
+	void _updateTlas();
 };

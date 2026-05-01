@@ -41,10 +41,10 @@ bool SandBoxLayer::init()
     }
     
     setLogScopeEngine();
-    // scene->loadScene("assets/data/Level1-test.json");
-    scene->loadScene("assets/data/default-scene.json");
+    scene->loadScene("assets/data/Level1-test.json");
+    // scene->loadScene("assets/data/default-scene.json");
 
-    const int numLights = 1;
+    const int numLights = 10;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(-numLights, numLights);
