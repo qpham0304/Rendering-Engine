@@ -15,10 +15,5 @@ struct RayPayload {
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
-    vec3 unitDir = normalize(gl_WorldRayDirectionEXT);
-    float t = 0.5 * (unitDir.y + 1.0);
-    vec3 skyColor = (1.0 - t) * vec3(1.0) + t * vec3(0.5, 0.7, 1.0);
-    
-    payload.hitPos = skyColor; // reuse hitPos to pass back background color
     payload.hit = 0;
 }

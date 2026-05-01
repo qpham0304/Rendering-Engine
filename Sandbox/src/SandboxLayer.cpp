@@ -65,6 +65,12 @@ bool SandBoxLayer::init()
             textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false)
         );
 
+        materialDesc.emissiveIDs.push_back(
+            textureManager->loadTexture("assets/textures/pbr/gold/albedo.png", 1, false)
+        );
+        // these need to be set to have emision
+        materialDesc.emissive = 1.0f;
+
         Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
         mesh.materialID = materialManager->createMaterial(materialDesc);
 

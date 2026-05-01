@@ -95,7 +95,7 @@
     {
       "components": {
         "ModelComponent": {
-          "path": "assets/models/cube/cube-notex.gltf"
+          "path": "assets/models/sponza/gltf/sponza.gltf"
         },
         "NameComponent": {
           "name": "plane"

@@ -230,7 +230,7 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     materialDesc.metallic  = 0.0f;
     materialDesc.roughness = 0.75f;
     materialDesc.ao        = 1.0f;
-    materialDesc.emissive  = 1.0f;
+    materialDesc.emissive  = 0.0f;
 
     if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
@@ -241,6 +241,9 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         materialDesc.roughnessIDs = _loadMaterial(material, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", directory);
         materialDesc.aoIDs = _loadMaterial(material, aiTextureType_LIGHTMAP, "aoMap", directory);
         materialDesc.emissiveIDs = _loadMaterial(material, aiTextureType_EMISSIVE, "emissiveMap", directory);
+        if(!materialDesc.emissiveIDs.empty()){
+            materialDesc.emissive  = 1.0f;
+        }
 
         // try find other non compatible materials, if still fail...
         // give up and let material manager use fallback materials

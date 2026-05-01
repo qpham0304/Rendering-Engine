@@ -107,6 +107,7 @@ bool OrbitCamera::processMouse() {
     bool leftPressed = AppWindow::isMousePressed(MOUSE_BUTTON_LEFT);
     
     if (leftPressed) {
+        cameraMove = true;
         double x, y;
         AppWindow::getCursorPos(&x, &y);
         float xpos = static_cast<float>(x);
@@ -124,6 +125,7 @@ bool OrbitCamera::processMouse() {
         return true;
     } 
     else {
+        cameraMove = false;
         firstClick = true; 
         return false;
     }
@@ -191,7 +193,7 @@ bool OrbitCamera::processKeyboard()
         resetCamera();
         isPressing = true;
     }
-    
+    cameraMove = isPressing;
     return isPressing;
 }
 

@@ -82,6 +82,15 @@ bool RaytracingPipelineVulkan::init(WindowConfig config)
         _createShaderBindingTable();
     });
 
+    EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
+		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
+		if (keyPressedEvent.keyCode == KEY_2) {
+			accumulate = !accumulate;
+		}
+    });
+
+    ubo.frameCount = 0;
+
 	return true;
 }
 
@@ -134,7 +143,9 @@ void RaytracingPipelineVulkan::render(Camera& camera)
 	ubo.invProj[1][1] *= -1.0;
 	ubo.width  = AppWindow::getWidth();
     ubo.height = AppWindow::getHeight();
-
+    ubo.frameSeed = rand() % 32768;
+    ubo.frameCount += 1;
+    ubo.accumulate = camera.isMoving();
 	
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();

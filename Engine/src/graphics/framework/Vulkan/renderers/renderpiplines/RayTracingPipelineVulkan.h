@@ -36,6 +36,9 @@ private:
 		glm::mat4 invProj;
 		float width;
 		float height;
+		float frameSeed;
+		int frameCount;
+		bool accumulate;
 	};
 
 	struct StorageBufferObject {
@@ -68,6 +71,8 @@ public:	//TODO: make private once done testing
 	bool showGui{ true };
 	uint32_t frameCounter { 0 };
 	bool m_tlasInitialized { false };
+	bool accumulate { false };
+
 	
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
