@@ -196,6 +196,7 @@ void VulkanDevice::createLogicalDevice() {
 	features12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 	features12.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
 	features12.descriptorBindingPartiallyBound = VK_TRUE;
+	features12.scalarBlockLayout = VK_TRUE;
 
 	VkPhysicalDeviceVulkan13Features features13{};
 	features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;

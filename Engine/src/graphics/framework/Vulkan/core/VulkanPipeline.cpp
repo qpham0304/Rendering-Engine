@@ -357,7 +357,7 @@ void VulkanPipeline::createRayTracePipeline(
     // Create the ray tracing pipeline layout.
     // Push constant: we want to be able to update constants used by the shaders
     VkPushConstantRange pushConstant {
-		VK_SHADER_STAGE_RAYGEN_BIT_KHR,// | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
+		VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
         0, 
 		pushConstantSize
 	};

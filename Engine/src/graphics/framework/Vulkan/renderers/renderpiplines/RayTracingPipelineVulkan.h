@@ -102,8 +102,6 @@ public:	//TODO: make private once done testing
 	uint64_t materialsAddress;
 	std::vector<ObjectDesc> objects;
 
-	uint32_t m_scratch1_ID;
-    uint32_t m_scratch2_ID;
     RaytracingBuilderKHR m_rtBuilder{};
 
     std::vector<VkDescriptorSetLayoutBinding> rtBindings;
@@ -141,11 +139,6 @@ public:	//TODO: make private once done testing
 	}
 
 	BlasInput _toVkGeometry(uint32_t meshID);
-	// void _createBlas(uint32_t meshID);
-	// void _buildBlas();
-	// void _updateBlas();
-	// void _createTlas();
-	// void _buildTlas();
 	void _createAccelStructure();
 	void _createShaderBindingTable();
 	void _updateTlas();

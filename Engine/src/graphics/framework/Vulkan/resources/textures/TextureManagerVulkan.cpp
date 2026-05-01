@@ -352,17 +352,17 @@ void TextureManagerVulkan::createImage(
 	const VulkanDevice& device
 ) {
 	createImage(
-		width, 
-		height, 
-		format, 
-		tiling, 
-		usage, 
-		properties, 
-		image, 
+		width,
+		height,
+		format,
+		tiling,
+		usage,
+		properties,
+		image,
 		imageMemory,
 		mipLevels,
-		1,          
-		0,      
+		1,
+		0,
 		device
 	);
 }

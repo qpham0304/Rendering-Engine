@@ -77,7 +77,7 @@ protected:
 	// std::vector<StorageBufferObject> instanceData;
 	// std::vector<StorageBufferObject> instanceDataPrev;
 
-	uint32_t currentRenderMode { 1 };
+	uint32_t currentRenderMode { 2 };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	Renderer* applicationRenderer { nullptr };
 	Renderer* forwardRenderer { nullptr };

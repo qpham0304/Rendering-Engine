@@ -29,13 +29,14 @@ void RaytracingBuilderKHR::create()
 void RaytracingBuilderKHR::destroy()
 {
     destroyBlas();
-    // destroyTlas();
+    destroyTlas();
 }
 
 void RaytracingBuilderKHR::destroyBlas()
 {
     for(auto& blas : m_blas)  {
         bufferManager->destroy(blas->id());
+        blas = nullptr;
     }
     
     m_blas.clear();
@@ -44,6 +45,7 @@ void RaytracingBuilderKHR::destroyBlas()
 void RaytracingBuilderKHR::destroyTlas()
 {
     bufferManager->destroy(m_tlas->id());
+    m_tlas = nullptr;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -86,12 +88,16 @@ void RaytracingBuilderKHR::buildBlas(const std::vector<BlasInput>& input, VkBuil
         printf("    For BlasInput %d (of %d).\n", idx, nbBlas);
         // Filling partially the VkAccelerationStructureBuildGeometryInfoKHR for querying the build sizes.
         // Other information will be filled in the createBlas (see #2)
-        buildAs[idx].buildInfo.type          = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-        buildAs[idx].buildInfo.mode          = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-        buildAs[idx].buildInfo.flags         = input[idx].flags | flags;
+        buildAs[idx].buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+        buildAs[idx].buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+        buildAs[idx].buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+        buildAs[idx].buildInfo.flags = input[idx].flags | flags;
         buildAs[idx].buildInfo.geometryCount = static_cast<uint32_t>(input[idx].asGeometry.size());
-        buildAs[idx].buildInfo.pGeometries   = input[idx].asGeometry.data();
-
+        buildAs[idx].buildInfo.pGeometries = input[idx].asGeometry.data();
+        
+        buildAs[idx].sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+        buildAs[idx].sizeInfo.pNext = nullptr;
+        
         // Build range information
         buildAs[idx].rangeInfo = input[idx].asBuildOffsetInfo.data();
 

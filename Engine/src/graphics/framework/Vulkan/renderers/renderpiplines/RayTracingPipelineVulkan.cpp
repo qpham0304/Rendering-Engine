@@ -62,7 +62,7 @@ bool RaytracingPipelineVulkan::init(WindowConfig config)
 
 	m_rtBuilder.setup(renderDeviceVulkan, bufferManagerVulkan);
 	m_rtBuilder.create();
-    m_rtBuilder.destroy();
+    // m_rtBuilder.destroy();
 	_createAccelStructure();
 	_createDescriptor();
 	_createPipeline();
@@ -70,6 +70,17 @@ bool RaytracingPipelineVulkan::init(WindowConfig config)
 
 	auto materialManagerVulkan = static_cast<MaterialManagerVulkan*>(materialManager);
 	materialsAddress = materialManagerVulkan->getMaterialAddress();
+
+    EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [this](Event& event) {
+        ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
+        renderDeviceVulkan->waitIdle();
+        // m_rtBuilder.destroy();
+        m_tlasInitialized = false;
+        _createAccelStructure();
+        _createDescriptor();
+        // _createPipeline();
+        _createShaderBindingTable();
+    });
 
 	return true;
 }
@@ -198,7 +209,7 @@ void RaytracingPipelineVulkan::writeRayTracing(VkCommandBuffer cmd, uint32_t cur
 							0, nullptr);
 
 	vkCmdPushConstants(cmd, rtPipeline->pipelineLayout, 
-					VK_SHADER_STAGE_RAYGEN_BIT_KHR,// | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 
+					VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 
 					0, sizeof(PushConstant), &pushConstant);
 
 	// Trace Command using SBT region info
@@ -284,13 +295,15 @@ void RaytracingPipelineVulkan::_createPipeline()
 	uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
 	auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
 
+	void* handle = materialManager->getMaterialLayout();
+	auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
 
 	auto rayTraceLayout = descriptorManagerVulkan->getDescriptorLayout(raytraceLayoutID);
 
 	rtPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
     rtPipeline->createRayTracePipeline(
 		"assets/shaders/spv/raytrace.rgen.spv", 
-		{ rayTraceLayout, bindlessLayout }, 
+		{ rayTraceLayout, bindlessLayout, materialLayout }, 
 		sizeof(PushConstant)
 	);
 
@@ -298,7 +311,7 @@ void RaytracingPipelineVulkan::_createPipeline()
 	postProcessPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	postProcessPipeline->createComputePipeline(
 		"assets/shaders/spv/postProcess.comp.spv", 
-		{ postProcess }, 
+		{ postProcess, bindlessLayout, materialLayout }, 
 		sizeof(PushConstant)
 	);
 
@@ -435,8 +448,7 @@ BlasInput RaytracingPipelineVulkan::_toVkGeometry(uint32_t meshID) {
     triangles.indexData.deviceAddress = desc.indexAddress;  
     
     // query build sizes
-    VkAccelerationStructureBuildGeometryInfoKHR buildInfo{};
-    buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+    VkAccelerationStructureBuildGeometryInfoKHR buildInfo{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
     buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
     buildInfo.geometryCount = 1;
     buildInfo.pGeometries = &geometry;
@@ -462,6 +474,7 @@ BlasInput RaytracingPipelineVulkan::_toVkGeometry(uint32_t meshID) {
 
 void RaytracingPipelineVulkan::_createAccelStructure()
 {
+	auto meshIDs = meshManager->listIDs();
     // BLAS - Storing each primitive in a geometry
     std::vector<BlasInput> allBlas;
     allBlas.reserve(objects.size());
@@ -470,7 +483,6 @@ void RaytracingPipelineVulkan::_createAccelStructure()
     // tlas.reserve(instanceData.size());
     tlas.reserve(MAX_INSTANCES);
 
-	auto meshIDs = meshManager->listIDs();
     for (const auto& id : meshIDs)  {
         BlasInput blas = _toVkGeometry(id);
         allBlas.emplace_back(blas); 
@@ -521,9 +533,6 @@ void RaytracingPipelineVulkan::_createAccelStructure()
     // or get a screen flash with app crash blue screen
     m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR, m_tlasInitialized, false);
     m_tlasInitialized = true;
-
-	// bufferManagerVulkan->destroy(m_scratch1_ID);
-	// bufferManagerVulkan->destroy(m_scratch2_ID);
 }
 
 
@@ -682,8 +691,7 @@ void RaytracingPipelineVulkan::_updateTlas() {
         }
     }
 
-    //TODO: this leak memory as it continuously creates a new blass buffer every update
-    m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR, false);
+    m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR, m_tlasInitialized, false);
     
     size_t bufferSize = objectsIndex * sizeof(ObjectDesc);
     bufferManagerVulkan->updateBufferDeviceAddress(objDeviceAddressBufferID, objects.data(), bufferSize);
