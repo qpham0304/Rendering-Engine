@@ -164,6 +164,7 @@ void DeferredRendererVulkan::render(Camera& camera)
 				desc.vertexAddress = bdaBuffer->getReference();
 				bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID));
 				desc.indexAddress = bdaBuffer->getReference();
+				// m_logger->error("index buffer BDA: {}", desc.indexAddress);
 
 				objects[currentDrawIdx] = desc;
 				currentDrawIdx++;
@@ -357,7 +358,6 @@ void DeferredRendererVulkan::renderGui()
 	ImGui::Begin("G-Buffer Debug");
 	
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	ImVec2 size(256, 144);
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.colorTextures[currentFrame]->id()), ImVec2(256, 144));
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferPos[currentFrame]->id()), ImVec2(256, 144));
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferNorm[currentFrame]->id()), ImVec2(256, 144));
@@ -454,9 +454,7 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 	materialManager->bindMaterial(cmd, (void*)gPassPipeline.get());
 	
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
-		TransformComponent& transform = entity.getComponent<TransformComponent>();
-		const glm::mat4& entityTransform = transform.getModelMatrix();
-		glm::vec3& translation = transform.translateVec;
+		auto& transform = entity.getComponent<TransformComponent>();
 
 		if (entity.hasComponent<LightComponent>()) {
 			lightIndex++;
@@ -466,16 +464,9 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 			const Model* model = modelManager->getModel(modelID);
 
-			if (!model) {
-				continue;
-			}
-
 			for (uint32_t meshID : model->meshIDs) {
-				Mesh* mesh = const_cast<Mesh*>(meshManager->getMesh(meshID));
-
 				pushConstant.objectsRef = objDeviceAddress; 
 				pushConstant.objectIdx  = objectsIndex;
-				// meshManager->bindMesh(meshID);
 
 				vkCmdPushConstants(
 					cmd,
@@ -486,9 +477,11 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 					&pushConstant
 				);
 
-				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				// renderDeviceVulkan->draw(indexCount, numInstances, objectsIndex);
-				vkCmdDraw(cmd, static_cast<uint32_t>(mesh->indices.size()), 1, 0, objectsIndex);
+				Mesh* mesh = const_cast<Mesh*>(meshManager->getMesh(meshID));
+				meshManager->bindMesh(meshID);
+				renderDeviceVulkan->draw(mesh->indices.size(), numInstances, objectsIndex);
+				// for gbuffer pulling but is very very slow right now
+				// vkCmdDraw(cmd, static_cast<uint32_t>(mesh->indices.size()), 1, 0, objectsIndex);
 
 				objectsIndex++;
 			}
@@ -953,6 +946,12 @@ void DeferredRendererVulkan::_createPipelines()
 	vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+	
+	// vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	// vertexInputInfo.vertexBindingDescriptionCount = 0;
+	// vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	// vertexInputInfo.pVertexBindingDescriptions = nullptr;
+	// vertexInputInfo.pVertexAttributeDescriptions = nullptr;
 
 	VkDescriptorSetLayout descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
 	VkDescriptorPool descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);

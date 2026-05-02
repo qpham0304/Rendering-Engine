@@ -16,6 +16,9 @@ file(GLOB_RECURSE SHADER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.vert
     ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.frag
     ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.comp
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.rgen
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.rmiss
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.rchit
 )
 
 add_executable(${PROJECT_NAME} ${SANDBOX_SOURCES})
@@ -36,7 +39,7 @@ foreach(SHADER_SOURCE ${SHADER_SOURCES})
     add_custom_command(
         OUTPUT ${SPIRV_OUT}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${SPV_OUTPUT_DIR}
-        COMMAND Vulkan::glslc ${SHADER_SOURCE} -o ${SPIRV_OUT}
+        COMMAND Vulkan::glslc --target-env=vulkan1.2 ${SHADER_SOURCE} -o ${SPIRV_OUT}
         DEPENDS ${SHADER_SOURCE}
         COMMENT "Compiling shader: ${FILE_NAME}"
     )

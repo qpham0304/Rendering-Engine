@@ -1,0 +1,84 @@
+#version 460
+
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+
+layout (local_size_x = 16, local_size_y = 16) in;
+
+layout (set = 0, binding = 0, rgba16f) uniform image2D outputImage;
+// layout (set = 0, binding = 1) uniform sampler2D inputImage;
+
+layout(set = 0, binding = 1)  uniform UniformBufferObject {
+    mat4 view;
+    mat4 prevViewProj;
+    mat4 proj;
+    vec4 cameraPos;
+    mat4 invView;
+    mat4 invProj;
+    float width;
+    float height;
+} ubo;
+
+
+layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
+
+struct Material {
+    uint albedoIdx;
+    uint normalIdx;
+    uint metalnessIdx;
+    uint roughnessIdx;
+    uint aoIdx;
+    uint emissiveIdx;
+
+    vec2 uvOffset;
+    vec4 albedoFactor;
+    vec4 normalFactor;
+    float metallicFactor;
+    float roughnessFactor;
+    float aoFactor;
+    float emissiveFactor;
+};
+
+const uint MAX_BONE_INFLUENCE =  4;
+struct Vertex
+{
+    vec3 pos;
+    vec3 col;
+    vec2 uv;
+    vec3 normal;
+    vec3 tangent;
+    vec3 biTangent;
+    int m_BoneIDs[MAX_BONE_INFLUENCE];
+    float m_Weights[MAX_BONE_INFLUENCE];
+};
+
+struct Object {
+    uint64_t vertexAddress;
+    uint64_t indexAddress;
+    uint64_t materialsRef;
+    uint64_t materialIndiciesRef;
+};
+
+
+layout(buffer_reference, scalar) buffer ObjectsBuffer{ Object objects[]; };
+layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
+layout(buffer_reference, scalar) buffer Indices { uint i[]; };
+layout(buffer_reference, scalar) buffer MaterialsBuffer{ Material m[]; };
+layout(buffer_reference, scalar) readonly buffer MatIndicesBuffer { uint i[]; };
+
+layout(push_constant) uniform PushConstant {
+    ObjectsBuffer objRef;
+    uint objIdx;
+} pc;
+
+
+void main() {
+    ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+    vec2 size = vec2(ubo.width, ubo.height);
+    vec2 uv = vec2(pixelCoords) / vec2(size - 1);
+
+    imageStore(outputImage, pixelCoords, vec4(uv.x, uv.y, 0.0, 1.0));
+}

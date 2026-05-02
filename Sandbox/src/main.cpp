@@ -17,8 +17,8 @@ int main()
         windowConfig.targetUpdateFPS = 360.0f;
 
         Engine app(windowConfig);
-        app.init();
         app.pushLayer(new SandBoxLayer("Sandbox Layer"));
+        app.init();
         app.start();
         app.run();
         app.close();

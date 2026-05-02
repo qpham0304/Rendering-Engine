@@ -9,11 +9,12 @@ class MeshManager : public Manager
 {
 public:
     struct MeshData {                   // handle to GPU buffers
-        uint32_t vertexBufferID;        // TODO: graphics pipeline is still using attribute
-        uint32_t indexBufferID;         // move to device buffer address completely
-        uint32_t matIndicesBDA_ID; // these are device buffer address
-        uint32_t vertexBDA_ID;
-        uint32_t indexBDA_ID;
+        uint32_t vertexBufferID = 0;        // TODO: graphics pipeline is still using attribute
+        uint32_t indexBufferID = 0;         // move to device buffer address completely
+        uint32_t matIndicesBDA_ID = 0; // these are device buffer address
+        uint32_t vertexBDA_ID = 0;
+        uint32_t indexBDA_ID = 0;
+        uint32_t blasBufferID = 0;
     };
 
     MeshManager();
@@ -24,7 +25,7 @@ public:
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
     virtual uint32_t loadMesh(Mesh& mesh);
-    const Mesh* getMesh(uint32_t id) const;
+    Mesh* getMesh(uint32_t id) const;
     MeshData getMeshData(uint32_t id) const;
     void bindMesh(uint32_t id);
 

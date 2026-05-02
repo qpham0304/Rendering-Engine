@@ -88,8 +88,7 @@ void EditorLayer::onAttach(LayerManager* manager)
 		SceneManager::getInstance().addScene("default scene");
 		Scene* scene = SceneManager::getInstance().getActiveScene();
 		if(scene) {
-			scene->loadScene("assets/data/default-scene.json");
-			// scene->loadScene("assets/data/level1-test.json");
+			// scene->loadScene("assets/data/default-scene.json");
 		}
 	}
 

@@ -96,7 +96,7 @@ void AlchemyAORendererVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFrame
 {
     TextureManagerVulkan::transitionImageLayout(
         cmd, aoMap->textureImage, VK_FORMAT_R16_SFLOAT, 
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,  1, 1, renderDeviceVulkan);
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
     
     TextureManagerVulkan::transitionImageLayout(
         cmd, positionImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,

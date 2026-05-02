@@ -20,8 +20,6 @@ layout(location = 4) out vec4 outEmissive;
 layout(location = 5) out vec4 outMotion;
 
 
-layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
-
 struct Material {
     uint albedoIdx;
     uint normalIdx;
@@ -59,19 +57,14 @@ struct Object {
     uint64_t materialIndiciesRef;
 };
 
+
+layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
+
+layout(buffer_reference, scalar) buffer ObjectsBuffer{ Object objects[]; };
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
 layout(buffer_reference, scalar) buffer Indices { uint i[]; };
-
-layout(buffer_reference, scalar) buffer ObjectsBuffer{ 
-    Object objects[];
-};
-
-layout(buffer_reference, scalar) buffer MaterialsBuffer{ 
-    Material m[];
-};
-layout(buffer_reference, scalar) readonly buffer MatIndicesBuffer { 
-    uint i[];
-};
+layout(buffer_reference, scalar) buffer MaterialsBuffer{ Material m[]; };
+layout(buffer_reference, scalar) readonly buffer MatIndicesBuffer { uint i[]; };
 
 layout(push_constant) uniform PushConstant {
     ObjectsBuffer objRef;

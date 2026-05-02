@@ -24,12 +24,22 @@ public:
     virtual uint32_t createVertexBuffer(const Vertex* vertices, int size) override;
     virtual uint32_t createIndexBuffer(const uint32_t* indices, int size) override;
     virtual uint32_t createBufferDeviceAddress(size_t bufferSize) override;
+    virtual uint32_t createAccelStructureBuffer(uint64_t maxSize, VkAccelerationStructureCreateInfoKHR& accelInfo);
     virtual void updateBufferDeviceAddress(uint32_t id, const void* src, size_t bufferSize) override;
     virtual BufferVulkan* getBuffer(uint32_t id) override;
 
+    virtual uint32_t createBufferObject(uint64_t maxSize);
+    //TODO:: turn this into an interface
+    uint32_t createBuffer2(
+        VkDeviceSize size,
+        VkBufferUsageFlags usage,
+        VkMemoryPropertyFlags properties
+    );
 
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     
+    uint32_t createInstanceBuffer(const VkAccelerationStructureInstanceKHR* instances, uint32_t numInstnaces);
+
     void createBuffer(
         VkDeviceSize size,
         VkBufferUsageFlags usage,

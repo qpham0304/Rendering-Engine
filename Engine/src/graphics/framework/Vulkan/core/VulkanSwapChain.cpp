@@ -19,9 +19,10 @@ void VulkanSwapChain::create()
 {
 	createSwapChain();
 	createImageViews();
-	createRenderPass();
 	createSyncObject();
 	createDepthResources();
+	createRenderPass();
+	createFramebuffers();
 }
 
 void VulkanSwapChain::destroy()
@@ -243,7 +244,7 @@ void VulkanSwapChain::recreateSwapchain()
 		AppWindow::waitEvents();
 	}
 
-	renderDevice.waitIdle();
+	vkDeviceWaitIdle(device);
 
 	cleanupSwapChain();
 

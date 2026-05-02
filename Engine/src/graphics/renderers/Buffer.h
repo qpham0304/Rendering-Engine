@@ -12,7 +12,7 @@ public:
 	void* getHandle() { return m_handle; }
 
 protected:
-	Buffer(uint32_t id) : m_id(id) {}
+	Buffer(uint32_t id = 0) : m_id(id) {}
 
 protected:
 	uint32_t m_id{ 0 };
