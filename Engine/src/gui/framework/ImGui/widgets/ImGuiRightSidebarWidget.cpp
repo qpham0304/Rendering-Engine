@@ -185,7 +185,7 @@ void ImGuiRightSidebarWidget::textureInspector()
                 changed |= ImGui::SliderFloat("Metallic", &materialDesc.metallic, 0.0f, 1.0f);
                 changed |= ImGui::SliderFloat("Roughness", &materialDesc.roughness, 0.0f, 1.0f);
                 changed |= ImGui::SliderFloat("AO", &materialDesc.ao, 0.0f, 1.0f);
-                changed |= ImGui::DragFloat("Emissive", &materialDesc.emissive, 0.1f, 0.0f, 10.0f);
+                changed |= ImGui::DragFloat("Emissive", &materialDesc.emissive, 0.1f, 0.0f, 255.0f);
 
                 changed |= ImGui::SliderFloat("Wave Speed", &waveSpeed, 0.0f, 10.0f);
                 changed |= ImGui::SliderFloat("Wave Amplitude", &waveAmplitude, 0.0f, 2.0f);

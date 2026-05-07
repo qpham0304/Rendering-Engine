@@ -57,7 +57,7 @@ struct Object {
 layout(location = 0) rayPayloadEXT RayPayload payload;
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT topLevelAS;
-layout(set = 0, binding = 1, rgba16f) uniform image2D outputImage;
+layout(set = 0, binding = 1, rgba32f) uniform image2D outputImage;
 layout(set = 0, binding = 2) uniform UniformBufferObject {
     mat4 view;
     mat4 prevViewProj;
@@ -69,7 +69,8 @@ layout(set = 0, binding = 2) uniform UniformBufferObject {
     float height;
     float frameSeed;
     int frameCount;
-    bool accumulate;
+    bool clear;
+    bool explicitPass;
 } ubo;
 
 layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
@@ -86,67 +87,7 @@ layout(push_constant) uniform PushConstant {
     uint objIdx;
 } pc;
 
-
-uint pcg_hash(uint inSeed) {
-    uint state = inSeed * 747796405u + 2891336453u;
-    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-    return (word >> 22u) ^ word;
-}
-
-float rnd(inout uint seed) {
-    seed = pcg_hash(seed);
-    return float(seed) * (1.0 / 4294967296.0);
-}
-
-// Function to get a random rayDir in a hemisphere
-vec3 samplingHemisphere(vec3 normal, inout uint seed) {
-    float phi = 2.0 * 3.14159265 * rnd(seed);
-    float cosTheta = rnd(seed);
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
-    
-    vec3 tangent = normalize(cross(normal, abs(normal.x) > 0.1 ? vec3(0, 1, 0) : vec3(1, 0, 0)));
-    vec3 bitangent = cross(normal, tangent);
-    
-    return tangent * (cos(phi) * sinTheta) + bitangent * (sin(phi) * sinTheta) + normal * cosTheta;
-}
-
-
-void getHitObjectData(out Material mat, out vec3 nrm)
-{
-    Object obj = pc.objRef.objects[payload.instanceIndex];
-    
-    // dereference addresses
-    Vertices vertices = Vertices(obj.vertexAddress);
-    Indices indices = Indices(obj.indexAddress);
-    MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
-    MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndiciesRef);
-  
-    // Use gl_PrimitiveID to access the triangle's vertices and material
-    uint i0 = indices.i[3 * payload.primitiveIndex + 0];    // flatten triangle hit indices
-    uint i1 = indices.i[3 * payload.primitiveIndex + 1];
-    uint i2 = indices.i[3 * payload.primitiveIndex + 2];
-
-    uint matIdx   = matIndices.i[payload.primitiveIndex];    // triangles material index
-    mat = materials.m[matIdx];                              // triangles material
-
-    // Vertex of the triangle (Vertex has pos, nrm, tex)
-    Vertex v0 = vertices.v[i0];
-    Vertex v1 = vertices.v[i1];
-    Vertex v2 = vertices.v[i2];
-
-    // Compute normal at hit position using the provided barycentric coordinates.
-    const vec3 bc = payload.bc;                                 // The barycentric coordinates of the hit point
-    nrm  = bc.x*v0.normal + bc.y*v1.normal + bc.z*v2.normal;    // Normal = combo of three vertex normals
-
-    // If the material has a texture, read texture and use as the point's diffuse color.
-    if (mat.albedoIdx != uint(0)) {
-        vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
-        mat.albedoFactor = texture(samplerImages[(mat.albedoIdx)], uv);
-    }
-}
-
-uint tea(uint val0, uint val1)
-{
+uint tea(uint val0, uint val1) {
   uint v0 = val0;
   uint v1 = val1;
   uint s0 = 0;
@@ -161,34 +102,107 @@ uint tea(uint val0, uint val1)
   return v0;
 }
 
-vec3 toTangentSpace(vec3 v, vec3 N) {
-    vec3 up = abs(N.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
-    vec3 tangentX = normalize(cross(up, N));
-    vec3 tangentY = cross(N, tangentX);
-
-    return v.x * tangentX + v.y * tangentY + v.z * N;
+uint lcg(inout uint prev) {
+    uint LCG_A = 1664525u;
+    uint LCG_C = 1013904223u;
+    prev       = (LCG_A * prev + LCG_C);
+    return prev & 0x00FFFFFF;
 }
 
-vec3 SampleLobe(vec3 N, float r1, float r2) {
-    float s = sqrt(1 - r1 * r1);
-    vec3 k = vec3(s*cos(r2), s*sin(r2), r1);
-    k = toTangentSpace(k, N);
-
-    return k;
+float rnd(inout uint prev) {
+    return (float(lcg(prev)) / float(0x01000000));
 }
 
-vec3 SampleBrdf(inout uint seed, in vec3 N) {
-    float r1 = sqrt(rnd(seed));
-    float r2 = float(2*PI*rnd(seed));
-    vec3 Wi = SampleLobe(N, r1, r2);
 
-    return normalize(Wi);
-    return Wi;
+// Cosine-weighted sampling
+// get a random rayDir in a hemisphere for diffuse material
+vec3 sampleHemisphere(vec3 normal, inout uint seed) {
+    float phi = 2.0 * 3.14159265 * rnd(seed);
+    float cosTheta = rnd(seed);
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    
+    vec3 tangent = normalize(cross(normal, abs(normal.x) > 0.1 ? vec3(0, 1, 0) : vec3(1, 0, 0)));
+    vec3 bitangent = cross(normal, tangent);
+    
+    return tangent * (cos(phi) * sinTheta) + bitangent * (sin(phi) * sinTheta) + normal * cosTheta;
 }
 
-float PdfBrdf(vec3 N, vec3 L) {
-    return max(dot(N, L), 0.0) / PI;
+
+void getHitObjectData(out Material mat, out vec3 nrm) {
+    Object obj = pc.objRef.objects[payload.instanceIndex];
+    
+    // dereference addresses
+    Vertices vertices = Vertices(obj.vertexAddress);
+    Indices indices = Indices(obj.indexAddress);
+    MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
+    MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndiciesRef);
+  
+    // Use gl_PrimitiveID to access the triangle's vertices and material
+    uint i0 = indices.i[3 * payload.primitiveIndex + 0];        // flatten triangle hit indices
+    uint i1 = indices.i[3 * payload.primitiveIndex + 1];
+    uint i2 = indices.i[3 * payload.primitiveIndex + 2];
+
+    uint matIdx   = matIndices.i[payload.primitiveIndex];       // triangles material index
+    mat = materials.m[matIdx];                                  // triangles material
+
+    // Vertex of the triangle (Vertex has pos, nrm, tex)
+    Vertex v0 = vertices.v[i0];
+    Vertex v1 = vertices.v[i1];
+    Vertex v2 = vertices.v[i2];
+
+    // Compute normal at hit position using the provided barycentric coordinates.
+    const vec3 bc = payload.bc;                                 // The barycentric coordinates of the hit point
+    nrm  = bc.x*v0.normal + bc.y*v1.normal + bc.z*v2.normal;    // Normal = combo of three vertex normals
+
+    // If the material has a texture, read texture and use as the point's diffuse color.
+    if (mat.albedoIdx != uint(0)) {
+        vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
+        mat.albedoFactor = texture(samplerImages[mat.albedoIdx], uv);
+    }
+    if (mat.metalnessIdx != uint(0)) {
+        vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
+        mat.metallicFactor = texture(samplerImages[mat.metalnessIdx], uv).b * mat.metallicFactor;
+    }
+    if (mat.roughnessIdx != uint(0)) {
+        vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
+        mat.roughnessFactor = texture(samplerImages[mat.roughnessIdx], uv).g * mat.roughnessFactor;
+    }
 }
+
+
+vec3 SampleTriangle(vec3 A, vec3 B, vec3 C) {
+    float b1 = rnd(payload.seed);
+    float b2 = rnd(payload.seed);
+    float b0 = 1 - b1 - b2;
+
+    if (b0 < 0.0) {   // outside means reflect back in
+        b1 = 1.0 - b1;
+        b2 = 1.0 - b2;
+        b0 = 1.0 - b1 - b2;
+    }
+
+    return b0*A + b1*B + b2*C;
+}
+
+
+vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness) {
+    float a = roughness * roughness;
+    float phi = 2.0 * PI * Xi.x;
+    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    
+    vec3 H;
+    H.x = cos(phi) * sinTheta;
+    H.y = sin(phi) * sinTheta;
+    H.z = cosTheta;
+    
+    vec3 up = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent = normalize(cross(up, N));
+    vec3 bitangent = cross(N, tangent);
+    
+    return normalize(tangent * H.x + bitangent * H.y + N * H.z);
+}
+
 
 // D factor
 float DistributionGGX(vec3 N, vec3 H, float alphaRoughness) {
@@ -203,10 +217,34 @@ float DistributionGGX(vec3 N, vec3 H, float alphaRoughness) {
     return D;
 }
 
+// cos(theta)/pi 
+// p for sampling hemisphere for diffuse material
+float pdfDiffused(vec3 N, vec3 L) {     
+    return max(dot(N, L), 0.0) / PI;
+}
+
+// (D * NdotH)/(4 * VdotH) 
+// p for importance sample GGX for specular material
+float pdfSpecular(vec3 N, vec3 V, vec3 L, float alphaRoughness) {
+    vec3 H = normalize(L + V);
+    float NdotH = max(dot(N, H), 0.0);
+    float VdotH = max(dot(V, H), 0.0);
+    float D = DistributionGGX(N, H, alphaRoughness);
+
+    float num = D * NdotH;
+    float denom = 4.0 * VdotH + 0.0001;
+
+    return num / (denom + 1e-7);
+}
+
 // F factor
 vec3 Fresnel(vec3 Ks, float d) {
     // return Ks + (1 - Ks) * pow(1 - abs(d), 5);
     return Ks + (1 - Ks) * pow(clamp(1.0 - d, 0.0, 1.0), 5);
+}
+
+vec3 FresnelRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 float SchlickGGX(float NdotV, float alphaRoughness) {
@@ -227,7 +265,7 @@ float GGXSmith(float NdotV, float NdotL, float alphaRoughness) {
     return GV * GL;
 }
 
-vec3 CookTorranceSpecular(vec3 N, vec3 V, vec3 L, vec3 Ks, float alphaRoughness) {
+vec3 CookTorranceSpecular(vec3 N, vec3 V, vec3 L, vec3 F, float alphaRoughness) {
     vec3 H = normalize(V + L);
     
     float NdotV = max(dot(N, V), 0.0);
@@ -236,7 +274,6 @@ vec3 CookTorranceSpecular(vec3 N, vec3 V, vec3 L, vec3 Ks, float alphaRoughness)
     float VdotH = max(dot(V, H), 0.0);
 
     float D = DistributionGGX(N, H, alphaRoughness);
-    vec3 F = Fresnel(Ks, VdotH);
     float G = GGXSmith(NdotV, NdotL, alphaRoughness);
 
     return (D * F * G) / (4.0 * NdotV * NdotL + 1e-5);
@@ -247,40 +284,40 @@ void main() {
     vec2 pixelUV = (vec2(pixelCoords) + 0.5) / vec2(gl_LaunchSizeEXT.xy);
     vec2 d = pixelUV * 2.0 - 1.0;
 
-    vec4 rayOrigin = ubo.invView * vec4(0, 0, 0, 1);
+    vec3 rayOrigin = vec3(ubo.invView * vec4(0.0, 0.0, 0.0, 1.0)); 
     vec4 target = ubo.invProj * vec4(d.x, d.y, 1.0, 1.0);
     vec3 rayDir = vec3(ubo.invView * vec4(normalize(target.xyz), 0));
-    uint seed = pcg_hash(pixelCoords.y * uint(ubo.width) + pixelCoords.x + pcg_hash(uint(ubo.frameSeed)));
     vec3 accumulation = vec3(0.0);
     vec3 throughput = vec3(1.0);
     
-    vec3 C = vec3(0,0,0);
-    vec3 W = vec3(1,1,1);   // path tracing algorithm accumulates a product of f/p weights in W.
+    vec3 C = vec3(0.0);
+    vec3 W = vec3(1.0);   // path tracing algorithm accumulates a product of f/p weights in W.
+    
     payload.seed = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, uint(ubo.frameSeed));
     
 
-    const int numBounces = 4;
-    for (int i = 0; i < 4; i++) {
+    const int numBounces = 32;
+    for (int i = 0; i < numBounces; i++) {
         payload.hit = 0;
 
-        // Fire the ray;  hit or miss shaders will be invoked, passing results back in the payload
-        traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 0, 0, rayOrigin.xyz, 0.001, rayDir, 10000.0, 0);
-        // traceRayEXT(
-        //     topLevelAS,           // tlas acceleration structure
-        //     gl_RayFlagsOpaqueEXT, // rayFlags
-        //     0xFF,                 // cullMask
-        //     0,                    // sbtRecordOffset for the hitgroups
-        //     0,                    // sbtRecordStride for the hitgroups
-        //     0,                    // missIndex
-        //     rayOrigin.xyz,            // ray origin
-        //     0.001,                // ray min range
-        //     rayDir,         // ray direction
-        //     10000.0,              // ray max range
-        //     0                     // payload (location = 0)
-        // );
+        // fire the ray; hit or miss shaders will be invoked, passing results back in the payload
+        traceRayEXT(
+            topLevelAS,             // tlas acceleration structure
+            gl_RayFlagsOpaqueEXT,   // rayFlags
+            0xFF,                   // cullMask
+            0,                      // sbtRecordOffset for the hitgroups
+            0,                      // sbtRecordStride for the hitgroups
+            0,                      // missIndex
+            rayOrigin,              // ray origin
+            0.001,                  // ray min range
+            rayDir,                 // ray direction
+            10000.0,                // ray max range
+            0                       // payload (location = 0)
+        );
 
+        // if missed sample the sky/cubemap or a simple gradient for energy consistency
         if (payload.hit == 0) {
-            // accumulation += vec3(0.1, 0.2, 0.3);
+            C += W * mix(vec3(0.05), vec3(0.1, 0.2, 0.3), max(rayDir.y, 0.0));
             break;
         }
         
@@ -314,52 +351,98 @@ void main() {
             const vec3 bc = payload.bc;                                 // The barycentric coordinates of the hit point
             nrm  = bc.x*v0.normal + bc.y*v1.normal + bc.z*v2.normal;    // Normal = combo of three vertex normals
 
-            vec3 emissiveColor = mat.albedoFactor.rgb;
-            // If the material has emissive texture
-            if (mat.emissiveIdx != uint(0)) {
+            vec3 emissiveColor = vec3(1.0);
+            if (mat.emissiveIdx != uint(0)) {   // If the material has emissive texture
                 vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
                 emissiveColor = texture(samplerImages[(mat.emissiveIdx)], uv).rgb;
             }
+            emissiveColor *= mat.emissiveFactor;
 
-            C += W * emissiveColor * mat.emissiveFactor;
-            // C += W * emissive * mat.emissiveFactor;// * 0.5; // 0.5 for explicit ray
+            // float explicitPassOn = ubo.explicitPass ? 0.5 : 1.0;    // 0.5 for explicit ray
+            C += W * emissiveColor * 1.0;    // not ideal to include albedo but include to control light color
+            break;
         }
 
         payload.hit = 1;
         
-        /*
+        // /*
         if(ubo.explicitPass) {
-        
+            
+            
         }
-        */
+        // */
+
+        float r1 = rnd(payload.seed);
+        float r2 = rnd(payload.seed);
 
         vec3 N = normalize(nrm);
-        vec3 Wi = SampleBrdf(payload.seed, N);             
-        vec3 Wo  = -rayDir;
+        vec3 Wo = -rayDir;
+        vec3 Wi;
+        float specWeight = mix(0.1, 0.9, mat.metallicFactor);
 
-        vec3 diffuse = mat.albedoFactor.xyz / PI;
-        vec3 F0 = vec3(0.04);               // simple approximation
-        vec3 specular = CookTorranceSpecular(N, Wi, Wo, F0, mat.roughnessFactor);
+        vec3 F0 = vec3(0.04); 
+        F0 = mix(F0, mat.albedoFactor.xyz, mat.metallicFactor);
+
+        float p;
+        if(rnd(payload.seed) < specWeight) {
+            vec3 H = ImportanceSampleGGX(vec2(r1, r2), N, mat.roughnessFactor);
+            Wi = reflect(-Wo, H);
+            p = pdfSpecular(N, Wo, Wi, mat.roughnessFactor) * specWeight;
+            
+            if (dot(N, Wi) <= 0.0) {
+                W = vec3(0.0);
+                break;
+            }
+        } else {
+            Wi = sampleHemisphere(N, payload.seed);
+            p = pdfDiffused(N, Wi) * (1.0 - specWeight);
+        }
+        
+        vec3 H = normalize(Wi + Wo);
+        vec3 F = FresnelRoughness(max(dot(H, Wo), 0.0), F0, mat.roughnessFactor);
+
+        // float p = (pSpec * specWeight) + (pDiff * (1.0 - specWeight));
+        // p = max(p, 0.0001);
+
+        vec3 kd = (vec3(1.0) - F) * (1.0 - mat.metallicFactor); 
+        vec3 diffuse = kd * (mat.albedoFactor.xyz / PI);
+        vec3 specular = CookTorranceSpecular(N, Wi, Wo, F, mat.roughnessFactor);
+
         vec3 f = (diffuse + specular) * max(dot(N, Wi), 0.0);
-        // vec3 f  = dot(N, Wi) * EvalBrdf(N, Wi, Wo, mat);
+        vec3 curW = f / p;
+        if (any(isnan(curW)) || any(isinf(curW))) {
+            break; 
+        }
+        W *= curW;
 
-        float p = PdfBrdf(N, Wi);    
+        // flip if win continue, if lose terminate
+        // use the brightness of the throughput as the survival probability
+        if (i > 3) {
+            float p_survive = clamp(max(W.r, max(W.g, W.b)), 0.05, 0.95);   // clamp to avoid 0% or 100% chance
+            
+            if (rnd(payload.seed) > p_survive) {
+                break; 
+            }
+            
+            // boosting the surviving ray to compensate lost energy
+            W /= p_survive; 
+        }
 
-        W *= f / p;                                      
-        rayOrigin = vec4(payload.hitPos + 0.001 * N, 1.0);
+        rayOrigin = payload.hitPos + 0.001 * N;
         rayDir = Wi;  
     }
+    
     vec4 old = imageLoad(outputImage, pixelCoords);
-    vec3 Ave = old.xyz;
-    float N = old.w;
+    vec3 ave = old.xyz;
+    float numSamples = old.w;
 
-    if(ubo.accumulate) {
-        Ave = vec3(0.0);
-        N = 0.0;        
-        imageStore(outputImage, pixelCoords, vec4(Ave, N));
+    if(ubo.clear) {
+        ave = vec3(0.0);
+        numSamples = 0.0;        
+        imageStore(outputImage, pixelCoords, vec4(ave, numSamples));
     }
 
-    Ave += (C - Ave)/(N + 1);
-    N += 1;
-    imageStore(outputImage, pixelCoords, vec4(Ave, N));
+    ave += (C - ave)/(numSamples + 1);
+    numSamples += 1;
+    imageStore(outputImage, pixelCoords, vec4(ave, numSamples));
 }

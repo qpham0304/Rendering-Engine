@@ -44,7 +44,7 @@ bool SandBoxLayer::init()
     scene->loadScene("assets/data/Level1-test.json");
     // scene->loadScene("assets/data/default-scene.json");
 
-    const int numLights = 10;
+    const int numLights = 1;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(-numLights, numLights);
@@ -66,10 +66,10 @@ bool SandBoxLayer::init()
         );
 
         materialDesc.emissiveIDs.push_back(
-            textureManager->loadTexture("assets/textures/pbr/gold/albedo.png", 1, false)
+            textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
         );
         // these need to be set to have emision
-        materialDesc.emissive = 1.0f;
+        materialDesc.emissive = 1.0;
 
         Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
         mesh.materialID = materialManager->createMaterial(materialDesc);

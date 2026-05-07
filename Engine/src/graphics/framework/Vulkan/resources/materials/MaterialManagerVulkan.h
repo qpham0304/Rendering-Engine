@@ -29,7 +29,7 @@ public:
 		float metallic;
 		float roughness;
 		float ao;
-		float emissive ;
+		float emissive;
     };
 
 public:

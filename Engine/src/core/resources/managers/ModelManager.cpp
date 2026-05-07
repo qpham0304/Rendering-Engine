@@ -227,7 +227,7 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     materialDesc.uv = glm::vec2(1.0f, 1.0f);
     materialDesc.albedo = glm::vec4(1.0);
     materialDesc.normal = glm::vec4(0.0);
-    materialDesc.metallic  = 0.0f;
+    materialDesc.metallic  = 0.001f;
     materialDesc.roughness = 0.75f;
     materialDesc.ao        = 1.0f;
     materialDesc.emissive  = 0.0f;

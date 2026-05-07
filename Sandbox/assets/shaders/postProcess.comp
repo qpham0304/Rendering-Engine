@@ -8,10 +8,10 @@
 
 layout (local_size_x = 16, local_size_y = 16) in;
 
-layout (set = 0, binding = 0, rgba16f) uniform image2D outputImage;
-// layout (set = 0, binding = 1) uniform sampler2D inputImage;
+layout (set = 0, binding = 0, rgba32f) uniform readonly image2D inputImage;
+layout (set = 0, binding = 1, rgba32f) uniform image2D outputImage;
 
-layout(set = 0, binding = 1)  uniform UniformBufferObject {
+layout(set = 0, binding = 2)  uniform UniformBufferObject {
     mat4 view;
     mat4 prevViewProj;
     mat4 proj;
@@ -72,6 +72,7 @@ layout(buffer_reference, scalar) readonly buffer MatIndicesBuffer { uint i[]; };
 layout(push_constant) uniform PushConstant {
     ObjectsBuffer objRef;
     uint objIdx;
+    uint bluenoiseIdx;
 } pc;
 
 
@@ -80,5 +81,9 @@ void main() {
     vec2 size = vec2(ubo.width, ubo.height);
     vec2 uv = vec2(pixelCoords) / vec2(size - 1);
 
-    imageStore(outputImage, pixelCoords, vec4(uv.x, uv.y, 0.0, 1.0));
+    vec4 color = imageLoad(inputImage, pixelCoords);
+    color = color / (color + vec4(1.0));
+    color = pow(color, vec4(1.0 / 2.2));
+
+    imageStore(outputImage, pixelCoords, color);
 }

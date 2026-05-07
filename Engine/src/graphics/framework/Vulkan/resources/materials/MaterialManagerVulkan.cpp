@@ -90,7 +90,7 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 	MaterialVulkan& material = materials[m_ids];
 
 	updateMaterial(m_ids, materialDesc);
-	
+
 	GPUMaterialData materialGPU {};
 	materialGPU.albedoIdx = material.albedoID;
 	materialGPU.normalIdx = material.normalID;
@@ -98,6 +98,13 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 	materialGPU.roughnessIdx = material.roughnessID;
 	materialGPU.aoIdx = material.aoID;
 	materialGPU.emissiveIdx = material.emissiveID;
+	materialGPU.uv = material.uv;
+	materialGPU.albedo = material.albedo;
+	materialGPU.normal = material.normal;
+	materialGPU.metallic = material.metallic;
+	materialGPU.roughness = material.roughness;
+	materialGPU.ao = material.ao;
+	materialGPU.emissive = material.emissive;
 	materialsGPU[m_ids] = materialGPU;
 
     return _assignID();

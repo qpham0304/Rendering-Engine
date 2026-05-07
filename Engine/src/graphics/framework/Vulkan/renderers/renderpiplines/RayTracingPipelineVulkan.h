@@ -18,6 +18,7 @@ private:
 	struct PushConstant {
 		uint64_t objectsRef;
 		uint32_t objectIdx;
+		uint32_t bluenoiseIdx;
 	};
 
 	struct ObjectDesc {
@@ -38,7 +39,8 @@ private:
 		float height;
 		float frameSeed;
 		int frameCount;
-		bool accumulate;
+		bool clear;
+		bool explicitPass;
 	};
 
 	struct StorageBufferObject {
@@ -65,13 +67,14 @@ public:
 	void writeRayTracing(VkCommandBuffer cmd, uint32_t currentFrame);
 
 public:	//TODO: make private once done testing	
-	const int MAX_INSTANCES = 1000;	//keep at low, no VMA so 10k instances of scattered data is too much to handle
+	const int MAX_INSTANCES = 3000;
 	const int numInstances = 1;
 	const int numLights = 1000;
 	bool showGui{ true };
 	uint32_t frameCounter { 0 };
 	bool m_tlasInitialized { false };
-	bool accumulate { false };
+	bool clear { false };
+	bool explicitPass { false };
 
 	
 	std::vector<UniformBufferVulkan*> uniformbuffersList;

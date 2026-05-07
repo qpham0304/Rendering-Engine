@@ -66,9 +66,17 @@ void OrbitCamera::onUpdate() {
     
     yaw += (targetYaw - yaw) * interpolationFactor;
     pitch += (targetPitch - pitch) * interpolationFactor;
-
     distance += (targetDistance - distance) * interpolationFactor;
     target += (targetCenter - target) * interpolationFactor;
+
+    const float EPSILON = 0.001f;
+    bool isStillSmoothing = 
+        glm::abs(targetYaw - yaw) > EPSILON ||
+        glm::abs(targetPitch - pitch) > EPSILON ||
+        glm::abs(targetDistance - distance) > EPSILON ||
+        glm::distance(targetCenter, target) > EPSILON;
+
+    cameraMove = isStillSmoothing;
 
     if (targetPitch > 89.0f) targetPitch = 89.0f;
     if (targetPitch < -89.0f) targetPitch = -89.0f;
@@ -107,7 +115,6 @@ bool OrbitCamera::processMouse() {
     bool leftPressed = AppWindow::isMousePressed(MOUSE_BUTTON_LEFT);
     
     if (leftPressed) {
-        cameraMove = true;
         double x, y;
         AppWindow::getCursorPos(&x, &y);
         float xpos = static_cast<float>(x);
@@ -125,7 +132,6 @@ bool OrbitCamera::processMouse() {
         return true;
     } 
     else {
-        cameraMove = false;
         firstClick = true; 
         return false;
     }
@@ -193,7 +199,6 @@ bool OrbitCamera::processKeyboard()
         resetCamera();
         isPressing = true;
     }
-    cameraMove = isPressing;
     return isPressing;
 }
 

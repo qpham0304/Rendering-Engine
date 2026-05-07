@@ -85,11 +85,23 @@ bool RaytracingPipelineVulkan::init(WindowConfig config)
     EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_2) {
-			accumulate = !accumulate;
+			explicitPass = !explicitPass;
+		}
+    });
+    EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
+		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
+		if (keyPressedEvent.keyCode == KEY_3) {
+			clear = !clear;
 		}
     });
 
     ubo.frameCount = 0;
+
+    uint32_t imageID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
+    textureManagerVulkan->registerTextureSampler(imageID);
+
+    pushConstant.bluenoiseIdx = imageID;
+
 
 	return true;
 }
@@ -145,7 +157,8 @@ void RaytracingPipelineVulkan::render(Camera& camera)
     ubo.height = AppWindow::getHeight();
     ubo.frameSeed = rand() % 32768;
     ubo.frameCount += 1;
-    ubo.accumulate = camera.isMoving();
+    ubo.clear = camera.isMoving() || clear;
+    ubo.explicitPass = explicitPass;
 	
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
@@ -174,14 +187,19 @@ void RaytracingPipelineVulkan::render(Camera& camera)
 	writeRayTracing(cmd, currentFrame);
 	writePostProcess(cmd, currentFrame);
 
-	rendererManagerVulkan->setDisplayImage(rayTraceImage);
-	// rendererManagerVulkan->setDisplayImage(postProcessImage);
+	// rendererManagerVulkan->setDisplayImage(rayTraceImage);
+	rendererManagerVulkan->setDisplayImage(postProcessImage);
 }
 
 void RaytracingPipelineVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t currentFrame)
 {
 	TextureManagerVulkan::transitionImageLayout(
-		cmd, postProcessImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
+	);
+
+	TextureManagerVulkan::transitionImageLayout(
+		cmd, postProcessImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
 	);
 	
@@ -190,13 +208,25 @@ void RaytracingPipelineVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t cu
     uint32_t groupY = (swapchain.swapChainExtent.height + 15) / 16;
 
 	postProcessPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
-	auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(postProcessSetID);
+	auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(postProcessSetID)[currentFrame];
+	auto bindlessSet = descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0];
+	std::vector<VkDescriptorSet> sets = { descriptorSet, bindlessSet };
+
 	vkCmdPushConstants(cmd, postProcessPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushConstant), &pushConstant);
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, postProcessPipeline->pipelineLayout, 0, 1, &descriptorSet[currentFrame], 0, nullptr);
+    vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_COMPUTE, 
+        postProcessPipeline->pipelineLayout, 0, 
+        static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr
+    );
     vkCmdDispatch(cmd, groupX, groupY, 1);
 
 	TextureManagerVulkan::transitionImageLayout(
-		cmd, postProcessImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+		cmd, postProcessImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
+		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
+	);
+    
+	TextureManagerVulkan::transitionImageLayout(
+		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
 	);
 }
@@ -204,7 +234,7 @@ void RaytracingPipelineVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t cu
 void RaytracingPipelineVulkan::writeRayTracing(VkCommandBuffer cmd, uint32_t currentFrame)
 {
 	TextureManagerVulkan::transitionImageLayout(
-		cmd, rayTraceImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
 	);
 
@@ -227,7 +257,7 @@ void RaytracingPipelineVulkan::writeRayTracing(VkCommandBuffer cmd, uint32_t cur
 	vkCmdTraceRaysKHR(cmd, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, ubo.width, ubo.height, 1);
 
 	TextureManagerVulkan::transitionImageLayout(
-		cmd, rayTraceImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
 	);
 }
@@ -247,7 +277,7 @@ void RaytracingPipelineVulkan::_createResources()
         TextureManagerVulkan::createImage(
             swapchain.swapChainExtent.width,
             swapchain.swapChainExtent.height,
-            VK_FORMAT_R16G16B16A16_SFLOAT,
+            VK_FORMAT_R32G32B32A32_SFLOAT,
             VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -260,7 +290,7 @@ void RaytracingPipelineVulkan::_createResources()
         TextureManagerVulkan::createImageView(
             texture->textureImage,
             texture->textureImageView,
-            VK_FORMAT_R16G16B16A16_SFLOAT,
+            VK_FORMAT_R32G32B32A32_SFLOAT,
             VK_IMAGE_ASPECT_COLOR_BIT,
             1,
             renderDeviceVulkan->device
@@ -291,7 +321,7 @@ void RaytracingPipelineVulkan::_createResources()
 
 		VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 		TextureManagerVulkan::transitionImageLayout(
-			cmd, texture->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+			cmd, texture->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
 			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
 		);
 		renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
@@ -339,7 +369,7 @@ void RaytracingPipelineVulkan::_createDescriptor()
 		{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
 	};
     std::vector<VkDescriptorPoolSize> rtPoolSizes {
-		{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1 },
+		{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, frameCount * 1 },
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
 	};
@@ -350,10 +380,11 @@ void RaytracingPipelineVulkan::_createDescriptor()
 	// post process pipeline
 	std::vector<VkDescriptorSetLayoutBinding> postBindings {
 		{ 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-		{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 	};
     std::vector<VkDescriptorPoolSize> postPoolSizes {
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 2},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
 	};
     postProcessLayoutID = descriptorManagerVulkan->createLayout(postBindings);
@@ -367,6 +398,7 @@ void RaytracingPipelineVulkan::_createDescriptor()
 
 void RaytracingPipelineVulkan::_updateDescriptor(uint32_t index)
 {	
+	VkDescriptorImageInfo inputImageInfo{};
 	VkDescriptorImageInfo outputImageInfo{};
 	VkDescriptorBufferInfo bufferInfo{};
 	VkWriteDescriptorSetAccelerationStructureKHR descASInfo{};
@@ -396,6 +428,11 @@ void RaytracingPipelineVulkan::_updateDescriptor(uint32_t index)
 	
 	//post process
 	auto postDescriptorSets = descriptorManagerVulkan->getDescriptorSet(postProcessSetID);
+
+    inputImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	inputImageInfo.imageView = rayTraceImage->textureImageView;
+	inputImageInfo.sampler = rayTraceImage->textureSampler;
+
 	outputImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 	outputImageInfo.imageView = postProcessImage->textureImageView;
 	outputImageInfo.sampler = postProcessImage->textureSampler;
@@ -405,8 +442,9 @@ void RaytracingPipelineVulkan::_updateDescriptor(uint32_t index)
     bufferInfo.range = VK_WHOLE_SIZE;
 
 	std::vector<VkWriteDescriptorSet> writePostProcess;
-	descriptorManagerVulkan->writeStorageImage(&writePostProcess, postDescriptorSets[index], 0, outputImageInfo);
-	descriptorManagerVulkan->writeUniform(&writePostProcess, postDescriptorSets[index], 1, bufferInfo);
+	descriptorManagerVulkan->writeStorageImage(&writePostProcess, postDescriptorSets[index], 0, inputImageInfo);
+	descriptorManagerVulkan->writeStorageImage(&writePostProcess, postDescriptorSets[index], 1, outputImageInfo);
+	descriptorManagerVulkan->writeUniform(&writePostProcess, postDescriptorSets[index], 2, bufferInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writePostProcess);
 }
 
@@ -485,10 +523,11 @@ BlasInput RaytracingPipelineVulkan::_toVkGeometry(uint32_t meshID) {
 
 void RaytracingPipelineVulkan::_createAccelStructure()
 {
+    Timer timer("acceleration strucure build time", true);
 	auto meshIDs = meshManager->listIDs();
     // BLAS - Storing each primitive in a geometry
     std::vector<BlasInput> allBlas;
-    allBlas.reserve(objects.size());
+    allBlas.reserve(meshIDs.size());
 
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
     // tlas.reserve(instanceData.size());
@@ -496,7 +535,7 @@ void RaytracingPipelineVulkan::_createAccelStructure()
 
     for (const auto& id : meshIDs)  {
         BlasInput blas = _toVkGeometry(id);
-        allBlas.emplace_back(blas); 
+        allBlas.emplace_back(blas);
 	}
 
     m_rtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
