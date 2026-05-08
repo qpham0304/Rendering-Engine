@@ -9,9 +9,9 @@ class MeshManager : public Manager
 {
 public:
     struct MeshData {                   // handle to GPU buffers
-        uint32_t vertexBufferID = 0;        // TODO: graphics pipeline is still using attribute
-        uint32_t indexBufferID = 0;         // move to device buffer address completely
-        uint32_t matIndicesBDA_ID = 0; // these are device buffer address
+        uint32_t vertexBufferID = 0;    // TODO: graphics pipeline is still using attribute
+        uint32_t indexBufferID = 0;     // move to device buffer address completely
+        uint32_t matIndicesBDA_ID = 0;  // these are device buffer address
         uint32_t vertexBDA_ID = 0;
         uint32_t indexBDA_ID = 0;
         uint32_t blasBufferID = 0;

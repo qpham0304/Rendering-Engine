@@ -10,10 +10,12 @@ struct RayPayload {
     int primitiveIndex;
     uint hit;
     uint seed;
+    uint isShadowed;
 };
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
     payload.hit = 0;
+    payload.isShadowed = 0;
 }

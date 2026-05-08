@@ -19,6 +19,7 @@ private:
 		uint64_t objectsRef;
 		uint32_t objectIdx;
 		uint32_t bluenoiseIdx;
+		uint32_t explicitPass;
 	};
 
 	struct ObjectDesc {
@@ -40,19 +41,21 @@ private:
 		float frameSeed;
 		int frameCount;
 		bool clear;
-		bool explicitPass;
 	};
 
 	struct StorageBufferObject {
 		glm::mat4 model;
 	};
 
-	struct LightSSBO {
-		alignas(16) glm::vec4 color;
-		alignas(16) glm::vec4 position;
-		alignas(4) float intensity;
+	struct alignas(16) LightSSBO {
+		glm::vec4 v0;            // 16 bytes (offset 16)
+		glm::vec4 v1;            // 16 bytes (offset 32)
+		glm::vec4 v2;            // 16 bytes (offset 48)
+		uint32_t instanceIdx;    // 4 bytes  (offset 64)
+		uint32_t triangleCount;  // 4 bytes  (offset 68)
+		uint32_t padding1;       // 4 bytes  (offset 72)
+		uint32_t padding2;       // 4 bytes  (offset 76)
 	};
-
 
 public:
     RaytracingPipelineVulkan();
@@ -83,6 +86,8 @@ public:	//TODO: make private once done testing
 	std::vector<StorageBufferVulkan*> lightStoragebuffers;
 	std::vector<StorageBufferObject> instanceData;
 	std::vector<StorageBufferObject> instanceDataPrev;
+
+
 	PushConstant pushConstant;
 	std::vector<LightSSBO> lights;
 

@@ -24,6 +24,7 @@
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
+#include <glm/gtx/string_cast.hpp>
 
 RaytracingPipelineVulkan::RaytracingPipelineVulkan() 
 	: RendererVulkan("RaytracingPipelineVulkan")
@@ -54,7 +55,7 @@ bool RaytracingPipelineVulkan::init(WindowConfig config)
 	auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(objDeviceAddressBufferID));
 	objDeviceAddress = deviceAddress->getReference();
 
-	lights.reserve(numLights);
+	lights.reserve(MAX_INSTANCES);
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
@@ -85,13 +86,15 @@ bool RaytracingPipelineVulkan::init(WindowConfig config)
     EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_2) {
-			explicitPass = !explicitPass;
+			clear = !clear;
 		}
     });
+
+    
     EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
-		if (keyPressedEvent.keyCode == KEY_3) {
-			clear = !clear;
+		if (keyPressedEvent.keyCode == KEY_L) {
+			explicitPass = !explicitPass;
 		}
     });
 
@@ -130,7 +133,7 @@ void RaytracingPipelineVulkan::render(Camera& camera)
 	}
 
 	instanceDataPrev = std::move(instanceData);
-	instanceData.clear(); 
+	// instanceData.clear(); 
 	// objects.clear();
     // lights.clear();
 
@@ -158,7 +161,6 @@ void RaytracingPipelineVulkan::render(Camera& camera)
     ubo.frameSeed = rand() % 32768;
     ubo.frameCount += 1;
     ubo.clear = camera.isMoving() || clear;
-    ubo.explicitPass = explicitPass;
 	
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
@@ -173,16 +175,17 @@ void RaytracingPipelineVulkan::render(Camera& camera)
 	size_t buffersize = MAX_INSTANCES * sizeof(ObjectDesc);
 	bufferManagerVulkan->updateBufferDeviceAddress(objDeviceAddressBufferID, objects.data(), buffersize);
 
-	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
-	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
-	
 
 	lastViewProj = ubo.proj * ubo.view;
 
 	pushConstant.objectsRef = objDeviceAddress; 
 	pushConstant.objectIdx  = 0;//objectsIndex;
+    pushConstant.explicitPass = explicitPass ? 1 : 0;
 
 	_updateTlas();
+    
+	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
+	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 
 	writeRayTracing(cmd, currentFrame);
 	writePostProcess(cmd, currentFrame);
@@ -367,11 +370,13 @@ void RaytracingPipelineVulkan::_createDescriptor()
 		{ 0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
 		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
 		{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
+		{ 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
 	};
     std::vector<VkDescriptorPoolSize> rtPoolSizes {
 		{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, frameCount * 1 },
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 1},
 	};
     raytraceLayoutID = descriptorManagerVulkan->createLayout(rtBindings);
     raytracePoolID = descriptorManagerVulkan->createPool(rtPoolSizes, frameCount);
@@ -401,6 +406,7 @@ void RaytracingPipelineVulkan::_updateDescriptor(uint32_t index)
 	VkDescriptorImageInfo inputImageInfo{};
 	VkDescriptorImageInfo outputImageInfo{};
 	VkDescriptorBufferInfo bufferInfo{};
+    VkDescriptorBufferInfo storageBufferInfo{};
 	VkWriteDescriptorSetAccelerationStructureKHR descASInfo{};
 
 	//ray tracing
@@ -415,6 +421,9 @@ void RaytracingPipelineVulkan::_updateDescriptor(uint32_t index)
     bufferInfo.offset = 0;
     bufferInfo.range = VK_WHOLE_SIZE;
 
+    storageBufferInfo.buffer = static_cast<VkBuffer>(*lightStoragebuffers[index]);
+    storageBufferInfo.offset = 0;
+    storageBufferInfo.range = VK_WHOLE_SIZE;
 	
 	descASInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
     descASInfo.accelerationStructureCount = 1;
@@ -424,6 +433,7 @@ void RaytracingPipelineVulkan::_updateDescriptor(uint32_t index)
 	descriptorManagerVulkan->writeAccelStruct(&writesRayTrace, rtDescriptorSets[index], 0, rtBindings, descASInfo);
 	descriptorManagerVulkan->writeStorageImage(&writesRayTrace, rtDescriptorSets[index], 1, outputImageInfo);
 	descriptorManagerVulkan->writeUniform(&writesRayTrace, rtDescriptorSets[index], 2, bufferInfo);
+	descriptorManagerVulkan->writeStorage(&writesRayTrace, rtDescriptorSets[index], 3, storageBufferInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writesRayTrace);
 	
 	//post process
@@ -533,6 +543,8 @@ void RaytracingPipelineVulkan::_createAccelStructure()
     // tlas.reserve(instanceData.size());
     tlas.reserve(MAX_INSTANCES);
 
+    lights.clear();
+
     for (const auto& id : meshIDs)  {
         BlasInput blas = _toVkGeometry(id);
         allBlas.emplace_back(blas);
@@ -574,6 +586,37 @@ void RaytracingPipelineVulkan::_createAccelStructure()
                 inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
                 
                 tlas.push_back(inst);
+
+				Mesh* mesh = meshManager->getMesh(meshID);
+                MaterialDesc mat = materialManager->getMaterial(mesh->materialID);
+                if (mat.emissive > 0.01f) {
+                    LightSSBO light{};
+                    
+                    // 1. Setup Color and Intensity (using the .a for intensity as discussed)
+                    // light.color = mat.albedo;
+                    // light.color.a = mat.emissive; 
+
+                    // 2. Get the Model Matrix to transform vertices to World Space
+                    glm::mat4 modelMatrix = transform.getModelMatrix();
+
+                    // 3. Pick a triangle (usually the first one, index 0, 1, 2)
+                    // We fetch the local positions from your mesh data
+                    glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
+                    glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
+                    glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
+
+                    // 4. Transform local vertices to World Space
+                    light.v0 = modelMatrix * glm::vec4(localV0, 1.0f);
+                    light.v1 = modelMatrix * glm::vec4(localV1, 1.0f);
+                    light.v2 = modelMatrix * glm::vec4(localV2, 1.0f);
+
+                    // 5. Meta-data
+                    light.instanceIdx = objectsIndex; 
+                    // Divide by 3 if you want the actual triangle count, not index count
+                    light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
+                    
+                    lights.push_back(light);
+                }
                 objectsIndex++;
             }
         }
@@ -710,7 +753,8 @@ void RaytracingPipelineVulkan::_updateTlas() {
 	if(!scene){
 		m_logger->error("No scene to render");
 	}
-	
+	lights.clear();
+    
     auto entities = scene->getEntitiesWith<TransformComponent, ModelComponent>();
     int objectsIndex = 0;
 
@@ -737,6 +781,38 @@ void RaytracingPipelineVulkan::_updateTlas() {
             inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
             
             tlas.push_back(inst);
+
+            
+            Mesh* mesh = meshManager->getMesh(meshID);
+            MaterialDesc mat = materialManager->getMaterial(mesh->materialID);
+            if (mat.emissive > 0.01f) {
+                LightSSBO light{};
+                
+                // 1. Setup Color and Intensity (using the .a for intensity as discussed)
+                // light.color = mat.albedo;
+                // light.color.a = mat.emissive; 
+
+                // 2. Get the Model Matrix to transform vertices to World Space
+                glm::mat4 modelMatrix = transform.getModelMatrix();
+
+                // 3. Pick a triangle (usually the first one, index 0, 1, 2)
+                // We fetch the local positions from your mesh data
+                glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
+                glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
+                glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
+
+                // 4. Transform local vertices to World Space
+                light.v0 = modelMatrix * glm::vec4(localV0, 1.0f);
+                light.v1 = modelMatrix * glm::vec4(localV1, 1.0f);
+                light.v2 = modelMatrix * glm::vec4(localV2, 1.0f);
+
+                // 5. Meta-data
+                light.instanceIdx = objectsIndex; 
+                // Divide by 3 if you want the actual triangle count, not index count
+                light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
+                
+                lights.push_back(light);
+            }
             objectsIndex++;
         }
     }

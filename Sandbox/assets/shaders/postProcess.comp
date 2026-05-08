@@ -76,13 +76,23 @@ layout(push_constant) uniform PushConstant {
 } pc;
 
 
+vec3 aces(vec3 x) {
+  const float a = 2.51;
+  const float b = 0.03;
+  const float c = 2.43;
+  const float d = 0.59;
+  const float e = 0.14;
+  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
 void main() {
     ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
     vec2 size = vec2(ubo.width, ubo.height);
     vec2 uv = vec2(pixelCoords) / vec2(size - 1);
 
     vec4 color = imageLoad(inputImage, pixelCoords);
-    color = color / (color + vec4(1.0));
+    // color = color / (color + vec4(1.0));
+    color = vec4(aces(color.xyz), 1.0);
     color = pow(color, vec4(1.0 / 2.2));
 
     imageStore(outputImage, pixelCoords, color);
