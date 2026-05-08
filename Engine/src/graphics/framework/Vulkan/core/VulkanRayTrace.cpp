@@ -141,7 +141,7 @@ void RaytracingBuilderKHR::buildBlas(const std::vector<BlasInput>& input, VkBuil
     // Batching creation/compaction of BLAS to allow staying in restricted amount of memory
     std::vector<uint32_t> indices;  // Indices of the BLAS to create
     VkDeviceSize batchSize{0};
-    VkDeviceSize batchLimit{256'000'000};  // 256 MB
+    VkDeviceSize batchLimit{512'000'000};  // 256 MB
     for(uint32_t idx = 0; idx < nbBlas; idx++) {
         indices.push_back(idx);
         batchSize += buildAs[idx].sizeInfo.accelerationStructureSize;

@@ -80,7 +80,7 @@ uint32_t MeshManager::loadMesh(Mesh& mesh)
             matCount * sizeof(uint32_t)
         );
     } else {
-        // manually loaded Mesh need to be processed by filling with the mesh's designated material ID for all triangles
+        // manually loaded Mesh might need to be processed by filling with the mesh's designated material ID for all triangles
         // ensures every triangle points to mesh.materialID... only took 2 days to fix this #despair
         std::vector<uint32_t> dummyIndices(triangleCount, m_meshes[m_ids]->materialID); 
         m_bufferManager->updateBufferDeviceAddress(

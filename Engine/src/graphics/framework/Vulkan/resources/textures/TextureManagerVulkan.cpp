@@ -87,7 +87,7 @@ void TextureManagerVulkan::destroy(uint32_t id)
 uint32_t TextureManagerVulkan::loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture)
 {
 	if (m_textureData.find(path.data()) != m_textureData.end()) {
-		return m_textureData[path.data()];
+		return m_textureData.at(path.data());
 	}
 
 	_loadTexture(path, mipLevels, isDataTexture);

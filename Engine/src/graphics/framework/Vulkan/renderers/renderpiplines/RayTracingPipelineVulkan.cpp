@@ -24,6 +24,7 @@
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
+#include <glm/gtx/string_cast.hpp>
 
 RaytracingPipelineVulkan::RaytracingPipelineVulkan() 
 	: RendererVulkan("RaytracingPipelineVulkan")
@@ -54,7 +55,7 @@ bool RaytracingPipelineVulkan::init(WindowConfig config)
 	auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(objDeviceAddressBufferID));
 	objDeviceAddress = deviceAddress->getReference();
 
-	lights.reserve(numLights);
+	lights.reserve(MAX_INSTANCES);
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
@@ -85,11 +86,25 @@ bool RaytracingPipelineVulkan::init(WindowConfig config)
     EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_2) {
-			accumulate = !accumulate;
+			clear = !clear;
+		}
+    });
+
+    
+    EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
+		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
+		if (keyPressedEvent.keyCode == KEY_L) {
+			explicitPass = !explicitPass;
 		}
     });
 
     ubo.frameCount = 0;
+
+    uint32_t imageID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
+    textureManagerVulkan->registerTextureSampler(imageID);
+
+    pushConstant.bluenoiseIdx = imageID;
+
 
 	return true;
 }
@@ -118,7 +133,7 @@ void RaytracingPipelineVulkan::render(Camera& camera)
 	}
 
 	instanceDataPrev = std::move(instanceData);
-	instanceData.clear(); 
+	// instanceData.clear(); 
 	// objects.clear();
     // lights.clear();
 
@@ -145,7 +160,7 @@ void RaytracingPipelineVulkan::render(Camera& camera)
     ubo.height = AppWindow::getHeight();
     ubo.frameSeed = rand() % 32768;
     ubo.frameCount += 1;
-    ubo.accumulate = camera.isMoving();
+    ubo.clear = camera.isMoving() || clear;
 	
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
@@ -160,28 +175,34 @@ void RaytracingPipelineVulkan::render(Camera& camera)
 	size_t buffersize = MAX_INSTANCES * sizeof(ObjectDesc);
 	bufferManagerVulkan->updateBufferDeviceAddress(objDeviceAddressBufferID, objects.data(), buffersize);
 
-	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
-	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
-	
 
 	lastViewProj = ubo.proj * ubo.view;
 
 	pushConstant.objectsRef = objDeviceAddress; 
 	pushConstant.objectIdx  = 0;//objectsIndex;
+    pushConstant.explicitPass = explicitPass ? 1 : 0;
 
 	_updateTlas();
+    
+	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
+	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 
 	writeRayTracing(cmd, currentFrame);
 	writePostProcess(cmd, currentFrame);
 
-	rendererManagerVulkan->setDisplayImage(rayTraceImage);
-	// rendererManagerVulkan->setDisplayImage(postProcessImage);
+	// rendererManagerVulkan->setDisplayImage(rayTraceImage);
+	rendererManagerVulkan->setDisplayImage(postProcessImage);
 }
 
 void RaytracingPipelineVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t currentFrame)
 {
 	TextureManagerVulkan::transitionImageLayout(
-		cmd, postProcessImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
+	);
+
+	TextureManagerVulkan::transitionImageLayout(
+		cmd, postProcessImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
 	);
 	
@@ -190,13 +211,25 @@ void RaytracingPipelineVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t cu
     uint32_t groupY = (swapchain.swapChainExtent.height + 15) / 16;
 
 	postProcessPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
-	auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(postProcessSetID);
+	auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(postProcessSetID)[currentFrame];
+	auto bindlessSet = descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0];
+	std::vector<VkDescriptorSet> sets = { descriptorSet, bindlessSet };
+
 	vkCmdPushConstants(cmd, postProcessPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushConstant), &pushConstant);
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, postProcessPipeline->pipelineLayout, 0, 1, &descriptorSet[currentFrame], 0, nullptr);
+    vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_COMPUTE, 
+        postProcessPipeline->pipelineLayout, 0, 
+        static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr
+    );
     vkCmdDispatch(cmd, groupX, groupY, 1);
 
 	TextureManagerVulkan::transitionImageLayout(
-		cmd, postProcessImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+		cmd, postProcessImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
+		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
+	);
+    
+	TextureManagerVulkan::transitionImageLayout(
+		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
 	);
 }
@@ -204,7 +237,7 @@ void RaytracingPipelineVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t cu
 void RaytracingPipelineVulkan::writeRayTracing(VkCommandBuffer cmd, uint32_t currentFrame)
 {
 	TextureManagerVulkan::transitionImageLayout(
-		cmd, rayTraceImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
 	);
 
@@ -227,7 +260,7 @@ void RaytracingPipelineVulkan::writeRayTracing(VkCommandBuffer cmd, uint32_t cur
 	vkCmdTraceRaysKHR(cmd, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, ubo.width, ubo.height, 1);
 
 	TextureManagerVulkan::transitionImageLayout(
-		cmd, rayTraceImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
 	);
 }
@@ -247,7 +280,7 @@ void RaytracingPipelineVulkan::_createResources()
         TextureManagerVulkan::createImage(
             swapchain.swapChainExtent.width,
             swapchain.swapChainExtent.height,
-            VK_FORMAT_R16G16B16A16_SFLOAT,
+            VK_FORMAT_R32G32B32A32_SFLOAT,
             VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -260,7 +293,7 @@ void RaytracingPipelineVulkan::_createResources()
         TextureManagerVulkan::createImageView(
             texture->textureImage,
             texture->textureImageView,
-            VK_FORMAT_R16G16B16A16_SFLOAT,
+            VK_FORMAT_R32G32B32A32_SFLOAT,
             VK_IMAGE_ASPECT_COLOR_BIT,
             1,
             renderDeviceVulkan->device
@@ -291,7 +324,7 @@ void RaytracingPipelineVulkan::_createResources()
 
 		VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 		TextureManagerVulkan::transitionImageLayout(
-			cmd, texture->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+			cmd, texture->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
 			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
 		);
 		renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
@@ -337,11 +370,13 @@ void RaytracingPipelineVulkan::_createDescriptor()
 		{ 0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
 		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
 		{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
+		{ 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
 	};
     std::vector<VkDescriptorPoolSize> rtPoolSizes {
-		{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1 },
+		{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, frameCount * 1 },
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 1},
 	};
     raytraceLayoutID = descriptorManagerVulkan->createLayout(rtBindings);
     raytracePoolID = descriptorManagerVulkan->createPool(rtPoolSizes, frameCount);
@@ -350,10 +385,11 @@ void RaytracingPipelineVulkan::_createDescriptor()
 	// post process pipeline
 	std::vector<VkDescriptorSetLayoutBinding> postBindings {
 		{ 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-		{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 	};
     std::vector<VkDescriptorPoolSize> postPoolSizes {
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 2},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
 	};
     postProcessLayoutID = descriptorManagerVulkan->createLayout(postBindings);
@@ -367,8 +403,10 @@ void RaytracingPipelineVulkan::_createDescriptor()
 
 void RaytracingPipelineVulkan::_updateDescriptor(uint32_t index)
 {	
+	VkDescriptorImageInfo inputImageInfo{};
 	VkDescriptorImageInfo outputImageInfo{};
 	VkDescriptorBufferInfo bufferInfo{};
+    VkDescriptorBufferInfo storageBufferInfo{};
 	VkWriteDescriptorSetAccelerationStructureKHR descASInfo{};
 
 	//ray tracing
@@ -383,6 +421,9 @@ void RaytracingPipelineVulkan::_updateDescriptor(uint32_t index)
     bufferInfo.offset = 0;
     bufferInfo.range = VK_WHOLE_SIZE;
 
+    storageBufferInfo.buffer = static_cast<VkBuffer>(*lightStoragebuffers[index]);
+    storageBufferInfo.offset = 0;
+    storageBufferInfo.range = VK_WHOLE_SIZE;
 	
 	descASInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
     descASInfo.accelerationStructureCount = 1;
@@ -392,10 +433,16 @@ void RaytracingPipelineVulkan::_updateDescriptor(uint32_t index)
 	descriptorManagerVulkan->writeAccelStruct(&writesRayTrace, rtDescriptorSets[index], 0, rtBindings, descASInfo);
 	descriptorManagerVulkan->writeStorageImage(&writesRayTrace, rtDescriptorSets[index], 1, outputImageInfo);
 	descriptorManagerVulkan->writeUniform(&writesRayTrace, rtDescriptorSets[index], 2, bufferInfo);
+	descriptorManagerVulkan->writeStorage(&writesRayTrace, rtDescriptorSets[index], 3, storageBufferInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writesRayTrace);
 	
 	//post process
 	auto postDescriptorSets = descriptorManagerVulkan->getDescriptorSet(postProcessSetID);
+
+    inputImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	inputImageInfo.imageView = rayTraceImage->textureImageView;
+	inputImageInfo.sampler = rayTraceImage->textureSampler;
+
 	outputImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 	outputImageInfo.imageView = postProcessImage->textureImageView;
 	outputImageInfo.sampler = postProcessImage->textureSampler;
@@ -405,8 +452,9 @@ void RaytracingPipelineVulkan::_updateDescriptor(uint32_t index)
     bufferInfo.range = VK_WHOLE_SIZE;
 
 	std::vector<VkWriteDescriptorSet> writePostProcess;
-	descriptorManagerVulkan->writeStorageImage(&writePostProcess, postDescriptorSets[index], 0, outputImageInfo);
-	descriptorManagerVulkan->writeUniform(&writePostProcess, postDescriptorSets[index], 1, bufferInfo);
+	descriptorManagerVulkan->writeStorageImage(&writePostProcess, postDescriptorSets[index], 0, inputImageInfo);
+	descriptorManagerVulkan->writeStorageImage(&writePostProcess, postDescriptorSets[index], 1, outputImageInfo);
+	descriptorManagerVulkan->writeUniform(&writePostProcess, postDescriptorSets[index], 2, bufferInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writePostProcess);
 }
 
@@ -485,18 +533,21 @@ BlasInput RaytracingPipelineVulkan::_toVkGeometry(uint32_t meshID) {
 
 void RaytracingPipelineVulkan::_createAccelStructure()
 {
+    Timer timer("acceleration strucure build time", true);
 	auto meshIDs = meshManager->listIDs();
     // BLAS - Storing each primitive in a geometry
     std::vector<BlasInput> allBlas;
-    allBlas.reserve(objects.size());
+    allBlas.reserve(meshIDs.size());
 
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
     // tlas.reserve(instanceData.size());
     tlas.reserve(MAX_INSTANCES);
 
+    lights.clear();
+
     for (const auto& id : meshIDs)  {
         BlasInput blas = _toVkGeometry(id);
-        allBlas.emplace_back(blas); 
+        allBlas.emplace_back(blas);
 	}
 
     m_rtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
@@ -535,6 +586,37 @@ void RaytracingPipelineVulkan::_createAccelStructure()
                 inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
                 
                 tlas.push_back(inst);
+
+				Mesh* mesh = meshManager->getMesh(meshID);
+                MaterialDesc mat = materialManager->getMaterial(mesh->materialID);
+                if (mat.emissive > 0.01f) {
+                    LightSSBO light{};
+                    
+                    // 1. Setup Color and Intensity (using the .a for intensity as discussed)
+                    // light.color = mat.albedo;
+                    // light.color.a = mat.emissive; 
+
+                    // 2. Get the Model Matrix to transform vertices to World Space
+                    glm::mat4 modelMatrix = transform.getModelMatrix();
+
+                    // 3. Pick a triangle (usually the first one, index 0, 1, 2)
+                    // We fetch the local positions from your mesh data
+                    glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
+                    glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
+                    glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
+
+                    // 4. Transform local vertices to World Space
+                    light.v0 = modelMatrix * glm::vec4(localV0, 1.0f);
+                    light.v1 = modelMatrix * glm::vec4(localV1, 1.0f);
+                    light.v2 = modelMatrix * glm::vec4(localV2, 1.0f);
+
+                    // 5. Meta-data
+                    light.instanceIdx = objectsIndex; 
+                    // Divide by 3 if you want the actual triangle count, not index count
+                    light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
+                    
+                    lights.push_back(light);
+                }
                 objectsIndex++;
             }
         }
@@ -671,7 +753,8 @@ void RaytracingPipelineVulkan::_updateTlas() {
 	if(!scene){
 		m_logger->error("No scene to render");
 	}
-	
+	lights.clear();
+    
     auto entities = scene->getEntitiesWith<TransformComponent, ModelComponent>();
     int objectsIndex = 0;
 
@@ -698,6 +781,38 @@ void RaytracingPipelineVulkan::_updateTlas() {
             inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
             
             tlas.push_back(inst);
+
+            
+            Mesh* mesh = meshManager->getMesh(meshID);
+            MaterialDesc mat = materialManager->getMaterial(mesh->materialID);
+            if (mat.emissive > 0.01f) {
+                LightSSBO light{};
+                
+                // 1. Setup Color and Intensity (using the .a for intensity as discussed)
+                // light.color = mat.albedo;
+                // light.color.a = mat.emissive; 
+
+                // 2. Get the Model Matrix to transform vertices to World Space
+                glm::mat4 modelMatrix = transform.getModelMatrix();
+
+                // 3. Pick a triangle (usually the first one, index 0, 1, 2)
+                // We fetch the local positions from your mesh data
+                glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
+                glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
+                glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
+
+                // 4. Transform local vertices to World Space
+                light.v0 = modelMatrix * glm::vec4(localV0, 1.0f);
+                light.v1 = modelMatrix * glm::vec4(localV1, 1.0f);
+                light.v2 = modelMatrix * glm::vec4(localV2, 1.0f);
+
+                // 5. Meta-data
+                light.instanceIdx = objectsIndex; 
+                // Divide by 3 if you want the actual triangle count, not index count
+                light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
+                
+                lights.push_back(light);
+            }
             objectsIndex++;
         }
     }

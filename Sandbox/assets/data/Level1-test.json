@@ -98,6 +98,33 @@
           "path": "assets/models/sponza/gltf/sponza.gltf"
         },
         "NameComponent": {
+          "name": "sponza"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            0.03,
+            0.03,
+            0.03
+          ],
+          "translateVec": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "ModelComponent": {
+          "path": "assets/models/cube/cube-notex.gltf"
+        },
+        "NameComponent": {
           "name": "plane"
         },
         "TransformComponent": {
@@ -107,14 +134,14 @@
             0.0
           ],
           "scaleVec": [
-            8.743499755859375,
-            1.3960028886795044,
-            8.743499755859375
+            1.0,
+            1.0,
+            1.0
           ],
           "translateVec": [
-            2.0,
-            -1.519755244255066,
-            2.3921761512756348
+            0.0,
+            0.0,
+            0.0
           ]
         }
       }
