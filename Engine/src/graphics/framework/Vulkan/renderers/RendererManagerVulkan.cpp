@@ -6,10 +6,10 @@
 #include "graphics/framework/vulkan/renderers/renderpiplines/ApplicationRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpiplines/RayTracingPipelineVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpiplines/RayTraceRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/TemporalPassVulkan.h"
@@ -36,10 +36,10 @@ bool RendererManagerVulkan::init(WindowConfig config)
     applicationRenderer = addRenderer<ApplicationRendererVulkan>("ApplicationRendererVulkan");
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
-    raytracingRenderer = addRenderer<RaytracingPipelineVulkan>("RaytracingPipelineVulkan");
-    shadowMapRenderer = addRenderer<ShadowMapRendererVulkan>("ShadowMapRendererVulkan");
+    raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
+    shadowMapPass = addRenderer<ShadowMapPassVulkan>("ShadowMapPassVulkan");
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
-    alchemyAORenderer = addRenderer<AlchemyAORendererVulkan>("AlchemyAORendererVulkan");
+    alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
     hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
     SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
     temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
@@ -48,7 +48,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
 	
     applicationRenderer->init(config);
 	imageBasedRenderer->init(config);
-	shadowMapRenderer->init(config);
+	shadowMapPass->init(config);
     // alchemyAORenderer->init(config);
     // hiZPassRenderer->init(config);
     forwardRenderer->init(config);
@@ -74,7 +74,7 @@ bool RendererManagerVulkan::onClose()
 	forwardRenderer->onClose();
 	deferredRenderer->onClose();
 	raytracingRenderer->onClose();
-	shadowMapRenderer->onClose();
+	shadowMapPass->onClose();
 	imageBasedRenderer->onClose();
     alchemyAORenderer->onClose();
     hiZPassRenderer->onClose();

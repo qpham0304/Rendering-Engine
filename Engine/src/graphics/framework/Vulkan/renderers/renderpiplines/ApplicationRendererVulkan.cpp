@@ -192,8 +192,8 @@ void ApplicationRendererVulkan::endRecording(void* cmdBuffer)
 void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 {
 	RendererVulkan* renderer = nullptr;
-	renderer = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
-	auto shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
+	auto shadowMapRenderer = dynamic_cast<ShadowMapPassVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
 	auto imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("ForwardRendererVulkan");

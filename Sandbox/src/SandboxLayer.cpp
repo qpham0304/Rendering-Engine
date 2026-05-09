@@ -62,7 +62,8 @@ bool SandBoxLayer::init()
 
         MaterialDesc materialDesc;
         materialDesc.albedoIDs.push_back(
-            textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false)
+            // textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false)
+            textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
         );
 
         materialDesc.emissiveIDs.push_back(

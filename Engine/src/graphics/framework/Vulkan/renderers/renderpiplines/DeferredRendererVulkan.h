@@ -3,14 +3,14 @@
 #include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>
 #include <unordered_map>
 
-class AlchemyAORendererVulkan;
+class AmbientOcclusionPassVulkan;
 class HiZPassVulkan;
 class SSRGIPassVulkan;
 class DeferredRendererVulkan : public RendererVulkan
@@ -124,11 +124,10 @@ public:	//TODO: make private once done testing
 	bool denoiserOn { true };
 	bool shouldCombine { true };
 
-	ShadowMapRendererVulkan* shadowMapRenderer { nullptr };
+	ShadowMapPassVulkan* shadowMapPass { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
-	AlchemyAORendererVulkan* alchemyAORendererVulkan { nullptr };
-	HiZPassVulkan* hiZPassRenderer { nullptr };
-	SSRGIPassVulkan* SSRGIPassRenderer { nullptr };
+	AmbientOcclusionPassVulkan* ambientOcclusionPass { nullptr };
+	HiZPassVulkan* hiZPass { nullptr };
 	
 	std::unique_ptr<VulkanPipeline> tempPipeline { nullptr };
 

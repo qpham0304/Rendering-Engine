@@ -1,4 +1,4 @@
-#include "ShadowMapRendererVulkan.h"
+#include "ShadowMapPassVulkan.h"
 #include "core/features/ServiceLocator.h"
 #include "graphics/renderers/RenderDevice.h"
 #include "logging/Logger.h"
@@ -21,18 +21,18 @@
 #include <imgui.h>
 #include <vulkan/vulkan.h>
 
-ShadowMapRendererVulkan::ShadowMapRendererVulkan() 
-	: RendererVulkan("ShadowMapRendererVulkan")
+ShadowMapPassVulkan::ShadowMapPassVulkan() 
+	: RendererVulkan("ShadowMapPassVulkan")
 {
 
 
 }
 
-ShadowMapRendererVulkan::~ShadowMapRendererVulkan()
+ShadowMapPassVulkan::~ShadowMapPassVulkan()
 {
 }
 
-bool ShadowMapRendererVulkan::init(WindowConfig config)
+bool ShadowMapPassVulkan::init(WindowConfig config)
 {
 	RendererVulkan::init(config);
 
@@ -59,7 +59,7 @@ bool ShadowMapRendererVulkan::init(WindowConfig config)
 	return true;
 }
 
-bool ShadowMapRendererVulkan::onClose()
+bool ShadowMapPassVulkan::onClose()
 {
 	shadowPipeline->destroy();
 	vkDestroyFramebuffer(renderDeviceVulkan->device, shadowFramebuffer, nullptr);
@@ -71,11 +71,11 @@ bool ShadowMapRendererVulkan::onClose()
 	return false;
 }
 
-void ShadowMapRendererVulkan::onUpdate()
+void ShadowMapPassVulkan::onUpdate()
 {
 }
 
-void ShadowMapRendererVulkan::render(Camera& camera)
+void ShadowMapPassVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 
@@ -131,7 +131,7 @@ void ShadowMapRendererVulkan::render(Camera& camera)
 	// dispatchBlur(cmdBuffer, renderDeviceVulkan->getImageIndex());
 }
 
-void ShadowMapRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline)
+void ShadowMapPassVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline)
 {
 	uint32_t imageIndex = renderDeviceVulkan->getImageIndex();
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
@@ -173,14 +173,14 @@ void ShadowMapRendererVulkan::beginRecording(void* cmdBuffer, void* renderPass, 
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 }
 
-void ShadowMapRendererVulkan::endRecording(void* cmdBuffer)
+void ShadowMapPassVulkan::endRecording(void* cmdBuffer)
 {
 	VkCommandBuffer commandBuffer = static_cast<VkCommandBuffer>(cmdBuffer);
 
 	vkCmdEndRenderPass(commandBuffer);
 }
 
-void ShadowMapRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
@@ -246,7 +246,7 @@ void ShadowMapRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, u
 	endRecording(commandBuffer);
 }
 
-void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIndex) 
+void ShadowMapPassVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIndex) 
 {
 	TextureManagerVulkan::createBarrier(cmd, momentImage->textureImage,
 		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
@@ -296,7 +296,7 @@ void ShadowMapRendererVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIn
 }
 
 
-void ShadowMapRendererVulkan::_createDepthMap()
+void ShadowMapPassVulkan::_createDepthMap()
 {
 	VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
@@ -331,7 +331,7 @@ void ShadowMapRendererVulkan::_createDepthMap()
 	);
 }
 
-void ShadowMapRendererVulkan::_createShadowPipeline()
+void ShadowMapPassVulkan::_createShadowPipeline()
 {
 	PipelineConfigInfo pipelineConfig = VulkanPipeline::defaultPipelineConfigInfo(0);
 	
@@ -383,7 +383,7 @@ void ShadowMapRendererVulkan::_createShadowPipeline()
 	);
 }
 
-void ShadowMapRendererVulkan::_createShadowRenderPass()
+void ShadowMapPassVulkan::_createShadowRenderPass()
 {
 	VkAttachmentDescription momentAttachment{};
 	momentAttachment.format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -429,7 +429,7 @@ void ShadowMapRendererVulkan::_createShadowRenderPass()
 	}
 }
 
-void ShadowMapRendererVulkan::_createShadowFrameBuffer()
+void ShadowMapPassVulkan::_createShadowFrameBuffer()
 {
 	std::array<VkImageView, 2> attachments = {
 		momentImage->textureImageView,
@@ -451,7 +451,7 @@ void ShadowMapRendererVulkan::_createShadowFrameBuffer()
 	}
 }
 
-void ShadowMapRendererVulkan::_createMomentImage()
+void ShadowMapPassVulkan::_createMomentImage()
 {
 	auto createTexture = [&](TextureVulkan** outTexture) {
 		uint32_t imageID = textureManagerVulkan->createTexture();
@@ -498,7 +498,7 @@ void ShadowMapRendererVulkan::_createMomentImage()
 	createTexture(&tempMomentImage);
 }
 
-void ShadowMapRendererVulkan::_createMomentDescriptor()
+void ShadowMapPassVulkan::_createMomentDescriptor()
 {
 	std::vector<VkDescriptorSetLayoutBinding> bindings = {
 		{ 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
@@ -560,7 +560,7 @@ void ShadowMapRendererVulkan::_createMomentDescriptor()
 	}
 }
 
-void ShadowMapRendererVulkan::_createComputePipeline() {
+void ShadowMapPassVulkan::_createComputePipeline() {
 	computePipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	VkDescriptorSetLayout layout = descriptorManagerVulkan->getDescriptorLayout(compDescriptorLayoutID);
 

@@ -3,7 +3,7 @@
 #include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
 #include "graphics/framework/vulkan/core/VulkanRayTrace.h"
 
@@ -11,7 +11,7 @@
 #include <vector>
 #include <unordered_map>
 
-class RaytracingPipelineVulkan : public RendererVulkan
+class RayTraceRendererVulkan : public RendererVulkan
 {
 
 private:
@@ -58,8 +58,8 @@ private:
 	};
 
 public:
-    RaytracingPipelineVulkan();
-    virtual~RaytracingPipelineVulkan() override;
+    RayTraceRendererVulkan();
+    virtual~RayTraceRendererVulkan() override;
 
     virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
@@ -118,6 +118,7 @@ public:	//TODO: make private once done testing
     RaytracingBuilderKHR m_rtBuilder{};
 
     std::vector<VkDescriptorSetLayoutBinding> rtBindings;
+    std::vector<VkDescriptorSetLayoutBinding> postBindings;
 
 	
     uint32_t handleSize{};

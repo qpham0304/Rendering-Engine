@@ -1,8 +1,8 @@
 #pragma once
 
-#include "graphics/framework/vulkan/renderers/RendererVulkan.h"
+#include "PostProcessRendererVulkan.h"
 
-class BilateralBlurRendererVulkan : public RendererVulkan
+class AmbientOcclusionPassVulkan : public PostProcessRendererVulkan
 {
 public:
 	struct PushConstantInfo {
@@ -10,30 +10,44 @@ public:
     	alignas(4) 	float radius;
 		alignas(4) 	float bias;
 		alignas(4) 	float intensity;
+		alignas(4) 	float projScale;
+	};
+
+	struct BlurPushConstantInfo {
+		float isVertical;
+		int blurRadius;
+		float scale;
 	};
 
 public:
-	BilateralBlurRendererVulkan(std::string serviceName = "BilateralBlurRendererVulkan");
+	AmbientOcclusionPassVulkan(std::string serviceName = "AmbientOcclusionPassVulkan");
 
-	virtual ~BilateralBlurRendererVulkan() override;
+	virtual ~AmbientOcclusionPassVulkan() override;
 
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
 
-	void writeBlur();
+	void writeAO(VkCommandBuffer cmd, uint32_t currentFrame);
+	void writeBlur(VkCommandBuffer cmd, uint32_t currentFrame);
 
-private:
+	//TODO: make this private after test done or use a function instead
+	BlurPushConstantInfo blurrPushConstant;
+
+protected:	
 	void _createOcclusionMap();
 	void _createPipelines();
 	void _createDescriptors();
-	void _updateDescriptorSets(uint32_t index);
+	void _updateDescriptorSetsAO(uint32_t index);
+	void _updateDescriptorSetsBlur(uint32_t index);
 	void _recreateResources();
 	void _cleanupResources();
 
 	uint32_t aoMapID;
+	uint32_t aoMapTempID;
 	TextureVulkan* aoMap;
+	TextureVulkan* aoMapTemp;
 	TextureVulkan* depthImage;
 	TextureVulkan* positionImage;
 	TextureVulkan* normalImage;
@@ -46,6 +60,8 @@ private:
 
 	uint32_t blurDescriptorLayoutID;
 	uint32_t blurDescriptorPoolID;
-	uint32_t blurDescriptorSetsID;
+	uint32_t blurDescSetMtoT_ID;
+	uint32_t blurDescSetTtoM_ID;
 	std::unique_ptr<VulkanPipeline> blurPipeline;
+	// BlurPushConstantInfo blurrPushConstant;
 };

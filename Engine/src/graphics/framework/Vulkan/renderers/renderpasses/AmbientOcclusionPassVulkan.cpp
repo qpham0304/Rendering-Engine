@@ -1,4 +1,4 @@
-#include "AlchemyAORendererVulkan.h"
+#include "AmbientOcclusionPassVulkan.h"
 #include <core/scene/SceneManager.h>
 #include <core/features/camera.h>
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
@@ -11,18 +11,18 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 
-AlchemyAORendererVulkan::AlchemyAORendererVulkan(std::string serviceName)
+AmbientOcclusionPassVulkan::AmbientOcclusionPassVulkan(std::string serviceName)
 	:	PostProcessRendererVulkan(serviceName)
 {
 
 }
 
-AlchemyAORendererVulkan::~AlchemyAORendererVulkan() 
+AmbientOcclusionPassVulkan::~AmbientOcclusionPassVulkan() 
 {
 
 }
 
-bool AlchemyAORendererVulkan::init(WindowConfig config) 
+bool AmbientOcclusionPassVulkan::init(WindowConfig config) 
 {
     PostProcessRendererVulkan::init(config);
     
@@ -48,7 +48,7 @@ bool AlchemyAORendererVulkan::init(WindowConfig config)
 
     return true;
 }
-bool AlchemyAORendererVulkan::onClose() 
+bool AmbientOcclusionPassVulkan::onClose() 
 {
     PostProcessRendererVulkan::onClose();
 
@@ -56,13 +56,13 @@ bool AlchemyAORendererVulkan::onClose()
 
     return true;
 }
-void AlchemyAORendererVulkan::onUpdate() 
+void AmbientOcclusionPassVulkan::onUpdate() 
 {
     PostProcessRendererVulkan::onUpdate();
 
 }
 
-void AlchemyAORendererVulkan::render(Camera& camera) 
+void AmbientOcclusionPassVulkan::render(Camera& camera) 
 {
     if(needResize) {
 		_recreateResources();
@@ -92,7 +92,7 @@ void AlchemyAORendererVulkan::render(Camera& camera)
     writeBlur(cmd, currentFrame);
 }
 
-void AlchemyAORendererVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFrame)
+void AmbientOcclusionPassVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     TextureManagerVulkan::transitionImageLayout(
         cmd, aoMap->textureImage, VK_FORMAT_R16_SFLOAT, 
@@ -151,7 +151,7 @@ void AlchemyAORendererVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFrame
     );
 }
 
-void AlchemyAORendererVulkan::writeBlur(VkCommandBuffer cmd, uint32_t currentFrame)
+void AmbientOcclusionPassVulkan::writeBlur(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     TextureManagerVulkan::transitionImageLayout(cmd, aoMap->textureImage, VK_FORMAT_R16_SFLOAT, 
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
@@ -198,7 +198,7 @@ void AlchemyAORendererVulkan::writeBlur(VkCommandBuffer cmd, uint32_t currentFra
         VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 }
 
-void AlchemyAORendererVulkan::_createOcclusionMap()
+void AmbientOcclusionPassVulkan::_createOcclusionMap()
 {
     auto createTexture = [this] (uint32_t& id, TextureVulkan*& texture){
         id = textureManagerVulkan->createTexture();
@@ -260,7 +260,7 @@ void AlchemyAORendererVulkan::_createOcclusionMap()
     outputImage = aoMap;
 }
 
-void AlchemyAORendererVulkan::_createDescriptors()
+void AmbientOcclusionPassVulkan::_createDescriptors()
 {
     occlusionDescriptorLayoutID = descriptorManagerVulkan->createLayout({
 		{ 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
@@ -302,7 +302,7 @@ void AlchemyAORendererVulkan::_createDescriptors()
     }
 }
 
-void AlchemyAORendererVulkan::_createPipelines()
+void AmbientOcclusionPassVulkan::_createPipelines()
 {
     VkDescriptorSetLayout descriptorLayoutLUT = descriptorManagerVulkan->getDescriptorLayout(occlusionDescriptorLayoutID);
 	occlusionPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
@@ -321,7 +321,7 @@ void AlchemyAORendererVulkan::_createPipelines()
 	);
 }
 
-void AlchemyAORendererVulkan::_updateDescriptorSetsAO(uint32_t index)
+void AmbientOcclusionPassVulkan::_updateDescriptorSetsAO(uint32_t index)
 {
 	auto lutDescriptorSets = descriptorManagerVulkan->getDescriptorSet(occlusionDecriptorsetsID);
 	VkDescriptorImageInfo aoImageInfo{};
@@ -346,7 +346,7 @@ void AlchemyAORendererVulkan::_updateDescriptorSetsAO(uint32_t index)
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
-void AlchemyAORendererVulkan::_updateDescriptorSetsBlur(uint32_t index)
+void AmbientOcclusionPassVulkan::_updateDescriptorSetsBlur(uint32_t index)
 {
     auto mToT_Sets = descriptorManagerVulkan->getDescriptorSet(blurDescSetMtoT_ID);
     auto tToM_Sets = descriptorManagerVulkan->getDescriptorSet(blurDescSetTtoM_ID);
@@ -371,7 +371,7 @@ void AlchemyAORendererVulkan::_updateDescriptorSetsBlur(uint32_t index)
     descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
-void AlchemyAORendererVulkan::_recreateResources()
+void AmbientOcclusionPassVulkan::_recreateResources()
 {
 	renderDeviceVulkan->waitIdle();
     _cleanupResources();
@@ -380,7 +380,7 @@ void AlchemyAORendererVulkan::_recreateResources()
 	_createPipelines();
 }
 
-void AlchemyAORendererVulkan::_cleanupResources()
+void AmbientOcclusionPassVulkan::_cleanupResources()
 {
     textureManagerVulkan->destroy(aoMap->id());
     textureManagerVulkan->destroy(aoMapTemp->id());

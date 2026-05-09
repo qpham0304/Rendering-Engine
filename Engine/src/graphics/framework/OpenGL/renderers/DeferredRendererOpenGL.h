@@ -4,7 +4,7 @@
 //#include <Shader.h>
 //class Camera;
 //
-//class DeferredRenderer
+//class DeferredRendererOpenGL
 //{
 //private:
 //	unsigned int gBuffer;
@@ -19,7 +19,7 @@
 //
 //
 //public:
-//	DeferredRenderer(const int width, const int height);
+//	DeferredRendererOpenGL(const int width, const int height);
 //	std::unique_ptr<Shader> geometryShader;
 //	std::unique_ptr<Shader> colorShader;
 //	void renderGeometry(Camera* cameraPtr, std::vector<Component*>& components);

@@ -8,7 +8,7 @@
 #include <vector>
 #include <unordered_map>
 
-class ShadowMapRendererVulkan : public RendererVulkan
+class ShadowMapPassVulkan : public RendererVulkan
 {
 private:
 	struct LightPushConstant {
@@ -23,8 +23,8 @@ private:
 	};
 
 public:
-	ShadowMapRendererVulkan();
-	virtual~ShadowMapRendererVulkan() override;
+	ShadowMapPassVulkan();
+	virtual~ShadowMapPassVulkan() override;
 
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;

@@ -83,7 +83,8 @@ protected:
 	Renderer* forwardRenderer { nullptr };
 	Renderer* deferredRenderer { nullptr };
 	Renderer* raytracingRenderer { nullptr };
-	Renderer* shadowMapRenderer { nullptr };
+
+	Renderer* shadowMapPass { nullptr };
 	Renderer* imageBasedRenderer { nullptr };
 	Renderer* alchemyAORenderer { nullptr };
 	Renderer* hiZPassRenderer { nullptr };

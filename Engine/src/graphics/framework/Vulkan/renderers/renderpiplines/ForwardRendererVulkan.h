@@ -4,7 +4,7 @@
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-#include <graphics/framework/Vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h>
+#include <graphics/framework/Vulkan/renderers/renderpasses/ShadowMapPassVulkan.h>
 #include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
 
 #include <glm/glm.hpp>
@@ -103,7 +103,7 @@ private:
 	VulkanRenderTarget renderTarget;
 	std::unique_ptr<VulkanPipeline> offscreenPipeline;
 
-	ShadowMapRendererVulkan* shadowMapRenderer { nullptr };
+	ShadowMapPassVulkan* shadowMapRenderer { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 
 	bool isActive{ false };
