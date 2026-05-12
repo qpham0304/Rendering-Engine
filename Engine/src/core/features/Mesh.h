@@ -6,8 +6,8 @@
 #define MAX_BONE_INFLUENCE 4
 
 //TODO: no way to get attribute descriptions here yet
-// use the one mirrored in vulkan device for now
-
+// use the one mirrored in vulkan device for now until buffer device address is implmented
+// currently working on buffer device address, once that's done this should be supported
 struct Vertex {
 	glm::vec3 positions;
 	glm::vec3 color;
@@ -22,7 +22,8 @@ struct Vertex {
 
 
 struct Mesh {
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
-	uint32_t materialID;
+	std::vector<Vertex> vertices {};
+	std::vector<uint32_t> indices {};
+	uint32_t materialID { 0 };					// per mesh material
+	std::vector<uint32_t> materialIndices {};	// per triangle material
 };

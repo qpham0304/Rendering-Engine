@@ -14,6 +14,7 @@
 #include "src/gui/framework/ImGui/widgets/ImGuiRightSidebarWidget.h"
 #include "src/gui/framework/ImGui/widgets/ImGuiMenuWidget.h"
 #include "src/gui/framework/ImGui/widgets/ImGuiMathWidget.h"
+#include <gui/framework/ImGui/widgets/ImGuiResourcesInspectorWidget.h>
 
 void EditorLayer::renderGuizmo()
 {
@@ -49,6 +50,7 @@ bool EditorLayer::init()
 	guiController.addWidget<ImGuiLeftSidebarWidget>();
 	guiController.addWidget<ImGuiRightSidebarWidget>();
 	guiController.addWidget<ImGuiConsoleLogWidget>();
+	guiController.addWidget<ImGuiResourceInspectorWidget>();
 	guiController.addWidget<ImGuiMenuWidget>(guiController.getWidgets());
 	// addWidget(std::make_unique<ImGuiMathWidget>());
 
@@ -86,8 +88,7 @@ void EditorLayer::onAttach(LayerManager* manager)
 		SceneManager::getInstance().addScene("default scene");
 		Scene* scene = SceneManager::getInstance().getActiveScene();
 		if(scene) {
-			scene->loadScene("assets/data/default-scene.json");
-			// scene->loadScene("assets/data/level1-test.json");
+			// scene->loadScene("assets/data/default-scene.json");
 		}
 	}
 

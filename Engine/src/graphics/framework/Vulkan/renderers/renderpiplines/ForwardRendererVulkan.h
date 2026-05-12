@@ -1,11 +1,11 @@
 #pragma once
 
+#include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-#include <graphics/framework/Vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h>
-#include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/RendererVulkan.h"
+#include <graphics/framework/Vulkan/renderers/renderpasses/ShadowMapPassVulkan.h>
+#include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>
@@ -30,17 +30,15 @@ private:
 	};
 
 	struct PushConstantLight {
-		alignas(64) glm::mat4 sunlightMVP;
-		alignas(16) glm::vec4 direction;
-		alignas(16) glm::vec4 color;
-		alignas(4)  float bias;
-		alignas(4)  float alpha;
-		alignas(4)  float lintstepLow;
-		alignas(4)  float linstepHigh;
-		alignas(4)  float litBias;
-		alignas(4)  float time;
-		alignas(4)	float numLights;
-		alignas(4)	float skyboxDetail;
+		uint64_t materialRef;
+		float bias;
+		float time;
+		glm::mat4 sunlightMVP;
+		glm::vec4 direction;
+		glm::vec4 color;
+		float numLights;
+		float skyboxDetail;
+		uint32_t materialIdx;
 	};
 
 	struct LightSSBO {
@@ -105,7 +103,7 @@ private:
 	VulkanRenderTarget renderTarget;
 	std::unique_ptr<VulkanPipeline> offscreenPipeline;
 
-	ShadowMapRendererVulkan* shadowMapRenderer { nullptr };
+	ShadowMapPassVulkan* shadowMapRenderer { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 
 	bool isActive{ false };

@@ -108,11 +108,11 @@ bool LayerManager::init(WindowConfig config)
 {
 	Service::init(config);
 
-	// for (auto& layer : m_Layers) {
-	// 	if (!layer->init()) {
-	// 		return false;
-	// 	}
-	// }
+	for (auto& layer : m_Layers) {
+		if (!layer->init()) {
+			return false;
+		}
+	}
 	return true;
 }
 

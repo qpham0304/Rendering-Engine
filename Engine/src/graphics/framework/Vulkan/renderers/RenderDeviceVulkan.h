@@ -6,6 +6,7 @@
 #include "graphics/framework/vulkan/core/VulkanPipeline.h"
 #include "graphics/framework/vulkan/core/VulkanCommandPool.h"
 #include "graphics/framework/vulkan/core/VulkanUtils.h"
+#include "graphics/framework/Vulkan/core/VulkanExtensions.hpp"
 
 class Logger;
 
@@ -15,7 +16,6 @@ public:
 	//TODO: for quick setup, some of these should be hidden or moved outside once done
 	VulkanDevice device;
 	VulkanSwapChain swapchain;
-	VulkanPipeline pipeline;
 	VulkanCommandPool commandPool;
 	VulkanCommandPool transferPool;
 
@@ -41,8 +41,6 @@ public:
 	virtual DeviceInfo getDeviceInfo() const override;
 	virtual PipelineInfo getPipelineInfo() const override;
 
-	bool hasStencilComponent(VkFormat format);
-
 	void setViewport();
 	void setScissor();
 
@@ -53,7 +51,6 @@ public:
 private:
 	uint32_t currentFrame = 0;
 	std::atomic<uint16_t> m_ids;
-	uint16_t activeCommandPool = 0;
 	
 private:
 	uint16_t _assignID();

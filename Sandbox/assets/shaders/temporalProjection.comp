@@ -1,0 +1,177 @@
+#version 460
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+shared vec3 s_Colors[18][18];
+
+layout(set = 0, binding = 0, rgba16f) uniform writeonly image2D u_FinalOutput;
+layout(set = 0, binding = 1) uniform sampler2D u_CurrentNoisyGI;
+layout(set = 0, binding = 2) uniform sampler2D u_HistoryGI;
+layout(set = 0, binding = 3) uniform sampler2D u_MotionVectors;
+layout(set = 0, binding = 4) uniform sampler2D u_CurrDepth;
+layout(set = 0, binding = 5) uniform sampler2D u_PrevDepth;
+
+layout(set = 0, binding = 6) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    mat4 invProj;
+    mat4 invView;
+} camera;
+
+layout(set = 0, binding = 7) uniform sampler2D u_CurrNormal;
+layout(set = 0, binding = 8) uniform sampler2D u_PrevNormal;
+
+layout(push_constant) uniform Constants {
+    vec2 screenRes;
+    int shouldCombine;
+} pc;
+
+vec3 RGBToYCoCg(vec3 rgb) {
+    float Y = dot(rgb, vec3(0.25, 0.5, 0.25));
+    float Co = dot(rgb, vec3(0.5, 0.0, -0.5));
+    float Cg = dot(rgb, vec3(-0.25, 0.5, -0.25));
+    return vec3(Y, Co, Cg);
+}
+
+vec3 YCoCgToRGB(vec3 ycocg) {
+    return vec3(
+        ycocg.x + ycocg.y - ycocg.z,
+        ycocg.x + ycocg.z,
+        ycocg.x - ycocg.y - ycocg.z
+    );
+}
+
+float luminance(vec3 c) { return dot(c, vec3(0.2127, 0.7152, 0.0722)); }
+
+void loadTileToShared(ivec2 gID, ivec2 lID) {
+    ivec2 base = gID - lID - 1;
+    for (int i = 0; i < 4; ++i) {
+        ivec2 offset = ivec2((i % 2) * 16, (i / 2) * 16);
+        ivec2 localPos = lID + offset;
+        if (localPos.x < 18 && localPos.y < 18) {
+            vec2 loadUV = (vec2(base + localPos) + 0.5) / pc.screenRes;
+            s_Colors[localPos.x][localPos.y] = texture(u_CurrentNoisyGI, loadUV).rgb;
+        }
+    }
+}
+
+void main() {
+    ivec2 gID = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 lID = ivec2(gl_LocalInvocationID.xy);
+    vec2 uv = (vec2(gID) + 0.5) / pc.screenRes;
+
+    loadTileToShared(gID, lID);
+    barrier();
+
+    vec2 velocity = texture(u_MotionVectors, uv).rg;
+    vec2 prevUV = uv - velocity;
+
+    // valid range for neighborhood
+    vec3 m1 = vec3(0.0);
+    vec3 m2 = vec3(0.0);
+    float totalM1Weight = 0.0;
+
+    for (int y = 0; y < 3; ++y) {
+        for (int x = 0; x < 3; ++x) {
+            vec3 rgbSample = max(vec3(0.0), s_Colors[lID.x + x][lID.y + y]);
+            vec3 c = RGBToYCoCg(rgbSample);
+            
+            // Karis weights extreme pixels get almost 0 weight in the mean calculation
+            float w = 1.0 / (1.0 + luminance(rgbSample));
+            
+            m1 += c * w;
+            m2 += (c * c) * w;
+            totalM1Weight += w;
+        }
+    }
+    vec3 mean = m1 / max(0.001, totalM1Weight);
+    vec3 stddev = sqrt(max(vec3(0.0), (m2 / max(0.001, totalM1Weight)) - (mean * mean)));
+    
+    vec3 minColor = mean - (stddev * 1.5 + 0.01); 
+    vec3 maxColor = mean + (stddev * 1.5 + 0.01);
+
+    // bilinear history validation
+    vec2 prevPixelPos = prevUV * pc.screenRes - 0.5;
+    ivec2 baseCoord = ivec2(floor(prevPixelPos));
+    vec2 f = fract(prevPixelPos);
+
+    vec3 currNormal = texture(u_CurrNormal, uv).xyz;
+    float currDepth = texture(u_CurrDepth, uv).r;
+
+    vec4 historyAccum = vec4(0.0);
+    float totalWeight = 0.0;
+
+    // sample the 2x2 neighborhood in the previous frame manually
+    for(int y = 0; y <= 1; y++) {
+        for(int x = 0; x <= 1; x++) {
+            ivec2 coord = baseCoord + ivec2(x, y);
+            if(any(lessThan(coord, ivec2(0))) || any(greaterThanEqual(coord, ivec2(pc.screenRes)))) continue;
+
+            vec2 sampleUV = (vec2(coord) + 0.5) / pc.screenRes;
+            vec4 hData = texture(u_HistoryGI, sampleUV);
+            vec3 hNormal = texture(u_PrevNormal, sampleUV).xyz;
+            float hDepth = texture(u_PrevDepth, sampleUV).r;
+
+            // bilinear weight
+            float w = (x == 0 ? 1.0 - f.x : f.x) * (y == 0 ? 1.0 - f.y : f.y);
+
+            // check if this pixel belong to the same surface?
+            bool normalMatch = dot(currNormal, hNormal) > 0.95;
+            bool depthMatch = abs(currDepth - hDepth) < 0.005;
+
+            if(normalMatch && depthMatch) {
+                historyAccum += hData * w;
+                totalWeight += w;
+            }
+        }
+    }
+
+    vec3 currentRGB = max(vec3(0.0), s_Colors[lID.x + 1][lID.y + 1]);
+    vec3 resultRGB;
+    float nextAccum;
+
+    float lumaMean = luminance(YCoCgToRGB(mean));
+    if (luminance(currentRGB) > lumaMean * 8.0 + 0.1) {
+        currentRGB = YCoCgToRGB(mean); // the neighborhood average
+    }
+    
+    // use a slightly more lenient threshold or check if we have any valid history
+    if(totalWeight > 0.001) { 
+        vec4 historyData = historyAccum / totalWeight;
+        
+        float speed = length(velocity * pc.screenRes);
+        bool isMoving = speed > 0.01;
+        
+        float n = max(historyData.a, 1.0);
+        if (isMoving) {
+            n = mix(n, min(n, 8.0), clamp(speed * 2.0, 0.0, 1.0));
+        }
+        
+        vec3 historyYCoCg = RGBToYCoCg(historyData.rgb);
+        vec3 currentYCoCg = RGBToYCoCg(currentRGB);
+
+        // hack monte carlos and clamp the currnet pixel, not history to stops accumulating into firefly
+        // questionable physical accuracy
+        currentYCoCg = clamp(currentYCoCg, minColor, maxColor);
+        
+        // lowest possble before noise become noticable, TODO: try 16 on laptop
+        nextAccum = min(n + 1.0, 32.0); 
+        float alpha = 1.0 / nextAccum;
+
+        // Karis weights
+        float lumaCurr = luminance(YCoCgToRGB(currentYCoCg));
+        float lumaHist = luminance(YCoCgToRGB(historyYCoCg));
+        float wCurr = 1.0 / (1.0 + lumaCurr);
+        float wHist = 1.0 / (1.0 + lumaHist);
+
+        float weightedAlpha = (alpha * wCurr) / max(0.0001, (alpha * wCurr + (1.0 - alpha) * wHist));
+
+        vec3 resolvedYCoCg = mix(historyYCoCg, currentYCoCg, weightedAlpha);
+        resultRGB = YCoCgToRGB(resolvedYCoCg);
+
+    } else {
+        resultRGB = currentRGB;
+        nextAccum = 1.0; 
+    }
+    imageStore(u_FinalOutput, gID, vec4(max(vec3(0.0), resultRGB), nextAccum));
+}

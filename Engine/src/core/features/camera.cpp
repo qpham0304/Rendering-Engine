@@ -144,6 +144,7 @@ bool Camera::processKeyboard()
 		resetCamera();
 		isPressing = true;
 	}
+	cameraMove = isPressing;
 	return isPressing;
 }
 
@@ -160,6 +161,7 @@ bool Camera::processMouse() {
 		firstClick = true;
 		isMouseMoved = false;
 	}
+	cameraMove = isMouseMoved;
 	return isMouseMoved;
 }
 

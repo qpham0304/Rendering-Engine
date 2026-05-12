@@ -1,0 +1,39 @@
+#version 450
+layout (local_size_x = 16, local_size_y = 16) in;
+
+layout (set = 0, binding = 0) uniform sampler2D lowerMip;           // The blurrier one
+layout (set = 0, binding = 1, rgba16f) uniform image2D upperMip;    // The target
+
+layout (push_constant) uniform PushConstant {
+    float filterRadius;
+} pc;
+
+void main() {
+    ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 destSize = imageSize(upperMip);
+    if (pixelCoords.x >= destSize.x || pixelCoords.y >= destSize.y) return;
+
+    vec2 uv = (vec2(pixelCoords) + 0.5) / vec2(destSize);
+    float x = pc.filterRadius;
+    float y = pc.filterRadius;
+
+    // 9-tap tent filter
+    vec3 a = texture(lowerMip, uv + vec2(-x, y)).rgb;
+    vec3 b = texture(lowerMip, uv + vec2(0,  y)).rgb;
+    vec3 c = texture(lowerMip, uv + vec2(x,  y)).rgb;
+    vec3 d = texture(lowerMip, uv + vec2(-x, 0)).rgb;
+    vec3 e = texture(lowerMip, uv).rgb;
+    vec3 f = texture(lowerMip, uv + vec2(x,  0)).rgb;
+    vec3 g = texture(lowerMip, uv + vec2(-x, -y)).rgb;
+    vec3 h = texture(lowerMip, uv + vec2(0,  -y)).rgb;
+    vec3 i = texture(lowerMip, uv + vec2(x,  -y)).rgb;
+
+    vec3 upsample = e*4.0;
+    upsample += (b+d+f+h)*2.0;
+    upsample += (a+c+g+i);
+    upsample *= 1.0 / 16.0;
+
+    // additive blend with the existing content in upperMip
+    vec3 existing = imageLoad(upperMip, pixelCoords).rgb;
+    imageStore(upperMip, pixelCoords, vec4(existing + upsample, 1.0));
+}

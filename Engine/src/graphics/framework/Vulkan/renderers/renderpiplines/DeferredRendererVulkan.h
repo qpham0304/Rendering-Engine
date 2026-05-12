@@ -1,21 +1,34 @@
 #pragma once
 
+#include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/RendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>
 #include <unordered_map>
 
-class AlchemyAORendererVulkan;
+class AmbientOcclusionPassVulkan;
 class HiZPassVulkan;
 class SSRGIPassVulkan;
 class DeferredRendererVulkan : public RendererVulkan
 {
+
 private:
+	struct PushConstant {
+		uint64_t objectsRef;
+		uint32_t objectIdx;
+	};
+
+	struct ObjectDesc {
+		uint64_t vertexAddress = 0;
+		uint64_t indexAddress = 0;
+		uint64_t materialsRef = 0;
+		uint64_t materialIndicesRef = 0;
+	};
+
 	struct UniformBufferObject {
 		glm::mat4 invNormal;
 		glm::mat4 view;
@@ -55,6 +68,7 @@ private:
 		alignas(4) float intensity;
 	};
 
+
 public:
     DeferredRendererVulkan();
     virtual~DeferredRendererVulkan() override;
@@ -70,6 +84,7 @@ public:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 public:	//TODO: make private once done testing	
+	const int MAX_INSTANCES = 10000;
 	const int numInstances = 1;
 	const int numLights = 1000;
 	bool showGui{ true };
@@ -81,6 +96,7 @@ public:	//TODO: make private once done testing
 	std::vector<StorageBufferObject> instanceData;
 	std::vector<StorageBufferObject> instanceDataPrev;
 	std::vector<StorageBufferVulkan*> lightStoragebuffers;
+	PushConstant pushConstant;
 	std::vector<LightSSBO> lights;
 	PushConstantLight pushConstantLight;
 
@@ -108,13 +124,18 @@ public:	//TODO: make private once done testing
 	bool denoiserOn { true };
 	bool shouldCombine { true };
 
-	ShadowMapRendererVulkan* shadowMapRenderer { nullptr };
+	ShadowMapPassVulkan* shadowMapPass { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
-	AlchemyAORendererVulkan* alchemyAORendererVulkan { nullptr };
-	HiZPassVulkan* hiZPassRenderer { nullptr };
-	SSRGIPassVulkan* SSRGIPassRenderer { nullptr };
+	AmbientOcclusionPassVulkan* ambientOcclusionPass { nullptr };
+	HiZPassVulkan* hiZPass { nullptr };
 	
 	std::unique_ptr<VulkanPipeline> tempPipeline { nullptr };
+
+	
+	uint32_t objDeviceAddressBufferID;
+	uint64_t objDeviceAddress;
+	uint64_t materialsAddress;
+	std::vector<ObjectDesc> objects;
 
 	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);

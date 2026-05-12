@@ -33,6 +33,16 @@ public:
 
     void writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame);
 
+public: // TODO: consider make private
+	TextureVulkan* depthImageHiZ;
+	TextureVulkan* depthImageRaw;
+	TextureVulkan* normalImage;
+	TextureVulkan* albedoImage;
+	TextureVulkan* pbrImage;
+	TextureVulkan* emissiveImage;
+	TextureVulkan* colorImage;
+	std::vector<TextureVulkan*> outputImages;
+	
 protected:
 	void _createResources();
 	void _createPipelines();
@@ -41,13 +51,6 @@ protected:
 	void _recreateResources();
 	void _cleanupResources();
 
-	TextureVulkan* depthImageHiZ;
-	TextureVulkan* depthImageRaw;
-	TextureVulkan* normalImage;
-	TextureVulkan* albedoImage;
-	TextureVulkan* pbrImage;
-	TextureVulkan* emissiveImage;
-	TextureVulkan* colorImage;
 
 	uint32_t SSRGILayoutID;
 	uint32_t SSRGIPoolID;

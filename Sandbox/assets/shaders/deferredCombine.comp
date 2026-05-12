@@ -1,0 +1,49 @@
+#version 460
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+
+layout(set = 0, binding = 0) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    mat4 invProj;
+    mat4 invView;
+} camera;
+
+layout(set = 0, binding = 1, rgba16f) writeonly uniform image2D outImage;
+layout(set = 0, binding = 2) uniform sampler2D giImage; 
+layout(set = 0, binding = 3) uniform sampler2D sceneImage; 
+layout(set = 0, binding = 4) uniform sampler2D albedoImage; 
+layout(set = 0, binding = 5) uniform sampler2D bloomImage; 
+
+layout(push_constant) uniform Constants {
+    vec2 screenRes;
+    float time;
+    float frameSeed;
+    int shouldCombine;
+} pc;
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    if (pixelCoord.x >= pc.screenRes.x || pixelCoord.y >= pc.screenRes.y) return;
+
+    vec2 uv = (vec2(pixelCoord) + 0.5) / imageSize(outImage);
+
+    vec3 ambient = texture(giImage, uv).rgb;// * vec3(1.0, 0.2, 1.0);
+    vec3 sceneColor = texture(sceneImage, uv).rgb;
+    vec3 albedo = texture(albedoImage, uv).rgb;
+    vec3 bloom = texture(bloomImage, uv).rgb;
+
+    vec3 finalColor = sceneColor + ambient * 2.0 + bloom * 1.0;
+    finalColor = finalColor / (finalColor + vec3(1.0));
+    finalColor = pow(finalColor, vec3(1.0/2.2));
+
+    vec4 outColor;
+    if(pc.shouldCombine == 1) {
+        outColor = vec4(finalColor, 1.0);
+        // outColor = vec4(sceneColor, 1.0);
+    } else {
+        outColor = vec4(ambient, 1.0);
+    }
+    imageStore(outImage, pixelCoord, outColor);
+}

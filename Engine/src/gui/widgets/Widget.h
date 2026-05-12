@@ -12,6 +12,7 @@
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/MaterialManager.h" 
+#include "core/resources/managers/BufferManager.h" 
 
 class Widget {
 public:
@@ -30,6 +31,7 @@ protected:
         meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
         modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
         materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
+        bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
     };
 
     Widget(const Widget& other) = default;
@@ -45,4 +47,5 @@ protected:
     MeshManager* meshManager{ nullptr };
     ModelManager* modelManager{ nullptr };
     MaterialManager* materialManager{ nullptr };
+    BufferManager* bufferManager{ nullptr };
 };

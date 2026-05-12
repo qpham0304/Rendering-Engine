@@ -33,14 +33,16 @@ public:
 		std::vector<VkWriteDescriptorSet>* writes,
 		const VkDescriptorSet& dstSet,
 		uint32_t binding,
-		const VkDescriptorImageInfo& imageInfo
+		const VkDescriptorImageInfo& imageInfo,
+		uint32_t arrayIndex = 0
 	);
 
 	void writeStorageImage(
 		std::vector<VkWriteDescriptorSet>* writes,
 		const VkDescriptorSet& dstSet,
 		uint32_t binding,
-		const VkDescriptorImageInfo& imageInfo
+		const VkDescriptorImageInfo& imageInfo,
+		uint32_t arrayIndex = 0
 	);
 
 	void writeStorage(
@@ -55,6 +57,14 @@ public:
 		const VkDescriptorSet& dstSet,
 		uint32_t binding,
 		const VkDescriptorImageInfo& bufferInfo
+	);
+
+	void writeAccelStruct(
+		std::vector<VkWriteDescriptorSet>* writes,
+		const VkDescriptorSet& dstSet,
+		uint32_t binding,
+		const std::vector<VkDescriptorSetLayoutBinding>& bindingTable,
+		VkWriteDescriptorSetAccelerationStructureKHR& descASInfo
 	);
 	
 	void updateDescriptorSets(std::vector<VkWriteDescriptorSet>* const writes);

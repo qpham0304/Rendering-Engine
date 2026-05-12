@@ -16,7 +16,6 @@ void Layer::onAttach(LayerManager* manager)
 {
 	this->m_Manager = manager;
 	setLogScopeEngine();
-	init();
 }
 
 

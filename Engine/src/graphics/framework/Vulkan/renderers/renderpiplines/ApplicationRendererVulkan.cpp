@@ -5,8 +5,6 @@
 #include "core/features/ServiceLocator.h"
 #include "core/features/Camera.h"
 #include "window/AppWindow.h"
-#include "graphics/renderers/RenderDevice.h"
-#include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
 #include "core/features/Mesh.h"
 
 #include <core/resources/managers/TextureManager.h>
@@ -14,6 +12,8 @@
 #include <core/resources/managers/ModelManager.h>
 #include <core/resources/managers/DescriptorManager.h>
 
+#include <graphics/renderers/RenderDevice.h>
+#include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
@@ -22,6 +22,7 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/renderpiplines/ForwardRendererVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
+#include <graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h>
 #include <core/scene/SceneManager.h>
 #include "imgui.h" // TODO: remove it once done
 
@@ -52,11 +53,6 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 		}
 	});
 
-	pushConstantData.flag = true;
-	pushConstantData.color = glm::vec3(1.0f, 1.0f, 0.0f);
-	pushConstantData.range = glm::vec3(1.0f, 1.0f, 1.0f);
-	pushConstantData.data = 0.1f;
-
 	_createDescriptors();
 	_createPipeline();
 
@@ -72,11 +68,12 @@ bool ApplicationRendererVulkan::onClose()
 
 void ApplicationRendererVulkan::onUpdate()
 {
-	
 }
 
 void ApplicationRendererVulkan::render(Camera& camera)
 {
+	pushConstantData.index = rendererManagerVulkan->getDisplayImage()->id();
+
 	// stop rendering as we can't record begin/endRecording because the manager's 
 	// command Buffer recording state is likely corrupted by the destruction inside
 	//  _recreateResources By returning, we let the manager call endFrame on an empty buffer
@@ -132,6 +129,26 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
 			nullptr
 		);
 
+		vkCmdBindDescriptorSets(
+			commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			appPipeline->pipelineLayout,
+			1, 
+			1, 
+			&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
+			0, 
+			nullptr
+		);
+
+		vkCmdPushConstants(
+			commandBuffer,
+			appPipeline->pipelineLayout,
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(PushConstantData),
+			&pushConstantData
+		);
+
 		vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 	}
 	endRecording(commandBuffer);
@@ -176,14 +193,16 @@ void ApplicationRendererVulkan::endRecording(void* cmdBuffer)
 void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 {
 	RendererVulkan* renderer = nullptr;
-	renderer = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
-	auto shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
+	auto shadowMapRenderer = dynamic_cast<ShadowMapPassVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
 	auto imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("ForwardRendererVulkan");
 	auto forwardRendererVulkan = dynamic_cast<ForwardRendererVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
+	auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
 
 	assert(shadowMapRenderer && imageBasedRenderer && 
 		forwardRendererVulkan && deferredRendererVulkan && 
@@ -193,7 +212,11 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	guiManager->start();
 	
 	//TODO: temporarily use imgui renderer, abstract to gui service and remove these
-	deferredRendererVulkan->renderGui();
+	int currentMode = rendererManagerVulkan->getRenderMode(); 
+	if(currentMode == 1) {
+		deferredRendererVulkan->renderGui();
+		bloomPassRendererVulkan->renderGui();
+	}
 
 	ImGui::Begin("Application");
 	ImGui::BeginChild("Application View");
@@ -237,6 +260,27 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 
 	ImGui::EndChild();
 	ImGui::End();
+
+	ImGui::Begin("Render Mode");
+	const char* modeNames[] = { "Forward", "Deferred", "Ray Traced" };
+	const char* previewValue = modeNames[currentMode];
+
+	if (ImGui::BeginCombo("Current Mode", previewValue)) {
+		for (int n = 0; n <= 2; n++) {
+			const bool isSelected = (currentMode == n);
+			
+			if (ImGui::Selectable(modeNames[n], isSelected)) {
+				rendererManagerVulkan->setRenderMode(n);
+			}
+
+			if (isSelected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::End();
+
 	guiManager->render(commandBuffer);
 	guiManager->end();
 }
@@ -270,6 +314,10 @@ void ApplicationRendererVulkan::_createPipeline()
 	void* handle = materialManager->getMaterialLayout();
 	VkDescriptorSetLayout materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
 
+	uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
+	auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
+
+
 	VkPipelineVertexInputStateCreateInfo emptyVertexInput{};
 	emptyVertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	emptyVertexInput.vertexAttributeDescriptionCount = 0;
@@ -289,8 +337,8 @@ void ApplicationRendererVulkan::_createPipeline()
 		"assets/shaders/spv/default.frag.spv",
 		pipelineConfig,
 		emptyVertexInput,
-		{ descriptorSetLayout }, 
-		0
+		{ descriptorSetLayout, bindlessLayout }, 
+		sizeof(PushConstantData)
 	);
 }
 

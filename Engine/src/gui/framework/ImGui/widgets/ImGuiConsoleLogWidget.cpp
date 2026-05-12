@@ -14,9 +14,9 @@
 
 // #include "graphics/framework/Vulkan/renderers/RendererManagerVulkan.h"	//TODO: remove vulkan specific setup
 // #include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
-// #include "graphics/framework/Vulkan/renderers/renderpiplines/ShadowMapRendererVulkan.h"
+// #include "graphics/framework/Vulkan/renderers/renderpiplines/ShadowMapPassVulkan.h"
 // #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-// #include "graphics/framework/vulkan/renderers/renderpiplines/ImageBasedRendererVulkan.h"
+// #include "graphics/framework/vulkan/renderers/renderpiplines/features/ImageBasedVulkan.h"
 // #include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 
 bool ButtonCenteredOnLine(const char* label, float alignment = 0.5f)

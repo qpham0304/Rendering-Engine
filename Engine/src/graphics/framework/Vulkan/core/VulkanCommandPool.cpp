@@ -1,6 +1,5 @@
 #include "VulkanCommandPool.h"
 #include "VulkanSwapChain.h"
-#include "logging/Logger.h"
 #include "core/features/ServiceLocator.h"
 #include "../renderers/RenderDeviceVulkan.h"
 
@@ -25,10 +24,10 @@ void VulkanCommandPool::create()
 void VulkanCommandPool::destroy()
 {
 	if (!commandBuffers.empty()) {
-		vkFreeCommandBuffers(device.device, commandPool, commandBuffers.size(), commandBuffers.data());
+		vkFreeCommandBuffers(device, commandPool, commandBuffers.size(), commandBuffers.data());
 	}
 	if (commandPool != VK_NULL_HANDLE) {
-		vkDestroyCommandPool(device.device, commandPool, nullptr);
+		vkDestroyCommandPool(device, commandPool, nullptr);
 	}
 }
 
@@ -77,14 +76,14 @@ VkCommandBuffer VulkanCommandPool::currentBuffer()
 }
 
 void VulkanCommandPool::createCommandPool() {
-	VulkanDevice::QueueFamilyIndices queueFamilyIndices = device.findQueueFamilies(device.physicalDevice);
+	VulkanDevice::QueueFamilyIndices queueFamilyIndices = device.findQueueFamilies(device.getPhysicalDevice());
 
 	VkCommandPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 
-	if (vkCreateCommandPool(device.device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create command pool!");
 	}
 }
@@ -98,7 +97,7 @@ void VulkanCommandPool::createCommandBuffers() {
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
 
-	if (vkAllocateCommandBuffers(device.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+	if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate command buffers!");
 	}
 }
@@ -131,8 +130,8 @@ void VulkanCommandPool::endSingleTimeCommand(VkCommandBuffer commandBuffer) {
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(device.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(device.graphicsQueue);
+	vkQueueSubmit(device.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(device.getGraphicsQueue());
 
 	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }

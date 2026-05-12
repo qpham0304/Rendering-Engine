@@ -10,15 +10,15 @@ int main()
         windowConfig.renderPlatform = RenderPlatform::VULKAN;
         windowConfig.guiPlatform = GuiPlatform::IMGUI;
         windowConfig.os = OperatingSystem::WINDOW;
-        windowConfig.width = 1920;
-        windowConfig.height = 1080;
+        windowConfig.width = 1024;
+        windowConfig.height = 720;
         windowConfig.vsync = false;
         windowConfig.targetRenderFPS = 360.0f;
         windowConfig.targetUpdateFPS = 360.0f;
 
         Engine app(windowConfig);
-        app.init();
         app.pushLayer(new SandBoxLayer("Sandbox Layer"));
+        app.init();
         app.start();
         app.run();
         app.close();
@@ -27,8 +27,7 @@ int main()
         std::cerr << "Exception caught by main: " << e.what() << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Caught standard exception: " << e.what() << std::endl;
-    }
-    catch (...) {
+    } catch (...) {
         std::cerr << "Unknown exception caught by main" << std::endl;
     }
 }

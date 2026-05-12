@@ -1,17 +1,20 @@
 #include "RendererManagerVulkan.h"
 #include <core/scene/SceneManager.h>
 
-
 #include "core/features/Timer.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ApplicationRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpiplines/RayTraceRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/TemporalPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/DeferredCombinePassVulkan.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
+#include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
 #include "RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
 
@@ -33,20 +36,29 @@ bool RendererManagerVulkan::init(WindowConfig config)
     applicationRenderer = addRenderer<ApplicationRendererVulkan>("ApplicationRendererVulkan");
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
-    shadowMapRenderer = addRenderer<ShadowMapRendererVulkan>("ShadowMapRendererVulkan");
+    raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
+    shadowMapPass = addRenderer<ShadowMapPassVulkan>("ShadowMapPassVulkan");
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
-    alchemyAORenderer = addRenderer<AlchemyAORendererVulkan>("AlchemyAORendererVulkan");
+    alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
     hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
     SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
+    bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
+    temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
+    deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
     // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererRendererVulkan");
 	
     applicationRenderer->init(config);
 	imageBasedRenderer->init(config);
-	shadowMapRenderer->init(config);
+	shadowMapPass->init(config);
     // alchemyAORenderer->init(config);
     // hiZPassRenderer->init(config);
     forwardRenderer->init(config);
 	deferredRenderer->init(config);
+	raytracingRenderer->init(config);
+    SSRGIPassRenderer->init(config);
+    bloomRenderer->init(config);
+    temporalPassRenderer->init(config);
+    deferredCombineRenderer->init(config);
 	// postProcessRenderer->init(config);
 
     return true;
@@ -63,11 +75,15 @@ bool RendererManagerVulkan::onClose()
     applicationRenderer->onClose();
 	forwardRenderer->onClose();
 	deferredRenderer->onClose();
-	shadowMapRenderer->onClose();
+	raytracingRenderer->onClose();
+	shadowMapPass->onClose();
 	imageBasedRenderer->onClose();
     alchemyAORenderer->onClose();
     hiZPassRenderer->onClose();
     SSRGIPassRenderer->onClose();
+    bloomRenderer->onClose();
+    temporalPassRenderer->onClose();
+    deferredCombineRenderer->onClose();
 	// postProcessRenderer->onClose();
     return true;
 }
@@ -84,7 +100,25 @@ std::vector<uint32_t> RendererManagerVulkan::listIDs() const
 
 void RendererManagerVulkan::onUpdate()
 {
-    
+    if(currentRenderMode == 0) {
+        forwardRenderer->onUpdate();
+    } 
+    else if(currentRenderMode == 1) {
+        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
+        if(tmp->pushConstantLight.aoOn) {
+            alchemyAORenderer->onUpdate();
+        }
+        deferredRenderer->onUpdate();
+        hiZPassRenderer->onUpdate();
+        SSRGIPassRenderer->onUpdate();
+        bloomRenderer->onUpdate();
+        if(tmp->denoiserOn) {
+            temporalPassRenderer->onUpdate();
+        }
+        deferredCombineRenderer->onUpdate();
+    } else if(currentRenderMode == 2) {
+        raytracingRenderer->onUpdate();
+    }
 }
 
 void RendererManagerVulkan::render()
@@ -99,14 +133,27 @@ void RendererManagerVulkan::render()
 
     beginFrame();
     // shadowMapRenderer->render(*camera);
-	// forwardRenderer->render(*camera);
-    auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-    if(tmp->pushConstantLight.aoOn) {
-        alchemyAORenderer->render(*camera);
+    
+    if(currentRenderMode == 0) {
+        forwardRenderer->render(*camera);
+    } 
+    else if(currentRenderMode == 1) {
+        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
+        if(tmp->pushConstantLight.aoOn) {
+            alchemyAORenderer->render(*camera);
+        }
+        deferredRenderer->render(*camera);
+        // hiZPassRenderer->render(*camera);
+        // SSRGIPassRenderer->render(*camera);
+        bloomRenderer->render(*camera);
+        // if(tmp->denoiserOn) {
+        //     temporalPassRenderer->render(*camera);
+        // }
+        deferredCombineRenderer->render(*camera);
+    } else if(currentRenderMode == 2) {
+        raytracingRenderer->render(*camera);
     }
-    hiZPassRenderer->render(*camera);
-    SSRGIPassRenderer->render(*camera);
-    deferredRenderer->render(*camera);
+
     applicationRenderer->render(*camera);
     endFrame();
 }
@@ -118,6 +165,16 @@ RendererVulkan* RendererManagerVulkan::getRenderer(std::string_view name)
         return nullptr;
     }
     return dynamic_cast<RendererVulkan*>(it->second.get());
+}
+
+void RendererManagerVulkan::setRenderMode(uint32_t mode)
+{
+    currentRenderMode = mode;
+}
+
+int RendererManagerVulkan::getRenderMode()
+{
+    return currentRenderMode;
 }
 
 void RendererManagerVulkan::beginFrame()

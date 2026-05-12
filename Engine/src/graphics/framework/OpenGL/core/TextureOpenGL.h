@@ -1,5 +1,5 @@
 #pragma once
-#include "Texture.h"
+#include "core/features/Texture.h"
 
 class ShaderOpenGL;
 class TextureOpenGL : public Texture

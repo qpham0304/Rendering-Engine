@@ -66,9 +66,17 @@ void OrbitCamera::onUpdate() {
     
     yaw += (targetYaw - yaw) * interpolationFactor;
     pitch += (targetPitch - pitch) * interpolationFactor;
-
     distance += (targetDistance - distance) * interpolationFactor;
     target += (targetCenter - target) * interpolationFactor;
+
+    const float EPSILON = 0.001f;
+    bool isStillSmoothing = 
+        glm::abs(targetYaw - yaw) > EPSILON ||
+        glm::abs(targetPitch - pitch) > EPSILON ||
+        glm::abs(targetDistance - distance) > EPSILON ||
+        glm::distance(targetCenter, target) > EPSILON;
+
+    cameraMove = isStillSmoothing;
 
     if (targetPitch > 89.0f) targetPitch = 89.0f;
     if (targetPitch < -89.0f) targetPitch = -89.0f;
@@ -191,7 +199,6 @@ bool OrbitCamera::processKeyboard()
         resetCamera();
         isPressing = true;
     }
-    
     return isPressing;
 }
 

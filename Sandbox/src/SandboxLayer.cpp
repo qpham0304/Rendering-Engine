@@ -41,7 +41,8 @@ bool SandBoxLayer::init()
     }
     
     setLogScopeEngine();
-    scene->loadScene("assets/data/Level1-test.json");
+    // scene->loadScene("assets/data/Level1-test.json");
+    scene->loadScene("assets/data/default-scene.json");
 
     const int numLights = 1;
     std::random_device rd;
@@ -61,20 +62,18 @@ bool SandBoxLayer::init()
 
         MaterialDesc materialDesc;
         materialDesc.albedoIDs.push_back(
-            textureManager->loadTexture(
-                // "assets/textures/hdr/photo_studio_loft_hall_2k.hdr", 
-                "assets/textures/mobi-padoru.png", 
-                1, 
-                false
-            )
+            textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false)
+            // textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
         );
+
+        materialDesc.emissiveIDs.push_back(
+            textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
+        );
+        // these need to be set to have emision
+        materialDesc.emissive = 1.0;
 
         Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
         mesh.materialID = materialManager->createMaterial(materialDesc);
-
-        // MeshComponent m{};
-        // m.meshIDs.push_back(meshManager->loadMesh(mesh));
-        // lightEntity.addComponent<MeshComponent>(m);
 
         Model model {};
         model.meshIDs.push_back(meshManager->loadMesh(mesh));

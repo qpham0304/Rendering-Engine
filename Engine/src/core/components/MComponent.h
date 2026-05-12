@@ -142,7 +142,7 @@ public:
 	MeshComponent() = default;
 	MeshComponent(std::vector<uint32_t> ids) : meshIDs(ids) {};
 	
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(MeshComponent, meshIDs);
+	// NLOHMANN_DEFINE_TYPE_INTRUSIVE(MeshComponent, meshIDs);
 };
 
 struct LightComponent {

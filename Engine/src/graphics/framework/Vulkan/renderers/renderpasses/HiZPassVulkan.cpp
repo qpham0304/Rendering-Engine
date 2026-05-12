@@ -45,11 +45,14 @@ bool HiZPassVulkan::onClose()
 {
     PostProcessRendererVulkan::onClose();
 
-    for (auto view : HiZMipViews) {
-        if (view != VK_NULL_HANDLE) {
-            vkDestroyImageView(renderDeviceVulkan->device, view, nullptr);
-        }
-    }
+	for(int i = 0; i < HiZMipViews.size(); i++) {
+		for (auto view : HiZMipViews[i]) {
+			if (view != VK_NULL_HANDLE) {
+				vkDestroyImageView(renderDeviceVulkan->device, view, nullptr);
+			}
+		}
+	}
+
     HiZMipViews.clear();
     
     pipeline->destroy();
@@ -85,33 +88,8 @@ void HiZPassVulkan::render(Camera &camera)
 
 void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-    VkImageMemoryBarrier barrier{};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = depthImage->textureImage;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-    barrier.srcAccessMask = 0;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier(
-		cmd,
-		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		0,
-		0, nullptr,
-		0, nullptr,
-		1, &barrier
-	);
-
-
     TextureManagerVulkan::transitionImageLayout(
-        cmd, hiZImage->textureImage, VK_FORMAT_R32_SFLOAT,
+        cmd, outputImages[currentFrame]->textureImage, VK_FORMAT_R32_SFLOAT,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, mipLevels, 1, renderDeviceVulkan);
 
     pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
@@ -130,7 +108,7 @@ void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)
         } else {
             prevDims = glm::vec2(std::max(1u, mapSize >> (i - 1)));
         }
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipelineLayout, 0, 1, &HiZMipSets[i], 0, nullptr);
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipelineLayout, 0, 1, &HiZMipSets[currentFrame][i], 0, nullptr);
         pushConstant.u_PreviousLevelDimensions = prevDims;
         pushConstant.u_MipLevel = i;
 
@@ -147,7 +125,7 @@ void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)
 
         VkImageMemoryBarrier mipBarrier{};
         mipBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        mipBarrier.image = hiZImage->textureImage;
+        mipBarrier.image = outputImages[currentFrame]->textureImage;
         mipBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
         mipBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL; // Stay in General, but flush caches
         mipBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
@@ -163,111 +141,101 @@ void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)
     }
 
     TextureManagerVulkan::transitionImageLayout(
-        cmd, hiZImage->textureImage, VK_FORMAT_R32_SFLOAT,
+        cmd, outputImages[currentFrame]->textureImage, VK_FORMAT_R32_SFLOAT,
         VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         mipLevels, 1, renderDeviceVulkan
-    );
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd,
-        depthImage->textureImage, 
-        VK_FORMAT_D32_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,           // What Hi-Z just used
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,   // What the G-Buffer expects
-        1, 
-        1,
-        renderDeviceVulkan
     );
 }
 
 void HiZPassVulkan::_createResources()
 {
-    uint32_t textureID = textureManagerVulkan->createTexture();
-	hiZImage = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(textureID));
-
-	assert(hiZImage && "failed to cast texture into vulkan texture");
-
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(mapSize))) + 1;
+   	outputImages.resize(VulkanUtils::numFrames());
+	HiZMipViews.resize(VulkanUtils::numFrames());
 
-	TextureManagerVulkan::createImage(
-		mapSize, 
-		mapSize, 
-		VK_FORMAT_R32_SFLOAT, 
-		VK_IMAGE_TILING_OPTIMAL, 
-		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-		hiZImage->textureImage, 
-		hiZImage->textureImageMemory,
-		mipLevels, 
-		1,
-		0,
-		renderDeviceVulkan->device
-	);
-
+	for(int i = 0; i < outputImages.size(); i++) {
+		uint32_t textureID = textureManagerVulkan->createTexture();
+		outputImages[i] = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(textureID));
+		assert(outputImages[i] && "failed to cast texture into vulkan texture");
 	
-	TextureManagerVulkan::createImageView(
-		hiZImage->textureImage, 
-		hiZImage->textureImageView, 
-		VK_FORMAT_R32_SFLOAT, 
-		VK_IMAGE_ASPECT_COLOR_BIT, 
-		mipLevels,
-		0,
-		1,
-		VK_IMAGE_VIEW_TYPE_2D,
-		renderDeviceVulkan->device
-	);
+		TextureManagerVulkan::createImage(
+			mapSize, 
+			mapSize, 
+			VK_FORMAT_R32_SFLOAT, 
+			VK_IMAGE_TILING_OPTIMAL, 
+			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+			outputImages[i]->textureImage, 
+			outputImages[i]->textureImageMemory,
+			mipLevels, 
+			1,
+			0,
+			renderDeviceVulkan->device
+		);
 
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_NEAREST;
-	samplerInfo.minFilter = VK_FILTER_NEAREST;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.anisotropyEnable = VK_FALSE;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = static_cast<float>(mipLevels);
-
-	TextureManagerVulkan::createTextureSampler(
-		hiZImage->textureSampler,
-		renderDeviceVulkan->device,
-		samplerInfo
-	);
-
-		
-	HiZMipViews.resize(mipLevels);
-	for (uint32_t i = 0; i < mipLevels; i++) {
 		TextureManagerVulkan::createImageView(
-			hiZImage->textureImage, 
-			HiZMipViews[i], 
+			outputImages[i]->textureImage, 
+			outputImages[i]->textureImageView, 
 			VK_FORMAT_R32_SFLOAT, 
 			VK_IMAGE_ASPECT_COLOR_BIT, 
+			mipLevels,
+			0,
 			1,
-			i,
-			1,                          	
 			VK_IMAGE_VIEW_TYPE_2D,
 			renderDeviceVulkan->device
 		);
-	}
 
-	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-	TextureManagerVulkan::transitionImageLayout(
-		cmd,
-		hiZImage->textureImage, 
-		VK_FORMAT_R32_SFLOAT,
-		VK_IMAGE_LAYOUT_UNDEFINED, 
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		mipLevels, 
-		1, 
-		renderDeviceVulkan
-	);
-	renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.magFilter = VK_FILTER_NEAREST;
+		samplerInfo.minFilter = VK_FILTER_NEAREST;
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.anisotropyEnable = VK_FALSE;
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = static_cast<float>(mipLevels);
+
+		TextureManagerVulkan::createTextureSampler(
+			outputImages[i]->textureSampler,
+			renderDeviceVulkan->device,
+			samplerInfo
+		);
+
+		HiZMipViews[i].resize(mipLevels);
+		for (uint32_t j = 0; j < mipLevels; j++) {
+			TextureManagerVulkan::createImageView(
+				outputImages[i]->textureImage, 
+				HiZMipViews[i][j], 
+				VK_FORMAT_R32_SFLOAT, 
+				VK_IMAGE_ASPECT_COLOR_BIT, 
+				1,
+				j,
+				1,                          	
+				VK_IMAGE_VIEW_TYPE_2D,
+				renderDeviceVulkan->device
+			);
+		}
+
+		VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+		TextureManagerVulkan::transitionImageLayout(
+			cmd,
+			outputImages[i]->textureImage, 
+			VK_FORMAT_R32_SFLOAT,
+			VK_IMAGE_LAYOUT_UNDEFINED, 
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			mipLevels, 
+			1, 
+			renderDeviceVulkan
+		);
+		renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+	}
 }
 
 void HiZPassVulkan::_createPipelines()
@@ -296,31 +264,37 @@ void HiZPassVulkan::_createDescriptors()
 	};
 	hiZPoolID = descriptorManagerVulkan->createPool(poolSizes, mipLevels * frameCount);
 
-	hiZSetsID = descriptorManagerVulkan->createSets(hiZLayoutID, hiZPoolID, mipLevels);
-	HiZMipSets = descriptorManagerVulkan->getDescriptorSet(hiZSetsID);
-
-	for (uint32_t i = 0; i < mipLevels; i++) {
-        VkDescriptorImageInfo sourceInfo{};
-        sourceInfo.sampler = hiZImage->textureSampler;
-
-        if (i == 0) {   // Mip 0 reads from the actual G-Buffer Depth
-            sourceInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            sourceInfo.imageView = depthImage->textureImageView;
-        } else {        // Mips 1+ read from the PREVIOUS Hi-Z mip, which stays in GENERAL
-            sourceInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-            sourceInfo.imageView = HiZMipViews[i - 1];
-        }
-
-        std::vector<VkWriteDescriptorSet> writes;
-        VkDescriptorImageInfo outputInfo{};
-        outputInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-        outputInfo.imageView = HiZMipViews[i];
-
-		descriptorManagerVulkan->writeImage(&writes, HiZMipSets[i], 0, sourceInfo);
-		descriptorManagerVulkan->writeStorageImage(&writes, HiZMipSets[i], 1, outputInfo);
-		
-		descriptorManagerVulkan->updateDescriptorSets(&writes);
+	HiZMipSets.resize(frameCount);
+	for(int i = 0; i < frameCount; i++) {
+		hiZSetsID = descriptorManagerVulkan->createSets(hiZLayoutID, hiZPoolID, mipLevels);
+		HiZMipSets[i] = descriptorManagerVulkan->getDescriptorSet(hiZSetsID);
 	}
+
+	for(uint32_t m = 0; m < HiZMipViews.size(); m++) {
+		for (uint32_t i = 0; i < mipLevels; i++) {
+			VkDescriptorImageInfo sourceInfo{};
+			sourceInfo.sampler = outputImages[m]->textureSampler;
+
+			if (i == 0) {   // Mip 0 reads from the actual G-Buffer Depth
+				sourceInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				sourceInfo.imageView = depthImage->textureImageView;
+			} else {        // Mips 1+ read from the PREVIOUS Hi-Z mip, which stays in GENERAL
+				sourceInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+				sourceInfo.imageView = HiZMipViews[m][i - 1];
+			}
+
+			std::vector<VkWriteDescriptorSet> writes;
+			VkDescriptorImageInfo outputInfo{};
+			outputInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+			outputInfo.imageView = HiZMipViews[m][i];
+
+			descriptorManagerVulkan->writeImage(&writes, HiZMipSets[m][i], 0, sourceInfo);
+			descriptorManagerVulkan->writeStorageImage(&writes, HiZMipSets[m][i], 1, outputInfo);
+			
+			descriptorManagerVulkan->updateDescriptorSets(&writes);
+		}
+	}
+
 }
 
 void HiZPassVulkan::_updateDescriptor(uint32_t index)
@@ -339,6 +313,8 @@ void HiZPassVulkan::_recreateResources()
 
 void HiZPassVulkan::_cleanupResources()
 {
-    textureManagerVulkan->destroy(hiZImage->id());
+    for(int i = 0; i < outputImages.size(); i++) {
+		textureManagerVulkan->destroy(outputImages[i]->id());
+	}
     pipeline->destroy();
 }

@@ -65,6 +65,7 @@ void Engine::pushLayer(Layer* layer)
 
 void Engine::init()
 {
+	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 	engineLogger->setLevel(LogLevel::Debug);
 	
 	for (Service*& service : services) {
@@ -80,8 +81,6 @@ void Engine::init()
 
 void Engine::start()
 {
-	pushLayer(new EditorLayer("EditorLayer", *guiManager));
-	
 	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		isRunning = false;
 	});

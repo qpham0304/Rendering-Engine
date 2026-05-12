@@ -1,0 +1,461 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_nonuniform_qualifier : enable
+
+struct RayPayload {
+    vec3 hitPos;
+    vec3 bc;
+    int instanceIndex;
+    int primitiveIndex;
+    uint hit;
+    uint seed;
+    uint isShadowed;
+};
+
+struct Material {
+    uint albedoIdx;
+    uint normalIdx;
+    uint metalnessIdx;
+    uint roughnessIdx;
+    uint aoIdx;
+    uint emissiveIdx;
+
+    vec2 uvOffset;
+    vec4 albedoFactor;
+    vec4 normalFactor;
+    float metallicFactor;
+    float roughnessFactor;
+    float aoFactor;
+    float emissiveFactor;
+};
+
+const uint MAX_BONE_INFLUENCE =  4;
+const float PI = 3.14159265359;
+
+struct Vertex {
+    vec3 pos; 
+    vec3 col; 
+    vec2 uv; 
+    vec3 normal; 
+    vec3 tangent; 
+    vec3 biTangent;
+    int m_BoneIDs[MAX_BONE_INFLUENCE]; 
+    float m_Weights[MAX_BONE_INFLUENCE];
+};
+
+struct Object {
+    uint64_t vertexAddress; 
+    uint64_t indexAddress;
+    uint64_t materialsRef; 
+    uint64_t materialIndiciesRef;
+};
+
+
+layout(location = 0) rayPayloadEXT RayPayload payload;
+
+layout(set = 0, binding = 0) uniform accelerationStructureEXT topLevelAS;
+layout(set = 0, binding = 1, rgba32f) uniform image2D outputImage;
+layout(set = 0, binding = 2) uniform UniformBufferObject {
+    mat4 view;
+    mat4 prevViewProj;
+    mat4 proj;
+    vec4 cameraPos;
+    mat4 invView;
+    mat4 invProj;
+    float width;
+    float height;
+    float frameSeed;
+    int frameCount;
+    bool clear;
+} ubo;
+
+struct Light {
+    vec4 v0;                // 16 bytes
+    vec4 v1;                // 16 bytes
+    vec4 v2;                // 16 bytes
+    uint instanceIdx;       // 4 bytes
+    uint triangleCount;     // 4 bytes
+    uint padding1;          // 4 bytes
+    uint padding2;
+};
+
+layout(set = 0, binding = 3, std430) readonly buffer LightSSBO {
+    Light lights[];
+} lightSSBO;
+
+
+layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
+
+
+layout(buffer_reference, scalar) buffer ObjectsBuffer { Object objects[]; };
+layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
+layout(buffer_reference, scalar) buffer Indices { uint i[]; };
+layout(buffer_reference, scalar) buffer MaterialsBuffer { Material m[]; };
+layout(buffer_reference, scalar) readonly buffer MatIndicesBuffer { uint i[]; };
+
+layout(push_constant) uniform PushConstant {
+    ObjectsBuffer objRef;
+    uint objIdx;
+    uint bluenoiseIdx;
+    uint explicitPass;
+} pc;
+
+uint tea(uint val0, uint val1) {
+  uint v0 = val0;
+  uint v1 = val1;
+  uint s0 = 0;
+
+  for(uint n = 0; n < 16; n++) {
+    s0 += 0x9e3779b9;
+    v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + s0) ^ ((v1 >> 5) + 0xc8013ea4);
+    v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + s0) ^ ((v0 >> 5) + 0x7e95761e);
+  }
+
+  return v0;
+}
+
+uint pcg_hash(inout uint seed) {
+    uint state = seed * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    seed = state; // Update seed for next call
+    return (word >> 22u) ^ word;
+}
+
+float rnd(inout uint seed) {
+    return float(pcg_hash(seed)) * (1.0 / 4294967296.0);
+}
+
+
+// Cosine-weighted sampling
+// get a random rayDir in a hemisphere for diffuse material
+vec3 sampleHemisphere(vec3 normal, inout uint seed) {
+    float phi = 2.0 * 3.14159265 * rnd(seed);
+    float cosTheta = sqrt(rnd(seed));
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    
+    vec3 tangent = normalize(cross(normal, abs(normal.x) > 0.1 ? vec3(0, 1, 0) : vec3(1, 0, 0)));
+    vec3 bitangent = cross(normal, tangent);
+    
+    return tangent * (cos(phi) * sinTheta) + bitangent * (sin(phi) * sinTheta) + normal * cosTheta;
+}
+
+
+void getHitObjectData(out Material mat, out vec3 nrm) {
+    Object obj = pc.objRef.objects[payload.instanceIndex];
+    
+    // dereference addresses
+    Vertices vertices = Vertices(obj.vertexAddress);
+    Indices indices = Indices(obj.indexAddress);
+    MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
+    MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndiciesRef);
+  
+    // use gl_PrimitiveID to access the triangle's vertices and material
+    uint i0 = indices.i[3 * payload.primitiveIndex + 0];        // flatten triangle hit indices
+    uint i1 = indices.i[3 * payload.primitiveIndex + 1];
+    uint i2 = indices.i[3 * payload.primitiveIndex + 2];
+
+    uint matIdx   = matIndices.i[payload.primitiveIndex];       // triangles material index
+    mat = materials.m[matIdx];                                  // triangles material
+
+    // vertex of the triangle (Vertex has pos, nrm, tex)
+    Vertex v0 = vertices.v[i0];
+    Vertex v1 = vertices.v[i1];
+    Vertex v2 = vertices.v[i2];
+
+    // compute normal at hit position using the provided barycentric coordinates.
+    const vec3 bc = payload.bc;                                 // The barycentric coordinates of the hit point
+    nrm  = bc.x*v0.normal + bc.y*v1.normal + bc.z*v2.normal;    // three vertex normals
+
+    // if the material has a texture, read texture and use as the point's diffuse color.
+    if (mat.albedoIdx != uint(0)) {
+        vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
+        mat.albedoFactor = texture(samplerImages[mat.albedoIdx], uv);
+    }
+    if (mat.metalnessIdx != uint(0)) {
+        vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
+        mat.metallicFactor = texture(samplerImages[mat.metalnessIdx], uv).b * mat.metallicFactor;
+    }
+    if (mat.roughnessIdx != uint(0)) {
+        vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
+        mat.roughnessFactor = texture(samplerImages[mat.roughnessIdx], uv).g * mat.roughnessFactor;
+    }
+}
+
+
+vec3 SampleTriangle(vec3 A, vec3 B, vec3 C) {
+    float b1 = rnd(payload.seed);
+    float b2 = rnd(payload.seed);
+    float b0 = 1 - b1 - b2;
+
+    if (b0 < 0.0) {   // outside means reflect back in
+        b1 = 1.0 - b1;
+        b2 = 1.0 - b2;
+        b0 = 1.0 - b1 - b2;
+    }
+
+    return b0*A + b1*B + b2*C;
+}
+
+float V_SmithGGXCorrelated(float NdotV, float NdotL, float alpha) {
+    float a2 = alpha * alpha;
+    float GV = NdotL * sqrt(NdotV * NdotV * (1.0 - a2) + a2);
+    float GL = NdotV * sqrt(NdotL * NdotL * (1.0 - a2) + a2);
+    return 0.5 / (GV + GL + 1e-6);
+}
+
+vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness) {
+    float a = roughness * roughness;
+    float phi = 2.0 * PI * Xi.x;
+    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    
+    vec3 H;
+    H.x = cos(phi) * sinTheta;
+    H.y = sin(phi) * sinTheta;
+    H.z = cosTheta;
+    
+    vec3 up = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent = normalize(cross(up, N));
+    vec3 bitangent = cross(N, tangent);
+    
+    return normalize(tangent * H.x + bitangent * H.y + N * H.z);
+}
+
+
+// D factor
+float DistributionGGX(vec3 N, vec3 H, float alphaRoughness) {
+    float NdotH = max(dot(N, H), 0.0);
+    float a2 = alphaRoughness * alphaRoughness;
+    float NdotH2 = NdotH * NdotH;
+    
+    float numerator = a2;
+    float denominator = (NdotH2 * (a2 - 1.0) + 1.0);
+    float D = numerator / (PI * denominator * denominator);
+    
+    return D;
+}
+
+// F factor
+vec3 Fresnel(vec3 Ks, float d) {
+    // return Ks + (1 - Ks) * pow(1 - abs(d), 5);
+    return Ks + (1 - Ks) * pow(clamp(1.0 - d, 0.0, 1.0), 5);
+}
+
+vec3 FresnelRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+float SchlickGGX(float NdotV, float alphaRoughness) {
+    float r = (alphaRoughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float numerator   = NdotV;
+    float denominator = NdotV * (1.0 - k) + k;
+	
+    return numerator / denominator;
+}
+
+//G factor
+float GGXSmith(float NdotV, float NdotL, float alphaRoughness) {
+    float GV = SchlickGGX(NdotV, alphaRoughness);
+    float GL = SchlickGGX(NdotL, alphaRoughness);
+    
+    return GV * GL;
+}
+
+vec3 CookTorranceSpecular(vec3 N, vec3 V, vec3 L, vec3 F, float alphaRoughness) {
+    vec3 H = normalize(V + L);
+    
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotH = max(dot(N, H), 0.0);
+    float VdotH = max(dot(V, H), 0.0);
+
+    float D = DistributionGGX(N, H, alphaRoughness);
+    float G = GGXSmith(NdotV, NdotL, alphaRoughness);
+
+    return (D * F * G) / (4.0 * NdotV * NdotL + 1e-5);
+}
+
+void main() {
+    ivec2 pixelCoords = ivec2(gl_LaunchIDEXT.xy);
+    payload.seed = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, uint(ubo.frameSeed));
+
+    // Jittered Camera Ray for Anti-Aliasing
+    vec2 subpixel = vec2(rnd(payload.seed), rnd(payload.seed));
+    vec2 uv = (vec2(pixelCoords) + subpixel) / vec2(gl_LaunchSizeEXT.xy);
+    vec2 d = uv * 2.0 - 1.0;
+
+    vec4 target = ubo.invProj * vec4(d.x, d.y, 1.0, 1.0);
+    vec3 rayDir = vec3(ubo.invView * vec4(normalize(target.xyz), 0.0));
+    vec3 rayOrigin = vec3(ubo.invView * vec4(0.0, 0.0, 0.0, 1.0)); 
+    
+    vec3 accumulatedColor = vec3(0.0);
+    vec3 throughput = vec3(1.0);
+    
+    const int numBounces = 8;
+    for (int i = 0; i < numBounces; i++) {
+        payload.hit = 0;
+        traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 0, 0, rayOrigin, 0.001, rayDir, 10000.0, 0);
+
+        if (payload.hit == 0) {
+            accumulatedColor += throughput * mix(vec3(0.02), vec3(0.1, 0.3, 0.5), max(rayDir.y, 0.0));
+            break;
+        }
+        
+        Material mat;
+        vec3 worldNormal;
+        getHitObjectData(mat, worldNormal);
+        vec3 V = -rayDir;
+        vec3 N = normalize(worldNormal);
+        // if (dot(N, V) < 0.0) {
+        //     N = -N;
+        // }
+        
+        // record current hit state locally because NEE will overwrite the payload
+        vec3 currentHitPos = payload.hitPos;
+
+        // direct light hit
+        if (mat.emissiveFactor > 0.01) {
+            // If NEE is on, weight this accidental hit. If NEE is off, we take full power.
+            float misWeight = (pc.explicitPass == 1 && i > 0) ? 0.5 : 1.0; 
+            accumulatedColor += throughput * (mat.albedoFactor.rgb * mat.emissiveFactor) * misWeight;
+            //break; 
+        }
+
+        // Explicit Pass or Next Event Estimation
+        uint lightCount = uint(lightSSBO.lights.length());
+        if(pc.explicitPass == 1 && lightCount > 0) {
+            int eID = int(rnd(payload.seed) * float(lightCount));
+            Light light = lightSSBO.lights[0];  //TODO: use actual randomize
+
+            vec3 Lpos = SampleTriangle(light.v0.xyz, light.v1.xyz, light.v2.xyz);
+            vec3 Lvec = Lpos - currentHitPos;
+            float distSq = dot(Lvec, Lvec);
+            float dist = sqrt(distSq);
+            vec3 Ldir = Lvec / dist;
+
+            if (dot(N, Ldir) > 0.0) {
+                payload.isShadowed = 1; 
+                
+                // overwrites payload.hitPos and payload.hit
+                traceRayEXT(topLevelAS, 
+                    gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT, 
+                    0xFF, 0, 0, 0, 
+                    currentHitPos + N * 0.001, 0.0, Ldir, dist - 0.001, 0
+                );
+
+                if (payload.isShadowed == 0) {
+                    vec3 lightNormal = normalize(cross(light.v1.xyz - light.v0.xyz, light.v2.xyz - light.v0.xyz));
+                    float cosL = max(dot(lightNormal, -Ldir), 0.0);
+                    
+                    if (cosL > 0.0) {
+                        float roughness = clamp(mat.roughnessFactor, 0.02, 1.0);
+                        float alpha = roughness * roughness;
+                        vec3 F0 = mix(vec3(0.04), mat.albedoFactor.rgb, mat.metallicFactor);
+                        
+                        vec3 H_nee = normalize(Ldir + V);
+                        vec3 F_nee = Fresnel(F0, max(dot(V, H_nee), 0.0));
+                        
+                        vec3 spec = CookTorranceSpecular(N, V, Ldir, F_nee, alpha);
+                        vec3 diff = (vec3(1.0) - F_nee) * (1.0 - mat.metallicFactor) * (mat.albedoFactor.rgb / PI);
+                        
+                        vec3 brdf = (diff + spec) * max(dot(N, Ldir), 0.0);
+                        float area = length(cross(light.v1.xyz - light.v0.xyz, light.v2.xyz - light.v0.xyz)) * 0.5;
+                        float pdf = distSq / (area * cosL * float(lightCount));
+
+                        accumulatedColor += throughput * (brdf * mat.emissiveFactor) / max(pdf, 0.00001);
+                        // accumulatedColor += vec3(1.0,0.0,0.0) * 1000;
+                        // break;
+                    }
+                } 
+                else {
+                    // accumulatedColor += vec3(0.0,0.0,0.0) * 1000;//throughput * (brdf * mat.emissiveFactor) / max(pdf, 0.00001);
+                    // break;
+                }
+                // restore hitPos and hit state for the indirect bounce
+                payload.hitPos = currentHitPos;
+                payload.hit = 1; 
+            }
+        }
+
+        float roughness = clamp(mat.roughnessFactor, 0.02, 1.0);
+        float alpha = roughness * roughness;
+        vec3 F0 = mix(vec3(0.04), mat.albedoFactor.rgb, mat.metallicFactor);
+
+        vec3 F_view = FresnelRoughness(max(dot(N, V), 0.0), F0, roughness);
+        float specProb = clamp(max(F_view.r, max(F_view.g, F_view.b)), 0.1, 0.9);
+        
+        vec3 L;
+        vec3 BRDF;
+        float pdf;
+
+        // specular
+        if (rnd(payload.seed) < specProb) {
+            vec3 H = ImportanceSampleGGX(vec2(rnd(payload.seed), rnd(payload.seed)), N, roughness);
+            L = reflect(-V, H);
+            float NdotL = max(dot(N, L), 0.0);
+            float NdotV = max(dot(N, V), 0.0);
+            float NdotH = max(dot(N, H), 0.0);
+            float VdotH = max(dot(V, H), 0.0);
+
+            if (NdotL > 0.0) {
+                float D = DistributionGGX(N, H, alpha);
+                vec3 F = Fresnel(F0, VdotH);
+                float Vis = V_SmithGGXCorrelated(NdotV, NdotL, alpha);
+                BRDF = F * D * Vis;
+                pdf = (D * NdotH) / (4.0 * VdotH + 1e-7) * specProb;    // pdf for specular
+            } else {
+                break;
+            }
+        } 
+        // diffuse
+        else {
+            L = sampleHemisphere(N, payload.seed);
+            float NdotL = max(dot(N, L), 0.0);
+            vec3 F = FresnelRoughness(NdotL, F0, roughness);
+            vec3 kD = (vec3(1.0) - F) * (1.0 - mat.metallicFactor);
+            BRDF = kD * (mat.albedoFactor.rgb / PI);
+            pdf = (NdotL / PI) * (1.0 - specProb);  // pdf for diffuse
+        }
+
+        if (pdf <= 1e-7) {
+            break;
+        }
+
+        throughput *= (BRDF * max(dot(N, L), 0.0)) / pdf;
+        // if (rnd(payload.seed) >= specProb) {
+        //     L = sampleHemisphere(N, payload.seed);
+        //     throughput *= mat.albedoFactor.rgb;
+        // }
+
+        // Russian Roulette: flip if a ray survive, or not
+        // if a ray doesn't survive, terminate, it if does, boost its contribution
+        if (i > 3) {
+            float p = clamp(max(throughput.r, max(throughput.g, throughput.b)), 0.1, 0.95);
+            if (rnd(payload.seed) > p) {
+                break;
+            }
+            throughput /= p;
+        }
+
+        rayOrigin = payload.hitPos + N * 0.001; 
+        rayDir = L;
+    }
+    
+    vec4 old = imageLoad(outputImage, pixelCoords);
+    if(ubo.clear) {
+        old = vec4(0.0);
+    }
+
+    vec3 ave = old.xyz;
+    float numSamples = old.w;
+
+    ave += (accumulatedColor - ave)/(numSamples + 1.0);
+    numSamples += 1.0;
+    imageStore(outputImage, pixelCoords, vec4(ave, numSamples));
+}

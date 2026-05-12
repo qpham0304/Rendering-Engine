@@ -42,8 +42,6 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
 class VulkanDevice
 {
-	class Logger;
-	
 public:
 	VulkanDevice();
 	operator VkDevice() const noexcept;
@@ -148,16 +146,19 @@ public:
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) const;
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
-
+	VkSurfaceKHR getSurface() const;
+	VkInstance getInstance() const;
+	VkPhysicalDevice getPhysicalDevice() const;
+	VkQueue getGraphicsQueue() const;
+	VkQueue getPresentQueue() const;
+	bool raytracingSupport() const;
+	
 private:
 	VulkanDevice(const VulkanDevice&) = delete;
 	VulkanDevice& operator=(const VulkanDevice&) = delete;
 	VulkanDevice(VulkanDevice&&) = delete;
 	VulkanDevice& operator=(VulkanDevice&&) = delete;
 
-
-public:
-	//TODO: for quick setup, these should be hidden once done
 	VkSurfaceKHR surface;
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice;
@@ -166,6 +167,8 @@ public:
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
+	VkQueue computeQueue;
+	VkQueue transferQueue;
 
 	bool rtSupported;
 	bool dynamicRenderingSupported;
@@ -184,9 +187,6 @@ public:
 #else
 	const bool enableValidationLayers = true;
 #endif
-
-private:
-	Logger* m_logger;
 
 };
 

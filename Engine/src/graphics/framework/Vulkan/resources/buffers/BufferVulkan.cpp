@@ -13,14 +13,14 @@ BufferVulkan::~BufferVulkan()
 
 }
 
-void BufferVulkan::bind(void* commandBuffer)
-{
-    throw std::runtime_error("unimplemented error");
-}
-
 const VkDeviceMemory& BufferVulkan::getMemory()
 {
     return bufferMemory;
+}
+
+VkDeviceAddress BufferVulkan::getAddress()
+{
+    return deviceAddress;
 }
 
 BufferVulkan::operator VkBuffer() const
