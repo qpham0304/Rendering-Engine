@@ -5,7 +5,7 @@
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
 #include <graphics/framework/Vulkan/renderers/renderpasses/ShadowMapPassVulkan.h>
-#include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
 
 #include <glm/glm.hpp>
 #include <vector>

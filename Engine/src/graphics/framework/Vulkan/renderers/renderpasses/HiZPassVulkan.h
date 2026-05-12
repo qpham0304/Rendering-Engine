@@ -23,7 +23,6 @@ public:
     void writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame);
 
 	//TODO: turn this into private
-	// TextureVulkan* hiZImage;
 	std::vector<TextureVulkan*> outputImages;
 
 protected:
@@ -42,7 +41,7 @@ protected:
 	uint32_t hiZSetsID;
 	uint32_t mipLevels;
 	uint32_t mapSize{ 1024 };
-	// std::vector<VkImageView> HiZMipViews;
+
 	std::vector<std::vector<VkImageView>> HiZMipViews;
 	std::vector<std::vector<VkDescriptorSet>> HiZMipSets;
 	PushConstant pushConstant;

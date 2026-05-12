@@ -15,6 +15,7 @@
 #include <math.h>
 #include <algorithm>
 #include "TemporalPassVulkan.h"
+#include "BloomPassVulkan.h"
 
 DeferredCombinePassVulkan::DeferredCombinePassVulkan(std::string serviceName)
 	:	PostProcessRendererVulkan(serviceName)
@@ -36,11 +37,14 @@ bool DeferredCombinePassVulkan::init(WindowConfig config)
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
     renderer = rendererManagerVulkan->getRenderer("TemporalPassVulkan");
 	auto temporalPassRenderer = dynamic_cast<TemporalPassVulkan*>(renderer);
+    renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
+	auto bloomPassRenderer = dynamic_cast<BloomPassVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     denoisedGIImage = temporalPassRenderer->getOutputImage();
     sceneImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
     albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
+	bloomImage = bloomPassRenderer->getOutputImage();
     
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
@@ -82,6 +86,8 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 	auto temporalPassRenderer = dynamic_cast<TemporalPassVulkan*>(renderer);
     renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
 	auto SSRGIPassRenderer = dynamic_cast<SSRGIPassVulkan*>(renderer);
+    renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
+	auto bloomPassRenderer = dynamic_cast<BloomPassVulkan*>(renderer);
     
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
@@ -95,7 +101,7 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 
     sceneImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
     albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
-
+	bloomImage = bloomPassRenderer->getOutputImage();
     
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
@@ -236,6 +242,7 @@ void DeferredCombinePassVulkan::_createDescriptors()
         { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     };
 
 	uint32_t frameCount = VulkanUtils::numFrames();
@@ -283,12 +290,18 @@ void DeferredCombinePassVulkan::_updateDescriptor(uint32_t index)
 	albedoImageInfo.imageView = albedoImage->textureImageView;
 	albedoImageInfo.sampler = albedoImage->textureSampler;
 
+    VkDescriptorImageInfo bloomImageInfo{};
+	bloomImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	bloomImageInfo.imageView = bloomImage->textureImageView;
+	bloomImageInfo.sampler = bloomImage->textureSampler;
+
 	std::vector<VkWriteDescriptorSet> writes;
 	descriptorManagerVulkan->writeUniform(&writes, descriptorSets[index], 0, bufferInfo);
 	descriptorManagerVulkan->writeStorageImage(&writes, descriptorSets[index], 1, outputImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 2, GIImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 3, sceneColorImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 4, albedoImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 5, bloomImageInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 

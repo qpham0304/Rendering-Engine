@@ -242,48 +242,6 @@ void DeferredRendererVulkan::renderGui()
 
 	
 	ImGui::Begin("Lights Control");
-	if(ImGui::Button("Add Pipeline")) {
-		AsyncEvent e;
-		EventManager::getInstance().queue(e, [this] (AsyncEvent& event) {
-			rendererManagerVulkan->addRenderer<DeferredRendererVulkan>("DeferredRendererVulkanTemp");
-
-			PipelineConfigInfo gBufferConfig = VulkanPipeline::defaultPipelineConfigInfo(5);
-			gBufferConfig.renderPass = renderTarget.renderPass;
-
-			auto bindingDescription = VulkanDevice::VertexVulkan::getBindingDescription();
-			auto attributeDescriptions = VulkanDevice::VertexVulkan::getAttributeDescriptions();
-			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-			vertexInputInfo.vertexBindingDescriptionCount = 0;   // No bindings
-			vertexInputInfo.vertexAttributeDescriptionCount = 0; // No attributes
-			vertexInputInfo.pVertexBindingDescriptions = nullptr;
-			vertexInputInfo.pVertexAttributeDescriptions = nullptr;
-
-			VkDescriptorSetLayout descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
-			VkDescriptorPool descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
-			
-			uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
-			auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
-
-			void* handle = materialManager->getMaterialLayout();
-			auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
-
-			std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, bindlessLayout, materialLayout };
-			
-			tempPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
-			tempPipeline->createGraphicsPipeline(
-				"assets/shaders/spv/gBuffer.vert.spv", 
-				"assets/shaders/spv/gBuffer.frag.spv", 
-				gBufferConfig, 
-				vertexInputInfo, 
-				layouts, 
-				sizeof(PushConstant)
-			);
-		});
-	}
-	ImGui::SameLine();
-	ImGui::Text(tempPipeline ? "loaded pipeline" : "loading...");
-	
 	if(ImGui::Button("Change Environment")) {
 		std::string path;
 		path = Utils::fileDialog();
@@ -438,8 +396,7 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 		0,
 		nullptr
 	);
-
-
+	
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
 	if (!scene) {
@@ -960,15 +917,13 @@ void DeferredRendererVulkan::_createPipelines()
 	void* handle = materialManager->getMaterialLayout();
 	auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
 
-	std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, bindlessLayout, materialLayout };
-	
 	gPassPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	gPassPipeline->createGraphicsPipeline(
 		"assets/shaders/spv/gBuffer.vert.spv", 
 		"assets/shaders/spv/gBuffer.frag.spv", 
 		gBufferConfig, 
 		vertexInputInfo, 
-		layouts, 
+		{ descriptorSetLayout, bindlessLayout, materialLayout }, 
 		sizeof(PushConstant)
 	);
 }

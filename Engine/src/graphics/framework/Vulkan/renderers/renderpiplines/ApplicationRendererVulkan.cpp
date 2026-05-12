@@ -5,8 +5,6 @@
 #include "core/features/ServiceLocator.h"
 #include "core/features/Camera.h"
 #include "window/AppWindow.h"
-#include "graphics/renderers/RenderDevice.h"
-#include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
 #include "core/features/Mesh.h"
 
 #include <core/resources/managers/TextureManager.h>
@@ -14,6 +12,8 @@
 #include <core/resources/managers/ModelManager.h>
 #include <core/resources/managers/DescriptorManager.h>
 
+#include <graphics/renderers/RenderDevice.h>
+#include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
@@ -22,6 +22,7 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/renderpiplines/ForwardRendererVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
+#include <graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h>
 #include <core/scene/SceneManager.h>
 #include "imgui.h" // TODO: remove it once done
 
@@ -200,6 +201,8 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	auto forwardRendererVulkan = dynamic_cast<ForwardRendererVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
+	auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
 
 	assert(shadowMapRenderer && imageBasedRenderer && 
 		forwardRendererVulkan && deferredRendererVulkan && 
@@ -212,6 +215,7 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	int currentMode = rendererManagerVulkan->getRenderMode(); 
 	if(currentMode == 1) {
 		deferredRendererVulkan->renderGui();
+		bloomPassRendererVulkan->renderGui();
 	}
 
 	ImGui::Begin("Application");

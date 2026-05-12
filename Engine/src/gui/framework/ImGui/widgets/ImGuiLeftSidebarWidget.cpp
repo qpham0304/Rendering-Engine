@@ -1,7 +1,7 @@
 #include "ImGuiLeftSidebarWidget.h"
 #include <windows.h>
 #include <shobjidl.h> 
-#include "Texture.h"
+#include "core/features/Texture.h"
 #include "core/scene/SceneManager.h"
 #include "core/events/EventManager.h"
 #include "core/components/MComponent.h"

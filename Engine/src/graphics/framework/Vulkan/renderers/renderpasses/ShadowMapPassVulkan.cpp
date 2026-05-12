@@ -128,7 +128,7 @@ void ShadowMapPassVulkan::render(Camera& camera)
 
 	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-	// dispatchBlur(cmdBuffer, renderDeviceVulkan->getImageIndex());
+	dispatchBlur(cmdBuffer, renderDeviceVulkan->getImageIndex());
 }
 
 void ShadowMapPassVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline)
@@ -248,6 +248,9 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 
 void ShadowMapPassVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIndex) 
 {
+	// TextureManagerVulkan::transitionImageLayout(
+		// cmd, momentImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
+		// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
 	TextureManagerVulkan::createBarrier(cmd, momentImage->textureImage,
 		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
@@ -267,8 +270,6 @@ void ShadowMapPassVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIndex)
 	auto& setsH = descriptorManagerVulkan->getDescriptorSet(compDescSetMtoT_ID);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipelineLayout, 0, 1, &setsH[0], 0, nullptr);
 
-	uint32_t groupsAlongWidth = (width + 127) / 128;
-    vkCmdDispatch(cmd, groupsAlongWidth, height, 1);
 	uint32_t groupsX = (width + 127) / 128;
 	uint32_t groupsY = height; 
 	vkCmdDispatch(cmd, groupsX, groupsY, 1);

@@ -515,7 +515,7 @@ void TextureManagerVulkan::transitionImageLayout(
 	VkImageLayout newLayout,
 	uint32_t mipLevels,
 	uint32_t layerCount,
-	RenderDeviceVulkan* renderDeviceVulkan
+	RenderDeviceVulkan* renderDeviceVulkan	//TODO: this is not used
 ){
 	VkImageAspectFlags aspect = 0;
 	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL || 
@@ -725,7 +725,7 @@ void TextureManagerVulkan::copyBufferToImage(
 	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	region.imageSubresource.mipLevel = 0;
 	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.layerCount = 1;
+	region.imageSubresource.layerCount = 1;	//NOTE: currently set layer count to 1
 
 	region.imageOffset = { 0, 0, 0 };
 	region.imageExtent = { width, height, 1 };

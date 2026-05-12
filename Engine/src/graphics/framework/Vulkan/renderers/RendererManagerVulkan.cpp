@@ -1,20 +1,20 @@
 #include "RendererManagerVulkan.h"
 #include <core/scene/SceneManager.h>
 
-
 #include "core/features/Timer.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ApplicationRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/RayTraceRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/ImageBasedRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/TemporalPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/DeferredCombinePassVulkan.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
+#include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
 #include "RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
 
@@ -42,6 +42,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
     hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
     SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
+    bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
     temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
     deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
     // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererRendererVulkan");
@@ -55,6 +56,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
 	deferredRenderer->init(config);
 	raytracingRenderer->init(config);
     SSRGIPassRenderer->init(config);
+    bloomRenderer->init(config);
     temporalPassRenderer->init(config);
     deferredCombineRenderer->init(config);
 	// postProcessRenderer->init(config);
@@ -79,6 +81,7 @@ bool RendererManagerVulkan::onClose()
     alchemyAORenderer->onClose();
     hiZPassRenderer->onClose();
     SSRGIPassRenderer->onClose();
+    bloomRenderer->onClose();
     temporalPassRenderer->onClose();
     deferredCombineRenderer->onClose();
 	// postProcessRenderer->onClose();
@@ -108,6 +111,7 @@ void RendererManagerVulkan::onUpdate()
         deferredRenderer->onUpdate();
         hiZPassRenderer->onUpdate();
         SSRGIPassRenderer->onUpdate();
+        bloomRenderer->onUpdate();
         if(tmp->denoiserOn) {
             temporalPassRenderer->onUpdate();
         }
@@ -139,11 +143,12 @@ void RendererManagerVulkan::render()
             alchemyAORenderer->render(*camera);
         }
         deferredRenderer->render(*camera);
-        hiZPassRenderer->render(*camera);
-        SSRGIPassRenderer->render(*camera);
-        if(tmp->denoiserOn) {
-            temporalPassRenderer->render(*camera);
-        }
+        // hiZPassRenderer->render(*camera);
+        // SSRGIPassRenderer->render(*camera);
+        bloomRenderer->render(*camera);
+        // if(tmp->denoiserOn) {
+        //     temporalPassRenderer->render(*camera);
+        // }
         deferredCombineRenderer->render(*camera);
     } else if(currentRenderMode == 2) {
         raytracingRenderer->render(*camera);
