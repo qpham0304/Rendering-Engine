@@ -41,8 +41,8 @@ bool SandBoxLayer::init()
     }
     
     setLogScopeEngine();
-    scene->loadScene("assets/data/Level1-test.json");
-    // scene->loadScene("assets/data/default-scene.json");
+    // scene->loadScene("assets/data/Level1-test.json");
+    scene->loadScene("assets/data/default-scene.json");
 
     const int numLights = 1;
     std::random_device rd;
@@ -63,6 +63,7 @@ bool SandBoxLayer::init()
         MaterialDesc materialDesc;
         materialDesc.albedoIDs.push_back(
             textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false)
+            // textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
         );
 
         materialDesc.emissiveIDs.push_back(

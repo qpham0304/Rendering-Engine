@@ -4,7 +4,8 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_ray_query : require
 
 layout (local_size_x = 16, local_size_y = 16) in;
 
@@ -22,6 +23,7 @@ layout(set = 0, binding = 2)  uniform UniformBufferObject {
     float height;
 } ubo;
 
+layout(set = 0, binding = 3) uniform accelerationStructureEXT topLevelAS;
 
 layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 
@@ -86,14 +88,117 @@ vec3 aces(vec3 x) {
 }
 
 void main() {
-    ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
-    vec2 size = vec2(ubo.width, ubo.height);
-    vec2 uv = vec2(pixelCoords) / vec2(size - 1);
+    if(true) {
+        ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+        vec2 size = vec2(ubo.width, ubo.height);
+        vec2 uv = vec2(pixelCoords) / vec2(size - 1);
 
-    vec4 color = imageLoad(inputImage, pixelCoords);
-    // color = color / (color + vec4(1.0));
-    color = vec4(aces(color.xyz), 1.0);
-    color = pow(color, vec4(1.0 / 2.2));
+        vec4 color = imageLoad(inputImage, pixelCoords);
+        // color = color / (color + vec4(1.0));
+        color = vec4(aces(color.xyz), 1.0);
+        color = pow(color, vec4(1.0 / 2.2));
 
-    imageStore(outputImage, pixelCoords, color);
+        imageStore(outputImage, pixelCoords, color);
+    }
+
+    // this section demonstrates 
+    // ray query features support
+    else {
+        ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+        if (pixelCoords.x >= ubo.width || pixelCoords.y >= ubo.height) return;
+
+        vec2 uv = (vec2(pixelCoords) + 0.5) / vec2(ubo.width, ubo.height);
+        vec2 d = uv * 2.0 - 1.0;
+
+        // ray generation from camera
+        vec4 target = ubo.invProj * vec4(d.x, d.y, 1.0, 1.0);
+        vec3 rayDir = vec3(ubo.invView * vec4(normalize(target.xyz), 0.0));
+        vec3 rayOrigin = ubo.cameraPos.xyz;
+
+        // initialize ray query
+        rayQueryEXT query;
+        float tMin = 0.001;
+        float tMax = 10000.0;
+
+        rayQueryInitializeEXT(
+            query, 
+            topLevelAS, 
+            gl_RayFlagsOpaqueEXT, // only care about opaque geometry for this test
+            0xFF,                 // culling mask
+            rayOrigin, 
+            tMin, 
+            rayDir, 
+            tMax
+        );
+
+        // traverse the Acceleration Structure
+        // This loop proceeds until a committed hit or miss is found
+        while(rayQueryProceedEXT(query)) {
+            // You can handle Alpha Testing / AnyHit logic here if needed
+        }
+
+        vec3 finalColor;
+        // if (rayQueryGetIntersectionTypeEXT(query, true) == gl_RayQueryCommittedIntersectionTriangleEXT) {
+        //     // Get the geometric normal in world space
+        //     // This is essentially cross(v1-v0, v2-v0)
+        //     vec3 normal = rayQueryGetIntersectionFrontFaceEXT(query, true) ? 
+        //                 vec3(0, 1, 0) : vec3(1, 0, 0); // Primitive placeholder
+            
+        //     // Better: Visualizing the barycentrics to see the triangle grid
+        //     vec2 bary = rayQueryGetIntersectionBarycentricsEXT(query, true);
+        //     finalColor = vec3(bary.x, bary.y, 1.0 - bary.x - bary.y);
+        // }
+
+        // if (rayQueryGetIntersectionTypeEXT(query, true) == gl_RayQueryCommittedIntersectionTriangleEXT) {
+        //     // Hit: Return a simple normal visualization or distance-based color
+        //     float t = rayQueryGetIntersectionTEXT(query, true);
+        //     finalColor = vec3(1.0 - (t / 50.0)); // Simple depth visualization
+        // } else {
+        //     // Miss: Background color
+        //     finalColor = vec3(0.1, 0.1, 0.2);
+        // }
+
+        if (rayQueryGetIntersectionTypeEXT(query, true) == gl_RayQueryCommittedIntersectionTriangleEXT) {
+            // gl_InstanceCustomIndexEXT -> rayQueryGetIntersectionPrimitiveIndexEXT
+            // gl_PrimitiveID -> rayQueryGetIntersectionPrimitiveIndexEXT
+            uint instanceID = rayQueryGetIntersectionInstanceCustomIndexEXT(query, true);
+            uint primitiveID = rayQueryGetIntersectionPrimitiveIndexEXT(query, true);
+            vec2 barycentrics = rayQueryGetIntersectionBarycentricsEXT(query, true);
+
+            Object obj = pc.objRef.objects[instanceID];
+            
+            Vertices vertices = Vertices(obj.vertexAddress);
+            Indices indices = Indices(obj.indexAddress);
+            MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
+            MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndiciesRef);
+
+            uint i0 = indices.i[3 * primitiveID + 0];
+            uint i1 = indices.i[3 * primitiveID + 1];
+            uint i2 = indices.i[3 * primitiveID + 2];
+
+            uint matIdx = matIndices.i[primitiveID];
+            Material mat = materials.m[matIdx];
+
+            Vertex v0 = vertices.v[i0];
+            Vertex v1 = vertices.v[i1];
+            Vertex v2 = vertices.v[i2];
+
+            // Barycentrics for queries are (u, v) for the weights of v1 and v2. 
+            // Weight for v0 is (1 - u - v).
+            const vec3 bary = vec3(1.0 - barycentrics.x - barycentrics.y, barycentrics.x, barycentrics.y);
+            vec2 texCoord = v0.uv * bary.x + v1.uv * bary.y + v2.uv * bary.z;
+
+            // Ensure your samplerImages array is visible to the compute stage!
+            vec3 albedo = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], texCoord).rgb;
+            albedo *= mat.albedoFactor.rgb;
+
+            finalColor = albedo;
+        }
+
+        finalColor = aces(finalColor);
+        finalColor = pow(finalColor, vec3(1.0 / 2.2));
+
+        imageStore(outputImage, pixelCoords, vec4(finalColor, 1.0));
+    }
 }
+

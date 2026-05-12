@@ -1,8 +1,8 @@
 #pragma once
 
-#include "PostProcessRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 
-class AlchemyAORendererVulkan : public PostProcessRendererVulkan
+class BilateralBlurPassVulkan : public RendererVulkan
 {
 public:
 	struct PushConstantInfo {
@@ -10,44 +10,30 @@ public:
     	alignas(4) 	float radius;
 		alignas(4) 	float bias;
 		alignas(4) 	float intensity;
-		alignas(4) 	float projScale;
-	};
-
-	struct BlurPushConstantInfo {
-		float isVertical;
-		int blurRadius;
-		float scale;
 	};
 
 public:
-	AlchemyAORendererVulkan(std::string serviceName = "AlchemyAORendererVulkan");
+	BilateralBlurPassVulkan(std::string serviceName = "BilateralBlurPassVulkan");
 
-	virtual ~AlchemyAORendererVulkan() override;
+	virtual ~BilateralBlurPassVulkan() override;
 
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
 
-	void writeAO(VkCommandBuffer cmd, uint32_t currentFrame);
-	void writeBlur(VkCommandBuffer cmd, uint32_t currentFrame);
+	void writeBlur();
 
-	//TODO: make this private after test done or use a function instead
-	BlurPushConstantInfo blurrPushConstant;
-
-protected:	
+private:
 	void _createOcclusionMap();
 	void _createPipelines();
 	void _createDescriptors();
-	void _updateDescriptorSetsAO(uint32_t index);
-	void _updateDescriptorSetsBlur(uint32_t index);
+	void _updateDescriptorSets(uint32_t index);
 	void _recreateResources();
 	void _cleanupResources();
 
 	uint32_t aoMapID;
-	uint32_t aoMapTempID;
 	TextureVulkan* aoMap;
-	TextureVulkan* aoMapTemp;
 	TextureVulkan* depthImage;
 	TextureVulkan* positionImage;
 	TextureVulkan* normalImage;
@@ -60,8 +46,6 @@ protected:
 
 	uint32_t blurDescriptorLayoutID;
 	uint32_t blurDescriptorPoolID;
-	uint32_t blurDescSetMtoT_ID;
-	uint32_t blurDescSetTtoM_ID;
+	uint32_t blurDescriptorSetsID;
 	std::unique_ptr<VulkanPipeline> blurPipeline;
-	// BlurPushConstantInfo blurrPushConstant;
 };

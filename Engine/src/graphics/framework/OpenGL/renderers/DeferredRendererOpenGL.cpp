@@ -1,9 +1,9 @@
-//#include "graphics/renderers/DeferredRenderer.h"
+//#include "graphics/renderers/DeferredRendererOpenGL.h"
 //#include "core/components/LightComponent.h"
 //#include "core/components/MComponent.h"
 //#include "core/features/Camera.h"
 //
-//DeferredRenderer::DeferredRenderer(const int width, const int height)
+//DeferredRendererOpenGL::DeferredRendererOpenGL(const int width, const int height)
 //{
 //    this->width = width;
 //    this->height = height;
@@ -67,7 +67,7 @@
 //
 //}
 //
-//void DeferredRenderer::renderGeometry(Camera* cameraPtr, std::vector<Component*>& components)
+//void DeferredRendererOpenGL::renderGeometry(Camera* cameraPtr, std::vector<Component*>& components)
 //{
 //    Camera& camera = *cameraPtr;
 //    glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
@@ -88,7 +88,7 @@
 //    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 //}
 //
-//void DeferredRenderer::renderGeometry(Camera* cameraPtr, Component& component)
+//void DeferredRendererOpenGL::renderGeometry(Camera* cameraPtr, Component& component)
 //{
 //    Camera& camera = *cameraPtr;
 //    glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
@@ -118,7 +118,7 @@
 //    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 //}
 //
-//void DeferredRenderer::renderColor(Camera* cameraPtr, std::vector<Light>& lights)
+//void DeferredRendererOpenGL::renderColor(Camera* cameraPtr, std::vector<Light>& lights)
 //{
 //    Camera& camera = *cameraPtr;
 //    colorShader->Activate();
@@ -153,32 +153,32 @@
 //    Utils::OpenGL::Draw::drawQuad();
 //}
 //
-//unsigned int DeferredRenderer::getGBuffer()
+//unsigned int DeferredRendererOpenGL::getGBuffer()
 //{
 //    return gBuffer;
 //}
 //
-//unsigned int DeferredRenderer::getGPosition()
+//unsigned int DeferredRendererOpenGL::getGPosition()
 //{
 //    return gPosition;
 //}
 //
-//unsigned int DeferredRenderer::getGNormal()
+//unsigned int DeferredRendererOpenGL::getGNormal()
 //{
 //    return gNormal;
 //}
 //
-//unsigned int DeferredRenderer::getGColorspec()
+//unsigned int DeferredRendererOpenGL::getGColorspec()
 //{
 //    return gColorSpec;
 //}
 //
-//unsigned int DeferredRenderer::getGAlbedoSpec()
+//unsigned int DeferredRendererOpenGL::getGAlbedoSpec()
 //{
 //    return gAlbedoSpec;
 //}
 //
-//unsigned int DeferredRenderer::getGDepth()
+//unsigned int DeferredRendererOpenGL::getGDepth()
 //{
 //    return gDepth;
 //}

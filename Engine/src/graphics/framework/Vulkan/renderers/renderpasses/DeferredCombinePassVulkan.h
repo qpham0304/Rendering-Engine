@@ -35,6 +35,7 @@ public: // TODO: consider make private
 	TextureVulkan* denoisedGIImage;
 	TextureVulkan* sceneImage;
 	TextureVulkan* albedoImage;
+	TextureVulkan* bloomImage;
 
 protected:
 	void _createResources();

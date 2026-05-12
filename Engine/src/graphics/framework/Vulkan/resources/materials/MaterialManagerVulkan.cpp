@@ -116,11 +116,12 @@ void MaterialManagerVulkan::bindMaterial(void* cmdBuffer, void* p)
 
 	VulkanPipeline* pipeline = static_cast<VulkanPipeline*>(p);
 	
+	// note: the interface only support binding compute right now
 	vkCmdBindDescriptorSets(
 		reinterpret_cast<VkCommandBuffer>(cmdBuffer),
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		pipeline->pipelineLayout,
-		1,
+		1,	// note: this always bind set 1 so always reserve set 1 if use this bind function
 		1,
 		&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
 		0,

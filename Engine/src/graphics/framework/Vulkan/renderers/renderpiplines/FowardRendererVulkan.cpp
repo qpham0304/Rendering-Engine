@@ -39,8 +39,8 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	RendererVulkan::init(config);
 
 	RendererVulkan* renderer = nullptr;
-	renderer = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
-	shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
+	shadowMapRenderer = dynamic_cast<ShadowMapPassVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
 	imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
 	
@@ -66,8 +66,8 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
-	RendererVulkan* tmp = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
-	shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(tmp);
+	RendererVulkan* tmp = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
+	shadowMapRenderer = dynamic_cast<ShadowMapPassVulkan*>(tmp);
 	assert(shadowMapRenderer && "fail to retrieve shadowmap renderer");
 
 	_createDescriptorSets();

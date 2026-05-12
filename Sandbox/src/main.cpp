@@ -10,8 +10,8 @@ int main()
         windowConfig.renderPlatform = RenderPlatform::VULKAN;
         windowConfig.guiPlatform = GuiPlatform::IMGUI;
         windowConfig.os = OperatingSystem::WINDOW;
-        windowConfig.width = 1920;
-        windowConfig.height = 1080;
+        windowConfig.width = 1024;
+        windowConfig.height = 720;
         windowConfig.vsync = false;
         windowConfig.targetRenderFPS = 360.0f;
         windowConfig.targetUpdateFPS = 360.0f;

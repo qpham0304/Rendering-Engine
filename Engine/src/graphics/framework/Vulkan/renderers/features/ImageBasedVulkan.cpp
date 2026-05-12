@@ -1,4 +1,4 @@
-#include "ImageBasedRendererVulkan.h"
+#include "ImageBasedVulkan.h"
 
 #include "core/features/ServiceLocator.h"
 #include "graphics/renderers/RenderDevice.h"
@@ -329,10 +329,25 @@ void ImageBasedRendererVulkan::computePrefilter(VkCommandBuffer cmd, uint32_t cu
         PrefilterPushConstants push{};
         push.roughness = (float)i / (float)(mipLevels - 1);
         push.mipSize = mipSize;
-        vkCmdPushConstants(cmd, prefilter_pipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(push), &push);
+        vkCmdPushConstants(
+			cmd,
+			prefilter_pipeline->pipelineLayout,
+			VK_SHADER_STAGE_COMPUTE_BIT,
+			0,
+			sizeof(push),
+			&push
+		);
 
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, prefilter_pipeline->pipelineLayout, 
-                                0, 1, &prefilterSets[i], 0, nullptr);
+        vkCmdBindDescriptorSets(
+			cmd,
+			VK_PIPELINE_BIND_POINT_COMPUTE,
+			prefilter_pipeline->pipelineLayout,
+			0,
+			1,
+			&prefilterSets[i],
+			0,
+			nullptr
+		);
 
         uint32_t groups = std::max(1u, (mipSize + 15) / 16);
         vkCmdDispatch(cmd, groups, groups, 6); 

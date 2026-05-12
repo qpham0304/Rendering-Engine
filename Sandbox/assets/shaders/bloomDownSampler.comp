@@ -1,0 +1,91 @@
+#version 450
+layout (local_size_x = 16, local_size_y = 16) in;
+
+layout (set = 0, binding = 0) uniform sampler2D inputImage;
+layout (set = 0, binding = 1, rgba16f) uniform image2D outputImage;
+
+layout (push_constant) uniform PushConstant {
+    vec2 srcResolution;
+    int mipLevel;
+    float threshold;
+    float softThreshold;
+} pc;
+
+// Karis Average helps reduce fireflies by weighting samples by brightness
+float KarisAverage(vec3 col) {
+    float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
+    return 1.0 / (1.0 + luma);
+}
+
+// threshold function to filter out dark pixels
+vec3 QuadraticThreshold(vec3 color, float threshold, vec3 curve) {
+    float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    
+    // Soft knee logic
+    float rq = clamp(luma - curve.x, 0.0, curve.y);
+    rq = curve.z * rq * rq;
+    
+    float factor = max(rq, luma - threshold) / max(luma, 0.0001);
+    return color * factor;
+}
+
+float luminance(vec3 v) {
+    return dot(v, vec3(0.2126, 0.7152, 0.0722));
+}
+
+void main() {
+    ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 outputSize = imageSize(outputImage);
+    if (pixelCoords.x >= outputSize.x || pixelCoords.y >= outputSize.y) return;
+
+    vec2 uv = (vec2(pixelCoords) + 0.5) / vec2(outputSize);
+    vec2 texel = 1.0 / pc.srcResolution;
+    float x = texel.x;
+    float y = texel.y;
+
+    // 13-tap samples
+    vec3 a = texture(inputImage, uv + vec2(-2*x, 2*y)).rgb;
+    vec3 b = texture(inputImage, uv + vec2(0,   2*y)).rgb;
+    vec3 c = texture(inputImage, uv + vec2(2*x,  2*y)).rgb;
+    vec3 d = texture(inputImage, uv + vec2(-2*x, 0)).rgb;
+    vec3 e = texture(inputImage, uv).rgb;
+    vec3 f = texture(inputImage, uv + vec2(2*x,  0)).rgb;
+    vec3 g = texture(inputImage, uv + vec2(-2*x, -2*y)).rgb;
+    vec3 h = texture(inputImage, uv + vec2(0,    -2*y)).rgb;
+    vec3 i = texture(inputImage, uv + vec2(2*x,  -2*y)).rgb;
+    vec3 j = texture(inputImage, uv + vec2(-x, y)).rgb;
+    vec3 k = texture(inputImage, uv + vec2(x,  y)).rgb;
+    vec3 l = texture(inputImage, uv + vec2(-x, -y)).rgb;
+    vec3 m = texture(inputImage, uv + vec2(x,  -y)).rgb;
+
+    vec3 result;
+    if (pc.mipLevel == 0) {
+        vec3 groups[5];
+        groups[0] = (a+b+d+e) * 0.25;
+        groups[1] = (b+c+e+f) * 0.25;
+        groups[2] = (d+e+g+h) * 0.25;
+        groups[3] = (e+f+h+i) * 0.25;
+        groups[4] = (j+k+l+m) * 0.25;
+        
+        result = (groups[0]*KarisAverage(groups[0]) + 
+                  groups[1]*KarisAverage(groups[1]) + 
+                  groups[2]*KarisAverage(groups[2]) + 
+                  groups[3]*KarisAverage(groups[3]) + 
+                  groups[4]*KarisAverage(groups[4])) / 
+                  (KarisAverage(groups[0]) + KarisAverage(groups[1]) + KarisAverage(groups[2]) + KarisAverage(groups[3]) + KarisAverage(groups[4]));
+        
+        // apply threshold only on first downsample
+        // curve prep: x = threshold, y = threshold - knee, z = 1 / (4 * knee)
+        float knee = pc.softThreshold * pc.threshold;
+        vec3 curve = vec3(pc.threshold - knee, knee * 2.0, 0.25 / max(knee, 0.00001));
+        result = QuadraticThreshold(result, pc.threshold, curve);
+    } 
+    else {
+        result = e*0.125;
+        result += (a+c+g+i)*0.03125;
+        result += (b+d+f+h)*0.0625;
+        result += (j+k+l+m)*0.125;
+    }
+
+    imageStore(outputImage, pixelCoords, vec4(result, 1.0));
+}

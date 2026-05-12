@@ -1,4 +1,4 @@
-#include "BilateralBlurRendererVulkan.h"
+#include "BilateralBlurPassVulkan.h"
 #include <core/scene/SceneManager.h>
 #include <core/features/camera.h>
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
@@ -11,18 +11,18 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 
-BilateralBlurRendererVulkan::BilateralBlurRendererVulkan(std::string serviceName)
+BilateralBlurPassVulkan::BilateralBlurPassVulkan(std::string serviceName)
 	:	RendererVulkan(serviceName)
 {
 
 }
 
-BilateralBlurRendererVulkan::~BilateralBlurRendererVulkan() 
+BilateralBlurPassVulkan::~BilateralBlurPassVulkan() 
 {
 
 }
 
-bool BilateralBlurRendererVulkan::init(WindowConfig config) 
+bool BilateralBlurPassVulkan::init(WindowConfig config) 
 {
     RendererVulkan::init(config);
     
@@ -41,7 +41,7 @@ bool BilateralBlurRendererVulkan::init(WindowConfig config)
 
     return true;
 }
-bool BilateralBlurRendererVulkan::onClose() 
+bool BilateralBlurPassVulkan::onClose() 
 {
     RendererVulkan::onClose();
 
@@ -49,12 +49,12 @@ bool BilateralBlurRendererVulkan::onClose()
 
     return true;
 }
-void BilateralBlurRendererVulkan::onUpdate() 
+void BilateralBlurPassVulkan::onUpdate() 
 {
 
 }
 
-void BilateralBlurRendererVulkan::render(Camera& camera) 
+void BilateralBlurPassVulkan::render(Camera& camera) 
 {
 	RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
@@ -76,12 +76,12 @@ void BilateralBlurRendererVulkan::render(Camera& camera)
 }
 
 
-void BilateralBlurRendererVulkan::writeBlur()
+void BilateralBlurPassVulkan::writeBlur()
 {
 
 }
 
-void BilateralBlurRendererVulkan::_createOcclusionMap()
+void BilateralBlurPassVulkan::_createOcclusionMap()
 {
     aoMapID = textureManagerVulkan->createTexture();
     aoMap = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(aoMapID));
@@ -137,7 +137,7 @@ void BilateralBlurRendererVulkan::_createOcclusionMap()
     );
 }
 
-void BilateralBlurRendererVulkan::_createDescriptors()
+void BilateralBlurPassVulkan::_createDescriptors()
 {
     occlusionDescriptorLayoutID = descriptorManagerVulkan->createLayout({
 		{ 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
@@ -159,7 +159,7 @@ void BilateralBlurRendererVulkan::_createDescriptors()
     }
 }
 
-void BilateralBlurRendererVulkan::_createPipelines()
+void BilateralBlurPassVulkan::_createPipelines()
 {
     VkDescriptorSetLayout descriptorLayoutLUT = descriptorManagerVulkan->getDescriptorLayout(occlusionDescriptorLayoutID);
 	occlusionPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
@@ -170,7 +170,7 @@ void BilateralBlurRendererVulkan::_createPipelines()
 	);
 }
 
-void BilateralBlurRendererVulkan::_updateDescriptorSets(uint32_t index)
+void BilateralBlurPassVulkan::_updateDescriptorSets(uint32_t index)
 {
 	auto lutDescriptorSets = descriptorManagerVulkan->getDescriptorSet(occlusionDecriptorsetsID);
 	VkDescriptorImageInfo aoImageInfo{};
@@ -195,12 +195,12 @@ void BilateralBlurRendererVulkan::_updateDescriptorSets(uint32_t index)
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
-void BilateralBlurRendererVulkan::_recreateResources()
+void BilateralBlurPassVulkan::_recreateResources()
 {
     
 }
 
-void BilateralBlurRendererVulkan::_cleanupResources()
+void BilateralBlurPassVulkan::_cleanupResources()
 {
     occlusionPipeline->destroy();
 }

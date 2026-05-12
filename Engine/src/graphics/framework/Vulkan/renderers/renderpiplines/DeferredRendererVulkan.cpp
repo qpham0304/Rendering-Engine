@@ -20,7 +20,7 @@
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
-#include "graphics/framework/vulkan/renderers/renderpasses/AlchemyAORendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
 #include "graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h"
@@ -44,26 +44,24 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	_createFrameBuffers();
 
 	RendererVulkan* renderer = nullptr;
-	renderer = rendererManagerVulkan->getRenderer("ShadowMapRendererVulkan");
-	shadowMapRenderer = dynamic_cast<ShadowMapRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
+	shadowMapPass = dynamic_cast<ShadowMapPassVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
 	imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("AlchemyAORendererVulkan");
-	alchemyAORendererVulkan = dynamic_cast<AlchemyAORendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("AmbientOcclusionPassVulkan");
+	ambientOcclusionPass = dynamic_cast<AmbientOcclusionPassVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
-	hiZPassRenderer = dynamic_cast<HiZPassVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
-	SSRGIPassRenderer = dynamic_cast<SSRGIPassVulkan*>(renderer);
-
-	assert(shadowMapRenderer 
+	hiZPass = dynamic_cast<HiZPassVulkan*>(renderer);
+	
+	assert(shadowMapPass 
 		&& imageBasedRenderer 
-		&& alchemyAORendererVulkan 
-		&& hiZPassRenderer 
+		&& ambientOcclusionPass 
+		&& hiZPass 
 		&& "failed to retrieve renderer"
 	);
 
-	alchemyAORendererVulkan->init(config);
-	hiZPassRenderer->init(config);
+	ambientOcclusionPass->init(config);
+	hiZPass->init(config);
 
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 	
@@ -203,8 +201,8 @@ void DeferredRendererVulkan::render(Camera& camera)
 	
 
 	pushConstantLight.color = sunColor * sunIntensity;
-	pushConstantLight.direction = glm::vec4(shadowMapRenderer->lightDir, 0.0f);
-	pushConstantLight.sunlightMVP = shadowMapRenderer->lightSpaceMatrix;
+	pushConstantLight.direction = glm::vec4(shadowMapPass->lightDir, 0.0f);
+	pushConstantLight.sunlightMVP = shadowMapPass->lightSpaceMatrix;
     pushConstantLight.time = AppWindow::getTime();
 	pushConstantLight.numLights = lights.size();
 	
@@ -224,7 +222,7 @@ void DeferredRendererVulkan::render(Camera& camera)
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 	
-	shadowMapRenderer->render(camera);
+	shadowMapPass->render(camera);
 
 	lastViewProj = ubo.proj * ubo.view;
 
@@ -244,48 +242,6 @@ void DeferredRendererVulkan::renderGui()
 
 	
 	ImGui::Begin("Lights Control");
-	if(ImGui::Button("Add Pipeline")) {
-		AsyncEvent e;
-		EventManager::getInstance().queue(e, [this] (AsyncEvent& event) {
-			rendererManagerVulkan->addRenderer<DeferredRendererVulkan>("DeferredRendererVulkanTemp");
-
-			PipelineConfigInfo gBufferConfig = VulkanPipeline::defaultPipelineConfigInfo(5);
-			gBufferConfig.renderPass = renderTarget.renderPass;
-
-			auto bindingDescription = VulkanDevice::VertexVulkan::getBindingDescription();
-			auto attributeDescriptions = VulkanDevice::VertexVulkan::getAttributeDescriptions();
-			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-			vertexInputInfo.vertexBindingDescriptionCount = 0;   // No bindings
-			vertexInputInfo.vertexAttributeDescriptionCount = 0; // No attributes
-			vertexInputInfo.pVertexBindingDescriptions = nullptr;
-			vertexInputInfo.pVertexAttributeDescriptions = nullptr;
-
-			VkDescriptorSetLayout descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
-			VkDescriptorPool descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
-			
-			uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
-			auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
-
-			void* handle = materialManager->getMaterialLayout();
-			auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
-
-			std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, bindlessLayout, materialLayout };
-			
-			tempPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
-			tempPipeline->createGraphicsPipeline(
-				"assets/shaders/spv/gBuffer.vert.spv", 
-				"assets/shaders/spv/gBuffer.frag.spv", 
-				gBufferConfig, 
-				vertexInputInfo, 
-				layouts, 
-				sizeof(PushConstant)
-			);
-		});
-	}
-	ImGui::SameLine();
-	ImGui::Text(tempPipeline ? "loaded pipeline" : "loading...");
-	
 	if(ImGui::Button("Change Environment")) {
 		std::string path;
 		path = Utils::fileDialog();
@@ -294,19 +250,19 @@ void DeferredRendererVulkan::renderGui()
 		}
 	}
 	ImGui::SliderFloat("skybox detail", &pushConstantLight.skyboxDetail, 0.0f, 1.0f);
-	ImGui::SliderFloat3("Base Light Dir", &shadowMapRenderer->lightDir[0], -1.0f, 1.0f);
-	ImGui::SliderFloat("Sun Azimuth", &shadowMapRenderer->sunAzimuth, 0.0f, 6.28f);
-	ImGui::SliderFloat("Sun Elevation", &shadowMapRenderer->sunElevation, -3.14f, 3.14f);
-	ImGui::SliderFloat("Sun view Area", &shadowMapRenderer->s, 1.0f, 25.0f);
-	ImGui::SliderFloat("Sun zNear", &shadowMapRenderer->zNear, 0.01f, 15.0f);
-	ImGui::SliderFloat("Sun zFar", &shadowMapRenderer->zFar, 50.0f, 200.0f);
+	ImGui::SliderFloat3("Base Light Dir", &shadowMapPass->lightDir[0], -1.0f, 1.0f);
+	ImGui::SliderFloat("Sun Azimuth", &shadowMapPass->sunAzimuth, 0.0f, 6.28f);
+	ImGui::SliderFloat("Sun Elevation", &shadowMapPass->sunElevation, -3.14f, 3.14f);
+	ImGui::SliderFloat("Sun view Area", &shadowMapPass->s, 1.0f, 25.0f);
+	ImGui::SliderFloat("Sun zNear", &shadowMapPass->zNear, 0.01f, 15.0f);
+	ImGui::SliderFloat("Sun zFar", &shadowMapPass->zFar, 50.0f, 200.0f);
 
 	// ImGui::SliderFloat("Sun Azimuth", &shadowMapRenderer->sunAzimuthDeg, 0.0f, 360.0f);
 	// ImGui::SliderFloat("Sun Elevation", &shadowMapRenderer->sunElevationDeg, 0.0f, 90.0f);
 	ImGui::DragFloat("G phase function", &pushConstantLight.G, 0.01f, 0.0f, 1.0f);
 	ImGui::DragFloat("scattering Scale", &pushConstantLight.scatteringScale, 0.01f, 0.0f, 5.0f);
 	
-	ImGui::Checkbox("Light Ortho", &shadowMapRenderer->useOrtho);
+	ImGui::Checkbox("Light Ortho", &shadowMapPass->useOrtho);
 	ImGui::SameLine();
 	bool aoChecked = (pushConstantLight.aoOn != 0);
 	if (ImGui::Checkbox("aoOn", &aoChecked)) {
@@ -322,8 +278,8 @@ void DeferredRendererVulkan::renderGui()
 	if (ImGui::Checkbox("combine", &shouldCombineChecked)) {
 		shouldCombine = shouldCombineChecked ? 1 : 0;
 	}
-	ImGui::SliderInt("aoBlurRadius", &alchemyAORendererVulkan->blurrPushConstant.blurRadius, 1.0f, 16.0f);
-	ImGui::SliderFloat("aoBlurScale", &alchemyAORendererVulkan->blurrPushConstant.scale, 1.0f, 100.0f);
+	ImGui::SliderInt("aoBlurRadius", &ambientOcclusionPass->blurrPushConstant.blurRadius, 1.0f, 16.0f);
+	ImGui::SliderFloat("aoBlurScale", &ambientOcclusionPass->blurrPushConstant.scale, 1.0f, 100.0f);
 	ImGui::ColorEdit4("color", &sunColor[0]);
 	ImGui::SliderFloat("intensity", &sunIntensity, 1.0f, 15.0f);
 	ImGui::SliderFloat("Bias", &pushConstantLight.bias, 0.001f, 0.1f);
@@ -333,8 +289,8 @@ void DeferredRendererVulkan::renderGui()
 	ImGui::SliderFloat("Lit Bias", &pushConstantLight.litBias, 0.0001f, 0.01f, "%.4f", ImGuiSliderFlags_Logarithmic);
 	uint32_t min_r = 1;
 	uint32_t max_r = 64;
-	ImGui::SliderScalar("radius", ImGuiDataType_U32, &shadowMapRenderer->pushconstant.radius, &min_r, &max_r);
-	ImGui::SliderFloat("sigma", &shadowMapRenderer->pushconstant.sigma, 1.0f, 30.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+	ImGui::SliderScalar("radius", ImGuiDataType_U32, &shadowMapPass->pushconstant.radius, &min_r, &max_r);
+	ImGui::SliderFloat("sigma", &shadowMapPass->pushconstant.sigma, 1.0f, 30.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
 
 
 	int i = 0;
@@ -365,7 +321,7 @@ void DeferredRendererVulkan::renderGui()
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gPBR[currentFrame]->id()), ImVec2(256, 144));
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.depthTextures[currentFrame]->id()), ImVec2(256, 144));
 	ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(renderTarget.gBufferMotion[currentFrame]->id()), ImVec2(256, 144));
-	ImGui::Image((ImTextureID)(textureManagerVulkan->inspectTexture(shadowMapRenderer->depthID)), ImVec2(256, 144));
+	ImGui::Image((ImTextureID)(textureManagerVulkan->inspectTexture(shadowMapPass->depthID)), ImVec2(256, 144));
 
 	ImGui::End();
 }
@@ -440,8 +396,7 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 		0,
 		nullptr
 	);
-
-
+	
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
 	if (!scene) {
@@ -962,15 +917,13 @@ void DeferredRendererVulkan::_createPipelines()
 	void* handle = materialManager->getMaterialLayout();
 	auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
 
-	std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, bindlessLayout, materialLayout };
-	
 	gPassPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	gPassPipeline->createGraphicsPipeline(
 		"assets/shaders/spv/gBuffer.vert.spv", 
 		"assets/shaders/spv/gBuffer.frag.spv", 
 		gBufferConfig, 
 		vertexInputInfo, 
-		layouts, 
+		{ descriptorSetLayout, bindlessLayout, materialLayout }, 
 		sizeof(PushConstant)
 	);
 }
@@ -1086,15 +1039,15 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = shadowMapRenderer->depthMap->textureImageView;
-		imageInfo.sampler = shadowMapRenderer->depthMap->textureSampler;
+		imageInfo.imageView = shadowMapPass->depthMap->textureImageView;
+		imageInfo.sampler = shadowMapPass->depthMap->textureSampler;
 		// imageInfo.imageView = shadowMapRenderer->momentImage->textureImageView;
 		// imageInfo.sampler = shadowMapRenderer->momentImage->textureSampler;
 
 		VkDescriptorImageInfo noiseImageInfo{};
 		noiseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		noiseImageInfo.imageView = shadowMapRenderer->blueNoiseImage->textureImageView;
-		noiseImageInfo.sampler = shadowMapRenderer->blueNoiseImage->textureSampler;
+		noiseImageInfo.imageView = shadowMapPass->blueNoiseImage->textureImageView;
+		noiseImageInfo.sampler = shadowMapPass->blueNoiseImage->textureSampler;
 
 		VkDescriptorBufferInfo bufferInfoSH{};
 		bufferInfoSH.buffer = static_cast<VkBuffer>(*imageBasedRenderer->finalSumBuffers[i]);
@@ -1118,8 +1071,8 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 
 		VkDescriptorImageInfo aoImageInfo{};
 		aoImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		aoImageInfo.imageView = alchemyAORendererVulkan->getOutputImage()->textureImageView;
-		aoImageInfo.sampler = alchemyAORendererVulkan->getOutputImage()->textureSampler;
+		aoImageInfo.imageView = ambientOcclusionPass->getOutputImage()->textureImageView;
+		aoImageInfo.sampler = ambientOcclusionPass->getOutputImage()->textureSampler;
 	
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
