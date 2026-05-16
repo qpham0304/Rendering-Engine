@@ -15,6 +15,7 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/DeferredCombinePassVulkan.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
+#include "graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h"
 #include "RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
 
@@ -44,6 +45,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
     bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
     temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
+    ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
     deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
     // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererRendererVulkan");
 	
@@ -58,6 +60,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     SSRGIPassRenderer->init(config);
     bloomRenderer->init(config);
     temporalPassRenderer->init(config);
+    ddgiPassRenderer->init(config);
     deferredCombineRenderer->init(config);
 	// postProcessRenderer->init(config);
 
@@ -83,6 +86,7 @@ bool RendererManagerVulkan::onClose()
     SSRGIPassRenderer->onClose();
     bloomRenderer->onClose();
     temporalPassRenderer->onClose();
+    ddgiPassRenderer->onClose();
     deferredCombineRenderer->onClose();
 	// postProcessRenderer->onClose();
     return true;
@@ -115,6 +119,7 @@ void RendererManagerVulkan::onUpdate()
         if(tmp->denoiserOn) {
             temporalPassRenderer->onUpdate();
         }
+        ddgiPassRenderer->onUpdate();
         deferredCombineRenderer->onUpdate();
     } else if(currentRenderMode == 2) {
         raytracingRenderer->onUpdate();
@@ -143,12 +148,13 @@ void RendererManagerVulkan::render()
             alchemyAORenderer->render(*camera);
         }
         deferredRenderer->render(*camera);
-        // hiZPassRenderer->render(*camera);
-        // SSRGIPassRenderer->render(*camera);
+        hiZPassRenderer->render(*camera);
+        SSRGIPassRenderer->render(*camera);
         bloomRenderer->render(*camera);
-        // if(tmp->denoiserOn) {
-        //     temporalPassRenderer->render(*camera);
-        // }
+        if(tmp->denoiserOn) {
+            temporalPassRenderer->render(*camera);
+        }
+        ddgiPassRenderer->render(*camera);
         deferredCombineRenderer->render(*camera);
     } else if(currentRenderMode == 2) {
         raytracingRenderer->render(*camera);

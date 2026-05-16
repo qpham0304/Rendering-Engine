@@ -3,6 +3,15 @@
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include <graphics/framework/Vulkan/resources/buffers/AccelStructureBufferVulkan.h>
 
+#define DEBUG
+
+#ifdef DEBUG
+    // the ## before __VA_ARGS__ handles cases where pass no extra arguments is passed
+    #define PRINT_DEBUG(format, ...) printf(format, ##__VA_ARGS__)
+#else
+    #define PRINT_DEBUG(format, ...) ((void)0)
+#endif
+
 void RaytracingBuilderKHR::setup(RenderDeviceVulkan *renderDeviceRef, BufferManagerVulkan *bufferManagerRef)
 {
 	RenderDevice::DeviceInfo deviceInfo = renderDeviceRef->getDeviceInfo();
@@ -48,7 +57,6 @@ void RaytracingBuilderKHR::destroyTlas()
     m_tlas = nullptr;
 }
 
-//--------------------------------------------------------------------------------------------------
 // Returning the constructed top-level acceleration structure
 //
 VkAccelerationStructureKHR RaytracingBuilderKHR::getAccelerationStructure() const
@@ -56,7 +64,6 @@ VkAccelerationStructureKHR RaytracingBuilderKHR::getAccelerationStructure() cons
     return m_tlas->getAccelStr();
 }
 
-//--------------------------------------------------------------------------------------------------
 // Return the device address of a BLAS previously created.
 //
 VkDeviceAddress RaytracingBuilderKHR::getBlasDeviceAddress(uint32_t blasId)
@@ -64,11 +71,10 @@ VkDeviceAddress RaytracingBuilderKHR::getBlasDeviceAddress(uint32_t blasId)
     assert(size_t(blasId) < m_blas.size());
     VkAccelerationStructureDeviceAddressInfoKHR addressInfo{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR};
     addressInfo.accelerationStructure = m_blas[blasId]->getAccelStr();
-    // printf("vkGetAccelerationStructureDeviceAddressKHR\n");
+    // PRINT_DEBUG("vkGetAccelerationStructureDeviceAddressKHR\n");
     return vkGetAccelerationStructureDeviceAddressKHR(*m_device, &addressInfo);
 }
 
-//--------------------------------------------------------------------------------------------------
 // Create all the BLAS from the vector of BlasInput
 // - There will be one BLAS per input-vector entry
 // - There will be as many BLAS as input.size()
@@ -85,7 +91,7 @@ void RaytracingBuilderKHR::buildBlas(const std::vector<BlasInput>& input, VkBuil
     // Preparing the information for the acceleration build commands.
     std::vector<BuildAccelerationStructure> buildAs(nbBlas);
     for(uint32_t idx = 0; idx < nbBlas; idx++) {
-        printf("    For BlasInput %d (of %d).\n", idx, nbBlas);
+        PRINT_DEBUG("    For BlasInput %d (of %d).\n", idx, nbBlas);
         // Filling partially the VkAccelerationStructureBuildGeometryInfoKHR for querying the build sizes.
         // Other information will be filled in the createBlas (see #2)
         buildAs[idx].buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
@@ -105,7 +111,7 @@ void RaytracingBuilderKHR::buildBlas(const std::vector<BlasInput>& input, VkBuil
         std::vector<uint32_t> maxPrimCount(input[idx].asBuildOffsetInfo.size());
         for(auto tt = 0; tt < input[idx].asBuildOffsetInfo.size(); tt++)
             maxPrimCount[tt] = input[idx].asBuildOffsetInfo[tt].primitiveCount; //# of triangles
-        printf("      vkGetAccelerationStructureBuildSizesKHR to request needed BLAS size\n");
+        PRINT_DEBUG("      vkGetAccelerationStructureBuildSizesKHR to request needed BLAS size\n");
         vkGetAccelerationStructureBuildSizesKHR(
             *m_device,
             VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
@@ -121,7 +127,7 @@ void RaytracingBuilderKHR::buildBlas(const std::vector<BlasInput>& input, VkBuil
     }
 
     // Allocate the scratch buffers holding the temporary data of the acceleration structure builder
-    // printf("Create scratch buffer for blas of max size %d\n", maxScratchSize);
+    // PRINT_DEBUG("Create scratch buffer for blas of max size %d\n", maxScratchSize);
     m_scratch1_ID = bufferManager->createBufferObject(maxScratchSize);
     auto scratch_1 = dynamic_cast<BufferVulkan*>(bufferManager->getBuffer(m_scratch1_ID));
     
@@ -180,7 +186,7 @@ void RaytracingBuilderKHR::buildBlas(const std::vector<BlasInput>& input, VkBuil
 
     // Clean up
     if (queryPool) {
-        printf("  vkDestroyQueryPool\n");
+        PRINT_DEBUG("  vkDestroyQueryPool\n");
         vkDestroyQueryPool(*m_device, queryPool, nullptr); }
 }
 
@@ -217,7 +223,7 @@ void RaytracingBuilderKHR::_cmdCreateBlas(
     uint32_t queryCnt{0};
 
     for(const auto& idx : indices) {
-        printf("      For BLAS #%d of %zd\n", idx, indices.size());
+        PRINT_DEBUG("      For BLAS #%d of %zd\n", idx, indices.size());
         // Actual allocation of buffer and acceleration structure.
         VkAccelerationStructureCreateInfoKHR createInfo{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR};
         createInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
@@ -232,7 +238,7 @@ void RaytracingBuilderKHR::_cmdCreateBlas(
         buildAs[idx].buildInfo.scratchData.deviceAddress = scratchAddress;
 
         // Building the bottom-level-acceleration-structure
-        printf("        vkCmdBuildAccelerationStructuresKHR build BLAS\n");
+        PRINT_DEBUG("        vkCmdBuildAccelerationStructuresKHR build BLAS\n");
         vkCmdBuildAccelerationStructuresKHR(cmdBuf, 1, &buildAs[idx].buildInfo,
                                             &buildAs[idx].rangeInfo);
 
@@ -242,14 +248,14 @@ void RaytracingBuilderKHR::_cmdCreateBlas(
         VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
         barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
         barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-        printf("        vkCmdPipelineBarrier\n");
+        PRINT_DEBUG("        vkCmdPipelineBarrier\n");
         vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
                                 VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
                                 0, 1, &barrier, 0, nullptr, 0, nullptr);
 
         if(queryPool) {
             // Add a query to find the 'real' amount of memory needed, use for compaction
-            printf("      vkCmdWriteAccelerationStructuresPropertiesKHR\n");
+            PRINT_DEBUG("      vkCmdWriteAccelerationStructuresPropertiesKHR\n");
             vkCmdWriteAccelerationStructuresPropertiesKHR(
                 cmdBuf, 1,
                 &buildAs[idx].buildInfo.dstAccelerationStructure,
@@ -260,7 +266,6 @@ void RaytracingBuilderKHR::_cmdCreateBlas(
     }
 }
 
-//--------------------------------------------------------------------------------------------------
 // Create and replace a new acceleration structure and buffer based on the size retrieved by the
 // Query.
 void RaytracingBuilderKHR::_cmdCompactBlas(
@@ -269,7 +274,7 @@ void RaytracingBuilderKHR::_cmdCompactBlas(
     std::vector<BuildAccelerationStructure>& buildAs,
     VkQueryPool queryPool
 ) {
-    printf("  cmdCompactBlas\n");
+    PRINT_DEBUG("  cmdCompactBlas\n");
     uint32_t queryCtn{0};
 
     // Get the compacted size result back
@@ -294,23 +299,21 @@ void RaytracingBuilderKHR::_cmdCompactBlas(
         copyInfo.src  = buildAs[idx].buildInfo.dstAccelerationStructure;
         copyInfo.dst  = buildAs[idx].as->getAccelStr();
         copyInfo.mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR;
-        printf("  vkCmdCopyAccelerationStructureKHR for BLAS commodification\n");
+        PRINT_DEBUG("  vkCmdCopyAccelerationStructureKHR for BLAS commodification\n");
         vkCmdCopyAccelerationStructureKHR(cmdBuf, &copyInfo);
     }
 }
 
-//--------------------------------------------------------------------------------------------------
 // Destroy all the non-compacted acceleration structures
 //
 void RaytracingBuilderKHR::_destroyNonCompacted(std::vector<uint32_t> indices, std::vector<BuildAccelerationStructure>& buildAs)
 {
-    printf("  RaytracingBuilderKHR::destroyNonCompacted\n");
+    PRINT_DEBUG("  RaytracingBuilderKHR::destroyNonCompacted\n");
     for(auto& i : indices) {
         vkDestroyAccelerationStructureKHR(*m_device, buildAs[i].cleanupAS, nullptr);
     }
 }
 
-//--------------------------------------------------------------------------------------------------
 // Low level of Tlas creation 
 void RaytracingBuilderKHR::_cmdCreateTlas(
     VkCommandBuffer cmdBuf,
@@ -353,7 +356,7 @@ void RaytracingBuilderKHR::_cmdCreateTlas(
     }
     
     // Allocate the scratch memory
-    // printf("Create scratch buffer for tlas of max size %d\n", sizeInfo.buildScratchSize);
+    // PRINT_DEBUG("Create scratch buffer for tlas of max size %d\n", sizeInfo.buildScratchSize);
     if (m_scratch2_ID == 0) {
          m_scratch2_ID = bufferManager->createBufferObject(sizeInfo.buildScratchSize);
     }
@@ -371,16 +374,15 @@ void RaytracingBuilderKHR::_cmdCreateTlas(
     const VkAccelerationStructureBuildRangeInfoKHR* pBuildOffsetInfo = &buildOffsetInfo;
 
     // Build the TLAS
-    // printf("      vkCmdBuildAccelerationStructuresKHR to build the TLAS\n");
+    // PRINT_DEBUG("      vkCmdBuildAccelerationStructuresKHR to build the TLAS\n");
     vkCmdBuildAccelerationStructuresKHR(cmdBuf, 1, &buildInfo, &pBuildOffsetInfo);
 }
 
-//--------------------------------------------------------------------------------------------------
 // Refit BLAS number blasIdx from updated buffer contents.
 void RaytracingBuilderKHR::_updateBlas(uint32_t blasIdx, BlasInput& blas, VkBuildAccelerationStructureFlagsKHR flags)
 {
     assert (false && "Not used; Not currently maintained;  Probably leaks a VkDeviceMemory");
-    printf("  updateBlas\n");
+    PRINT_DEBUG("  updateBlas\n");
     assert(size_t(blasIdx) < m_blas.size());
 
     // Preparing all build information, acceleration is filled later
@@ -405,7 +407,7 @@ void RaytracingBuilderKHR::_updateBlas(uint32_t blasIdx, BlasInput& blas, VkBuil
     );
 
     // Allocate the scratch buffer and setting the scratch info
-    // printf("Create scratch buffer for tlas of max size %d\n", sizeInfo.buildScratchSize);
+    // PRINT_DEBUG("Create scratch buffer for tlas of max size %d\n", sizeInfo.buildScratchSize);
     uint32_t scratch = bufferManager->createBufferObject(sizeInfo.buildScratchSize);
     auto scratchBuffer = dynamic_cast<BufferVulkan*>(bufferManager->getBuffer(m_scratch2_ID));
     

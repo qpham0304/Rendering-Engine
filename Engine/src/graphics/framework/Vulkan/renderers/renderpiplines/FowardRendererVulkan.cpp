@@ -151,98 +151,100 @@ void ForwardRendererVulkan::render(Camera& camera)
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[frame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 
-	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+	renderDeviceVulkan->beginLabel(cmd, "shadow Pass");
 	shadowMapRenderer->render(camera);
-	imageBasedRenderer->onUpdate();
-	imageBasedRenderer->computeSH(cmdBuffer, frame);
-	imageBasedRenderer->computePrefilter(cmdBuffer, frame);
+	renderDeviceVulkan->endLabel(cmd);
 
-	recordDrawToTextureCommand(cmdBuffer, frame);
+	renderDeviceVulkan->beginLabel(cmd, "IBL Pass");
+	imageBasedRenderer->onUpdate();
+	imageBasedRenderer->computeSH(cmd, frame);	//TODO: call this in render manager or somewhere general
+	imageBasedRenderer->computePrefilter(cmd, frame);
+	renderDeviceVulkan->endLabel(cmd);
+
+    renderDeviceVulkan->beginLabel(cmd, "Forward Render Pass");
+	recordDrawToTextureCommand(cmd, frame);
+    renderDeviceVulkan->endLabel(cmd);
+
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[frame]);
 }
 
 void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint32_t imageIndex)
 {
-	beginRecording(
-		cmd,
-		renderTarget.renderPass,
-		renderTarget.framebuffers[imageIndex]
-	);
-	
-	offscreenPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
+	beginRecording(cmd,renderTarget.renderPass,renderTarget.framebuffers[imageIndex]);
+	{
+		offscreenPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
-	renderDeviceVulkan->setViewport(renderTarget.width, renderTarget.height);
-	renderDeviceVulkan->setScissor(renderTarget.width, renderTarget.height);
+		renderDeviceVulkan->setViewport(renderTarget.width, renderTarget.height);
+		renderDeviceVulkan->setScissor(renderTarget.width, renderTarget.height);
 
-	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	vkCmdBindDescriptorSets(
-		cmd,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		offscreenPipeline->pipelineLayout,
-		0,
-		1,
-		&descriptorSets[currentFrame],
-		0,
-		nullptr
-	);
+		uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+		vkCmdBindDescriptorSets(
+			cmd,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			offscreenPipeline->pipelineLayout,
+			0,
+			1,
+			&descriptorSets[currentFrame],
+			0,
+			nullptr
+		);
 
-
-
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if (!scene) {
-		m_logger->error("No scene to render");
-	}
-
-	int index = 0;
-	int lightIndex = 0;
-
-	materialManager->bindMaterial(cmd, (void*)offscreenPipeline.get());
-
-	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
-		TransformComponent& transform = entity.getComponent<TransformComponent>();
-		const glm::mat4& entityTransform = transform.getModelMatrix();
-		glm::vec3& translation = transform.translateVec;
-		
-		if(index >= instanceData.size()) {
-			instanceData.push_back({entityTransform});
-			continue;
+		SceneManager& sceneManager = SceneManager::getInstance();
+		Scene* scene = sceneManager.getActiveScene();
+		if (!scene) {
+			m_logger->error("No scene to render");
 		}
 
-		if(entity.hasComponent<ModelComponent>()) {
-			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-			const Model* model = modelManager->getModel(modelID);
+		int index = 0;
+		int lightIndex = 0;
 
-			if (!model) {
+		materialManager->bindMaterial(cmd, (void*)offscreenPipeline.get());
+
+		for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
+			TransformComponent& transform = entity.getComponent<TransformComponent>();
+			const glm::mat4& entityTransform = transform.getModelMatrix();
+			glm::vec3& translation = transform.translateVec;
+			
+			if(index >= instanceData.size()) {
+				instanceData.push_back({entityTransform});
 				continue;
 			}
-			
-			auto materialManagerVulkan = (MaterialManagerVulkan*)materialManager;
-			for (uint32_t meshID : model->meshIDs) {
-				const Mesh* mesh = meshManager->getMesh(meshID);
+
+			if(entity.hasComponent<ModelComponent>()) {
+				uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
+				const Model* model = modelManager->getModel(modelID);
+
+				if (!model) {
+					continue;
+				}
 				
-				pushConstantLight.materialIdx = mesh->materialID;
-				pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
+				auto materialManagerVulkan = (MaterialManagerVulkan*)materialManager;
+				for (uint32_t meshID : model->meshIDs) {
+					const Mesh* mesh = meshManager->getMesh(meshID);
+					
+					pushConstantLight.materialIdx = mesh->materialID;
+					pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
 
-				meshManager->bindMesh(meshID);
+					meshManager->bindMesh(meshID);
 
-				vkCmdPushConstants(
-					cmd,
-					offscreenPipeline->pipelineLayout,
-					VK_SHADER_STAGE_FRAGMENT_BIT,
-					0,
-					sizeof(PushConstantLight),
-					&pushConstantLight
-				);
-				
+					vkCmdPushConstants(
+						cmd,
+						offscreenPipeline->pipelineLayout,
+						VK_SHADER_STAGE_FRAGMENT_BIT,
+						0,
+						sizeof(PushConstantLight),
+						&pushConstantLight
+					);
+					
 
-				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				renderDeviceVulkan->draw(indexCount, numInstances, index);
+					uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+					renderDeviceVulkan->draw(indexCount, numInstances, index);
+				}
 			}
+			index++;
 		}
-		index++;
 	}
-
 	endRecording(cmd);
 }
 

@@ -62,8 +62,8 @@ bool SandBoxLayer::init()
 
         MaterialDesc materialDesc;
         materialDesc.albedoIDs.push_back(
-            textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false)
-            // textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
+            // textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false)
+            textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
         );
 
         materialDesc.emissiveIDs.push_back(
@@ -85,6 +85,59 @@ bool SandBoxLayer::init()
 
         lightEntity.addComponent<LightComponent>(randomColor, 15.0f, 1.0f);
     }
+
+    // light probe manager component
+	const uint32_t probesPerDimension = 8;
+	float spacing = 2.0f;
+    uint32_t lightProbeEntityID = scene->addEntity("probe manager");
+    Entity lightProbeEntity = scene->getEntity(lightProbeEntityID);
+    
+    TransformComponent& transform = lightProbeEntity.getComponent<TransformComponent>();
+    transform.translate(glm::vec3(0.0f, 0.0f, 0.0f));
+
+    MaterialDesc materialDesc;
+    materialDesc.albedoIDs.push_back(
+        // textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false)
+        textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
+    );
+
+    Mesh mesh = EngineUtils::drawSphere(0.25f, 18, 18);
+    mesh.materialID = materialManager->createMaterial(materialDesc);
+
+    
+    float offset = (probesPerDimension - 1) * spacing * 0.5f;
+    auto& lightProbeComponent = lightProbeEntity.addComponent<LightProbeComponent>();
+    lightProbeComponent.probeGrid.resize(probesPerDimension * probesPerDimension * probesPerDimension);
+    lightProbeComponent.bufferSize = lightProbeComponent.probeGrid.size() * sizeof(glm::vec4);  //NOTE: assuming probe is glm::vec4
+    lightProbeComponent.probesPerDimension = probesPerDimension;
+    lightProbeComponent.spacing = spacing;
+    lightProbeComponent.gridOrigin = glm::vec4(-offset, -offset, -offset, 1.0);
+    
+    // Offset to center the grid (so 0,0,0 is the middle the volume)
+    for (uint32_t z = 0; z < probesPerDimension; z++) {
+        for (uint32_t y = 0; y < probesPerDimension; y++) {
+            for (uint32_t x = 0; x < probesPerDimension; x++) {
+                uint32_t index = x + (y * probesPerDimension) + (z * probesPerDimension * probesPerDimension);
+                
+                lightProbeComponent.probeGrid[index] = glm::vec4(
+                    (float)x * spacing - offset,
+                    (float)y * spacing - offset,
+                    (float)z * spacing - offset,
+                    1.0
+                );
+            }
+        }
+    }
+
+    Model model {};
+    uint32_t meshID = meshManager->loadMesh(mesh);
+    model.meshIDs.push_back(meshID);
+    for(int i = 1; i < lightProbeComponent.probeGrid.size(); i++) {
+        model.meshIDs.push_back(meshID);
+    }
+    ModelComponent modelComponent;
+    modelComponent.modelID = modelManager->addModel(model);
+    lightProbeEntity.addComponent<ModelComponent>(modelComponent);
 
 	return true;
 }

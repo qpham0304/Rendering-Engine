@@ -368,6 +368,7 @@ uint32_t BufferManagerVulkan::createBufferDeviceAddress(size_t bufferSize)
 	addressInfo.pNext = nullptr;
     addressInfo.buffer = buffer;
     deviceAddressBuffer->bufferAddressRef = vkGetBufferDeviceAddress(renderDeviceVulkan->device, &addressInfo);
+	deviceAddressBuffer->deviceAddress = vkGetBufferDeviceAddress(renderDeviceVulkan->device, &addressInfo);
 
     vkMapMemory(renderDeviceVulkan->device, deviceAddressBuffer->getMemory(), 0, bufferSize, 0, &deviceAddressBuffer->mappedBuffer);
 	

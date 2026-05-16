@@ -1,8 +1,4 @@
 #include "RenderDeviceVulkan.h"
-#include "core/features/ServiceLocator.h"
-#include "Logging/Logger.h"
-#include "graphics/framework/vulkan/resources/Textures/TextureVulkan.h"
-#include "Window/AppWindow.h"
 
 RenderDeviceVulkan::RenderDeviceVulkan()
 	: RenderDevice("RenderDeviceVulkan"),
@@ -147,6 +143,26 @@ RenderDeviceVulkan::PipelineInfo RenderDeviceVulkan::getPipelineInfo() const
 	pipelineInfo.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	return pipelineInfo;
+}
+
+void RenderDeviceVulkan::beginLabel(VkCommandBuffer command, std::string_view label, std::array<float, 4> color)
+{
+#ifdef _DEBUG
+	VkDebugUtilsLabelEXT labelInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT };
+	labelInfo.pLabelName = label.data();
+	labelInfo.color[0] = color[0];
+	labelInfo.color[1] = color[1];
+	labelInfo.color[2] = color[2];
+	labelInfo.color[3] = color[3];
+	vkCmdBeginDebugUtilsLabelEXT(command, &labelInfo);
+#endif
+}
+
+void RenderDeviceVulkan::endLabel(VkCommandBuffer command)
+{
+#ifdef _DEBUG
+	vkCmdEndDebugUtilsLabelEXT(command);
+#endif
 }
 
 void RenderDeviceVulkan::setViewport()

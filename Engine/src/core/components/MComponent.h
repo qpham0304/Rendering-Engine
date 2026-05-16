@@ -181,64 +181,13 @@ struct RenderTag {
 	std::vector<std::string> renderers;
 };
 
-// struct ShaderComponent {
-// 	std::string path;
 
-// 	ShaderComponent(const std::string&& path) : path(path) {
+struct LightProbeComponent {
+	LightProbeComponent() = default;
 
-// 	};
-// };
-
-// struct AnimationComponent {
-// public:
-// 	std::string path = "None";
-// 	std::weak_ptr<Animation> animation;
-// 	Animator animator;
-
-// 	AnimationComponent() = default;
-// 	AnimationComponent(std::string&& path, std::shared_ptr<Animation> animation) : path(path), animation(animation) {
-// 		if (animation) {
-// 			animator.Init(animation.get());
-// 		}
-// 	};
-// 	AnimationComponent(std::string&& path) : path(path) {};
-
-// 	void reset() {
-// 		path = "None";
-// 		animation.reset();
-// 	}
-// };
-
-//struct AnimatorComponent {
-//public:
-//	std::string path;
-//	std::weak_ptr<Animator> animation;
-//	AnimatorComponent() = default;
-//	AnimatorComponent(std::string&& path) : path(path) {};
-//};
-
-// enum LightType { POINT_LIGHT, DIRECTION_LIGHT, SPOT_LIGHT, AREA_LIGHT };
-
-// struct MLightComponent {
-
-// public:
-// 	glm::vec3 color = glm::vec3(1.0f);
-// 	glm::vec3 position = glm::vec3(0.0f);
-// 	float radius = 0.0f;
-// 	LightType type = POINT_LIGHT;
-
-// 	MLightComponent() = default;
-// 	MLightComponent(glm::vec3&& color, glm::vec3&& position) : color(color), position(position) {};
-// 	MLightComponent(const glm::vec3& color, const glm::vec3& position, LightType type = POINT_LIGHT) 
-// 		: color(color), position(position), type(type) {};
-// };
-
-// struct LayerTagComponent {
-// public:
-// 	std::string layerName = "";
-
-// 	LayerTagComponent () = default;
-// 	LayerTagComponent (const std::string& layerName) : layerName(layerName) {
-
-// 	};
-// };
+	std::vector<glm::vec4> probeGrid;
+	size_t bufferSize;
+	uint32_t probesPerDimension;
+	float spacing;
+    glm::vec4 gridOrigin;
+};

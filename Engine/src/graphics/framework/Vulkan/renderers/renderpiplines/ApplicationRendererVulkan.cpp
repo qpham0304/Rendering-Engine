@@ -83,8 +83,10 @@ void ApplicationRendererVulkan::render(Camera& camera)
         return; 
     }
 
-    VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
+    VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+    renderDeviceVulkan->beginLabel(cmd, "Application Pass");
+	recordDrawCommand(cmd, renderDeviceVulkan->getImageIndex());
+    renderDeviceVulkan->endLabel(cmd);
 }
 
 void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -108,48 +110,49 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
         lastView = texture->textureImageView;
     }
 
-	beginRecording(
-		commandBuffer,
-		renderDeviceVulkan->swapchain.renderPass,
-		renderDeviceVulkan->swapchain.currentFrameBuffer()
-	);
+	beginRecording(commandBuffer, renderDeviceVulkan->swapchain.renderPass, renderDeviceVulkan->swapchain.currentFrameBuffer());
+	{
+		if(showGui){
+			renderDeviceVulkan->beginLabel(commandBuffer, "Render to Gui Image Mode");
+			renderGui(commandBuffer);
+			renderDeviceVulkan->endLabel(commandBuffer);
+		} 
+		else {
+			renderDeviceVulkan->beginLabel(commandBuffer, "Render To Swap Chain Mode");
+			vkCmdBindDescriptorSets(
+				commandBuffer,
+				VK_PIPELINE_BIND_POINT_GRAPHICS,
+				appPipeline->pipelineLayout,
+				0,
+				1,
+				&descriptorSets[renderDeviceVulkan->getCurrentFrameIndex()],
+				0,
+				nullptr
+			);
 
-	if(showGui){
-		renderGui(commandBuffer);
-	} 
-	else {
-		vkCmdBindDescriptorSets(
-			commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			appPipeline->pipelineLayout,
-			0,
-			1,
-			&descriptorSets[renderDeviceVulkan->getCurrentFrameIndex()],
-			0,
-			nullptr
-		);
+			vkCmdBindDescriptorSets(
+				commandBuffer,
+				VK_PIPELINE_BIND_POINT_GRAPHICS,
+				appPipeline->pipelineLayout,
+				1, 
+				1, 
+				&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
+				0, 
+				nullptr
+			);
 
-		vkCmdBindDescriptorSets(
-			commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			appPipeline->pipelineLayout,
-			1, 
-			1, 
-			&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
-			0, 
-			nullptr
-		);
+			vkCmdPushConstants(
+				commandBuffer,
+				appPipeline->pipelineLayout,
+				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				0,
+				sizeof(PushConstantData),
+				&pushConstantData
+			);
 
-		vkCmdPushConstants(
-			commandBuffer,
-			appPipeline->pipelineLayout,
-			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-			0,
-			sizeof(PushConstantData),
-			&pushConstantData
-		);
-
-		vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+			vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+			renderDeviceVulkan->endLabel(commandBuffer);
+		}
 	}
 	endRecording(commandBuffer);
 }

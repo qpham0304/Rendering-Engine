@@ -8,6 +8,7 @@
 
 struct RayPayload {
     vec3 hitPos;
+    vec3 worldNormal;
     vec3 bc;
     int instanceIndex;
     int primitiveIndex;
@@ -168,7 +169,8 @@ void getHitObjectData(out Material mat, out vec3 nrm) {
 
     // compute normal at hit position using the provided barycentric coordinates.
     const vec3 bc = payload.bc;                                 // The barycentric coordinates of the hit point
-    nrm  = bc.x*v0.normal + bc.y*v1.normal + bc.z*v2.normal;    // three vertex normals
+    // nrm  = bc.x*v0.normal + bc.y*v1.normal + bc.z*v2.normal;    // three vertex normals
+    nrm = payload.worldNormal;
 
     // if the material has a texture, read texture and use as the point's diffuse color.
     if (mat.albedoIdx != uint(0)) {
@@ -312,9 +314,6 @@ void main() {
         getHitObjectData(mat, worldNormal);
         vec3 V = -rayDir;
         vec3 N = normalize(worldNormal);
-        // if (dot(N, V) < 0.0) {
-        //     N = -N;
-        // }
         
         // record current hit state locally because NEE will overwrite the payload
         vec3 currentHitPos = payload.hitPos;
@@ -331,7 +330,7 @@ void main() {
         uint lightCount = uint(lightSSBO.lights.length());
         if(pc.explicitPass == 1 && lightCount > 0) {
             int eID = int(rnd(payload.seed) * float(lightCount));
-            Light light = lightSSBO.lights[0];  //TODO: use actual randomize
+            Light light = lightSSBO.lights[eID];  //TODO: use actual randomize
 
             vec3 Lpos = SampleTriangle(light.v0.xyz, light.v1.xyz, light.v2.xyz);
             vec3 Lvec = Lpos - currentHitPos;

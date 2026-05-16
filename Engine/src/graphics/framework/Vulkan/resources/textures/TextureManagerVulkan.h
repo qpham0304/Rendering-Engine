@@ -147,6 +147,17 @@ public:
 		RenderDeviceVulkan* renderDeviceVulkan
 	);
 
+	static void copyImage(
+		VkCommandBuffer cmd,
+		TextureVulkan* srcImage,
+		TextureVulkan* dstImage,
+		VkFormat format,
+		VkImageAspectFlags aspect,
+		uint32_t imageWidth,
+		uint32_t imageHeight,
+		RenderDeviceVulkan* renderDeviceVulkan
+	);
+
 public:
 	TextureManagerVulkan(std::string serviceName = "TextureManagerVulkan");	
 	~TextureManagerVulkan();
@@ -175,7 +186,6 @@ private:
 	void _createBindlessDescriptor();
 
 private:
-
 	RenderDeviceVulkan* renderDeviceVulkan;
 	BufferManagerVulkan* vulkanBufferManager;
 	DescriptorManagerVulkan* descriptorManagerVulkan;

@@ -7,7 +7,6 @@
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
-#include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <window/AppWindow.h>
@@ -109,7 +108,10 @@ void SSRGIPassVulkan::render(Camera &camera)
     pushConstant.frameSeed = rand() % 32768;
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+    renderDeviceVulkan->beginLabel(cmd, "SSRGI Pass");
     writeSSRGI(cmd, currentFrame);
+    renderDeviceVulkan->endLabel(cmd);
+
 }
 
 void SSRGIPassVulkan::writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame)

@@ -126,9 +126,11 @@ void ShadowMapPassVulkan::render(Camera& camera)
 	lightProjection[1][1] *= -1;
 	lightSpaceMatrix = lightProjection * lightView;
 
-	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-	dispatchBlur(cmdBuffer, renderDeviceVulkan->getImageIndex());
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+    renderDeviceVulkan->beginLabel(cmd, "Shadow Pass");
+	recordDrawCommand(cmd, renderDeviceVulkan->getImageIndex());
+	dispatchBlur(cmd, renderDeviceVulkan->getImageIndex());
+    renderDeviceVulkan->endLabel(cmd);
 }
 
 void ShadowMapPassVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline)
@@ -186,62 +188,63 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 	Scene* scene = sceneManager.getActiveScene();
 
 	beginRecording(commandBuffer, shadowRenderPass, shadowFramebuffer, shadowPipeline.get());
+	{
+		for (auto& entity : scene->getEntitiesWith<TransformComponent, ModelComponent>()) {
+			auto& transform = entity.getComponent<TransformComponent>();
+			auto& modelComp = entity.getComponent<ModelComponent>();
 
-	for (auto& entity : scene->getEntitiesWith<TransformComponent, ModelComponent>()) {
-		auto& transform = entity.getComponent<TransformComponent>();
-		auto& modelComp = entity.getComponent<ModelComponent>();
+			LightPushConstant push{};
+			push.model = transform.getModelMatrix();
+			push.lightMVP = lightSpaceMatrix;
 
-		LightPushConstant push{};
-		push.model = transform.getModelMatrix();
-		push.lightMVP = lightSpaceMatrix;
+			vkCmdPushConstants(
+				commandBuffer,
+				shadowPipeline->pipelineLayout,
+				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				0,
+				sizeof(LightPushConstant),
+				&push
+			);
 
-		vkCmdPushConstants(
-			commandBuffer,
-			shadowPipeline->pipelineLayout,
-			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-			0,
-			sizeof(LightPushConstant),
-			&push
-		);
+			const Model* model = modelManager->getModel(modelComp.modelID);
+			if (!model) {
+				continue;
+			}
+			
+			for (uint32_t meshID : model->meshIDs) {
+				const Mesh* mesh = meshManager->getMesh(meshID);
+				meshManager->bindMesh(meshID);
 
-		const Model* model = modelManager->getModel(modelComp.modelID);
-		if (!model) {
-			continue;
+				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+				vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+			}
 		}
-		
-		for (uint32_t meshID : model->meshIDs) {
-			const Mesh* mesh = meshManager->getMesh(meshID);
-			meshManager->bindMesh(meshID);
 
-			uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-			vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
-		}
-	}
+		for (auto& entity : scene->getEntitiesWith<TransformComponent, MeshComponent>()) {
+			auto& transform = entity.getComponent<TransformComponent>();
+			auto& meshComp = entity.getComponent<MeshComponent>();
 
-	for (auto& entity : scene->getEntitiesWith<TransformComponent, MeshComponent>()) {
-		auto& transform = entity.getComponent<TransformComponent>();
-		auto& meshComp = entity.getComponent<MeshComponent>();
+			LightPushConstant push{};
+			push.model = transform.getModelMatrix();
+			push.lightMVP = lightSpaceMatrix;
 
-		LightPushConstant push{};
-		push.model = transform.getModelMatrix();
-		push.lightMVP = lightSpaceMatrix;
+			vkCmdPushConstants(
+				commandBuffer,
+				shadowPipeline->pipelineLayout,
+				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				0,
+				sizeof(LightPushConstant),
+				&push
+			);
+			
+			for (uint32_t meshID : meshComp.meshIDs) {
+				const Mesh* mesh = meshManager->getMesh(meshID);
+				meshManager->bindMesh(meshID);
 
-		vkCmdPushConstants(
-			commandBuffer,
-			shadowPipeline->pipelineLayout,
-			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-			0,
-			sizeof(LightPushConstant),
-			&push
-		);
-		
-		for (uint32_t meshID : meshComp.meshIDs) {
-			const Mesh* mesh = meshManager->getMesh(meshID);
-			meshManager->bindMesh(meshID);
-
-			uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-			vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
-		}
+				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+				vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+			}
+		}	
 	}
 	endRecording(commandBuffer);
 }

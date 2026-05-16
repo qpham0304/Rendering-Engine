@@ -68,12 +68,13 @@ public:
 	
 	void writePostProcess(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeRayTracing(VkCommandBuffer cmd, uint32_t currentFrame);
+	void updateTlas();
 
 public:	//TODO: make private once done testing	
-	const int MAX_INSTANCES = 3000;
+	const int MAX_INSTANCES = 5000;
 	const int numInstances = 1;
 	const int numLights = 1000;
-	bool showGui{ true };
+	bool showGui { true };
 	uint32_t frameCounter { 0 };
 	bool m_tlasInitialized { false };
 	bool clear { false };
@@ -155,5 +156,4 @@ public:	//TODO: make private once done testing
 	BlasInput _toVkGeometry(uint32_t meshID);
 	void _createAccelStructure();
 	void _createShaderBindingTable();
-	void _updateTlas();
 };

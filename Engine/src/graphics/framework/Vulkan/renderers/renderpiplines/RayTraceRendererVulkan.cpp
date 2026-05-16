@@ -19,8 +19,6 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h>
-#include <graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h>
-#include <graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h>
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
@@ -184,7 +182,7 @@ void RayTraceRendererVulkan::render(Camera& camera)
 	pushConstant.objectIdx  = 0;//objectsIndex;
     pushConstant.explicitPass = explicitPass ? 1 : 0;
 
-	_updateTlas();
+	updateTlas();
     
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
@@ -215,7 +213,7 @@ void RayTraceRendererVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t curr
 	postProcessPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 	auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(postProcessSetID)[currentFrame];
 	auto bindlessSet = descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0];
-	std::vector<VkDescriptorSet> sets = { descriptorSet, bindlessSet };
+	std::vector<VkDescriptorSet> sets = { descriptorSet, bindlessSet }; //TODO: add material set
 
 	vkCmdPushConstants(cmd, postProcessPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushConstant), &pushConstant);
     vkCmdBindDescriptorSets(
@@ -249,10 +247,12 @@ void RayTraceRendererVulkan::writeRayTracing(VkCommandBuffer cmd, uint32_t curre
 	// auto rayTraceLayout = descriptorManagerVulkan->getDescriptorLayout(raytraceLayoutID);
 	std::vector<VkDescriptorSet> sets = { rtSet, bindlessSet };
 
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, 
-							rtPipeline->pipelineLayout, 0, 
-							static_cast<uint32_t>(sets.size()), sets.data(), 
-							0, nullptr);
+	vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, 
+        rtPipeline->pipelineLayout, 0, 
+        static_cast<uint32_t>(sets.size()), sets.data(), 
+        0, nullptr
+    );
 
 	vkCmdPushConstants(cmd, rtPipeline->pipelineLayout, 
 					VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 
@@ -597,27 +597,20 @@ void RayTraceRendererVulkan::_createAccelStructure()
                 if (mat.emissive > 0.01f) {
                     LightSSBO light{};
                     
-                    // 1. Setup Color and Intensity (using the .a for intensity as discussed)
                     // light.color = mat.albedo;
                     // light.color.a = mat.emissive; 
 
-                    // 2. Get the Model Matrix to transform vertices to World Space
                     glm::mat4 modelMatrix = transform.getModelMatrix();
 
-                    // 3. Pick a triangle (usually the first one, index 0, 1, 2)
-                    // We fetch the local positions from your mesh data
                     glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
                     glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
                     glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
 
-                    // 4. Transform local vertices to World Space
                     light.v0 = modelMatrix * glm::vec4(localV0, 1.0f);
                     light.v1 = modelMatrix * glm::vec4(localV1, 1.0f);
                     light.v2 = modelMatrix * glm::vec4(localV2, 1.0f);
 
-                    // 5. Meta-data
                     light.instanceIdx = objectsIndex; 
-                    // Divide by 3 if you want the actual triangle count, not index count
                     light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
                     
                     lights.push_back(light);
@@ -750,7 +743,7 @@ void RayTraceRendererVulkan::_createShaderBindingTable()
 	bufferManagerVulkan->destroy(stagingBufferID);
 }
 
-void RayTraceRendererVulkan::_updateTlas() {
+void RayTraceRendererVulkan::updateTlas() {
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
 
 	SceneManager& sceneManager = SceneManager::getInstance();
@@ -793,27 +786,20 @@ void RayTraceRendererVulkan::_updateTlas() {
             if (mat.emissive > 0.01f) {
                 LightSSBO light{};
                 
-                // 1. Setup Color and Intensity (using the .a for intensity as discussed)
                 // light.color = mat.albedo;
                 // light.color.a = mat.emissive; 
 
-                // 2. Get the Model Matrix to transform vertices to World Space
                 glm::mat4 modelMatrix = transform.getModelMatrix();
 
-                // 3. Pick a triangle (usually the first one, index 0, 1, 2)
-                // We fetch the local positions from your mesh data
                 glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
                 glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
                 glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
 
-                // 4. Transform local vertices to World Space
                 light.v0 = modelMatrix * glm::vec4(localV0, 1.0f);
                 light.v1 = modelMatrix * glm::vec4(localV1, 1.0f);
                 light.v2 = modelMatrix * glm::vec4(localV2, 1.0f);
 
-                // 5. Meta-data
                 light.instanceIdx = objectsIndex; 
-                // Divide by 3 if you want the actual triangle count, not index count
                 light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
                 
                 lights.push_back(light);

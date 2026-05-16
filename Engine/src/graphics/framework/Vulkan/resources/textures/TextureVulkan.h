@@ -31,6 +31,8 @@ public:
 	uint32_t mipLevel;
 	uint32_t layerCount;
 
+	VkDescriptorImageInfo info();
+
 private:
 	void destroy(VkDevice device);
 

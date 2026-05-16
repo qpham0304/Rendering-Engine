@@ -87,9 +87,11 @@ void BloomPassVulkan::render(Camera& camera) {
     inputImage = deferred->renderTarget.colorTextures[currentFrame];
 
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+    renderDeviceVulkan->beginLabel(cmd, "Bloom Pass");
     writeDownSample(cmd, currentFrame);
     writeUpSample(cmd, currentFrame);
     writeBloomProcess(cmd, currentFrame);
+    renderDeviceVulkan->endLabel(cmd);
 }
 
 void BloomPassVulkan::renderGui()

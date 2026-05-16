@@ -35,7 +35,7 @@ protected:
 	void _updateDescriptor(uint32_t currentSetsID, uint32_t index, TextureVulkan* writeImg, TextureVulkan* readImage);
 	void _recreateResources();
 	void _cleanupResources();
-	void _copyDepthToHistory(VkCommandBuffer cmd);
+	void _copyImageReource(VkCommandBuffer cmd);
 
 	TextureVulkan* ssrgiImage;
 	TextureVulkan* ssrgiHistoryImage;

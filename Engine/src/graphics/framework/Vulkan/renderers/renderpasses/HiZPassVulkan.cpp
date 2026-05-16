@@ -83,7 +83,9 @@ void HiZPassVulkan::render(Camera &camera)
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+	renderDeviceVulkan->beginLabel(cmd, "HiZ Pass");
     writeHiZ(cmd, currentFrame);
+	renderDeviceVulkan->endLabel(cmd);
 }
 
 void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)

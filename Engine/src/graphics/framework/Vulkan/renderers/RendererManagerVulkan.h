@@ -86,6 +86,7 @@ protected:
 
 	Renderer* shadowMapPass { nullptr };
 	Renderer* imageBasedRenderer { nullptr };
+	Renderer* ddgiPassRenderer { nullptr };
 	Renderer* alchemyAORenderer { nullptr };
 	Renderer* hiZPassRenderer { nullptr };
 	Renderer* SSRGIPassRenderer { nullptr };

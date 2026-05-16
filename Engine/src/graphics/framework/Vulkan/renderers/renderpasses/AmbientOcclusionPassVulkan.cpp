@@ -88,8 +88,10 @@ void AmbientOcclusionPassVulkan::render(Camera& camera)
 
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+	renderDeviceVulkan->beginLabel(cmd, "AO Pass");
     writeAO(cmd, currentFrame);
     writeBlur(cmd, currentFrame);
+	renderDeviceVulkan->endLabel(cmd);
 }
 
 void AmbientOcclusionPassVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFrame)

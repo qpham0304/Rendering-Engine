@@ -161,9 +161,7 @@ void ImageBasedRendererVulkan::onUpdate()
 
 void ImageBasedRendererVulkan::render(Camera &camera)
 {
-	// VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	// computeSH(cmdBuffer, renderDeviceVulkan->getCurrentFrameIndex());
-	// debugSHResults(renderDeviceVulkan->getCurrentFrameIndex());
+	
 }
 
 void ImageBasedRendererVulkan::computeSH(VkCommandBuffer cmd, uint32_t currentFrame) {

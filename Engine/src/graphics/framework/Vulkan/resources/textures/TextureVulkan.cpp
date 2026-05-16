@@ -25,6 +25,16 @@ TextureVulkan::~TextureVulkan()
 
 }
 
+VkDescriptorImageInfo TextureVulkan::info()
+{
+    VkDescriptorImageInfo imageInfo{};
+    imageInfo.imageLayout = layout;
+    imageInfo.imageView = textureImageView;
+    imageInfo.sampler = textureSampler;
+    
+    return imageInfo;
+}
+
 void TextureVulkan::destroy(VkDevice device)
 {
 	if (textureSampler != VK_NULL_HANDLE) {
