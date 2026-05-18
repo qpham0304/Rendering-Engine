@@ -193,6 +193,10 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 			auto& transform = entity.getComponent<TransformComponent>();
 			auto& modelComp = entity.getComponent<ModelComponent>();
 
+			if(entity.hasComponent<LightProbeComponent>()) {
+				continue;
+			}
+
 			LightPushConstant push{};
 			push.model = transform.getModelMatrix();
 			push.lightMVP = lightSpaceMatrix;
@@ -251,9 +255,6 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 
 void ShadowMapPassVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIndex) 
 {
-	// TextureManagerVulkan::transitionImageLayout(
-		// cmd, momentImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
-		// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
 	TextureManagerVulkan::createBarrier(cmd, momentImage->textureImage,
 		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
@@ -331,7 +332,8 @@ void ShadowMapPassVulkan::_createDepthMap()
 
 	TextureManagerVulkan::createTextureSampler(
 		depthMap->textureSampler,
-		renderDeviceVulkan->device
+		renderDeviceVulkan->device,
+		TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
 	);
 }
 
@@ -395,8 +397,7 @@ void ShadowMapPassVulkan::_createShadowRenderPass()
 	momentAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	momentAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	momentAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	// set to GENERAL or COLOR_ATTACHMENT_OPTIMAL so Compute can use it
-	momentAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	momentAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// or GENERAL for compute
 
 	VkAttachmentReference momentReference{};
 	momentReference.attachment = 0;
@@ -406,7 +407,7 @@ void ShadowMapPassVulkan::_createShadowRenderPass()
     depthAttachment.format = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
     depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // We only need moments now
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -457,9 +458,9 @@ void ShadowMapPassVulkan::_createShadowFrameBuffer()
 
 void ShadowMapPassVulkan::_createMomentImage()
 {
-	auto createTexture = [&](TextureVulkan** outTexture) {
+	auto createTexture = [&](TextureVulkan*& texture) {
 		uint32_t imageID = textureManagerVulkan->createTexture();
-		*outTexture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(imageID));
+		texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(imageID));
 
 		TextureManagerVulkan::createImage(
 			width,
@@ -468,15 +469,15 @@ void ShadowMapPassVulkan::_createMomentImage()
 			VK_IMAGE_TILING_OPTIMAL,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			(*outTexture)->textureImage,
-			(*outTexture)->textureImageMemory,
+			texture->textureImage,
+			texture->textureImageMemory,
 			1,
 			renderDeviceVulkan->device
 		);
 
 		TextureManagerVulkan::createImageView(
-			(*outTexture)->textureImage,
-			(*outTexture)->textureImageView,
+			texture->textureImage,
+			texture->textureImageView,
 			VK_FORMAT_R32G32B32A32_SFLOAT,
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			1,
@@ -489,17 +490,17 @@ void ShadowMapPassVulkan::_createMomentImage()
 		samplerInfo.minFilter = VK_FILTER_LINEAR;
 		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE; // Clear to 1.0 depth
+		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE; // clear to 1.0 depth
 
 		TextureManagerVulkan::createTextureSampler(
-			(*outTexture)->textureSampler,
+			texture->textureSampler,
 			renderDeviceVulkan->device,
 			samplerInfo
 		);
 	};
 
-	createTexture(&momentImage);
-	createTexture(&tempMomentImage);
+	createTexture(momentImage);
+	createTexture(tempMomentImage);
 }
 
 void ShadowMapPassVulkan::_createMomentDescriptor()

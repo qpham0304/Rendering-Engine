@@ -17,8 +17,12 @@ public:
 
 	void* getMappedBuffer();
 
+	const VkDescriptorBufferInfo& getDescStorageBufferInfo();
+
+
 private:
 	void* bufferMapped;
 	size_t bufferSize;
+	VkDescriptorBufferInfo bufferInfo{};
 };
 

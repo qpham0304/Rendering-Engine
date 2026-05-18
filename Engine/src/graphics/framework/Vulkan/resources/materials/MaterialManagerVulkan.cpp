@@ -153,7 +153,7 @@ MaterialDesc MaterialManagerVulkan::getMaterial(const uint32_t &id)
 
 uint64_t MaterialManagerVulkan::getMaterialAddress()
 {
-	return materialDeviceAddress->getReference();
+	return materialDeviceAddress->getAddress();
 }
 
 void MaterialManagerVulkan::_buildMaterialCache()

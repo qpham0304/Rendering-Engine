@@ -5,9 +5,9 @@
 
 layout(location = 0) in vec2 inUV;
 
-layout(set = 0, binding = 0) uniform sampler2D textureSampler;
+// layout(set = 0, binding = 0) uniform sampler2D textureSampler;
 
-layout(set = 1, binding = 0) uniform sampler2D globalTextures[];
+layout(set = 0, binding = 0) uniform sampler2D globalTextures[];
 
 layout(location = 0) out vec4 outColor;
 
@@ -16,6 +16,6 @@ layout (push_constant) uniform PushConstant {
 } pc;
 
 void main() {
-    outColor = texture(textureSampler, inUV);
-    // outColor = texture(globalTextures[pc.index], inUV);
+    // outColor = texture(textureSampler, inUV);
+    outColor = texture(globalTextures[pc.index], inUV);
 }

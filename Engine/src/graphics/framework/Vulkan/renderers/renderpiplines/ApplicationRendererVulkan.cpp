@@ -53,7 +53,6 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 		}
 	});
 
-	_createDescriptors();
 	_createPipeline();
 
 	return true;
@@ -104,9 +103,6 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
     if (texture && texture->textureImageView != lastView) {
 		renderDeviceVulkan->waitIdle(); 
     
-		for (uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
-			_updateDescriptorSets(i);
-		}
         lastView = texture->textureImageView;
     }
 
@@ -288,30 +284,6 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	guiManager->end();
 }
 
-void ApplicationRendererVulkan::_createDescriptors()
-{
-	uint32_t frameCount = VulkanUtils::numFrames();
-
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { 
-		{ 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, nullptr },
-	};
-	
-	std::vector<VkDescriptorPoolSize> poolSizes = {
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount },
-	};
-	
-	layoutID = descriptorManagerVulkan->createLayout(bindings);
-	poolID = descriptorManagerVulkan->createPool(poolSizes, frameCount);
-	setsID = descriptorManagerVulkan->createSets(layoutID, poolID, frameCount);
-	
-	descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
-	descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
-	descriptorSets = descriptorManagerVulkan->getDescriptorSet(setsID);
-	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
-		_updateDescriptorSets(i);
-	}
-}
-
 void ApplicationRendererVulkan::_createPipeline()
 {
 	void* handle = materialManager->getMaterialLayout();
@@ -340,26 +312,9 @@ void ApplicationRendererVulkan::_createPipeline()
 		"assets/shaders/spv/default.frag.spv",
 		pipelineConfig,
 		emptyVertexInput,
-		{ descriptorSetLayout, bindlessLayout }, 
+		{ bindlessLayout }, 
 		sizeof(PushConstantData)
 	);
-}
-
-void ApplicationRendererVulkan::_updateDescriptorSets(uint32_t index)
-{
-	TextureVulkan* texture = rendererManagerVulkan->getDisplayImage();
-	if(!texture) {
-		return;
-	}
-
-	VkDescriptorImageInfo imageInfo;
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = texture->textureImageView;
-	imageInfo.sampler = texture->textureSampler;
-
-	std::vector<VkWriteDescriptorSet> writes = {};
-	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 0, imageInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
 void ApplicationRendererVulkan::_recreateResources()
@@ -368,10 +323,6 @@ void ApplicationRendererVulkan::_recreateResources()
 
 	_cleanupResources();
 	_createPipeline();
-
-	for (uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
-        _updateDescriptorSets(i);
-    }
 }
 
 void ApplicationRendererVulkan::_cleanupResources()

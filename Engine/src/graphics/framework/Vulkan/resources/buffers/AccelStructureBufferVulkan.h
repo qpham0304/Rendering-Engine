@@ -17,15 +17,15 @@ public:
 	uint64_t getAddress();
 
 	VkAccelerationStructureKHR getAccelStr();
+	const VkWriteDescriptorSetAccelerationStructureKHR& getDescAccelStructInfo();
 
-	// void update(const void* data, size_t size);
 
 protected:
     virtual void destroy(VkDevice device) override;
 
 
 private:
-	// void* uniformBufferMapped;	// mapped with bufferManager's gpu buffer
+    VkWriteDescriptorSetAccelerationStructureKHR descASInfo{};
     uint64_t deviceAddress = 0;
 	VkAccelerationStructureKHR accelStr = VK_NULL_HANDLE;
 };

@@ -51,63 +51,23 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	assert(hdrImage && "Failed to cast texture to TextureVulkan");
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-    TextureManagerVulkan::transitionImageLayout(
-        cmd,
-        hdrImage->textureImage, 
-        VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
-        1, 
-        1,
-        renderDeviceVulkan
-    );
+    hdrImage->transitImage(cmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1);
     renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
 
 	groupCountX = (hdrImage->width() + 15) / 16;
 	groupCountY = (hdrImage->height() + 15) / 16;
 	totalWorkgroups = groupCountX * groupCountY;
+	
 	size_t bufferSize = totalWorkgroups * 9 * sizeof(PartialSum);
 	bufferManagerVulkan->createStorageBuffers(partialSumBuffers, bufferSize);
-
-	_createDescriptorSetProjection();
-	VkDescriptorSetLayout descriptorLayout = descriptorManagerVulkan->getDescriptorLayout(projectionSH_descriptorLayoutID);
-	projectionSH_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
-	projectionSH_pipeline->createComputePipeline(
-		"assets/shaders/spv/projectionSH.comp.spv", 
-		{ descriptorLayout },
-		0
-	);
-
 	bufferManagerVulkan->createStorageBuffers(finalSumBuffers, sizeof(FinalSH));
 
+	_createDescriptorSetProjection();
 	_createDescriptorSetGlobalSum();
-	VkDescriptorSetLayout descriptorLayoutSum = descriptorManagerVulkan->getDescriptorLayout(sumSH_descriptorLayoutID);
-	sumSH_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
-	sumSH_pipeline->createComputePipeline(
-		"assets/shaders/spv/globalSumSH.comp.spv", 
-		{ descriptorLayoutSum },
-		sizeof(uint32_t)
-	);
-	
-
 	_createResourceLUT();
-	VkDescriptorSetLayout descriptorLayoutLUT = descriptorManagerVulkan->getDescriptorLayout(lutDescriptorLayoutID);
-	brdfLUT_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
-	brdfLUT_pipeline->createComputePipeline(
-		"assets/shaders/spv/brdfLUT.comp.spv", 
-		{ descriptorLayoutLUT }, 
-		0
-	);
-	writeBRDF();
-
 	_createResourcePrefilteredMap();
-	VkDescriptorSetLayout descriptorLayoutPrefilter = descriptorManagerVulkan->getDescriptorLayout(prefilterLayoutID);
-	prefilter_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
-	prefilter_pipeline->createComputePipeline(
-		"assets/shaders/spv/prefilter.comp.spv", 
-		{ descriptorLayoutPrefilter }, 
-		sizeof(PrefilterPushConstants)
-	);
+	
+	writeBRDF();
 
     return true;
 }
@@ -255,17 +215,7 @@ void ImageBasedRendererVulkan::computeSH(VkCommandBuffer cmd, uint32_t currentFr
 
 void ImageBasedRendererVulkan::writeBRDF() {
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-
-	TextureManagerVulkan::transitionImageLayout(
-		cmd,
-		brdfLUT->textureImage,
-		VK_FORMAT_R16G16B16A16_SFLOAT,
-		VK_IMAGE_LAYOUT_UNDEFINED, 
-		VK_IMAGE_LAYOUT_GENERAL,
-		1,
-		1,
-		renderDeviceVulkan
-	);
+	brdfLUT->transitImage(cmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 1, 1);
 
 	brdfLUT_pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 	
@@ -284,17 +234,7 @@ void ImageBasedRendererVulkan::writeBRDF() {
 	
 	vkCmdDispatch(cmd, 512 / 16, 512 / 16, 1);
 
-	TextureManagerVulkan::transitionImageLayout(
-		cmd, 
-		brdfLUT->textureImage, 
-		VK_FORMAT_R16G16B16A16_SFLOAT,
-		VK_IMAGE_LAYOUT_GENERAL, 
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
-		1, 
-		1,
-		renderDeviceVulkan
-	);
-
+	brdfLUT->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1);
 	renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
 }
 
@@ -447,6 +387,14 @@ void ImageBasedRendererVulkan::_createDescriptorSetProjection() {
 
 		vkUpdateDescriptorSets(renderDeviceVulkan->device, 2, writes.data(), 0, nullptr);
 	}
+
+	VkDescriptorSetLayout descriptorLayout = descriptorManagerVulkan->getDescriptorLayout(projectionSH_descriptorLayoutID);
+	projectionSH_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	projectionSH_pipeline->createComputePipeline(
+		"assets/shaders/spv/projectionSH.comp.spv", 
+		{ descriptorLayout },
+		0
+	);
 }
 
 void ImageBasedRendererVulkan::_createDescriptorSetGlobalSum() {
@@ -504,6 +452,14 @@ void ImageBasedRendererVulkan::_createDescriptorSetGlobalSum() {
 
 		vkUpdateDescriptorSets(renderDeviceVulkan->device, 2, writes.data(), 0, nullptr);
 	}
+
+	VkDescriptorSetLayout descriptorLayoutSum = descriptorManagerVulkan->getDescriptorLayout(sumSH_descriptorLayoutID);
+	sumSH_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	sumSH_pipeline->createComputePipeline(
+		"assets/shaders/spv/globalSumSH.comp.spv", 
+		{ descriptorLayoutSum },
+		sizeof(uint32_t)
+	);
 }
 
 void ImageBasedRendererVulkan::_createResourceLUT() {
@@ -579,6 +535,15 @@ void ImageBasedRendererVulkan::_createResourceLUT() {
 	std::vector<VkWriteDescriptorSet> writes;
 	descriptorManagerVulkan->writeStorageImage(&writes, lutDescriptorSets[0], 0, imageInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
+
+	
+	VkDescriptorSetLayout descriptorLayoutLUT = descriptorManagerVulkan->getDescriptorLayout(lutDescriptorLayoutID);
+	brdfLUT_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	brdfLUT_pipeline->createComputePipeline(
+		"assets/shaders/spv/brdfLUT.comp.spv", 
+		{ descriptorLayoutLUT }, 
+		0
+	);
 }
 
 void ImageBasedRendererVulkan::_createResourcePrefilteredMap() {
@@ -588,6 +553,16 @@ void ImageBasedRendererVulkan::_createResourcePrefilteredMap() {
 	assert(prefilterMap && "failed to cast texture into vulkan texture");
 
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(mapSize))) + 1;
+
+    // auto createTexture = [&] (TextureVulkan*& texture, uint32_t w, uint32_t h, VkFormat format) {
+    //     TextureSamplerConfig samplerConfig = { VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_MIPMAP_MODE_LINEAR };
+    //     TextureConfig imageConfig { .width = w, .height = h, .format = format};
+
+    //     uint32_t id = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
+    //     texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
+    // };
+
+	// createTexture(prefilterMap, mapSize, mapSize, VK_FORMAT_R16G16B16A16_SFLOAT);
 
 	TextureManagerVulkan::createImage(
 		mapSize, 
@@ -691,17 +666,15 @@ void ImageBasedRendererVulkan::_createResourcePrefilteredMap() {
 	}
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-
-	TextureManagerVulkan::transitionImageLayout(
-		cmd,
-		prefilterMap->textureImage, 
-		VK_FORMAT_R16G16B16_SFLOAT,
-		VK_IMAGE_LAYOUT_UNDEFINED, 
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		mipLevels, 
-		6, 
-		renderDeviceVulkan
-	);
-
+	prefilterMap->transitImage(cmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels, 6);
 	renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+
+	
+	VkDescriptorSetLayout descriptorLayoutPrefilter = descriptorManagerVulkan->getDescriptorLayout(prefilterLayoutID);
+	prefilter_pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	prefilter_pipeline->createComputePipeline(
+		"assets/shaders/spv/prefilter.comp.spv", 
+		{ descriptorLayoutPrefilter }, 
+		sizeof(PrefilterPushConstants)
+	);
 }

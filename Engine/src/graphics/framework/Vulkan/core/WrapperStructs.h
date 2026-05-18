@@ -38,5 +38,7 @@ protected:
 	typedef VkImageAspectFlags_T* VkImageAspectFlags;
 
 	typedef VkCommandBuffer_T* VkCommandBuffer;
+
+	
 };
 

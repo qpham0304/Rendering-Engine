@@ -75,7 +75,7 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	size_t objectsBufferSize = MAX_INSTANCES * sizeof(ObjectDesc);
 	objDeviceAddressBufferID = bufferManagerVulkan->createBufferDeviceAddress(objectsBufferSize);
 	auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(objDeviceAddressBufferID));
-	objDeviceAddress = deviceAddress->getReference();
+	objDeviceAddress = deviceAddress->getAddress();
 
 	lights.reserve(numLights);
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
@@ -164,11 +164,11 @@ void DeferredRendererVulkan::render(Camera& camera)
 				desc.materialsRef = materialsAddress;
 				const MeshManager::MeshData& meshData = meshManager->getMeshData(meshID);
 				auto* bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.matIndicesBDA_ID));
-				desc.materialIndicesRef = bdaBuffer->getReference();
+				desc.materialIndicesRef = bdaBuffer->getAddress();
 				bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.vertexBDA_ID));
-				desc.vertexAddress = bdaBuffer->getReference();
+				desc.vertexAddress = bdaBuffer->getAddress();
 				bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID));
-				desc.indexAddress = bdaBuffer->getReference();
+				desc.indexAddress = bdaBuffer->getAddress();
 				// m_logger->error("index buffer BDA: {}", desc.indexAddress);
 
 				objects[currentDrawIdx] = desc;
@@ -727,27 +727,10 @@ void DeferredRendererVulkan::_createFrameBuffers()
 				renderDeviceVulkan->device
 			);
 
-			VkSamplerCreateInfo samplerInfo{};
-			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-			samplerInfo.magFilter = VK_FILTER_LINEAR;
-			samplerInfo.minFilter = VK_FILTER_LINEAR;
-			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-			samplerInfo.anisotropyEnable = VK_TRUE;
-			samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-			samplerInfo.unnormalizedCoordinates = VK_FALSE;
-			samplerInfo.compareEnable = VK_FALSE;
-			samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-			samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			samplerInfo.mipLodBias = 0.0f;
-			samplerInfo.minLod = 0.0f;
-			samplerInfo.maxLod = 0.0f;
-
 			TextureManagerVulkan::createTextureSampler(
 				texture->textureSampler, 
 				renderDeviceVulkan->device,
-				samplerInfo
+				TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
 			);
 
 			TextureManagerVulkan::transitionImageLayout(
@@ -831,7 +814,11 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			renderDeviceVulkan->device
 		);
 
-		TextureManagerVulkan::createTextureSampler(renderTarget.depthTextures[i]->textureSampler, renderDeviceVulkan->device);
+		TextureManagerVulkan::createTextureSampler(
+			renderTarget.depthTextures[i]->textureSampler,
+			renderDeviceVulkan->device,
+			TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
+		);
 
 		std::array<VkImageView, 8> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,

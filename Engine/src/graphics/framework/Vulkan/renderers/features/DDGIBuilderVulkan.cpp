@@ -13,6 +13,7 @@
 #include "graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h"
 #include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
+#include <graphics/framework/Vulkan/resources/buffers/AccelStructureBufferVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
@@ -89,8 +90,8 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	ubo.invProj = camera.getInProjectionMatrix();
 	ubo.invProj[1][1] *= -1.0;
     // ubo.color = glm::vec4(1.0, 1.0, 1.0, 1.0);
-	ubo.width  = rayBufferW;
-    ubo.height = rayBufferH;
+	ubo.width  = (float)rayBufferW;
+    ubo.height = (float)rayBufferH;
     
     bool shouldClear = false;//camera.isMoving();
     ubo.frameSeed = !shouldClear ? rand() % 32768 : ubo.frameSeed;
@@ -126,14 +127,8 @@ void DDGIBuilderVulkan::render(Camera &camera)
 
 void DDGIBuilderVulkan::writeTraceProbe(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-	TextureManagerVulkan::transitionImageLayout(
-		cmd, rayColorBuffer->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
-	);
-    TextureManagerVulkan::transitionImageLayout(
-		cmd, rayDistanceBuffer->textureImage, VK_FORMAT_R16G16_SFLOAT,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
-	);
+    rayColorBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+    rayDistanceBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
 	probTracePipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 	auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(probTracePipelineSetID)[currentFrame];
@@ -149,14 +144,8 @@ void DDGIBuilderVulkan::writeTraceProbe(VkCommandBuffer cmd, uint32_t currentFra
 
     vkCmdDispatch(cmd, totalProbes, 1, 1);
 
-	TextureManagerVulkan::transitionImageLayout(
-		cmd, rayColorBuffer->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-	);
-    TextureManagerVulkan::transitionImageLayout(
-		cmd, rayDistanceBuffer->textureImage, VK_FORMAT_R16G16_SFLOAT,
-		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-	);
+    rayColorBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    rayDistanceBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void DDGIBuilderVulkan::writeBlendProbe(VkCommandBuffer cmd, uint32_t currentFrame)
@@ -165,15 +154,8 @@ void DDGIBuilderVulkan::writeBlendProbe(VkCommandBuffer cmd, uint32_t currentFra
     pushConstantBlend.probesResolution = PROBE_RES;
     pushConstantBlend.numRaysPerProbe = raysPerProbe;
 
-    TextureManagerVulkan::transitionImageLayout(
-		cmd, atlasTexture->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
-	);
-
-    TextureManagerVulkan::transitionImageLayout(
-		cmd, currentVisibilityAtlas->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
-	);
+    atlasTexture->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+    currentVisibilityAtlas->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
     
     blendPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 
@@ -192,27 +174,11 @@ void DDGIBuilderVulkan::writeBlendProbe(VkCommandBuffer cmd, uint32_t currentFra
     float groupY = (atlasH + 7) / 8;
     vkCmdDispatch(cmd, groupX, groupY, 1);
     
-    TextureManagerVulkan::transitionImageLayout(
-		cmd, atlasTexture->textureImage, VK_FORMAT_R16G16_SFLOAT,
-		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-	);
+    atlasTexture->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    currentVisibilityAtlas->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    TextureManagerVulkan::transitionImageLayout(
-		cmd, currentVisibilityAtlas->textureImage, VK_FORMAT_R16G16_SFLOAT,
-		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-	);
-
-    TextureManagerVulkan::copyImage(
-        cmd, atlasTexture, prevAtlasTexture, 
-        VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT,
-        atlasW, atlasH, renderDeviceVulkan
-    );
-
-    TextureManagerVulkan::copyImage(
-        cmd, currentVisibilityAtlas, lastFrameVisibilityAtlas, 
-        VK_FORMAT_R32G32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT,
-        atlasW, atlasH, renderDeviceVulkan
-    );
+    prevAtlasTexture->copyFrom(cmd, atlasTexture);
+    lastFrameVisibilityAtlas->copyFrom(cmd, currentVisibilityAtlas);
 }
 
 TextureVulkan *DDGIBuilderVulkan::getAtlasImage()
@@ -254,7 +220,7 @@ void DDGIBuilderVulkan::_createResources()
         buffer->update(lightProbeComponent.probeGrid.data(), lightProbeComponent.bufferSize);
 
         pushConstant.objectsRef = raytracer->objDeviceAddress; 
-        pushConstant.probRef = buffer->getReference();
+        pushConstant.probRef = buffer->getAddress();
         pushConstant.probesPerDimension = lightProbeComponent.probesPerDimension;
         pushConstant.probesResolution = PROBE_RES;
         pushConstant.gridOrigin = lightProbeComponent.gridOrigin;
@@ -269,88 +235,22 @@ void DDGIBuilderVulkan::_createResources()
         rayBufferH = totalProbes;
     }
     
-    auto createTexture = [&] (uint32_t& id, TextureVulkan*& texture, uint32_t w, uint32_t h, VkFormat format) {
-        id = textureManagerVulkan->createTexture();
+    auto createTexture = [&] (TextureVulkan*& texture, uint32_t w, uint32_t h, VkFormat format, VkImageUsageFlags extraUsage = 0) {
+        TextureSamplerConfig samplerConfig = { VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_MIPMAP_MODE_LINEAR };
+        TextureConfig imageConfig { .width = w, .height = h, .format = format};
+		imageConfig.usage |= extraUsage;
+
+        uint32_t id = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
         texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-        
-        assert(texture && "failed to cast texture into vulkan texture");
-        
-        TextureManagerVulkan::createImage(
-            w, h, format,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            texture->textureImage,
-            texture->textureImageMemory,
-            1,
-            renderDeviceVulkan->device
-        );
-
-        TextureManagerVulkan::createImageView(
-            texture->textureImage, texture->textureImageView,
-            format, VK_IMAGE_ASPECT_COLOR_BIT, 1, renderDeviceVulkan->device
-        );
-
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-
-        TextureManagerVulkan::createTextureSampler(
-            texture->textureSampler, 
-            renderDeviceVulkan->device,
-            samplerInfo
-        );
-
-        
-    auto cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-        TextureManagerVulkan::transitionImageLayout(
-            cmd, rayColorBuffer->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
     };
     
     // Width = Rays, Height = Total Probes
-    createTexture(rayColorBufferID, rayColorBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16B16A16_SFLOAT);
-    createTexture(rayDistanceBufferID, rayDistanceBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16_SFLOAT);
-    createTexture(atlasID, atlasTexture, atlasW, atlasH, VK_FORMAT_R16G16B16A16_SFLOAT);
-    createTexture(prevAtlasID, prevAtlasTexture, atlasW, atlasH, VK_FORMAT_R16G16B16A16_SFLOAT);
-    createTexture(currentVisibilityAtlasID, currentVisibilityAtlas, atlasW, atlasH, VK_FORMAT_R16G16_SFLOAT);
-    createTexture(lastFrameVisibilityAtlasID, lastFrameVisibilityAtlas, atlasW, atlasH, VK_FORMAT_R16G16_SFLOAT);
-
-    auto cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, rayColorBuffer->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, rayDistanceBuffer->textureImage, VK_FORMAT_R16G16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, atlasTexture->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, prevAtlasTexture->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-    
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, currentVisibilityAtlas->textureImage, VK_FORMAT_R16G16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-    
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, lastFrameVisibilityAtlas->textureImage, VK_FORMAT_R16G16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
-
+    createTexture(rayColorBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16B16A16_SFLOAT);
+    createTexture(rayDistanceBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16_SFLOAT);
+    createTexture(atlasTexture, atlasW, atlasH, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    createTexture(prevAtlasTexture, atlasW, atlasH, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+    createTexture(currentVisibilityAtlas, atlasW, atlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    createTexture(lastFrameVisibilityAtlas, atlasW, atlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 }
 
 void DDGIBuilderVulkan::_createPipeline()
@@ -425,89 +325,28 @@ void DDGIBuilderVulkan::_createDescriptor()
 
 void DDGIBuilderVulkan::_updateDescriptor(uint32_t index)
 {
-    auto tlas = raytracer->m_rtBuilder.getAccelerationStructure();
-
-	VkDescriptorBufferInfo bufferInfo{};
-    bufferInfo.buffer = static_cast<VkBuffer>(*uniformbuffersList[index]);
-    bufferInfo.offset = 0;
-    bufferInfo.range = VK_WHOLE_SIZE;
-
-	VkWriteDescriptorSetAccelerationStructureKHR descASInfo{};
-	descASInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-    descASInfo.accelerationStructureCount = 1;
-    descASInfo.pAccelerationStructures    = &tlas;
-
-	VkDescriptorImageInfo rayColorBufferInfo{};
-	rayColorBufferInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	rayColorBufferInfo.imageView = rayColorBuffer->textureImageView;
-	rayColorBufferInfo.sampler = rayColorBuffer->textureSampler;
-
-	VkDescriptorImageInfo rayDistanceBufferInfo{};
-	rayDistanceBufferInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	rayDistanceBufferInfo.imageView = rayDistanceBuffer->textureImageView;
-	rayDistanceBufferInfo.sampler = rayDistanceBuffer->textureSampler;
-
-	VkDescriptorImageInfo prevAtlasInfo{};
-	prevAtlasInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	prevAtlasInfo.imageView = prevAtlasTexture->textureImageView;
-	prevAtlasInfo.sampler = prevAtlasTexture->textureSampler;
-    
-	VkDescriptorImageInfo visibilityAtlasInfo{};
-	visibilityAtlasInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	visibilityAtlasInfo.imageView = lastFrameVisibilityAtlas->textureImageView;
-	visibilityAtlasInfo.sampler = lastFrameVisibilityAtlas->textureSampler;
+    auto tlas = raytracer->m_rtBuilder.getTlas();
 
     auto probTraceDescriptorSets = descriptorManagerVulkan->getDescriptorSet(probTracePipelineSetID);
-	std::vector<VkWriteDescriptorSet> writePostProcess;
-	descriptorManagerVulkan->writeUniform(&writePostProcess, probTraceDescriptorSets[index], 0, bufferInfo);
-	descriptorManagerVulkan->writeAccelStruct(&writePostProcess, probTraceDescriptorSets[index], 1, postBindings, descASInfo);
-	descriptorManagerVulkan->writeStorageImage(&writePostProcess, probTraceDescriptorSets[index], 2, rayColorBufferInfo);
-	descriptorManagerVulkan->writeStorageImage(&writePostProcess, probTraceDescriptorSets[index], 3, rayDistanceBufferInfo);
-	descriptorManagerVulkan->writeImage(&writePostProcess, probTraceDescriptorSets[index], 4, prevAtlasInfo);
-	descriptorManagerVulkan->writeImage(&writePostProcess, probTraceDescriptorSets[index], 5, visibilityAtlasInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writePostProcess);
-
-    //blend pipeline
-	VkDescriptorImageInfo atlasBufferInfo{};
-	atlasBufferInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	atlasBufferInfo.imageView = atlasTexture->textureImageView;
-	atlasBufferInfo.sampler = atlasTexture->textureSampler;
-
-	VkDescriptorImageInfo prevAtlasBufferInfo{};
-	prevAtlasBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	prevAtlasBufferInfo.imageView = prevAtlasTexture->textureImageView;
-	prevAtlasBufferInfo.sampler = prevAtlasTexture->textureSampler;
-
-    VkDescriptorImageInfo rayColorBufferSamplerInfo{};
-	rayColorBufferSamplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	rayColorBufferSamplerInfo.imageView = rayColorBuffer->textureImageView;
-	rayColorBufferSamplerInfo.sampler = rayColorBuffer->textureSampler;
-    
-	VkDescriptorImageInfo rayDistanceBufferSamplerInfo{};
-	rayDistanceBufferSamplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	rayDistanceBufferSamplerInfo.imageView = rayDistanceBuffer->textureImageView;
-	rayDistanceBufferSamplerInfo.sampler = rayDistanceBuffer->textureSampler;
-    
-	VkDescriptorImageInfo currentVisibilityAtlasInfo{};
-	currentVisibilityAtlasInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	currentVisibilityAtlasInfo.imageView = currentVisibilityAtlas->textureImageView;
-	currentVisibilityAtlasInfo.sampler = currentVisibilityAtlas->textureSampler;
-
-	VkDescriptorImageInfo lastFrameVisibilityAtlasInfo{};
-	lastFrameVisibilityAtlasInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	lastFrameVisibilityAtlasInfo.imageView = lastFrameVisibilityAtlas->textureImageView;
-	lastFrameVisibilityAtlasInfo.sampler = lastFrameVisibilityAtlas->textureSampler;
-    
+	DescriptorWriter writer {{}, probTraceDescriptorSets[index] };
+	descriptorManagerVulkan->writeUniform2(writer, uniformbuffersList[index]->getDescUniformBufferInfo());
+	descriptorManagerVulkan->writeAccelStruct2(writer, postBindings, tlas->getDescAccelStructInfo());
+	descriptorManagerVulkan->writeStorageImage2(writer, rayColorBuffer->getDescImageInfoGeneral());
+	descriptorManagerVulkan->writeStorageImage2(writer, rayDistanceBuffer->getDescImageInfoGeneral());
+	descriptorManagerVulkan->writeImage2(writer, prevAtlasTexture->getDescImageInfoReadOnly());
+	descriptorManagerVulkan->writeImage2(writer, lastFrameVisibilityAtlas->getDescImageInfoReadOnly());
+	descriptorManagerVulkan->updateDescriptorSets(&writer.writes);
+	
     auto blendDescriptorSets = descriptorManagerVulkan->getDescriptorSet(blendPipelineSetID);
-	std::vector<VkWriteDescriptorSet> writeBlend;
-	descriptorManagerVulkan->writeUniform(&writeBlend, blendDescriptorSets[index], 0, bufferInfo);
-	descriptorManagerVulkan->writeStorageImage(&writeBlend, blendDescriptorSets[index], 1, atlasBufferInfo);
-	descriptorManagerVulkan->writeImage(&writeBlend, blendDescriptorSets[index], 2, prevAtlasBufferInfo);
-	descriptorManagerVulkan->writeImage(&writeBlend, blendDescriptorSets[index], 3, rayColorBufferSamplerInfo);
-	descriptorManagerVulkan->writeImage(&writeBlend, blendDescriptorSets[index], 4, rayDistanceBufferSamplerInfo);
-	descriptorManagerVulkan->writeStorageImage(&writeBlend, blendDescriptorSets[index], 5, currentVisibilityAtlasInfo);
-	descriptorManagerVulkan->writeImage(&writeBlend, blendDescriptorSets[index], 6, lastFrameVisibilityAtlasInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writeBlend);
+	DescriptorWriter writerBlend {{}, blendDescriptorSets[index] };
+	descriptorManagerVulkan->writeUniform2(writerBlend, uniformbuffersList[index]->getDescUniformBufferInfo());
+	descriptorManagerVulkan->writeStorageImage2(writerBlend, atlasTexture->getDescImageInfoGeneral());
+	descriptorManagerVulkan->writeImage2(writerBlend, prevAtlasTexture->getDescImageInfoReadOnly());
+	descriptorManagerVulkan->writeImage2(writerBlend, rayColorBuffer->getDescImageInfoReadOnly());
+	descriptorManagerVulkan->writeImage2(writerBlend, rayDistanceBuffer->getDescImageInfoReadOnly());
+	descriptorManagerVulkan->writeStorageImage2(writerBlend, currentVisibilityAtlas->getDescImageInfoGeneral());
+	descriptorManagerVulkan->writeImage2(writerBlend, lastFrameVisibilityAtlas->getDescImageInfoReadOnly());
+	descriptorManagerVulkan->updateDescriptorSets(&writerBlend.writes);
 }
 
 void DDGIBuilderVulkan::_recreateResources()

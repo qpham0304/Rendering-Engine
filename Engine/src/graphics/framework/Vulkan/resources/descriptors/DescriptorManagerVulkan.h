@@ -3,8 +3,12 @@
 #include "graphics/framework/Vulkan/core/WrapperStructs.h"
 #include "core/resources/managers/DescriptorManager.h"
 #include <vulkan/vulkan.h>
-
 class RenderDeviceVulkan;
+
+struct DescriptorWriter {
+	std::vector<VkWriteDescriptorSet> writes {};
+	VkDescriptorSet descriptorSet { VK_NULL_HANDLE };
+};
 
 class DescriptorManagerVulkan : public DescriptorManager
 {
@@ -22,6 +26,7 @@ public:
 	uint32_t createLayout(std::vector<VkDescriptorSetLayoutBinding> bindings, VkDescriptorSetLayoutCreateFlags flags = 0);
 	uint32_t createPool(std::vector<VkDescriptorPoolSize> poolSizes, uint32_t maxSets, VkDescriptorPoolCreateFlags flags = 0);
 	uint32_t createSets(uint32_t layoutID, uint32_t poolID, uint32_t setsCount);
+	
 	void writeUniform(
 		std::vector<VkWriteDescriptorSet>* writes,
 		const VkDescriptorSet& dstSet,
@@ -64,7 +69,43 @@ public:
 		const VkDescriptorSet& dstSet,
 		uint32_t binding,
 		const std::vector<VkDescriptorSetLayoutBinding>& bindingTable,
-		VkWriteDescriptorSetAccelerationStructureKHR& descASInfo
+		const VkWriteDescriptorSetAccelerationStructureKHR& descASInfo
+	);
+
+	/*
+	write wrapper
+	*/
+	void writeUniform2(
+		DescriptorWriter& writer,
+		const VkDescriptorBufferInfo& bufferInfo
+	);
+
+	void writeImage2(
+		DescriptorWriter& writer,
+		const VkDescriptorImageInfo& imageInfo,
+		uint32_t arrayIndex = 0
+	);
+
+	void writeStorageImage2(
+		DescriptorWriter& writer,
+		const VkDescriptorImageInfo& imageInfo,
+		uint32_t arrayIndex = 0
+	);
+
+	void writeStorage2(
+		DescriptorWriter& writer,
+		const VkDescriptorBufferInfo& bufferInfo
+	);
+
+	void writeAttachment2(
+		DescriptorWriter& writer,
+		const VkDescriptorImageInfo& bufferInfo
+	);
+
+	void writeAccelStruct2(
+		DescriptorWriter& writer,
+		const std::vector<VkDescriptorSetLayoutBinding>& bindingTable,
+		const VkWriteDescriptorSetAccelerationStructureKHR& descASInfo
 	);
 	
 	void updateDescriptorSets(std::vector<VkWriteDescriptorSet>* const writes);

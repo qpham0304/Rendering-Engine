@@ -31,3 +31,12 @@ void StorageBufferVulkan::update(const void *data, size_t size)
 void* StorageBufferVulkan::getMappedBuffer() {
     return bufferMapped;
 }
+
+const VkDescriptorBufferInfo &StorageBufferVulkan::getDescStorageBufferInfo()
+{
+	bufferInfo.buffer = buffer;
+	bufferInfo.offset = 0;
+	bufferInfo.range = VK_WHOLE_SIZE;
+
+    return bufferInfo;
+}

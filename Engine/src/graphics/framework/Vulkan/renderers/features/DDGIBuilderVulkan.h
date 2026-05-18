@@ -65,12 +65,6 @@ public:
 	TextureVulkan* getVisibilityAtlasImage();
 
 private:
-	uint32_t rayColorBufferID;
-	uint32_t rayDistanceBufferID;
-	uint32_t atlasID;
-	uint32_t prevAtlasID;
-	uint32_t currentVisibilityAtlasID;
-	uint32_t lastFrameVisibilityAtlasID;
 	TextureVulkan* rayColorBuffer;
 	TextureVulkan* rayDistanceBuffer;
 	TextureVulkan* atlasTexture;
@@ -106,8 +100,8 @@ private:
 	const int MAX_INSTANCES = 5000;
 	float atlasW { 0.0f };
 	float atlasH { 0.0f };
-	float rayBufferW { 0.0f };
-	float rayBufferH { 0.0f };
+	uint32_t rayBufferW { 0 };
+	uint32_t rayBufferH { 0 };
 	int totalProbes { 0 };
 	
 	void _createResources();

@@ -20,8 +20,3 @@ void DeviceAddressBufferVulkan::update(const void *src, size_t size)
 {
     memcpy(mappedBuffer, src, size);
 }
-
-uint64_t DeviceAddressBufferVulkan::getReference()
-{
-    return bufferAddressRef;
-}

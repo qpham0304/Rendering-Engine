@@ -12,15 +12,6 @@ class VulkanDevice;
 class TextureManagerVulkan : public TextureManager
 {
 public:
-	struct TextureConfig {
-		uint32_t width;
-		uint32_t height; 
-		VkFormat format; 
-		VkImageUsageFlags usage; 
-		VkImageAspectFlags aspect;
-		uint32_t mipLevels;
-	};
-
 	static void createImage(
 		uint32_t width,
 		uint32_t height,
@@ -70,10 +61,7 @@ public:
 		const VulkanDevice& device
 	);
 
-	static void createTextureSampler(
-		VkSampler& textureSampler,
-		VulkanDevice& device
-	);
+	static VkSamplerCreateInfo createLinearSampler(VulkanDevice& device);
 
 	static void createTextureSampler(
 		VkSampler& textureSampler,
@@ -167,7 +155,7 @@ public:
 	virtual void destroy(uint32_t id) override;
 	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture) override;
 	virtual uint32_t createTexture() override;
-	virtual uint32_t createTexture(TextureConfig textureConfig);
+	virtual uint32_t createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig);
 	virtual uint32_t createDepthTexture(uint32_t width, uint32_t height, uint32_t mipLevels) override;
 	virtual TextureVulkan* getTexture(uint32_t id) override;
 	virtual void* inspectTexture(uint32_t id) override;

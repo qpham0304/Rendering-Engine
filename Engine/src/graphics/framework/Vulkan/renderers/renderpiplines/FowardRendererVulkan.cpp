@@ -378,84 +378,35 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		uint32_t id = textureManagerVulkan->createTexture();
 
-		auto createTexture = [&] () {
-			auto* texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-			renderTarget.colorTextures[i] = texture;
+		auto createTexture = [&] (TextureVulkan*& texture,
+			uint32_t w, uint32_t h,	VkFormat format,
+			VkImageAspectFlagBits aspect, VkImageUsageFlags extraUsage = 0
+		) {
+			TextureSamplerConfig samplerConfig {};
+			TextureConfig imageConfig { .width = w, .height = h, .format = format, .aspectBits = aspect};
+			imageConfig.usage |= extraUsage;
 
-			TextureManagerVulkan::createImage(
-				swapchain.swapChainExtent.width,
-				swapchain.swapChainExtent.height,
-				swapchain.swapChainImageFormat,
-				VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				texture->textureImage,
-				texture->textureImageMemory,
-				1,
-				renderDeviceVulkan->device
-			);
-
-			TextureManagerVulkan::createImageView(
-				texture->textureImage,
-				texture->textureImageView,
-				swapchain.swapChainImageFormat,
-				VK_IMAGE_ASPECT_COLOR_BIT,
-				1,
-				renderDeviceVulkan->device
-			);
-
-			TextureManagerVulkan::createTextureSampler(
-				texture->textureSampler, 
-				renderDeviceVulkan->device
-			);
-
-			
-			VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-			TextureManagerVulkan::transitionImageLayout(
-				cmd,
-				texture->textureImage,
-				swapchain.swapChainImageFormat,
-				VK_IMAGE_LAYOUT_UNDEFINED,
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-				1,
-				1,
-				renderDeviceVulkan
-			);
-			
-			renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
-
+			uint32_t id = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
+			texture = textureManagerVulkan->getTexture(id);
 		};
 
-		createTexture();
-
-
-		VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
-
-		uint32_t depthId = textureManagerVulkan->createTexture();
-		renderTarget.depthTextures[i] = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(depthId));
-
-		TextureManagerVulkan::createImage(
+		createTexture(
+			renderTarget.colorTextures[i],
 			swapchain.swapChainExtent.width,
 			swapchain.swapChainExtent.height,
-			depthFormat,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			renderTarget.depthTextures[i]->textureImage,
-			renderTarget.depthTextures[i]->textureImageMemory,
-			1,
-			renderDeviceVulkan->device
+			swapchain.swapChainImageFormat,
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
 		);
 
-		TextureManagerVulkan::createImageView(
-			renderTarget.depthTextures[i]->textureImage,
-			renderTarget.depthTextures[i]->textureImageView,
-			depthFormat,
+		createTexture(
+			renderTarget.depthTextures[i],
+			swapchain.swapChainExtent.width,
+			swapchain.swapChainExtent.height,
+			TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device),
 			VK_IMAGE_ASPECT_DEPTH_BIT,
-			1,
-			renderDeviceVulkan->device
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 		);
-
 
 		std::array<VkImageView, 2> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,
@@ -517,65 +468,17 @@ void ForwardRendererVulkan::_createDescriptorSets()
 void ForwardRendererVulkan::_updateDescriptor()
 {
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
-		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = static_cast<VkBuffer>(*uniformbuffersList[i]);
-		bufferInfo.offset = 0;
-		bufferInfo.range = VK_WHOLE_SIZE;
-
-		VkDescriptorBufferInfo ssboInfo{};
-		ssboInfo.buffer = static_cast<VkBuffer>(*storagebuffersList[i]);
-		ssboInfo.offset = 0;
-		ssboInfo.range = VK_WHOLE_SIZE;
-
-		VkDescriptorBufferInfo lightsBufferInfo{};
-		lightsBufferInfo.buffer = static_cast<VkBuffer>(*lightStoragebuffers[i]);
-		lightsBufferInfo.offset = 0;
-		lightsBufferInfo.range = VK_WHOLE_SIZE;
-
-		VkDescriptorImageInfo imageInfo{};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = shadowMapRenderer->depthMap->textureImageView;
-		imageInfo.sampler = shadowMapRenderer->depthMap->textureSampler;
-		// imageInfo.imageView = shadowMapRenderer->momentImage->textureImageView;
-		// imageInfo.sampler = shadowMapRenderer->momentImage->textureSampler;
-
-		VkDescriptorImageInfo noiseImageInfo{};
-		noiseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		noiseImageInfo.imageView = shadowMapRenderer->blueNoiseImage->textureImageView;
-		noiseImageInfo.sampler = shadowMapRenderer->blueNoiseImage->textureSampler;
-
-		VkDescriptorBufferInfo bufferInfoSH{};
-		bufferInfoSH.buffer = static_cast<VkBuffer>(*imageBasedRenderer->finalSumBuffers[i]);
-		bufferInfoSH.offset = 0;
-		bufferInfoSH.range = VK_WHOLE_SIZE;
-
-		VkDescriptorImageInfo brdfLutImageInfo{};
-		brdfLutImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		brdfLutImageInfo.imageView = imageBasedRenderer->brdfLUT->textureImageView;
-		brdfLutImageInfo.sampler = imageBasedRenderer->brdfLUT->textureSampler;
-
-		VkDescriptorImageInfo prefilterImageInfo{};
-		prefilterImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		prefilterImageInfo.imageView = imageBasedRenderer->prefilterMap->textureImageView;
-		prefilterImageInfo.sampler = imageBasedRenderer->prefilterMap->textureSampler;
-
-		VkDescriptorImageInfo hdrImageInfo{};
-		hdrImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		hdrImageInfo.imageView = imageBasedRenderer->hdrImage->textureImageView;
-		hdrImageInfo.sampler = imageBasedRenderer->hdrImage->textureSampler;
- 
-
-		std::vector<VkWriteDescriptorSet> writes = {};
-		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
-		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 1, ssboInfo);
-		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 2, lightsBufferInfo);
-		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 3, imageInfo);
-		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 4, noiseImageInfo);
-		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 5, bufferInfoSH);
-		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 6, brdfLutImageInfo);
-		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 7, prefilterImageInfo);
-		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 8, hdrImageInfo);
-		descriptorManagerVulkan->updateDescriptorSets(&writes);
+		DescriptorWriter writer{{}, descriptorSets[i] };
+		descriptorManagerVulkan->writeUniform2(writer, uniformbuffersList[i]->getDescUniformBufferInfo());
+		descriptorManagerVulkan->writeStorage2(writer, storagebuffersList[i]->getDescStorageBufferInfo());
+		descriptorManagerVulkan->writeStorage2(writer, lightStoragebuffers[i]->getDescStorageBufferInfo());
+		descriptorManagerVulkan->writeImage2(writer, shadowMapRenderer->depthMap->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeImage2(writer, shadowMapRenderer->blueNoiseImage->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeStorage2(writer, imageBasedRenderer->finalSumBuffers[i]->getDescStorageBufferInfo());
+		descriptorManagerVulkan->writeImage2(writer, imageBasedRenderer->brdfLUT->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeImage2(writer, imageBasedRenderer->prefilterMap->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeImage2(writer, imageBasedRenderer->hdrImage->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->updateDescriptorSets(&writer.writes);
 	}
 }
 

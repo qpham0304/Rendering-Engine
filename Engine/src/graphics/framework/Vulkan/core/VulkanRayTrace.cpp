@@ -58,14 +58,12 @@ void RaytracingBuilderKHR::destroyTlas()
 }
 
 // Returning the constructed top-level acceleration structure
-//
-VkAccelerationStructureKHR RaytracingBuilderKHR::getAccelerationStructure() const
+AccelStructureBufferVulkan * RaytracingBuilderKHR::getTlas() const
 {
-    return m_tlas->getAccelStr();
+    return m_tlas;
 }
 
 // Return the device address of a BLAS previously created.
-//
 VkDeviceAddress RaytracingBuilderKHR::getBlasDeviceAddress(uint32_t blasId)
 {
     assert(size_t(blasId) < m_blas.size());
