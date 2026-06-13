@@ -70,7 +70,7 @@ bool SandBoxLayer::init()
             textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
         );
         // these need to be set to have emision
-        materialDesc.emissive = 1.0;
+        materialDesc.emissive = 5.0;
 
         Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
         mesh.materialID = materialManager->createMaterial(materialDesc);
@@ -114,10 +114,26 @@ bool SandBoxLayer::init()
     lightProbeComponent.gridOrigin = glm::vec4(-offset, -offset, -offset, 1.0);
     
     // Offset to center the grid (so 0,0,0 is the middle the volume)
-    for (uint32_t z = 0; z < probesPerDimension; z++) {
-        for (uint32_t y = 0; y < probesPerDimension; y++) {
+    // for (uint32_t z = 0; z < probesPerDimension; z++) {
+    //     for (uint32_t y = 0; y < probesPerDimension; y++) {
+    //         for (uint32_t x = 0; x < probesPerDimension; x++) {
+    //             uint32_t index = x + (y * probesPerDimension) + (z * probesPerDimension * probesPerDimension);
+                
+    //             lightProbeComponent.probeGrid[index] = glm::vec4(
+    //                 (float)x * spacing - offset,
+    //                 (float)y * spacing - offset,
+    //                 (float)z * spacing - offset,
+    //                 1.0
+    //             );
+    //         }
+    //     }
+    // }
+    for (uint32_t y = 0; y < probesPerDimension; y++) {
+        for (uint32_t z = 0; z < probesPerDimension; z++) {
             for (uint32_t x = 0; x < probesPerDimension; x++) {
-                uint32_t index = x + (y * probesPerDimension) + (z * probesPerDimension * probesPerDimension);
+                
+                // Re-map the index calculation to match this layout
+                uint32_t index = x + (z * probesPerDimension) + (y * probesPerDimension * probesPerDimension);
                 
                 lightProbeComponent.probeGrid[index] = glm::vec4(
                     (float)x * spacing - offset,
@@ -129,15 +145,15 @@ bool SandBoxLayer::init()
         }
     }
 
-    Model model {};
-    uint32_t meshID = meshManager->loadMesh(mesh);
-    model.meshIDs.push_back(meshID);
-    for(int i = 1; i < lightProbeComponent.probeGrid.size(); i++) {
-        model.meshIDs.push_back(meshID);
-    }
-    ModelComponent modelComponent;
-    modelComponent.modelID = modelManager->addModel(model);
-    lightProbeEntity.addComponent<ModelComponent>(modelComponent);
+    // Model model {};
+    // uint32_t meshID = meshManager->loadMesh(mesh);
+    // model.meshIDs.push_back(meshID);
+    // for(int i = 1; i < lightProbeComponent.probeGrid.size(); i++) {
+    //     model.meshIDs.push_back(meshID);
+    // }
+    // ModelComponent modelComponent;
+    // modelComponent.modelID = modelManager->addModel(model);
+    // lightProbeEntity.addComponent<ModelComponent>(modelComponent);
 
 	return true;
 }

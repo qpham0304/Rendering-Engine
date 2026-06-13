@@ -19,14 +19,10 @@ private:
 		uint32_t probesPerDimension;
 		uint32_t probesResolution;
 		float gridSpacing;
+		uint32_t padding;
 		glm::vec4 lightDir;
 	};
 
-	struct PushConstantBlend {
-		uint32_t probesPerDimension;
-		uint32_t probesResolution;
-		uint32_t numRaysPerProbe;
-	};
 	
 	struct UniformBufferObject {
 		glm::mat4 view;
@@ -59,16 +55,18 @@ public:
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
 
-	void writeTraceProbe(VkCommandBuffer cmd, uint32_t currentFrame);
-	void writeBlendProbe(VkCommandBuffer cmd, uint32_t currentFrame);
+	void writeTrace(VkCommandBuffer cmd, uint32_t currentFrame);
+	void writeUpdateVisibility(VkCommandBuffer cmd, uint32_t currentFrame);
+	void writeUpdateIrradiance(VkCommandBuffer cmd, uint32_t currentFrame);
+	void renderGui();
 	TextureVulkan* getAtlasImage();
 	TextureVulkan* getVisibilityAtlasImage();
 
 private:
 	TextureVulkan* rayColorBuffer;
 	TextureVulkan* rayDistanceBuffer;
-	TextureVulkan* atlasTexture;
-	TextureVulkan* prevAtlasTexture;
+	TextureVulkan* currentIrradianceAtlas;
+	TextureVulkan* lastframeIrradianceAtlas;
 	TextureVulkan* currentVisibilityAtlas;
 	TextureVulkan* lastFrameVisibilityAtlas;
 	
@@ -78,28 +76,36 @@ private:
 	std::unique_ptr<VulkanPipeline> probTracePipeline;
     std::vector<VkDescriptorSetLayoutBinding> postBindings;
 
+	uint32_t updateIrradianceLayoutID;
+	uint32_t updateIrradiancePoolID;
+	uint32_t updateIrradianceSetID;
+	std::unique_ptr<VulkanPipeline> updateIrradiancePipeline;
+    std::vector<VkDescriptorSetLayoutBinding> updateIrradianceBindings;
 	
-	uint32_t blendPipelineLayoutID;
-	uint32_t blendPipelinePoolID;
-	uint32_t blendPipelineSetID;
-	std::unique_ptr<VulkanPipeline> blendPipeline;
-    std::vector<VkDescriptorSetLayoutBinding> blendBindings;
+	uint32_t updateVisibilityLayoutID;
+	uint32_t updateVisibilityPoolID;
+	uint32_t updateVisibilitySetID;
+	std::unique_ptr<VulkanPipeline> updateVisibilityPipeline;
+    std::vector<VkDescriptorSetLayoutBinding> updateVisibilityBindings;
 
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	UniformBufferObject ubo{};
 	PushConstant pushConstant;
-	PushConstantBlend pushConstantBlend;
     RayTraceRendererVulkan* raytracer { nullptr };
 	ShadowMapPassVulkan* shadowMapPass { nullptr };
 	glm::mat4 lastViewProj;
 	bool firstFrame { true };
 
     const int raysPerProbe = 64;
-	const int PROBE_RES = 8;
+	const int PROBE_RES = 10;
 	const int numLights = 1000;
 	const int MAX_INSTANCES = 5000;
 	float atlasW { 0.0f };
 	float atlasH { 0.0f };
+	float irrAtlasW { 0.0f };
+	float irrAtlasH { 0.0f };
+	uint32_t visAtlasW { 0 };
+	uint32_t visAtlasH { 0 };
 	uint32_t rayBufferW { 0 };
 	uint32_t rayBufferH { 0 };
 	int totalProbes { 0 };

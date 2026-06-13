@@ -22,6 +22,7 @@
 #include <core/features/Mesh.h>
 #include <core/features/Camera.h>
 #include <window/AppWindow.h>
+#include <imgui/imgui.h>
 
 DDGIBuilderVulkan::DDGIBuilderVulkan()
 {
@@ -66,10 +67,6 @@ void DDGIBuilderVulkan::render(Camera &camera)
 		return;
 	}
 
-	// instanceData.clear(); 
-	// objects.clear();
-    // lights.clear();
-
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
 	if(!scene){
@@ -107,7 +104,7 @@ void DDGIBuilderVulkan::render(Camera &camera)
     auto entities = scene->getEntitiesWith<LightProbeComponent>();
     Entity lightProbeEntity = entities[0];
     auto& lightProbeComponent = lightProbeEntity.getComponent<LightProbeComponent>();
-
+    auto& transform = lightProbeEntity.getComponent<TransformComponent>();
     
 	size_t buffersize = MAX_INSTANCES * sizeof(ObjectDesc);
 	bufferManagerVulkan->updateBufferDeviceAddress(raytracer->objDeviceAddressBufferID, raytracer->objects.data(), buffersize);
@@ -118,14 +115,13 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	lastViewProj = ubo.proj * ubo.view;
 
     renderDeviceVulkan->beginLabel(cmd, "DDGI probe render", {1.0, 1.0, 0.0, 1.0});
-    writeTraceProbe(cmd, currentFrame);
-    writeBlendProbe(cmd, currentFrame);
+    writeTrace(cmd, currentFrame);
+    writeUpdateVisibility(cmd, currentFrame);
+    writeUpdateIrradiance(cmd, currentFrame);
     renderDeviceVulkan->endLabel(cmd);
-
-	rendererManagerVulkan->setDisplayImage(atlasTexture);
 }
 
-void DDGIBuilderVulkan::writeTraceProbe(VkCommandBuffer cmd, uint32_t currentFrame)
+void DDGIBuilderVulkan::writeTrace(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     rayColorBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
     rayDistanceBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
@@ -148,43 +144,71 @@ void DDGIBuilderVulkan::writeTraceProbe(VkCommandBuffer cmd, uint32_t currentFra
     rayDistanceBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
-void DDGIBuilderVulkan::writeBlendProbe(VkCommandBuffer cmd, uint32_t currentFrame)
+
+void DDGIBuilderVulkan::writeUpdateIrradiance(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-    pushConstantBlend.probesPerDimension = 8;
-    pushConstantBlend.probesResolution = PROBE_RES;
-    pushConstantBlend.numRaysPerProbe = raysPerProbe;
-
-    atlasTexture->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-    currentVisibilityAtlas->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+    rayColorBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+    currentIrradianceAtlas->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
     
-    blendPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+    updateIrradiancePipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 
-    auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(blendPipelineSetID)[currentFrame];
+    auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(updateIrradianceSetID)[currentFrame];
 	auto bindlessSet = descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0];
 	std::vector<VkDescriptorSet> sets = { descriptorSet, bindlessSet };
 
-	vkCmdPushConstants(cmd, blendPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstantBlend), &pushConstantBlend);
+
+	vkCmdPushConstants(cmd, updateIrradiancePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstant), &pushConstant);
     vkCmdBindDescriptorSets(
         cmd, VK_PIPELINE_BIND_POINT_COMPUTE, 
-        blendPipeline->pipelineLayout, 0, 
+        updateIrradiancePipeline->pipelineLayout, 0, 
         static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr
     );
 
-    float groupX = (atlasW + 7) / 8;
-    float groupY = (atlasH + 7) / 8;
-    vkCmdDispatch(cmd, groupX, groupY, 1);
+    vkCmdDispatch(cmd, totalProbes, 1, 1);
+
+    rayColorBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    currentIrradianceAtlas->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     
-    atlasTexture->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    lastframeIrradianceAtlas->copyFrom(cmd, currentIrradianceAtlas);
+}
+
+void DDGIBuilderVulkan::writeUpdateVisibility(VkCommandBuffer cmd, uint32_t currentFrame)
+{
+    rayDistanceBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+    currentVisibilityAtlas->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+    
+    updateVisibilityPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+
+    auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(updateVisibilitySetID)[currentFrame];
+	auto bindlessSet = descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0];
+	std::vector<VkDescriptorSet> sets = { descriptorSet, bindlessSet };
+
+	vkCmdPushConstants(cmd, updateVisibilityPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstant), &pushConstant);
+    vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_COMPUTE, 
+        updateVisibilityPipeline->pipelineLayout, 0, 
+        static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr
+    );
+
+    // float groupX = (atlasW + 7) / 8;
+    // float groupY = (atlasH + 7) / 8;
+    // vkCmdDispatch(cmd, groupX, groupY, 1);
+    vkCmdDispatch(cmd, totalProbes, 1, 1);
+    
+    rayDistanceBuffer->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     currentVisibilityAtlas->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    prevAtlasTexture->copyFrom(cmd, atlasTexture);
     lastFrameVisibilityAtlas->copyFrom(cmd, currentVisibilityAtlas);
+}
+
+void DDGIBuilderVulkan::renderGui()
+{
+    
 }
 
 TextureVulkan *DDGIBuilderVulkan::getAtlasImage()
 {
-    // return atlasTexture;
-    return prevAtlasTexture;
+    return lastframeIrradianceAtlas;
 }
 
 TextureVulkan *DDGIBuilderVulkan::getVisibilityAtlasImage()
@@ -219,20 +243,31 @@ void DDGIBuilderVulkan::_createResources()
         
         buffer->update(lightProbeComponent.probeGrid.data(), lightProbeComponent.bufferSize);
 
+        size_t probesPerDimension = lightProbeComponent.probesPerDimension;
         pushConstant.objectsRef = raytracer->objDeviceAddress; 
         pushConstant.probRef = buffer->getAddress();
+        pushConstant.probesPerDimension = probesPerDimension;
+        
+        // glm::vec3 jitter = glm::vec3(pc.gridSpacing * 0.5f);
+        // pc.gridOrigin = vec4(objectCenter - (halfGridExtent * 2.0f) + jitter, 1.0f);
+        pushConstant.gridOrigin = lightProbeComponent.gridOrigin;
         pushConstant.probesPerDimension = lightProbeComponent.probesPerDimension;
         pushConstant.probesResolution = PROBE_RES;
-        pushConstant.gridOrigin = lightProbeComponent.gridOrigin;
         pushConstant.gridSpacing = lightProbeComponent.spacing;
+        pushConstant.padding = 0;
 
-        size_t probesPerDimension = lightProbeComponent.probesPerDimension;
         atlasW = probesPerDimension * PROBE_RES;
         atlasH = probesPerDimension * probesPerDimension * PROBE_RES;
 
         totalProbes = probesPerDimension * probesPerDimension * probesPerDimension;
         rayBufferW = raysPerProbe;
         rayBufferH = totalProbes;
+        
+        uint32_t irradianceStride = 8 + 2;
+        uint32_t visibilityStride = 16 + 2;
+        visAtlasW = probesPerDimension * visibilityStride;
+        visAtlasH = probesPerDimension * probesPerDimension * visibilityStride;
+
     }
     
     auto createTexture = [&] (TextureVulkan*& texture, uint32_t w, uint32_t h, VkFormat format, VkImageUsageFlags extraUsage = 0) {
@@ -247,10 +282,22 @@ void DDGIBuilderVulkan::_createResources()
     // Width = Rays, Height = Total Probes
     createTexture(rayColorBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16B16A16_SFLOAT);
     createTexture(rayDistanceBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16_SFLOAT);
-    createTexture(atlasTexture, atlasW, atlasH, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-    createTexture(prevAtlasTexture, atlasW, atlasH, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-    createTexture(currentVisibilityAtlas, atlasW, atlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-    createTexture(lastFrameVisibilityAtlas, atlasW, atlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+    createTexture(currentIrradianceAtlas, atlasW, atlasH, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    createTexture(lastframeIrradianceAtlas, atlasW, atlasH, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+    createTexture(currentVisibilityAtlas, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    createTexture(lastFrameVisibilityAtlas, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+    
+    
+    // createTexture(rayColorBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16B16A16_SFLOAT);
+    // createTexture(rayDistanceBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16_SFLOAT);
+
+    // // Use irrAtlas sizing here
+    // createTexture(currentIrradianceAtlas, irrAtlasW, irrAtlasH, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    // createTexture(lastframeIrradianceAtlas, irrAtlasW, irrAtlasH, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+    // // Use visAtlas sizing here
+    // createTexture(currentVisibilityAtlas, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    // createTexture(lastFrameVisibilityAtlas, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 }
 
 void DDGIBuilderVulkan::_createPipeline()
@@ -264,16 +311,24 @@ void DDGIBuilderVulkan::_createPipeline()
     VkDescriptorSetLayout probTracePipelineLayout = descriptorManagerVulkan->getDescriptorLayout(probTracePipelineLayoutID);
 	probTracePipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	probTracePipeline->createComputePipeline(
-		"assets/shaders/spv/ddgiTrace.comp.spv", 
+		"assets/shaders/spv/ddgiProbeTrace.comp.spv", 
 		{ probTracePipelineLayout, bindlessLayout, materialLayout }, 
 		sizeof(PushConstant)
 	);
 
-    VkDescriptorSetLayout blendPipelineLayout = descriptorManagerVulkan->getDescriptorLayout(blendPipelineLayoutID);
-	blendPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
-	blendPipeline->createComputePipeline(
-		"assets/shaders/spv/ddgiBlend.comp.spv", 
-		{ blendPipelineLayout, bindlessLayout, materialLayout }, 
+    VkDescriptorSetLayout updateIrradianceLayout = descriptorManagerVulkan->getDescriptorLayout(updateIrradianceLayoutID);
+	updateIrradiancePipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	updateIrradiancePipeline->createComputePipeline(
+		"assets/shaders/spv/ddgiUpdateIrradiance.comp.spv", 
+		{ updateIrradianceLayout, bindlessLayout, materialLayout }, 
+		sizeof(PushConstant)
+	);
+
+    VkDescriptorSetLayout texelCopyLayout = descriptorManagerVulkan->getDescriptorLayout(updateVisibilityLayoutID);
+	updateVisibilityPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	updateVisibilityPipeline->createComputePipeline(
+		"assets/shaders/spv/ddgiUpdateVisibility.comp.spv", 
+		{ texelCopyLayout, bindlessLayout, materialLayout }, 
 		sizeof(PushConstant)
 	);
 }
@@ -299,24 +354,37 @@ void DDGIBuilderVulkan::_createDescriptor()
     probTracePipelinePoolID = descriptorManagerVulkan->createPool(postPoolSizes, frameCount);
 	probTracePipelineSetID = descriptorManagerVulkan->createSets(probTracePipelineLayoutID, probTracePipelinePoolID, frameCount);
 
-    std::vector<VkDescriptorSetLayoutBinding> blendBindings = {
+
+    std::vector<VkDescriptorSetLayoutBinding> updateIrradianceBindings = {
 		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-		{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-		{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-		{ 5, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-		{ 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 3, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 	};
-    std::vector<VkDescriptorPoolSize> blendPoolSize {
+    std::vector<VkDescriptorPoolSize> updateIrradiancePoolSize {
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 2},
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 4},
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 1},
 	};
-    blendPipelineLayoutID = descriptorManagerVulkan->createLayout(blendBindings);
-    blendPipelinePoolID = descriptorManagerVulkan->createPool(blendPoolSize, frameCount);
-	blendPipelineSetID = descriptorManagerVulkan->createSets(blendPipelineLayoutID, blendPipelinePoolID, frameCount);
+    updateIrradianceLayoutID = descriptorManagerVulkan->createLayout(updateIrradianceBindings);
+    updateIrradiancePoolID = descriptorManagerVulkan->createPool(updateIrradiancePoolSize, frameCount);
+	updateIrradianceSetID = descriptorManagerVulkan->createSets(updateIrradianceLayoutID, updateIrradiancePoolID, frameCount);
 
+
+    std::vector<VkDescriptorSetLayoutBinding> updateVisibilityBindings = {
+		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 3, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+	};
+    std::vector<VkDescriptorPoolSize> updateVisibilityPoolSize {
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 2},
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 1},
+	};
+    updateVisibilityLayoutID = descriptorManagerVulkan->createLayout(updateVisibilityBindings);
+    updateVisibilityPoolID = descriptorManagerVulkan->createPool(updateVisibilityPoolSize, frameCount);
+	updateVisibilitySetID = descriptorManagerVulkan->createSets(updateVisibilityLayoutID, updateVisibilityPoolID, frameCount);
 
     for(int i = 0; i < frameCount; i++) {
         _updateDescriptor(i);
@@ -333,20 +401,25 @@ void DDGIBuilderVulkan::_updateDescriptor(uint32_t index)
 	descriptorManagerVulkan->writeAccelStruct2(writer, postBindings, tlas->getDescAccelStructInfo());
 	descriptorManagerVulkan->writeStorageImage2(writer, rayColorBuffer->getDescImageInfoGeneral());
 	descriptorManagerVulkan->writeStorageImage2(writer, rayDistanceBuffer->getDescImageInfoGeneral());
-	descriptorManagerVulkan->writeImage2(writer, prevAtlasTexture->getDescImageInfoReadOnly());
+	descriptorManagerVulkan->writeImage2(writer, lastframeIrradianceAtlas->getDescImageInfoReadOnly());
 	descriptorManagerVulkan->writeImage2(writer, lastFrameVisibilityAtlas->getDescImageInfoReadOnly());
 	descriptorManagerVulkan->updateDescriptorSets(&writer.writes);
 	
-    auto blendDescriptorSets = descriptorManagerVulkan->getDescriptorSet(blendPipelineSetID);
-	DescriptorWriter writerBlend {{}, blendDescriptorSets[index] };
-	descriptorManagerVulkan->writeUniform2(writerBlend, uniformbuffersList[index]->getDescUniformBufferInfo());
-	descriptorManagerVulkan->writeStorageImage2(writerBlend, atlasTexture->getDescImageInfoGeneral());
-	descriptorManagerVulkan->writeImage2(writerBlend, prevAtlasTexture->getDescImageInfoReadOnly());
-	descriptorManagerVulkan->writeImage2(writerBlend, rayColorBuffer->getDescImageInfoReadOnly());
-	descriptorManagerVulkan->writeImage2(writerBlend, rayDistanceBuffer->getDescImageInfoReadOnly());
-	descriptorManagerVulkan->writeStorageImage2(writerBlend, currentVisibilityAtlas->getDescImageInfoGeneral());
-	descriptorManagerVulkan->writeImage2(writerBlend, lastFrameVisibilityAtlas->getDescImageInfoReadOnly());
-	descriptorManagerVulkan->updateDescriptorSets(&writerBlend.writes);
+    auto updateIrradianceDescriptorSets = descriptorManagerVulkan->getDescriptorSet(updateIrradianceSetID);
+	DescriptorWriter writerUpdateIrradiance {{}, updateIrradianceDescriptorSets[index] };
+	descriptorManagerVulkan->writeUniform2(writerUpdateIrradiance, uniformbuffersList[index]->getDescUniformBufferInfo());
+	descriptorManagerVulkan->writeStorageImage2(writerUpdateIrradiance, rayColorBuffer->getDescImageInfoGeneral());
+	descriptorManagerVulkan->writeImage2(writerUpdateIrradiance, lastframeIrradianceAtlas->getDescImageInfoReadOnly());
+	descriptorManagerVulkan->writeStorageImage2(writerUpdateIrradiance, currentIrradianceAtlas->getDescImageInfoGeneral());
+	descriptorManagerVulkan->updateDescriptorSets(&writerUpdateIrradiance.writes);
+	
+    auto updateVisibilityDescriptorSets = descriptorManagerVulkan->getDescriptorSet(updateVisibilitySetID);
+	DescriptorWriter writerUpdateVisibility {{}, updateVisibilityDescriptorSets[index] };
+	descriptorManagerVulkan->writeUniform2(writerUpdateVisibility, uniformbuffersList[index]->getDescUniformBufferInfo());
+	descriptorManagerVulkan->writeStorageImage2(writerUpdateVisibility, rayDistanceBuffer->getDescImageInfoGeneral());
+	descriptorManagerVulkan->writeImage2(writerUpdateVisibility, lastFrameVisibilityAtlas->getDescImageInfoReadOnly());
+	descriptorManagerVulkan->writeStorageImage2(writerUpdateVisibility, currentVisibilityAtlas->getDescImageInfoGeneral());
+	descriptorManagerVulkan->updateDescriptorSets(&writerUpdateVisibility.writes);
 }
 
 void DDGIBuilderVulkan::_recreateResources()
@@ -356,7 +429,8 @@ void DDGIBuilderVulkan::_recreateResources()
 bool DDGIBuilderVulkan::onClose()
 {
     probTracePipeline->destroy();
-    blendPipeline->destroy();
+    updateIrradiancePipeline->destroy();
+    updateVisibilityPipeline->destroy();
     
     return true;
 }

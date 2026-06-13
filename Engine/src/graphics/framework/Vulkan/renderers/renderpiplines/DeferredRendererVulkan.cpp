@@ -733,14 +733,18 @@ void DeferredRendererVulkan::_createFrameBuffers()
 				TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
 			);
 
+			VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 			TextureManagerVulkan::transitionImageLayout(
+				cmd,
 				texture->textureImage, 
 				format, 
 				VK_IMAGE_LAYOUT_UNDEFINED, 
 				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
 				1,
+				1,
 				renderDeviceVulkan
 			);
+			renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
 
 			return texture;
 		};

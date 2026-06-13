@@ -79,16 +79,7 @@ public:
 		uint32_t layerCount,
 		RenderDeviceVulkan* renderDeviceVulkan
 	);
-
-	static void transitionImageLayout(
-		VkImage image,
-		VkFormat format,
-		VkImageLayout oldLayout,
-		VkImageLayout newLayout,
-		uint32_t mipLevels,
-		RenderDeviceVulkan* renderDeviceVulkan
-	);
-
+	
 	static void copyBufferToImage(
 		VkBuffer buffer,
 		VkImage image,
@@ -162,7 +153,7 @@ public:
 	virtual uint32_t getInspectorLayout();
 
 	void registerTextureSampler(uint32_t textureID);
-	void registerTextureStorage(uint32_t textureID, VkImageLayout layout);
+	void registerTextureStorage(uint32_t textureID);
 	uint32_t getBindlessTextureLayout();
 	uint32_t getBindlessSet();
 

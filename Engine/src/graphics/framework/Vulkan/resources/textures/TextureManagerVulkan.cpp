@@ -206,14 +206,14 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 		renderDeviceVulkan->device
 	);
 
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 	transitionImageLayout(
-		texture->textureImage,
-		format,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		mipLevels,
-		renderDeviceVulkan
+		cmd, texture->textureImage, format,
+		VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		mipLevels, 1, renderDeviceVulkan
 	);
+	renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+
 	copyBufferToImage(stagingBuffer, texture->textureImage, texWidth, texHeight, renderDeviceVulkan);
 	generateMipmaps(texture->textureImage, format, texWidth, texHeight, mipLevels, renderDeviceVulkan);
 
@@ -314,13 +314,13 @@ void TextureManagerVulkan::registerTextureSampler(uint32_t textureID)
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
-void TextureManagerVulkan::registerTextureStorage(uint32_t textureID, VkImageLayout layout)
+void TextureManagerVulkan::registerTextureStorage(uint32_t textureID)
 {
     TextureVulkan* tex = getTexture(textureID);
     VkDescriptorSet globalSet = descriptorManagerVulkan->getDescriptorSet(globalBindlessSetID)[0];
 
     VkDescriptorImageInfo imageInfo{};
-    imageInfo.imageLayout = layout;
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
     imageInfo.imageView = tex->textureImageView;
     imageInfo.sampler = tex->textureSampler;
 
@@ -503,8 +503,6 @@ void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, Vulka
 	}
 }
 
-// NOTE: transition only support color bit at the moment
-// depth transition need to create it own barrier
 void TextureManagerVulkan::transitionImageLayout(
 	VkCommandBuffer cmd,
 	VkImage image,
@@ -610,7 +608,6 @@ void TextureManagerVulkan::transitionImageLayout(
 		sourceStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 		
-		// Check if it's a depth format to set the correct aspect mask
 		if (format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D16_UNORM || format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
 			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		} else {
@@ -676,31 +673,6 @@ void TextureManagerVulkan::transitionImageLayout(
 		1, &barrier
 	);
 
-}
-
-
-void TextureManagerVulkan::transitionImageLayout(
-	VkImage image,
-	VkFormat format,
-	VkImageLayout oldLayout,
-	VkImageLayout newLayout,
-	uint32_t mipLevels,
-	RenderDeviceVulkan* renderDeviceVulkan
-){
-	VkCommandBuffer commandBuffer = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-
-	transitionImageLayout(
-		commandBuffer,
-		image,
-		format,
-		oldLayout,
-		newLayout,
-		mipLevels,
-		1,
-		renderDeviceVulkan
-	);
-
-	renderDeviceVulkan->commandPool.endSingleTimeCommand(commandBuffer);
 }
 
 

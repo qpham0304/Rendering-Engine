@@ -14,10 +14,10 @@ layout(set = 0, binding = 2) uniform sampler2D giImage;
 layout(set = 0, binding = 3) uniform sampler2D sceneImage; 
 layout(set = 0, binding = 4) uniform sampler2D albedoImage; 
 layout(set = 0, binding = 5) uniform sampler2D bloomImage; 
-layout(set = 0, binding = 6) uniform sampler2D atlasImageGI; 
+layout(set = 0, binding = 6) uniform sampler2D lastFrameIrradianceAtlas; 
 layout(set = 0, binding = 7) uniform sampler2D depthImage;
 layout(set = 0, binding = 8) uniform sampler2D normalImage;
-layout(set = 0, binding = 9) uniform sampler2D visibilityAtlasImageGI;
+layout(set = 0, binding = 9) uniform sampler2D lastFrameVisibilityAtlas;
 
 layout(push_constant) uniform Constants {
     vec2 screenRes;
@@ -38,100 +38,103 @@ vec3 getPosWorld(vec2 uv, float depth) {
     return worldPos.xyz;
 }
 
+#define PI 3.14159265359
+
 vec2 octEncode(vec3 v) {
     float l1norm = abs(v.x) + abs(v.y) + abs(v.z);
-    vec2 res = v.xy * (1.0 / l1norm);
+    vec2 result = v.xy * (1.0 / (l1norm > 0.0 ? l1norm : 1.0));
     if (v.z < 0.0) {
-        res = (1.0 - abs(res.yx)) * vec2(res.x >= 0.0 ? 1.0 : -1.0, res.y >= 0.0 ? 1.0 : -1.0);
+        vec2 signNotZero = vec2(result.x >= 0.0 ? 1.0 : -1.0, result.y >= 0.0 ? 1.0 : -1.0);
+        result = (1.0 - abs(result.yx)) * signNotZero;
     }
-    return res;
+    return result;
 }
 
-
-// maps normal to UV coordinates in the stable atlas
-// Maps a Probe ID and a 3D Normal directly to absolute UV space inside an Atlas
-vec2 getAtlasUV(int probeID, vec3 normal, int probesPerRow, vec2 atlasSize) {
-    vec2 octUV = octEncode(normalize(normal)); 
-    octUV = octUV * 0.5 + 0.5; // Map [-1, 1] to [0, 1]
-
-    float resF = pc.probesResolution;
-    
-    // Top-left corner of the 8x8 tile
-    vec2 tileCorner = vec2(float(probeID % probesPerRow), float(probeID / probesPerRow)) * resF;
-
-    // Shift past the 1-pixel border, map across the 6 inner texels, center on the texel half
-    vec2 localPixelPos = 1.0 + octUV * (resF - 3.0) + 0.5; 
-    
-    vec2 pixelCoord = tileCorner + localPixelPos; 
-    return pixelCoord / atlasSize;
+vec2 getAtlasUV(uint probeIdx, vec3 texturingDirection, uint stride, uint coreRes, vec2 totalAtlasSize) {
+    vec2 octCoord = octEncode(normalize(texturingDirection));
+    vec2 localUV = octCoord * 0.5 + 0.5;
+    vec2 pixelCoordInTile = localUV * float(coreRes);
+    uint tilesX = pc.probesPerDimension;
+    ivec2 tileCoord = ivec2(probeIdx % tilesX, probeIdx / tilesX);
+    vec2 finalPixelCoord = (vec2(tileCoord) * float(stride)) + vec2(1.0) + pixelCoordInTile;
+    return finalPixelCoord / totalAtlasSize;
 }
 
-// Trilinear Indirect Light Gathering with Chebyshev Visibility
-vec3 sampleDDGIGrid(vec3 hitPos, vec3 hitNormal, sampler2D irradianceAtlas, sampler2D visibilityAtlas) {
+vec3 sampleDDGIIrradiance(vec3 worldPos, vec3 worldNormal) {
+    // Small push to avoid surface self-intersection precision issues
+    vec3 biasedWorldPos = worldPos + worldNormal * 0.15;
+    vec3 gridSpacePos = (biasedWorldPos - pc.gridOrigin.xyz) / pc.gridSpacing;
     
-    vec3 samplePos = hitPos + hitNormal * 0.2;  
+    if (any(lessThan(gridSpacePos, vec3(0.0))) || any(greaterThan(gridSpacePos, vec3(float(pc.probesPerDimension - 1))))) {
+        return vec3(0.0);
+    }
     
-    int dim = int(pc.probesPerDimension);
-    vec3 gridCoord = (samplePos - pc.gridOrigin.xyz) / pc.gridSpacing;
-    
-    ivec3 baseProbeIdx = ivec3(floor(gridCoord));
-    vec3 alpha = fract(gridCoord); 
+    ivec3 baseProbeXYZ = ivec3(floor(gridSpacePos));
+    vec3 trilinearWeights = fract(gridSpacePos); 
     
     vec3 accumulatedIrradiance = vec3(0.0);
     float totalWeight = 0.0;
     
-    vec2 atlasSize = vec2(textureSize(irradianceAtlas, 0));
-    int probesPerRow = int(atlasSize.x) / int(pc.probesResolution); 
-
-    for (int i = 0; i < 8; i++) {
+    uint totalProbes = pc.probesPerDimension * pc.probesPerDimension * pc.probesPerDimension;
+    uint tilesX = pc.probesPerDimension;
+    uint tilesY = (totalProbes + tilesX - 1) / tilesX;
+    vec2 irrAtlasSize = vec2(tilesX * 10, tilesY * 10);
+    vec2 visAtlasSize = vec2(tilesX * 18, tilesY * 18);
+    
+    for (int i = 0; i < 8; ++i) {
         ivec3 offset = ivec3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
-        ivec3 pIdx = clamp(baseProbeIdx + offset, ivec3(0), ivec3(dim - 1));
-
-        int probeID = pIdx.x + (pIdx.y * dim) + (pIdx.z * dim * dim);
+        ivec3 probeXYZ = clamp(baseProbeXYZ + offset, ivec3(0), ivec3(int(pc.probesPerDimension - 1)));
         
-        // Compute direction to this specific probe from the hit point
-        vec3 probeWorldPos = pc.gridOrigin.xyz + (vec3(pIdx) * pc.gridSpacing);
-        vec3 dirToProbe = probeWorldPos - hitPos;
-        float distToProbe = length(dirToProbe);
-        vec3 dirToProbeNorm = dirToProbe / max(distToProbe, 0.0001);
-
-        vec2 colorAtlasUV = getAtlasUV(probeID, hitNormal, probesPerRow, atlasSize);
-        vec3 probeColor = texture(irradianceAtlas, colorAtlasUV).rgb;
-
-        vec2 atlasVisibilityUV = getAtlasUV(probeID, dirToProbeNorm, probesPerRow, atlasSize);
-        vec2 distancePair = texture(visibilityAtlas, atlasVisibilityUV).rg;
-
-        float mean = distancePair.x;
-        float variance = abs(distancePair.y - (mean * mean));
-
-        // Chebyshev Time-of-Flight visibility test
+        uint probeIdx = uint(probeXYZ.x + (probeXYZ.z * int(pc.probesPerDimension)) + (probeXYZ.y * int(pc.probesPerDimension * pc.probesPerDimension)));
+        
+        vec3 spatialWeights = mix(1.0 - trilinearWeights, trilinearWeights, vec3(offset));
+        float triWeight = spatialWeights.x * spatialWeights.y * spatialWeights.z;
+        
+        vec3 probePos = pc.gridOrigin.xyz + vec3(probeXYZ) * pc.gridSpacing;
+        vec3 probeToPoint = biasedWorldPos - probePos;
+        float distanceToProbe = length(probeToPoint);
+        if (distanceToProbe < 0.0001) continue;
+        
+        vec3 directionToProbe = normalize(probeToPoint);
+        
+        vec2 visUV = getAtlasUV(probeIdx, directionToProbe, 18, 16, visAtlasSize);
+        vec2 visibilityData = texture(lastFrameVisibilityAtlas, visUV).rg;
+        
+        float mean = visibilityData.x;
+        float variance = max(0.0001, visibilityData.y - (mean * mean));
+        
         float chebyshevWeight = 1.0;
-        if (distToProbe > mean) {
-            float minVariance = 0.001;
-            // Add a small epsilon to variance to avoid division by zero
-            chebyshevWeight = variance / (variance + pow(distToProbe - mean, 2.0));
-            // Hard clamp/bias to smooth out noise
-            chebyshevWeight = max(pow(chebyshevWeight, 3.0), 0.0);
+        if (distanceToProbe > mean) {
+            float d = distanceToProbe - mean;
+            chebyshevWeight = variance / (variance + d * d);
+            // Softer exponent prevents hard triangular masking cuts
+            chebyshevWeight = pow(max(0.0, chebyshevWeight), 8.0); 
         }
-
-        // trilinear SPATIAL weight component
-        float trilinearWeight = (offset.x == 1 ? alpha.x : 1.0 - alpha.x) *
-                                (offset.y == 1 ? alpha.y : 1.0 - alpha.y) *
-                                (offset.z == 1 ? alpha.z : 1.0 - alpha.z);
-
-        // with all weights together
-        float weight = trilinearWeight * max(0.0001, dot(dirToProbeNorm, hitNormal)) * chebyshevWeight;
         
-        accumulatedIrradiance += probeColor * weight;
-        totalWeight += weight;
+        // ANTI-FLICKER: Smoothly fade down cell selection if the probe is dangerously close
+        // to a geometric boundary to circumvent precision variance breakdown.
+        float proximityFade = smoothstep(0.005, 0.06, abs(distanceToProbe - mean));
+        chebyshevWeight = mix(1.0, chebyshevWeight, proximityFade);
+
+        float cosineWeight = max(0.0, dot(-directionToProbe, worldNormal));
+        
+        // Avoid harsh hard zeros on cell intersections
+        float finalWeight = triWeight * max(0.001, cosineWeight) * max(0.001, chebyshevWeight);
+        
+        if (finalWeight > 0.0001) {
+            vec2 irrUV = getAtlasUV(probeIdx, worldNormal, 10, 8, irrAtlasSize);
+            vec3 irradianceSample = texture(lastFrameIrradianceAtlas, irrUV).rgb;
+            
+            accumulatedIrradiance += irradianceSample * finalWeight;
+            totalWeight += finalWeight;
+        }
     }
     
-    return accumulatedIrradiance / max(totalWeight, 0.0001);
+    if (totalWeight < 0.0001) return vec3(0.0);
+    return (accumulatedIrradiance / totalWeight) * PI;
 }
 
-
 void main() {
-    
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
     ivec2 screenRes = imageSize(outImage);
     if (pixelCoord.x >= screenRes.x || pixelCoord.y >= screenRes.y) return;
@@ -143,20 +146,9 @@ void main() {
     vec3 normal = normalize(texture(normalImage, uv).rgb * 2.0 - 1.0); 
     vec3 fragPos = getPosWorld(uv, depth);
 
-    vec3 indirectLight = sampleDDGIGrid(fragPos, normal, atlasImageGI, visibilityAtlasImageGI);
-
-
-    // Final Lighting Composition
+    vec3 indirectLight = sampleDDGIIrradiance(fragPos, normal);
     vec3 sceneColor = texture(sceneImage, uv).rgb;
-    vec3 ssgi = texture(giImage, uv).rgb;
-    vec3 ddgi = albedo * indirectLight;
-    vec3 bloom = texture(bloomImage, uv).rgb;
 
-    vec3 finalColor = sceneColor + ddgi + ssgi + bloom;
-    
-    vec4 outColor = (pc.shouldCombine == 1) ? vec4(finalColor, 1.0) : vec4(ddgi, 1.0);
-    outColor = outColor / (outColor + vec4(1.0));
-    outColor = pow(outColor, vec4(1.0/2.2));
-
-    imageStore(outImage, pixelCoord, outColor);
+    vec3 finalOut = (indirectLight * albedo);
+    imageStore(outImage, pixelCoord, vec4(finalOut, 1.0));
 }
