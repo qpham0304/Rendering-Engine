@@ -6,6 +6,7 @@
 #include "core/resources/managers/MaterialManager.h"
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/TextureManager.h"
+#include "core/resources/managers/RendererManager.h"
 #include "core/features/ServiceLocator.h"
 #include "core/features/Mesh.h"
 #include "core/features/EngineUtils.h"
@@ -23,6 +24,7 @@ bool SandBoxLayer::init()
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
     modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+    rendererManager = &ServiceLocator::GetService<RendererManager>("RendererManagerVulkan");
 
     // camera = std::make_unique<Camera>();
     // camera->init(
@@ -154,6 +156,8 @@ bool SandBoxLayer::init()
     // ModelComponent modelComponent;
     // modelComponent.modelID = modelManager->addModel(model);
     // lightProbeEntity.addComponent<ModelComponent>(modelComponent);
+
+    // rendererManager->addRenderer();
 
 	return true;
 }

@@ -240,6 +240,7 @@ void ImGuiLeftSidebarWidget::EntityTab() {
         }
         ImGui::PopID();
     }
+   
     ImGui::End();
 }
 

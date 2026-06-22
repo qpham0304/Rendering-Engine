@@ -54,13 +54,7 @@ bool EditorLayer::init()
 	guiController.addWidget<ImGuiMenuWidget>(guiController.getWidgets());
 	// addWidget(std::make_unique<ImGuiMathWidget>());
 
-	return true;
-}
-
-void EditorLayer::onAttach(LayerManager* manager)
-{
-	Layer::onAttach(manager);
-
+	
 	eventManager.subscribe(EventType::MouseMoved, [&](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 
@@ -104,6 +98,12 @@ void EditorLayer::onAttach(LayerManager* manager)
 		SceneManager::cameraController = editorCamera.get();
 	}
 
+	return true;
+}
+
+void EditorLayer::onAttach(LayerManager* manager)
+{
+	Layer::onAttach(manager);
 }
 
 void EditorLayer::onDetach()

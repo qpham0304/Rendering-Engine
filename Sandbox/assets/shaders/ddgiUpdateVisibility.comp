@@ -103,7 +103,6 @@ void main() {
     memoryBarrier();
     barrier();
 
-    // 1. Edge Duplication: Correct Octahedral mirroring bounds
     if (localTexelCoord.y == 0) {
         ivec2 src = atlasBaseCoord + ivec2(16 - localTexelCoord.x, 1);
         vec4 valTop = imageLoad(currentFrameVisibilityAtlas, src);
@@ -128,7 +127,6 @@ void main() {
     memoryBarrier();
     barrier();
 
-    // 2. Corner Repair Pass: Replaces old assignments to eliminate black texel leaks at tile cross boundaries
     if (gl_LocalInvocationIndex == 0) {
         imageStore(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(0, 0),   imageLoad(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(16, 16)));
         imageStore(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(17, 0),  imageLoad(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(1, 16)));

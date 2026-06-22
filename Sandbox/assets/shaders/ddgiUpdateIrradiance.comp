@@ -102,7 +102,6 @@ void main() {
     memoryBarrier();
     barrier();
 
-    // 1. Edge Duplication: Fixed indexing mirroring for 8x8 blocks
     if (localTexelCoord.y == 0) {
         ivec2 src = atlasBaseCoord + ivec2(8 - localTexelCoord.x, 1);
         vec4 valTop = imageLoad(currentFrameIrradianceAtlas, src);
@@ -127,7 +126,6 @@ void main() {
     memoryBarrier();
     barrier();
 
-    // 2. Corner Patching
     if (gl_LocalInvocationIndex == 0) {
         imageStore(currentFrameIrradianceAtlas, atlasBaseCoord + ivec2(0, 0), imageLoad(currentFrameIrradianceAtlas, atlasBaseCoord + ivec2(8, 8)));
         imageStore(currentFrameIrradianceAtlas, atlasBaseCoord + ivec2(9, 0), imageLoad(currentFrameIrradianceAtlas, atlasBaseCoord + ivec2(1, 8)));

@@ -71,8 +71,6 @@ void ApplicationRendererVulkan::onUpdate()
 
 void ApplicationRendererVulkan::render(Camera& camera)
 {
-	pushConstantData.index = rendererManagerVulkan->getDisplayImage()->id();
-
 	// stop rendering as we can't record begin/endRecording because the manager's 
 	// command Buffer recording state is likely corrupted by the destruction inside
 	//  _recreateResources By returning, we let the manager call endFrame on an empty buffer
@@ -82,6 +80,8 @@ void ApplicationRendererVulkan::render(Camera& camera)
         return; 
     }
 
+	pushConstantData.index = rendererManagerVulkan->getDisplayImage()->id();
+	
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     renderDeviceVulkan->beginLabel(cmd, "Application Pass");
 	recordDrawCommand(cmd, renderDeviceVulkan->getImageIndex());
@@ -115,22 +115,22 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
 		} 
 		else {
 			renderDeviceVulkan->beginLabel(commandBuffer, "Render To Swap Chain Mode");
-			vkCmdBindDescriptorSets(
-				commandBuffer,
-				VK_PIPELINE_BIND_POINT_GRAPHICS,
-				appPipeline->pipelineLayout,
-				0,
-				1,
-				&descriptorSets[renderDeviceVulkan->getCurrentFrameIndex()],
-				0,
-				nullptr
-			);
+			// vkCmdBindDescriptorSets(
+			// 	commandBuffer,
+			// 	VK_PIPELINE_BIND_POINT_GRAPHICS,
+			// 	appPipeline->pipelineLayout,
+			// 	0,
+			// 	1,
+			// 	&descriptorSets[renderDeviceVulkan->getCurrentFrameIndex()],
+			// 	0,
+			// 	nullptr
+			// );
 
 			vkCmdBindDescriptorSets(
 				commandBuffer,
 				VK_PIPELINE_BIND_POINT_GRAPHICS,
 				appPipeline->pipelineLayout,
-				1, 
+				0, 
 				1, 
 				&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
 				0, 
@@ -191,30 +191,30 @@ void ApplicationRendererVulkan::endRecording(void* cmdBuffer)
 
 void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 {
-	RendererVulkan* renderer = nullptr;
-	renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
-	auto shadowMapRenderer = dynamic_cast<ShadowMapPassVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
-	auto imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("ForwardRendererVulkan");
-	auto forwardRendererVulkan = dynamic_cast<ForwardRendererVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
-	auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
+	// RendererVulkan* renderer = nullptr;
+	// renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
+	// auto shadowMapRenderer = dynamic_cast<ShadowMapPassVulkan*>(renderer);
+	// renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
+	// auto imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
+	// renderer = rendererManagerVulkan->getRenderer("ForwardRendererVulkan");
+	// auto forwardRendererVulkan = dynamic_cast<ForwardRendererVulkan*>(renderer);
+	// renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
+	// auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	// renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
+	// auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
 
-	assert(shadowMapRenderer && imageBasedRenderer && 
-		forwardRendererVulkan && deferredRendererVulkan && 
-		"failed to retrieve renderer"
-	);
+	// assert(shadowMapRenderer && imageBasedRenderer && 
+	// 	forwardRendererVulkan && deferredRendererVulkan && 
+	// 	"failed to retrieve renderer"
+	// );
 
 	guiManager->start();
 	
-	//TODO: temporarily use imgui renderer, abstract to gui service and remove these
+	// //TODO: temporarily use imgui renderer, abstract to gui service and remove these
 	int currentMode = rendererManagerVulkan->getRenderMode(); 
 	if(currentMode == 1) {
-		deferredRendererVulkan->renderGui();
-		bloomPassRendererVulkan->renderGui();
+	// 	// deferredRendererVulkan->renderGui();
+	// 	// bloomPassRendererVulkan->renderGui();
 	}
 
 	ImGui::Begin("Application");

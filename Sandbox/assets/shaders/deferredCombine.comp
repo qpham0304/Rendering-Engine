@@ -61,8 +61,8 @@ vec2 getAtlasUV(uint probeIdx, vec3 texturingDirection, uint stride, uint coreRe
 }
 
 vec3 sampleDDGIIrradiance(vec3 worldPos, vec3 worldNormal) {
-    // Small push to avoid surface self-intersection precision issues
-    vec3 biasedWorldPos = worldPos + worldNormal * 0.15;
+    // Normal bias shifts sample out of geometric surfaces cleanly
+    vec3 biasedWorldPos = worldPos + worldNormal * 0.12;
     vec3 gridSpacePos = (biasedWorldPos - pc.gridOrigin.xyz) / pc.gridSpacing;
     
     if (any(lessThan(gridSpacePos, vec3(0.0))) || any(greaterThan(gridSpacePos, vec3(float(pc.probesPerDimension - 1))))) {
@@ -95,8 +95,14 @@ vec3 sampleDDGIIrradiance(vec3 worldPos, vec3 worldNormal) {
         float distanceToProbe = length(probeToPoint);
         if (distanceToProbe < 0.0001) continue;
         
-        vec3 directionToProbe = normalize(probeToPoint);
+        vec3 directionToProbe = probeToPoint / distanceToProbe;
         
+        // Pure geometric components (Sum up precisely to 1.0 across the 8-cell bounds)
+        float cosineWeight = max(0.0, dot(-directionToProbe, worldNormal));
+        float geometricWeight = triWeight * (cosineWeight + 0.001);
+        
+        // Visibility Occlusion: Used exclusively as a direct radiance scale multiplier, 
+        // preventing near-zero division blowouts.
         vec2 visUV = getAtlasUV(probeIdx, directionToProbe, 18, 16, visAtlasSize);
         vec2 visibilityData = texture(lastFrameVisibilityAtlas, visUV).rg;
         
@@ -107,26 +113,20 @@ vec3 sampleDDGIIrradiance(vec3 worldPos, vec3 worldNormal) {
         if (distanceToProbe > mean) {
             float d = distanceToProbe - mean;
             chebyshevWeight = variance / (variance + d * d);
-            // Softer exponent prevents hard triangular masking cuts
-            chebyshevWeight = pow(max(0.0, chebyshevWeight), 8.0); 
+            chebyshevWeight = pow(max(0.0, chebyshevWeight), 6.0); 
         }
         
-        // ANTI-FLICKER: Smoothly fade down cell selection if the probe is dangerously close
-        // to a geometric boundary to circumvent precision variance breakdown.
-        float proximityFade = smoothstep(0.005, 0.06, abs(distanceToProbe - mean));
+        // Anti-flicker proximity blend
+        float proximityFade = smoothstep(0.005, 0.05, abs(distanceToProbe - mean));
         chebyshevWeight = mix(1.0, chebyshevWeight, proximityFade);
-
-        float cosineWeight = max(0.0, dot(-directionToProbe, worldNormal));
         
-        // Avoid harsh hard zeros on cell intersections
-        float finalWeight = triWeight * max(0.001, cosineWeight) * max(0.001, chebyshevWeight);
-        
-        if (finalWeight > 0.0001) {
+        if (geometricWeight > 0.0001) {
             vec2 irrUV = getAtlasUV(probeIdx, worldNormal, 10, 8, irrAtlasSize);
             vec3 irradianceSample = texture(lastFrameIrradianceAtlas, irrUV).rgb;
             
-            accumulatedIrradiance += irradianceSample * finalWeight;
-            totalWeight += finalWeight;
+            // Multiply light intensity by chebyshevWeight *outside* the geometric divisor logic
+            accumulatedIrradiance += (irradianceSample * max(0.002, chebyshevWeight)) * geometricWeight;
+            totalWeight += geometricWeight;
         }
     }
     
@@ -147,8 +147,7 @@ void main() {
     vec3 fragPos = getPosWorld(uv, depth);
 
     vec3 indirectLight = sampleDDGIIrradiance(fragPos, normal);
-    vec3 sceneColor = texture(sceneImage, uv).rgb;
-
+    
     vec3 finalOut = (indirectLight * albedo);
     imageStore(outImage, pixelCoord, vec4(finalOut, 1.0));
 }

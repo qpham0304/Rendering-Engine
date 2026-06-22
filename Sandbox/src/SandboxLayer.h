@@ -7,6 +7,7 @@ class MeshManager;
 class ModelManager;
 class MaterialManager;
 class TextureManager;
+class RendererManager;
 
 class SandBoxLayer : public Layer
 {
@@ -28,5 +29,6 @@ private:
 	ModelManager* modelManager{ nullptr };
 	MaterialManager* materialManager{ nullptr };
 	TextureManager* textureManager{ nullptr };
+	RendererManager* rendererManager{ nullptr };
 	
 };
