@@ -31,9 +31,7 @@ public:
 
 	virtual void init(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation) override;
 	virtual void onUpdate() override;
-	virtual void updateViewResize(int width, int height) override;
 	virtual void resetCamera() override;
-	virtual void setCameraSpeed(int speedMultiplier) override;
 	virtual void translate(const glm::vec3& position) override;
 
 	virtual bool processKeyboard() override;
@@ -41,6 +39,6 @@ public:
 	virtual void scroll_callback(double xoffset, double yoffset) override;
 
 private:
-	void mouseControl(bool panning);
+	void _mouseControl(bool panning);
 
 };

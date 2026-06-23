@@ -114,5 +114,6 @@ private:
 	void _createPipeline();
 	void _createDescriptor();
 	void _updateDescriptor(uint32_t index);
-	void _recreateResources();
+	void _recreateResources() override;
+	void _cleanupResources() override;
 };

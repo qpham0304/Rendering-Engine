@@ -424,6 +424,12 @@ void DDGIBuilderVulkan::_updateDescriptor(uint32_t index)
 
 void DDGIBuilderVulkan::_recreateResources()
 {
+    m_logger->warn("recource recreation unimlemented");
+}
+
+void DDGIBuilderVulkan::_cleanupResources()
+{
+	m_logger->warn("recource cleanup unimlemented");
 }
 
 bool DDGIBuilderVulkan::onClose()

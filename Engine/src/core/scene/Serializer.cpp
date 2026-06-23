@@ -9,13 +9,13 @@ Serializer::Serializer()
 {
 	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
-    REGISTER_COMPONENT(NameComponent, "NameComponent");
-    REGISTER_COMPONENT(TransformComponent, "TransformComponent");
-    REGISTER_COMPONENT(ModelComponent, "ModelComponent");
-    REGISTER_COMPONENT(PrefabComponent, "PrefabComponent");
-
+    REGISTER_COMPONENT(NameComponent, "NameComponent", [](Entity entity) { printf("name added called\n"); });
+    REGISTER_COMPONENT(TransformComponent, "TransformComponent", [](Entity entity) {});
+    REGISTER_COMPONENT(ModelComponent, "ModelComponent", [](Entity entity) { entity.onModelComponentAdded(); });
+    REGISTER_COMPONENT(PrefabComponent, "PrefabComponent", [](Entity entity) {});
+    REGISTER_COMPONENT(SpriteComponent, "SpriteComponent", [](Entity entity) { entity.onSpriteComponentAdded(); });
 }
-
+	
 
 Serializer::~Serializer()
 {
@@ -40,8 +40,9 @@ nlohmann::json Serializer::loadJson(const std::string &path)
 }
 
 
-nlohmann::json Serializer::saveEntity(Entity entity, entt::registry& world)
+nlohmann::json Serializer::saveEntity(Entity entity)
 {
+    entt::registry& world = *entity.getRegistry();
     nlohmann::json data = nlohmann::json::object();
     entt::entity handle = entity;
 
@@ -128,7 +129,7 @@ nlohmann::json Serializer::saveEntity(Entity entity, entt::registry& world)
         auto& rel = entity.getComponent<RelationshipComponent>();
         for (auto childHandle : rel.children) {
             Entity child(childHandle, world);
-            data["children"].push_back(saveEntity(child, world));
+            data["children"].push_back(saveEntity(child));
         }
     }
 
@@ -139,11 +140,11 @@ nlohmann::json Serializer::saveEntity(Entity entity, entt::registry& world)
 entt::entity Serializer::loadEntity(
     const nlohmann::json& data, 
     entt::registry& world, 
-    std::unordered_map<uint32_t, Entity>& sceneMap, 
+    std::unordered_map<uint32_t, Entity>& entities, 
     entt::entity parent
 ) {
     entt::entity entity = world.create();
-    sceneMap[static_cast<uint32_t>(entity)] = Entity(entity, world);
+    entities[static_cast<uint32_t>(entity)] = Entity(entity, world);
 
     nlohmann::json mergedData;
     try {
@@ -169,7 +170,7 @@ entt::entity Serializer::loadEntity(
             auto it = component_factory.find(name);
             if (it != component_factory.end()) {
                 try {
-                    it->second(entity, world, compData);
+                    it->second(entities[static_cast<uint32_t>(entity)], compData);
                 } 
                 catch (const std::exception& e) {
                     m_logger->error("Error loading component '" + name + "': " + e.what());
@@ -197,7 +198,7 @@ entt::entity Serializer::loadEntity(
     if (mergedData.contains("children") && mergedData["children"].is_array()) {
         for (const auto& childData : mergedData["children"]) {
             if (!childData.is_null()) {
-                loadEntity(childData, world, sceneMap, entity); 
+                loadEntity(childData, world, entities, entity); 
             }
         }
     }

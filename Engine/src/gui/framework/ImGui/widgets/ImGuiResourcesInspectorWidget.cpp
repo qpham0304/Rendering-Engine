@@ -9,6 +9,10 @@ ImGuiResourceInspectorWidget::ImGuiResourceInspectorWidget(std::string name)
 
 void ImGuiResourceInspectorWidget::render()
 {
+    if(!m_isVisible) {
+        return;
+    }
+    
     ImGui::Begin("Resource Inspector");
 
     // texture inspector

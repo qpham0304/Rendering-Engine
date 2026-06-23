@@ -1,0 +1,110 @@
+{
+  "entities": [
+    {
+      "components": {
+        "ModelComponent": {
+          "path": "assets/models/cube/cube-notex.gltf"
+        },
+        "NameComponent": {
+          "name": "plane"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            9.0,
+            1.5,
+            9.0
+          ],
+          "translateVec": [
+            0.0,
+            -2.5,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "ModelComponent": {
+          "path": "$prim$Quad"
+        },
+        "NameComponent": {
+          "name": "sprite entity"
+        },
+        "SpriteComponent": {
+          "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "frameIndex": 0,
+          "numCols": 1,
+          "numRows": 1,
+          "path": "assets/textures/mobi-padoru.png"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translateVec": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "ModelComponent": {
+          "path": "$prim$Quad"
+        },
+        "NameComponent": {
+          "name": "Player"
+        },
+        "SpriteComponent": {
+          "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "frameIndex": 0,
+          "numCols": 1,
+          "numRows": 1,
+          "path": "None"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translateVec": [
+            1.8368511199951172,
+            0.0,
+            0.0
+          ]
+        }
+      }
+    }
+  ],
+  "scene_name": "level2"
+}

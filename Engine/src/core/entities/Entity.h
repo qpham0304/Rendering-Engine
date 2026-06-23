@@ -26,7 +26,7 @@ public:
 	template<typename T>
 	bool removeComponent() {
 		if (hasComponent<T>()) {
-			T& component = registry->remove<T>(entity);
+			registry->remove<T>(entity);
 			return true;
 		}
 		return false;
@@ -50,9 +50,12 @@ public:
 
 	uint32_t getID() const;
 
+	entt::registry* getRegistry();
+
 	void onCameraComponentAdded();
 	void onModelComponentAdded();
 	void onMeshComponentAdded();
+	void onSpriteComponentAdded();
 	
 private:
 	entt::entity entity;

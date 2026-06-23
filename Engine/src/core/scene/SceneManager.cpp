@@ -24,6 +24,8 @@ SceneManager::~SceneManager()
 
 bool SceneManager::init(WindowConfig config)
 {
+	Service::init(config);
+	
 	EventManager& eventManager = EventManager::getInstance();
 	eventManager.subscribe(EventType::WindowResize, [this](Event& event) {
 		WindowResizeEvent& windowResizeEvent = static_cast<WindowResizeEvent&>(event);
@@ -97,17 +99,14 @@ SceneManager& SceneManager::getInstance()
 	return instance;
 }
 
-bool SceneManager::addScene(const std::string& name)
+Scene* SceneManager::addScene(const std::string& name)
 {
 	if (scenes.find(name) == scenes.end()) {
 		scenes[name] = std::make_unique<Scene>(name);
 		scenes[name]->id = _assignID();
 		activeScene = name;
-		return true;
 	}
-	else {
-		return false;
-	}
+	return getScene(name);
 }
 
 Scene* SceneManager::getScene(const std::string& name)
@@ -138,12 +137,29 @@ Scene* SceneManager::getActiveScene()
 }
 
 
-void SceneManager::setActiveScene(const std::string& name)
+bool SceneManager::setActiveScene(const std::string& name)
 {
-	if (scenes.find(activeScene) != scenes.end()) {
+	if (scenes.find(name) != scenes.end()) {
 		activeScene = name;
+		return true;
 	}
-	return;
+	return false;
+}
+
+bool SceneManager::setSceneName(Scene* scene, const std::string& newName)
+{
+	if (scenes.find(newName) != scenes.end()) {
+		return false;
+	}
+
+	auto nodeHandler = scenes.extract(scene->getName());
+	if(nodeHandler.empty()) {
+		return false;
+	}
+	nodeHandler.key() = newName;
+	scenes.insert(std::move(nodeHandler));
+
+	return true;
 }
 
 

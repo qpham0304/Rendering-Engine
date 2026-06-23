@@ -84,18 +84,18 @@ bool RendererManagerVulkan::onClose()
     }
     // applicationRenderer->onClose();
 	// forwardRenderer->onClose();
-	// // deferredRenderer->onClose();
+	// deferredRenderer->onClose();
 	// raytracingRenderer->onClose();
 	// shadowMapPass->onClose();
 	// imageBasedRenderer->onClose();
-    // // alchemyAORenderer->onClose();
-    // // hiZPassRenderer->onClose();
-    // // SSRGIPassRenderer->onClose();
-    // // bloomRenderer->onClose();
-    // // temporalPassRenderer->onClose();
-    // // ddgiPassRenderer->onClose();
-    // // deferredCombineRenderer->onClose();
-	// // postProcessRenderer->onClose();
+    // alchemyAORenderer->onClose();
+    // hiZPassRenderer->onClose();
+    // SSRGIPassRenderer->onClose();
+    // bloomRenderer->onClose();
+    // temporalPassRenderer->onClose();
+    // ddgiPassRenderer->onClose();
+    // deferredCombineRenderer->onClose();
+	// postProcessRenderer->onClose();
     return true;
 }
 
@@ -121,13 +121,13 @@ void RendererManagerVulkan::onUpdate()
         }
         deferredRenderer->onUpdate();
         hiZPassRenderer->onUpdate();
-        SSRGIPassRenderer->onUpdate();
-        bloomRenderer->onUpdate();
-        if(tmp->denoiserOn) {
-            temporalPassRenderer->onUpdate();
-        }
-        ddgiPassRenderer->onUpdate();
-        deferredCombineRenderer->onUpdate();
+        // SSRGIPassRenderer->onUpdate();
+        // bloomRenderer->onUpdate();
+        // if(tmp->denoiserOn) {
+        //     temporalPassRenderer->onUpdate();
+        // }
+        // ddgiPassRenderer->onUpdate();
+        // deferredCombineRenderer->onUpdate();
     } else if(currentRenderMode == 2) {
         raytracingRenderer->onUpdate();
     }
@@ -156,13 +156,13 @@ void RendererManagerVulkan::render()
         }
         deferredRenderer->render(*camera);
         hiZPassRenderer->render(*camera);
-        SSRGIPassRenderer->render(*camera);
-        bloomRenderer->render(*camera);
-        if(tmp->denoiserOn) {
-            temporalPassRenderer->render(*camera);
-        }
-        ddgiPassRenderer->render(*camera);
-        deferredCombineRenderer->render(*camera);
+        // SSRGIPassRenderer->render(*camera);
+        // bloomRenderer->render(*camera);
+        // if(tmp->denoiserOn) {
+        //     temporalPassRenderer->render(*camera);
+        // }
+        // ddgiPassRenderer->render(*camera);
+        // deferredCombineRenderer->render(*camera);
     } else if(currentRenderMode == 2) {
         raytracingRenderer->render(*camera);
     }

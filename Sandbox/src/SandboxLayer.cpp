@@ -20,6 +20,7 @@ SandBoxLayer::SandBoxLayer(const std::string& name)
 
 bool SandBoxLayer::init()
 {
+    setLogScopeClient();
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
@@ -36,17 +37,20 @@ bool SandBoxLayer::init()
 
     // SceneManager::cameraController = camera.get();
 
-    SceneManager::getInstance().addScene("Sanbox scene");
-    Scene* scene = SceneManager::getInstance().getActiveScene();
-    if (!scene) {
-        return false;
-    }
+    // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
+    // Scene* scene2 = SceneManager::getInstance().addScene("Sanbox scene 2");
+    Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene 3");
+    // if (!scene1 || !scene2 || !scene3) {
+    //     return false;
+    // }
     
-    setLogScopeEngine();
-    // scene->loadScene("assets/data/Level1-test.json");
-    scene->loadScene("assets/data/default-scene.json");
+    // scene1->loadScene("assets/data/default-scene.json");
+    // scene2->loadScene("assets/data/Level1.json");
+    scene3->loadScene("assets/data/Level2.json");
 
-    const int numLights = 1;
+    SceneManager::getInstance().setActiveScene(scene3->getName());
+    Scene* activeScene = SceneManager::getInstance().getActiveScene();
+    const int numLights = 0;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(-numLights, numLights);
@@ -54,8 +58,8 @@ bool SandBoxLayer::init()
 
     for (int i = 0; i < numLights; ++i) {
         std::string entityName = "light_sphere_" + std::to_string(i);
-        uint32_t lightID = scene->addEntity(entityName);
-        Entity lightEntity = scene->getEntity(lightID);
+        uint32_t lightID = activeScene->addEntity(entityName);
+        Entity lightEntity = activeScene->getEntity(lightID);
 
         TransformComponent& transform = lightEntity.getComponent<TransformComponent>();
         float xPos = posDist(gen);
@@ -89,31 +93,31 @@ bool SandBoxLayer::init()
     }
 
     // light probe manager component
-	const uint32_t probesPerDimension = 8;
-	float spacing = 2.0f;
-    uint32_t lightProbeEntityID = scene->addEntity("probe manager");
-    Entity lightProbeEntity = scene->getEntity(lightProbeEntityID);
+	// const uint32_t probesPerDimension = 8;
+	// float spacing = 2.0f;
+    // uint32_t lightProbeEntityID = activeScene->addEntity("probe manager");
+    // Entity lightProbeEntity = activeScene->getEntity(lightProbeEntityID);
     
-    TransformComponent& transform = lightProbeEntity.getComponent<TransformComponent>();
-    transform.translate(glm::vec3(0.0f, 0.0f, 0.0f));
+    // TransformComponent& transform = lightProbeEntity.getComponent<TransformComponent>();
+    // transform.translate(glm::vec3(0.0f, 0.0f, 0.0f));
 
-    MaterialDesc materialDesc;
-    materialDesc.albedoIDs.push_back(
-        // textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false)
-        textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
-    );
+    // MaterialDesc materialDesc;
+    // materialDesc.albedoIDs.push_back(
+    //     // textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false)
+    //     textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
+    // );
 
-    Mesh mesh = EngineUtils::drawSphere(0.25f, 18, 18);
-    mesh.materialID = materialManager->createMaterial(materialDesc);
+    // Mesh mesh = EngineUtils::drawSphere(0.25f, 18, 18);
+    // mesh.materialID = materialManager->createMaterial(materialDesc);
 
     
-    float offset = (probesPerDimension - 1) * spacing * 0.5f;
-    auto& lightProbeComponent = lightProbeEntity.addComponent<LightProbeComponent>();
-    lightProbeComponent.probeGrid.resize(probesPerDimension * probesPerDimension * probesPerDimension);
-    lightProbeComponent.bufferSize = lightProbeComponent.probeGrid.size() * sizeof(glm::vec4);  //NOTE: assuming probe is glm::vec4
-    lightProbeComponent.probesPerDimension = probesPerDimension;
-    lightProbeComponent.spacing = spacing;
-    lightProbeComponent.gridOrigin = glm::vec4(-offset, -offset, -offset, 1.0);
+    // float offset = (probesPerDimension - 1) * spacing * 0.5f;
+    // auto& lightProbeComponent = lightProbeEntity.addComponent<LightProbeComponent>();
+    // lightProbeComponent.probeGrid.resize(probesPerDimension * probesPerDimension * probesPerDimension);
+    // lightProbeComponent.bufferSize = lightProbeComponent.probeGrid.size() * sizeof(glm::vec4);  //NOTE: assuming probe is glm::vec4
+    // lightProbeComponent.probesPerDimension = probesPerDimension;
+    // lightProbeComponent.spacing = spacing;
+    // lightProbeComponent.gridOrigin = glm::vec4(-offset, -offset, -offset, 1.0);
     
     // Offset to center the grid (so 0,0,0 is the middle the volume)
     // for (uint32_t z = 0; z < probesPerDimension; z++) {
@@ -130,22 +134,23 @@ bool SandBoxLayer::init()
     //         }
     //     }
     // }
-    for (uint32_t y = 0; y < probesPerDimension; y++) {
-        for (uint32_t z = 0; z < probesPerDimension; z++) {
-            for (uint32_t x = 0; x < probesPerDimension; x++) {
+    // for (uint32_t y = 0; y < probesPerDimension; y++) {
+    //     for (uint32_t z = 0; z < probesPerDimension; z++) {
+    //         for (uint32_t x = 0; x < probesPerDimension; x++) {
                 
-                // Re-map the index calculation to match this layout
-                uint32_t index = x + (z * probesPerDimension) + (y * probesPerDimension * probesPerDimension);
+    //             // Re-map the index calculation to match this layout
+    //             uint32_t index = x + (z * probesPerDimension) + (y * probesPerDimension * probesPerDimension);
                 
-                lightProbeComponent.probeGrid[index] = glm::vec4(
-                    (float)x * spacing - offset,
-                    (float)y * spacing - offset,
-                    (float)z * spacing - offset,
-                    1.0
-                );
-            }
-        }
-    }
+    //             lightProbeComponent.probeGrid[index] = glm::vec4(
+    //                 (float)x * spacing - offset,
+    //                 (float)y * spacing - offset,
+    //                 (float)z * spacing - offset,
+    //                 1.0
+    //             );
+    //         }
+    //     }
+    // }
+
 
     // Model model {};
     // uint32_t meshID = meshManager->loadMesh(mesh);
@@ -158,6 +163,20 @@ bool SandBoxLayer::init()
     // lightProbeEntity.addComponent<ModelComponent>(modelComponent);
 
     // rendererManager->addRenderer();
+
+    /////////--------------
+    // uint32_t spriteEntityID = activeScene->addEntity("sprite entity");
+    // Entity spriteEntity = activeScene->getEntity(spriteEntityID);
+
+    // SpriteComponent spriteComponent;
+    // spriteComponent.path = "assets/textures/mobi-padoru.png";
+    // spriteEntity.addComponent<SpriteComponent>(spriteComponent);
+    // spriteEntity.onSpriteComponentAdded();
+
+    // ModelComponent modelComponent;
+    // spriteEntity.addComponent<ModelComponent>(modelComponent);
+    // spriteEntity.onModelComponentAdded();
+
 
 	return true;
 }

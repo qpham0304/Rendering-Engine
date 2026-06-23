@@ -307,9 +307,17 @@ void ImGuiLeftSidebarWidget::MeshesTab()
 void ImGuiLeftSidebarWidget::ScenesTab()
 {
     ImGui::Begin("Scenes");
-    for(uint32_t id : SceneManager::getInstance().listIDs()) {
-        const Scene* scene = SceneManager::getInstance().getScene(id);
-        ImGui::Text("%s", scene->getName().c_str());
+    SceneManager& sceneManager = SceneManager::getInstance();
+    for(uint32_t id : sceneManager.listIDs()) {
+        const Scene* scene = sceneManager.getScene(id);
+        
+        ImVec2 size = ImVec2(-1, 0);
+        if(sceneManager.getActiveScene()->getName() == scene->getName()) {
+            size = ImVec2(0, 0);
+        }
+        if(ImGui::Button(scene->getName().c_str(), size)) {
+            sceneManager.setActiveScene(scene->getName());
+        }
     }
     ImGui::End();
 }
@@ -324,6 +332,7 @@ void ImGuiLeftSidebarWidget::render()
     if (scene) {
         ImGui::BeginGroup();
         ErrorModal("Error loading Model");
+        ScenesTab();
         EntityTab();
         LightTab();
         ModelsTab();

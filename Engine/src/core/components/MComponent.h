@@ -7,6 +7,19 @@
 #include "animation/Animation.h" 	//TODO: resolve dependency between
 #include "animation/Animator.h" 	// animation and animator class
 
+namespace glm {
+    inline void to_json(nlohmann::json& j, const glm::vec4& v) {
+        j = nlohmann::json{v.x, v.y, v.z, v.w};
+    }
+
+    inline void from_json(const nlohmann::json& j, glm::vec4& v) {
+        j.at(0).get_to(v.x);
+        j.at(1).get_to(v.y);
+        j.at(2).get_to(v.z);
+        j.at(3).get_to(v.w);
+    }
+}
+
 class Component {
 public:
 	Component() = default;
@@ -120,10 +133,9 @@ public:
 
 	void reset() {
 		path = "None";
+		modelID = 0;
 	}
 	
-	// NLOHMANN_DEFINE_TYPE_INTRUSIVE(ModelComponent, path, modelID);
-
 	friend void to_json(nlohmann::json& j, const ModelComponent& m) {
         j = nlohmann::json{{"path", m.path}};
     }
@@ -190,4 +202,24 @@ struct LightProbeComponent {
 	uint32_t probesPerDimension;
 	float spacing;
     glm::vec4 gridOrigin;
+};
+
+struct SpriteComponent {
+	SpriteComponent() = default;
+
+	std::string path { "None" };
+	uint32_t textureID { 0 };
+	uint32_t numRows { 1 };
+	uint32_t numCols { 1 };
+	uint32_t frameIndex { 0 };
+	glm::vec4 color { 1.0 };
+
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+		SpriteComponent,
+		path,
+		numRows,
+		numCols,
+		frameIndex,
+		color
+	)
 };

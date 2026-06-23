@@ -37,6 +37,5 @@ private:
 	TextureManager* textureManager{ nullptr };
 	MeshManager* meshManager{ nullptr };
 	MaterialManager* materialManager{ nullptr };
-
 };
 

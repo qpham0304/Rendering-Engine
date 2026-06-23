@@ -76,7 +76,11 @@ void ApplicationRendererVulkan::render(Camera& camera)
 	//  _recreateResources By returning, we let the manager call endFrame on an empty buffer
     RendererVulkan::_resize();
 	
-	pushConstantData.index = rendererManagerVulkan->getDisplayImage()->id();
+	if(rendererManagerVulkan->getDisplayImage()) {
+		pushConstantData.index = rendererManagerVulkan->getDisplayImage()->id();
+	} else {
+		m_logger->warn("Application has no image to render");
+	}
 	
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     renderDeviceVulkan->beginLabel(cmd, "Application Pass");
