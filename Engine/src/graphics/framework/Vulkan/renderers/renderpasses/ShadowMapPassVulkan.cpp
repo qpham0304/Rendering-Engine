@@ -577,3 +577,13 @@ void ShadowMapPassVulkan::_createComputePipeline() {
 		sizeof(ComputePushConstant)
 	);
 }
+
+void ShadowMapPassVulkan::_recreateResources()
+{
+	m_logger->warn("recource recreation unimlemented");
+}
+
+void ShadowMapPassVulkan::_cleanupResources()
+{
+	m_logger->warn("recource cleanup unimlemented");
+}

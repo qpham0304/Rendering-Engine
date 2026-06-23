@@ -678,3 +678,14 @@ void ImageBasedRendererVulkan::_createResourcePrefilteredMap() {
 		sizeof(PrefilterPushConstants)
 	);
 }
+
+
+void ImageBasedRendererVulkan::_recreateResources()
+{
+	m_logger->warn("recource recreation unimlemented");
+}
+
+void ImageBasedRendererVulkan::_cleanupResources()
+{
+	m_logger->warn("recource cleanup unimlemented");
+}

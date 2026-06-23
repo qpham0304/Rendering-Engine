@@ -29,24 +29,6 @@ public:
 	TextureVulkan* getDisplayImage();
 
 protected:
-	struct UniformBufferObject {
-		glm::mat4 invNormal;
-		glm::mat4 view;
-		glm::mat4 prevViewProj;
-		glm::mat4 proj;
-		glm::vec4 cameraPos;
-		glm::mat4 invView;
-		glm::mat4 invProj;
-		float width;
-		float height;
-	};
-
-	
-	std::vector<UniformBufferVulkan*> uniformbuffersList;
-	uint32_t sharedLayoutID;
-	uint32_t sharedPoolID;
-	uint32_t sharedSetID;
-
 	uint32_t currentRenderMode { 0 };
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	Renderer* applicationRenderer { nullptr };

@@ -14,12 +14,10 @@ void ImGuiResourceInspectorWidget::render()
     // texture inspector
     if (ImGui::CollapsingHeader("Texture Data", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (ImGui::BeginTable("##Textures", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-            
             ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 40.0f);
             ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Preview", ImGuiTableColumnFlags_WidthFixed, 40.0f);
             ImGui::TableHeadersRow();
-
             
             for (auto id : textureManager->listIDs()) {
                 Texture* tex = textureManager->getTexture(id);   

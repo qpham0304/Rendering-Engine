@@ -22,13 +22,14 @@ public:
 
 	template<typename T> requires std::derived_from<T, Renderer>
 	Renderer* addRenderer(std::string_view name) {
-		auto it = m_renderers.find(name.data());
-		if(it != m_renderers.end()) {
-			return it->second.get();
+		for(auto& tuple : m_renderers) {
+			if(name.data() == std::get<0>(tuple)) {
+				return std::get<1>(tuple).get();
+			}
 		}
 
-		m_renderers[name.data()] = std::make_shared<T>();
-		return m_renderers[name.data()].get();
+		m_renderers.push_back(std::tuple(name.data(), std::make_shared<T>()));
+		return std::get<1>(m_renderers[m_renderers.size() - 1]).get();
 	}
 
     virtual Renderer* getRenderer(std::string_view name) = 0;
@@ -36,7 +37,7 @@ public:
 protected:
     RendererManager(std::string serviceName = "RendererManager") : Manager(serviceName) {};
 
-	std::unordered_map<std::string, std::shared_ptr<Renderer>> m_renderers;
+	std::vector<std::tuple<std::string, std::shared_ptr<Renderer>>> m_renderers;
 	std::vector<StorageBuffer> instanceData;
 
 };

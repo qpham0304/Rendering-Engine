@@ -74,9 +74,6 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	_createOffscreenTarget();
 	_createPipeline();
 
-	textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[0]->id());
-	textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[1]->id());
-
 	return true;
 }
 
@@ -97,11 +94,8 @@ void ForwardRendererVulkan::render(Camera& camera)
 {
     Timer timer(m_name, true);
 
-	if (needResize) {
-        _recreateResources();
-        needResize = false;
-        return; 
-    }
+    RendererVulkan::_resize();
+
 
 	instanceData.clear(); 
     lights.clear();
@@ -392,8 +386,8 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 
 		createTexture(
 			renderTarget.colorTextures[i],
-			swapchain.swapChainExtent.width,
-			swapchain.swapChainExtent.height,
+			renderTarget.width,
+			renderTarget.height,
 			swapchain.swapChainImageFormat,
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
@@ -401,12 +395,14 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 
 		createTexture(
 			renderTarget.depthTextures[i],
-			swapchain.swapChainExtent.width,
-			swapchain.swapChainExtent.height,
+			renderTarget.width,
+			renderTarget.height,
 			TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device),
 			VK_IMAGE_ASPECT_DEPTH_BIT,
 			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 		);
+
+		textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[i]->id());
 
 		std::array<VkImageView, 2> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,
@@ -425,6 +421,7 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &renderTarget.framebuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create offscreen framebuffer!");
 		}
+		
 	}
 }
 

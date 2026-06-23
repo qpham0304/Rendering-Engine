@@ -111,6 +111,9 @@ public:	//TODO: make private once done testing
 	uint64_t materialsAddress;
 	std::vector<ObjectDesc> objects;
 
+	uint32_t currWidth;
+	uint32_t currHeight;
+
     std::vector<VkDescriptorSetLayoutBinding> rtBindings;
     std::vector<VkDescriptorSetLayoutBinding> postBindings;
 

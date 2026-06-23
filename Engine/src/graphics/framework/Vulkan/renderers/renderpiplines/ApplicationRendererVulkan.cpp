@@ -74,12 +74,8 @@ void ApplicationRendererVulkan::render(Camera& camera)
 	// stop rendering as we can't record begin/endRecording because the manager's 
 	// command Buffer recording state is likely corrupted by the destruction inside
 	//  _recreateResources By returning, we let the manager call endFrame on an empty buffer
-    if (needResize) {
-        _recreateResources();
-        needResize = false;
-        return; 
-    }
-
+    RendererVulkan::_resize();
+	
 	pushConstantData.index = rendererManagerVulkan->getDisplayImage()->id();
 	
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();

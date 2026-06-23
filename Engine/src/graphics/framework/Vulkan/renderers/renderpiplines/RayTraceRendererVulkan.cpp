@@ -122,11 +122,7 @@ void RayTraceRendererVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 	
-	if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
+	RendererVulkan::_resize();
 
 	instanceDataPrev = std::move(instanceData);
 	// instanceData.clear(); 
@@ -152,8 +148,8 @@ void RayTraceRendererVulkan::render(Camera& camera)
 	ubo.invView = camera.getInViewMatrix();
 	ubo.invProj = camera.getInProjectionMatrix();
 	ubo.invProj[1][1] *= -1.0;
-	ubo.width  = AppWindow::getWidth();
-    ubo.height = AppWindow::getHeight();
+	ubo.width  = currWidth;
+    ubo.height = currHeight;
     
     bool shouldClear = camera.isMoving() || clear;
     ubo.frameSeed = !shouldClear ? rand() % 32768 : ubo.frameSeed;
@@ -198,8 +194,8 @@ void RayTraceRendererVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t curr
     postProcessImage->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1);
 	
     VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-    uint32_t groupX = (swapchain.swapChainExtent.width + 15) / 16;
-    uint32_t groupY = (swapchain.swapChainExtent.height + 15) / 16;
+    uint32_t groupX = (currWidth + 15) / 16;
+    uint32_t groupY = (currHeight + 15) / 16;
 
 	postProcessPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 	auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(postProcessSetID)[currentFrame];
@@ -248,9 +244,11 @@ void RayTraceRendererVulkan::writeRayTracing(VkCommandBuffer cmd, uint32_t curre
 #pragma region setup
 void RayTraceRendererVulkan::_createResources() 
 {
+    currWidth = renderDeviceVulkan->swapchain.swapChainExtent.width;
+    currHeight = renderDeviceVulkan->swapchain.swapChainExtent.height;
     auto createTexture = [this] (TextureVulkan*& texture){
-        uint32_t w = renderDeviceVulkan->swapchain.swapChainExtent.width;
-        uint32_t h = renderDeviceVulkan->swapchain.swapChainExtent.height;
+        uint32_t w = currWidth;
+        uint32_t h = currHeight;
         TextureSamplerConfig samplerConfig = { VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_MIPMAP_MODE_LINEAR };
         TextureConfig imageConfig { .width = w, .height = h, .format = VK_FORMAT_R32G32B32A32_SFLOAT};
 
@@ -260,6 +258,9 @@ void RayTraceRendererVulkan::_createResources()
 
 	createTexture(rayTraceImage);
 	createTexture(postProcessImage);
+
+    textureManagerVulkan->registerTextureSampler(rayTraceImage->id());
+    textureManagerVulkan->registerTextureSampler(postProcessImage->id());
 }
 
 void RayTraceRendererVulkan::_createPipeline()
@@ -359,16 +360,19 @@ void RayTraceRendererVulkan::_recreateResources()
 	renderDeviceVulkan->waitIdle();
 	rendererManagerVulkan->setDisplayImage(nullptr);
 	_cleanupResources();
+    
 	_createResources();
 	_createDescriptor();
-	uint32_t frameCount = VulkanUtils::numFrames();
-	for(int i = 0; i < frameCount; i++) {
+	for(int i = 0; i < VulkanUtils::numFrames(); i++) {
         _updateDescriptor(i);
     }
+    _createPipeline();
 }
 
 void RayTraceRendererVulkan::_cleanupResources()
 {
+    textureManagerVulkan->destroy(rayTraceImage->id());
+    textureManagerVulkan->destroy(postProcessImage->id());
 	rtPipeline->destroy();
 	postProcessPipeline->destroy();
 }
@@ -562,9 +566,8 @@ void RayTraceRendererVulkan::_createShaderBindingTable()
     printf("    hit  %2ld:%2ld\n", m_hitRegion.stride,  m_hitRegion.size);
     printf("    call %2ld:%2ld\n", m_callRegion.stride, m_callRegion.size);
 
-    // Get the shader group handles.  This is a byte array retrieved
-    // from the pipeline.
-    uint32_t             dataSize = handleCount * handleSize;
+    // Get the shader group handles.  This is a byte array retrieved from the pipeline.
+    uint32_t dataSize = handleCount * handleSize;
     std::vector<uint8_t> handles(dataSize);
     printf("\n");
     VkResult result = vkGetRayTracingShaderGroupHandlesKHR(
