@@ -49,6 +49,8 @@ void ImGuiResourceInspectorWidget::render()
             ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableHeadersRow();
 
+            // printf("bufferManager size: %s\n", std::to_string(bufferManager->listIDs().size()).c_str());
+            
             for (auto id : bufferManager->listIDs()) {
                 Buffer* buffer = bufferManager->getBuffer(id);
                 if (!buffer) continue;

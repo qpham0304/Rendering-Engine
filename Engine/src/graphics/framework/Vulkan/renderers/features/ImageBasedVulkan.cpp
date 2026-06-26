@@ -66,6 +66,10 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	_createDescriptorSetGlobalSum();
 	_createResourceLUT();
 	_createResourcePrefilteredMap();
+
+	textureManagerVulkan->registerTextureSampler(brdfLUT->id());
+	textureManagerVulkan->registerTextureSampler(prefilterMap->id());
+	textureManagerVulkan->registerTextureSampler(hdrImage->id());
 	
 	writeBRDF();
 

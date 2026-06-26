@@ -1,9 +1,7 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <iomanip>
 #include <fstream>
-#include "entt.hpp"
 #include "core/entities/Entity.h"
 #include "Serializer.h"
 
@@ -64,6 +62,7 @@ public:
 	bool saveScene(std::string_view path);
 	bool loadScene(std::string_view path);
 	bool unloadScene();
+	bool reloadScene();
 
 
 private:
@@ -71,6 +70,7 @@ private:
 
 	uint32_t id;
 	std::string sceneName;
+	std::string scenePath;
 	entt::registry registry;
 	std::vector<Entity> selectedEntities;
 	uint32_t selectedMesh;
@@ -83,6 +83,7 @@ private:
 	bool controlPressed = false;
 	bool shiftPressed = false;
 	bool processing = false;
+	bool reloading = false;
 
 	void _addEntity(Entity& entity);
 	bool _removeEntity(const uint32_t& uuid);

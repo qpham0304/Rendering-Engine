@@ -1,6 +1,5 @@
 #include "SceneManager.h"
 #include "graphics/utils/Utils.h"
-#include "animation/Animation.h"
 #include "graphics/framework/OpenGL/core/ModelOpenGL.h"
 #include "core/features/Camera.h"
 #include "window/AppWindow.h"

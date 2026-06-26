@@ -2,6 +2,7 @@
 
 #include "core/resources/managers/Manager.h"
 #include "graphics/renderers/Renderer.h"
+#include "core/features/Texture.h"
 #include <glm/glm.hpp>
 
 class RendererManager : public Manager
@@ -38,6 +39,8 @@ protected:
     RendererManager(std::string serviceName = "RendererManager") : Manager(serviceName) {};
 
 	std::vector<std::tuple<std::string, std::shared_ptr<Renderer>>> m_renderers;
+	std::unordered_map<std::string, std::shared_ptr<Texture>> m_renderTextures;
+
 	std::vector<StorageBuffer> instanceData;
 
 };

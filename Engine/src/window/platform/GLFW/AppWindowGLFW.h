@@ -24,10 +24,12 @@ protected:
 	void* _getSharedWindow() override;
 	virtual void* _getNativeWindowHandle() override;
 	virtual double _getTime() const override;
+	virtual double _getDeltaTime() const override;
 	virtual void _setEventCallback() override;
 	void _getFrameBufferSize(int& width, int& height) override;
 	void _waitEvents() override;
 	void _setContextCurrent() override;
+	void _setFullscreen(bool fullscreen, bool borderless) override;
 
 	//platform specific implementations
 	//Ideally want to have glue files for each platform

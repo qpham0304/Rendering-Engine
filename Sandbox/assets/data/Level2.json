@@ -43,9 +43,10 @@
             1.0
           ],
           "frameIndex": 0,
-          "numCols": 1,
-          "numRows": 1,
-          "path": "assets/textures/mobi-padoru.png"
+          "numCols": 3,
+          "numRows": 3,
+          "path": "assets/textures/mobi-padoru.png",
+          "targetRenderer": "SpriteRenderer"
         },
         "TransformComponent": {
           "rotateVec": [
@@ -76,15 +77,16 @@
         },
         "SpriteComponent": {
           "color": [
-            1.0,
-            1.0,
-            1.0,
+            0.9169435501098633,
+            0.6123111248016357,
+            0.6123111248016357,
             1.0
           ],
-          "frameIndex": 0,
-          "numCols": 1,
-          "numRows": 1,
-          "path": "None"
+          "frameIndex": 1,
+          "numCols": 3,
+          "numRows": 3,
+          "path": "assets/textures/MonkeyWalk.png",
+          "targetRenderer": "SpriteRenderer"
         },
         "TransformComponent": {
           "rotateVec": [
@@ -106,5 +108,5 @@
       }
     }
   ],
-  "scene_name": "level2"
+  "scene_name": "Level2"
 }

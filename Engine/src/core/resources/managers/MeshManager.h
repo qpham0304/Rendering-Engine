@@ -14,7 +14,6 @@ public:
         uint32_t matIndicesBDA_ID = 0;  // these are device buffer address
         uint32_t vertexBDA_ID = 0;
         uint32_t indexBDA_ID = 0;
-        uint32_t blasBufferID = 0;
     };
 
     MeshManager();
@@ -24,6 +23,7 @@ public:
     virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
+    virtual void onUpdate() override;
     virtual uint32_t loadMesh(Mesh& mesh);
     Mesh* getMesh(uint32_t id) const;
     MeshData getMeshData(uint32_t id) const;
@@ -37,6 +37,7 @@ private:
     // std::vector<Vertex> vertices;
 	// std::vector<uint32_t> indices;
     // std::vector<uint32_t> materialIndices;
+    std::vector<uint32_t> meshesTobeDestroyed;
 
 
     BufferManager* m_bufferManager{ nullptr };

@@ -253,7 +253,6 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 	}
 	createTextureSampler(texture->textureSampler, renderDeviceVulkan->device, samplerInfo);
 	m_logger->debug("Texture loaded {}, id: {}", path.data(), static_cast<uint32_t>(m_ids.load()));
-
 }
 
 void TextureManagerVulkan::_createInspectorDescriptorBind()

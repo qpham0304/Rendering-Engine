@@ -43,7 +43,7 @@ private:
 	void _listTextureManager();
 	void _addModelDialog(Entity& entity);
 	void errorModal(const char* message);
-
+	void textInput(std::string* text, std::string message);
 
 	//TODO: maybe reflection can help avoiding manual modification for every component?
 	void _componentsControl();
@@ -51,5 +51,7 @@ private:
 	void _transformControl(const Entity& entity);
 	void _modelControl(const Entity& entity);
 	void _meshControl(const Entity& entity);
+	void _spriteControl(const Entity& entity);
+	void _scenesControl();
 };
 

@@ -23,6 +23,8 @@ private:
 		glm::mat4 invProj;
 		float width;
 		float height;
+		int shadowMapID;
+		int blueNoiseID;
 	};
 
 	struct StorageBufferObject {

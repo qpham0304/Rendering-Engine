@@ -37,7 +37,7 @@ bool MeshManager::onClose()
 
 void MeshManager::destroy(uint32_t id)
 {
-
+    meshesTobeDestroyed.push_back(id);
 }
 
 std::vector<uint32_t> MeshManager::listIDs() const
@@ -112,6 +112,20 @@ uint32_t MeshManager::loadMesh(Mesh& mesh)
     return _assignID();
 }
 
+void MeshManager::onUpdate()
+{
+    for(auto& id: meshesTobeDestroyed) {
+        MeshData meshData = m_meshesData[id];
+        m_bufferManager->destroy(meshData.vertexBufferID);
+        m_bufferManager->destroy(meshData.indexBufferID);
+        m_bufferManager->destroy(meshData.matIndicesBDA_ID);
+        m_bufferManager->destroy(meshData.vertexBDA_ID);
+        m_bufferManager->destroy(meshData.indexBDA_ID);
+        m_meshes.erase(id);
+        m_meshesData.erase(id);
+    }
+    meshesTobeDestroyed.clear();
+}
 
 Mesh* MeshManager::getMesh(uint32_t id) const
 {

@@ -25,7 +25,7 @@ public:
     void setVisible(bool visible) { m_isVisible = visible; }
 
 protected:
-    Widget(std::string name = "widget") : m_isVisible(true), m_name(name) {
+    Widget(std::string name = "widget") : m_isVisible(true), m_name(name), m_firstFrame(true) {
         //TODO: might be better to move to a cpp file 
         textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
         meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
@@ -41,6 +41,7 @@ protected:
 
 protected:
     bool m_isVisible;
+    bool m_firstFrame;
     std::string m_name;
 
     TextureManager* textureManager{ nullptr };

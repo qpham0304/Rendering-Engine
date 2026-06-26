@@ -9,7 +9,7 @@ Serializer::Serializer()
 {
 	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
-    REGISTER_COMPONENT(NameComponent, "NameComponent", [](Entity entity) { printf("name added called\n"); });
+    REGISTER_COMPONENT(NameComponent, "NameComponent", [](Entity entity) {});
     REGISTER_COMPONENT(TransformComponent, "TransformComponent", [](Entity entity) {});
     REGISTER_COMPONENT(ModelComponent, "ModelComponent", [](Entity entity) { entity.onModelComponentAdded(); });
     REGISTER_COMPONENT(PrefabComponent, "PrefabComponent", [](Entity entity) {});

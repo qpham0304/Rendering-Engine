@@ -110,7 +110,7 @@ void ModelManager::destroy(uint32_t id)
     if(m_models.find(id) == m_models.end()) {
         throw std::runtime_error("Cannot find model with given ID");
     }
-    m_models.erase(id);
+    m_models.erase(id); //TODO: might want queue to remove next frame if something goes wrong
 }
 
 std::vector<uint32_t> ModelManager::listIDs() const

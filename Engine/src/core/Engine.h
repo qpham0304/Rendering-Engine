@@ -4,8 +4,8 @@
 #include <core/features/PlatformFactory.h>
 #include <services/Service.h>
 #include <core/layers/LayerManager.h>
-
-#include "core/scene/SceneManager.h"
+#include <core/scene/SceneManager.h>
+#include <animation/AnimationManager.h>
 
 class Layer;
 class EventManager;
@@ -21,10 +21,10 @@ public:
     void run();
     void close();
 
-
 private:
     bool showGui = false;
     bool isRunning = true;
+    bool isFullScreen = false;
     WindowConfig windowConfig;
     ServiceLocator serviceLocator;
     PlatformFactory platformFactory{ serviceLocator };
@@ -44,7 +44,9 @@ private:
     std::unique_ptr<DescriptorManager> descriptorManager;
     std::unique_ptr<MaterialManager> materialManager;
     std::unique_ptr<RendererManager> rendererManager;
+    std::unique_ptr<AnimationManager> animationManager;
 
 private:
     std::vector<Service*> services;
+
 };

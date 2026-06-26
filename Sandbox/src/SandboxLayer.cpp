@@ -8,6 +8,7 @@
 #include "core/resources/managers/TextureManager.h"
 #include "core/resources/managers/RendererManager.h"
 #include "core/features/ServiceLocator.h"
+#include "core/events/EventManager.h"
 #include "core/features/Mesh.h"
 #include "core/features/EngineUtils.h"
 #include <random>
@@ -38,18 +39,19 @@ bool SandBoxLayer::init()
     // SceneManager::cameraController = camera.get();
 
     // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
-    // Scene* scene2 = SceneManager::getInstance().addScene("Sanbox scene 2");
-    Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene 3");
-    // if (!scene1 || !scene2 || !scene3) {
-    //     return false;
-    // }
+    Scene* scene2 = SceneManager::getInstance().addScene("Level2");
+    Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
     
-    // scene1->loadScene("assets/data/default-scene.json");
-    // scene2->loadScene("assets/data/Level1.json");
-    scene3->loadScene("assets/data/Level2.json");
+    // scene1->loadScene("assets/data/Level1.json");
 
-    SceneManager::getInstance().setActiveScene(scene3->getName());
+    EventManager& eventManager = EventManager::getInstance();
+    scene2->loadScene("assets/data/Level2.json");
+    scene3->loadScene("assets/data/default-scene.json");
+
+
+    SceneManager::getInstance().setActiveScene(scene2->getName());
     Scene* activeScene = SceneManager::getInstance().getActiveScene();
+    
     const int numLights = 0;
     std::random_device rd;
     std::mt19937 gen(rd());
