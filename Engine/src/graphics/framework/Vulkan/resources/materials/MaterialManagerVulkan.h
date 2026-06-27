@@ -24,6 +24,7 @@ public:
 		uint32_t emissiveID;
 
 		glm::vec2 uv;
+		glm::vec2 uvScale;
 		glm::vec4 albedo;
 		glm::vec4 normal;
 		float metallic;

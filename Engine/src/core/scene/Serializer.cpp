@@ -14,6 +14,8 @@ Serializer::Serializer()
     REGISTER_COMPONENT(ModelComponent, "ModelComponent", [](Entity entity) { entity.onModelComponentAdded(); });
     REGISTER_COMPONENT(PrefabComponent, "PrefabComponent", [](Entity entity) {});
     REGISTER_COMPONENT(SpriteComponent, "SpriteComponent", [](Entity entity) { entity.onSpriteComponentAdded(); });
+    REGISTER_COMPONENT(AnimationStateComponent, "AnimationStateComponent", [](Entity entity) { entity.onAnimationStateComponentAdded(); });
+    
 }
 	
 
@@ -147,6 +149,7 @@ entt::entity Serializer::loadEntity(
     entities[static_cast<uint32_t>(entity)] = Entity(entity, world);
 
     nlohmann::json mergedData;
+
     try {
         if (data.contains("prefab_ref") && data["prefab_ref"].is_string()) {
             std::string path = data["prefab_ref"];
@@ -177,6 +180,7 @@ entt::entity Serializer::loadEntity(
                 }
             } else {
                 m_logger->warn("Unknown component type found in save file: " + name);
+                m_logger->warn("Make sure you register the component in the serializer");
             }
         }
     }

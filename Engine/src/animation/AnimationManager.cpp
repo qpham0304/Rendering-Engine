@@ -21,7 +21,7 @@ bool AnimationManager::init(WindowConfig config)
 
 bool AnimationManager::onClose()
 {
-    return false;
+    return true;
 }
 
 void AnimationManager::destroy(uint32_t id)

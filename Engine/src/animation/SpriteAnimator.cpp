@@ -38,13 +38,17 @@ void SpriteAnimator::onUpdate(float dt)
 {
     for(uint32_t sceneID : sceneManager.listIDs()) {
         Scene* scene = sceneManager.getScene(sceneID);
-        auto entities = scene->getEntitiesWith<SpriteComponent, AnimationComponent>();
 
-        for(auto& entity : entities) {
+        auto func = std::function<void(Entity)>([&](Entity entity) -> void {
             auto& animation = entity.getComponent<AnimationComponent>();
             auto& sprite = entity.getComponent<SpriteComponent>();
 
-            auto advanceFrame = [&]() {
+            if (!animation.isRunning) {
+                return;
+            }
+
+            animation.frameDelay -= dt;
+            if (animation.frameDelay <= 0.0f) {
                 int nextFrame = sprite.frameIndex + 1;
                 
                 if (nextFrame >= animation.frameCount) {
@@ -52,9 +56,8 @@ void SpriteAnimator::onUpdate(float dt)
                         nextFrame = 0;
                     } else {
                         nextFrame = animation.frameCount - 1;
-                        // animation.isRunning = false;
+                        animation.isRunning = false;
                     }
-                    animation.isDone = true;
                 }
                 
                 if (animation.isRunning) {
@@ -62,18 +65,7 @@ void SpriteAnimator::onUpdate(float dt)
                     animation.frameDelay += animation.frameDuration;
                 } else {
                     animation.frameDelay = 0;
-                    animation.isDone = true;
                 }
-            };
-
-            animation.isDone = false;
-            if (!animation.isRunning) {
-                continue;
-            }
-
-            animation.frameDelay -= dt;
-            if (animation.frameDelay <= 0.0f) {
-                advanceFrame();
             }
 
             auto textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
@@ -91,7 +83,11 @@ void SpriteAnimator::onUpdate(float dt)
             Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
             MaterialDesc material = materialManager->getMaterial(mesh->materialID);
             material.uv = uvOffset;
+            material.uvScale = uvScale;
             materialManager->updateMaterial(mesh->materialID, material);
-        }
+        
+        });
+
+        scene->forEnitiesWith<SpriteComponent, AnimationComponent>(func);
     }
 }

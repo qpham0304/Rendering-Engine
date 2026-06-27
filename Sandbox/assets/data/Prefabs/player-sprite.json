@@ -1,0 +1,24 @@
+{
+  "components": {
+    "NameComponent": { "name": "SpritePlayer" },
+    "TransformComponent": {
+      "translateVec": [0.0, 0.0, 0.0],
+      "rotateVec": [0.0, 0.0, 0.0],
+      "scaleVec": [1.0, 1.0, 1.0]
+    },
+    "SpriteComponent": {
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "frameIndex": 1,
+      "numCols": 3,
+      "numRows": 3,
+      "path": "assets/textures/MonkeyWalk.png",
+      "targetRenderer": "SpriteRenderer"
+    },
+    "ModelComponent": { "path": "$prim$Quad" }
+  }
+}

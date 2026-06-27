@@ -43,70 +43,43 @@
             1.0
           ],
           "frameIndex": 0,
-          "numCols": 3,
-          "numRows": 3,
+          "numCols": 1,
+          "numRows": 1,
           "path": "assets/textures/mobi-padoru.png",
           "targetRenderer": "SpriteRenderer"
         },
         "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "translateVec": [
-            0.0,
-            0.0,
-            0.0
-          ]
+          "translateVec": [0.0, 0.0, 0.0],
+          "rotateVec": [0.0, 0.0, 0.0],
+          "scaleVec": [1.0, 1.0, 1.0]
         }
       }
     },
     {
+      "prefab_ref": "assets/data/prefabs/player-sprite.json",
       "components": {
-        "ModelComponent": {
-          "path": "$prim$Quad"
-        },
-        "NameComponent": {
-          "name": "Player"
-        },
-        "SpriteComponent": {
-          "color": [
-            0.9169435501098633,
-            0.6123111248016357,
-            0.6123111248016357,
-            1.0
-          ],
-          "frameIndex": 1,
-          "numCols": 3,
-          "numRows": 3,
-          "path": "assets/textures/MonkeyWalk.png",
-          "targetRenderer": "SpriteRenderer"
-        },
         "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "translateVec": [
-            1.8368511199951172,
-            0.0,
-            0.0
-          ]
+          "translateVec": [1.8368511199951172, 0.0, 0.0]
         }
+      },
+      "overrides": {
+        "children": [
+          {
+            "components": {
+              "NameComponent": { "name": "idle" },
+              "AnimationStateComponent": { "startFrame": 0, "frameCount": 4, "frameDuration": 0.1, "isLooping": true, "texturePath": "None" }
+            }
+          },
+          {
+            "components": {
+              "NameComponent": { "name": "walk" },
+              "AnimationStateComponent": { "startFrame": 4, "frameCount": 4, "frameDuration": 0.08, "isLooping": true, "texturePath": "None" }
+            }
+          }
+        ]
       }
+      
     }
   ],
-  "scene_name": "Level2"
+  "scene_name": "level2"
 }

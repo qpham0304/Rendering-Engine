@@ -90,5 +90,14 @@ void Entity::onSpriteComponentAdded()
 
 void Entity::onAnimationComponentAdded()
 {
+    
+}
 
+void Entity::onAnimationStateComponentAdded()
+{
+    // if (hasComponent<NameComponent>()) {
+    //     printf("animation state name: %s\n", getComponent<NameComponent>().name.c_str());
+    // } else {
+    //     printf("animation state name: [NameComponent not parsed yet]\n");
+    // }
 }

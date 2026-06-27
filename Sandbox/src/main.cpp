@@ -13,8 +13,8 @@ int main()
         windowConfig.width = 1024;
         windowConfig.height = 720;
         windowConfig.vsync = false;
-        windowConfig.targetRenderFPS = 24.0f;
-        windowConfig.targetUpdateFPS = 24.0f;
+        windowConfig.targetRenderFPS = 360.0f;
+        windowConfig.targetUpdateFPS = 360.0f;
 
         Engine app(windowConfig);
         app.pushLayer(new SandBoxLayer("Sandbox Layer"));

@@ -31,6 +31,8 @@ Engine::Engine(WindowConfig config)
 	descriptorManager = platformFactory.Create<DescriptorManager>(windowConfig.renderPlatform);
 	textureManager = platformFactory.Create<TextureManager>(windowConfig.renderPlatform);
 	materialManager = platformFactory.Create<MaterialManager>(windowConfig.renderPlatform);
+	guiManager = platformFactory.Create<GuiManager>(windowConfig.guiPlatform);
+	rendererManager = platformFactory.Create<RendererManager>(windowConfig.renderPlatform);
 
 	meshManager = std::make_unique<MeshManager>();
 	modelManager = std::make_unique<ModelManager>();
@@ -40,9 +42,6 @@ Engine::Engine(WindowConfig config)
 	serviceLocator.Register<ModelManager>("ModelManager", *modelManager);
 	serviceLocator.Register<LayerManager>("LayerManager", *layerManager);
 	serviceLocator.Register<AnimationManager>("AnimationManager", *animationManager);
-
-	guiManager = platformFactory.Create<GuiManager>(windowConfig.guiPlatform);
-	rendererManager = platformFactory.Create<RendererManager>(windowConfig.renderPlatform);
 
 	//NOTE: setup order is important!
 	services.push_back(&eventManager);

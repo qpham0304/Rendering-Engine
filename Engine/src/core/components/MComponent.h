@@ -128,7 +128,6 @@ public:
 
 };
 
-
 struct NameComponent {
 public:
 	std::string name = "";
@@ -192,10 +191,8 @@ public:
 };
 
 struct RelationshipComponent {
-    entt::entity parent{ entt::null };
+    entt::entity parent;
     std::vector<entt::entity> children;
-
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE(RelationshipComponent, parent, children)
 };
 
 struct PrefabComponent {
@@ -215,7 +212,6 @@ struct RenderTag {
 	std::vector<std::string> renderers;
 };
 
-
 struct LightProbeComponent {
 	LightProbeComponent() = default;
 
@@ -225,7 +221,6 @@ struct LightProbeComponent {
 	float spacing;
     glm::vec4 gridOrigin;
 };
-
 
 struct SpriteComponent {
 	SpriteComponent() = default;
@@ -266,18 +261,37 @@ struct AnimationComponent {
 	AnimationComponent() = default;
 
 	int frameCount{ 8 };
-	float frameDuration{ 0.0f };
-	float frameDelay{ 0.0f };
+	float frameDuration{  1.0f / 24.0f };
+	float frameDelay{ 1.0f / 24.0f };
 	bool isRunning{ true };
 	bool isLooping{ true };
-	bool isDone{ false };
 
-	// NLOHMANN_DEFINE_TYPE_INTRUSIVE(
-	// 	AnimationComponent,
-	// 	frameDuration,
-	// 	frameCount,
-	// 	frameDelay,
-	// );
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+		AnimationComponent,
+		frameCount,
+		frameDuration,
+		frameDelay,
+		isLooping
+	);
+};
+
+struct AnimationStateComponent {
+	AnimationStateComponent() = default;
+
+	std::string texturePath{ "None" };
+	int startFrame{ 1 };
+	int frameCount{ 1 };
+	float frameDuration{ 0.0f };
+	bool isLooping{ true };
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+		AnimationStateComponent,
+		texturePath,
+		startFrame,
+		frameCount,
+		frameDuration,
+		isLooping
+	)
 };
 
 struct CameraComponent {

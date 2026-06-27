@@ -25,6 +25,7 @@ struct Material {
     uint emissiveIdx;
 
     vec2 uvOffset;
+    vec2 uvScale;
     vec4 albedoFactor;
     vec4 normalFactor;
     float metallicFactor;

@@ -52,6 +52,15 @@ public:
 		return entitiesList;
 	}
 
+	template<typename... Components, typename Func>
+	void forEnitiesWith(Func&& callback) {
+		auto view = getEnttEntities<Components...>();
+		for (auto entity : view) {
+			callback(Entity(entity, registry));
+		}
+	}
+
+
 	const std::vector<Entity>& getSelectedEntities();
 	const uint32_t getSelectedMeshID() const;
 	

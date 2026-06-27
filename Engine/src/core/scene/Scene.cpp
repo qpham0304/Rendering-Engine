@@ -63,6 +63,7 @@ uint32_t Scene::addEntity(const std::string& name)
     Entity entity(e, registry);
     entity.addComponent<TransformComponent>();
     entity.addComponent<NameComponent>(name);
+	entity.addComponent<RelationshipComponent>();
 
     frameNewEntities.push_back(entity); 
 	selectEntities({ entity }); 

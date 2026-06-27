@@ -63,6 +63,7 @@ struct Material {
     uint emissiveIdx;
 
     vec2 uvOffset;
+    vec2 uvScale;
     vec4 albedoFactor;
     vec4 normalFactor;
     float metallicFactor;
@@ -234,18 +235,13 @@ float simpleNoise(vec3 p) {
 void main() {
     Material mat = pc.materialsRef.m[pc.materialIdx];
     
-    int numRows = 3;
-    int numCols = 3;
-    vec2 uvScale = vec2(numRows, numCols);
-    vec2 frameUV = fragTexCoord/uvScale + mat.uvOffset;
-
-    if (numRows > 1 || numCols > 1) {   // prevent sprite edge bleeding
+    vec2 frameUV = (fragTexCoord * mat.uvScale) + mat.uvOffset;
+    if (mat.uvScale.x < 0.99 || mat.uvScale.y < 0.99) {   // prevent sprite edge bleeding
         vec2 texSize = vec2(textureSize(samplerImages[mat.albedoIdx], 0));
         vec2 halfTexel = 0.5 / texSize;
 
         vec2 cellMin = mat.uvOffset + halfTexel;
-        vec2 cellMax = mat.uvOffset + (1.0 / uvScale) - halfTexel;
-
+        vec2 cellMax = mat.uvOffset + mat.uvScale - halfTexel;
         frameUV = clamp(frameUV, cellMin, cellMax);
     }
 

@@ -629,11 +629,10 @@ void ImGuiRightSidebarWidget::_spriteControl(const Entity& entity)
     if(!entity.hasComponent<SpriteComponent>()) {
         return;
     }
-    
-    SpriteComponent& sprite = entity.getComponent<SpriteComponent>();
+    auto& sprite = entity.getComponent<SpriteComponent>();
 
     // Create a 2-column table. ImGuiTableFlags_SizingFixedFit makes the left column fit the text.
-    if (ImGui::CollapsingHeader("Sprite", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Sprite Animation", ImGuiTreeNodeFlags_DefaultOpen)) {
         textInput(&sprite.path, "path");
         textInput(&sprite.targetRenderer, "renderer");
         
@@ -677,6 +676,7 @@ void ImGuiRightSidebarWidget::_spriteControl(const Entity& entity)
                 Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
                 MaterialDesc material = materialManager->getMaterial(mesh->materialID);
                 material.uv = uvOffset;
+                material.uvScale = uvScale;
                 materialManager->updateMaterial(mesh->materialID, material);
             }
 
@@ -685,6 +685,26 @@ void ImGuiRightSidebarWidget::_spriteControl(const Entity& entity)
             ImGui::TableNextColumn(); 
             ImGui::SetNextItemWidth(-FLT_MIN);
             ImGui::ColorEdit4("##color", &sprite.color[0]);
+
+
+            if(entity.hasComponent<RelationshipComponent>()) {
+                auto& animation = entity.getComponent<AnimationComponent>();
+            }
+
+            if(entity.hasComponent<RelationshipComponent>()) {
+                auto& relationship = entity.getComponent<RelationshipComponent>();
+                auto& children = relationship.children;
+                // for(auto& child : children) {
+                //     ImGui::TableNextRow();
+                //     ImGui::TableNextColumn(); ImGui::Text("color:");
+                //     ImGui::TableNextColumn(); 
+                //     ImGui::SetNextItemWidth(-FLT_MIN);
+
+                //     Entity entity(scene. child)
+                //     if(child.has)
+                //     ImGui::Text()
+                // }
+            }
 
             ImGui::EndTable();
         }
