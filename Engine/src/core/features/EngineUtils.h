@@ -5,16 +5,15 @@
 #include <cassert>
 #include <cstdlib>
 #include <glm/glm.hpp>
-#include <random>
 #include <cstdint>
 #include <vector>
 #include <stdexcept>
 #include <fstream>
 #include "Mesh.h"
+#include "Random.h"
 
 
 namespace FileReader {
-
 	static std::vector<char> readFileBinary(std::string_view filename) {
 		std::ifstream file(filename.data(), std::ios::ate | std::ios::binary);
 
@@ -33,13 +32,6 @@ namespace FileReader {
 		return buffer;
 	}
 
-}
-
-inline uint64_t genUUID() {
-    static std::random_device rd;
-    static std::mt19937_64 gen(rd());
-    static std::uniform_int_distribution<uint64_t> dist;
-    return dist(gen);
 }
 
 namespace EngineUtils

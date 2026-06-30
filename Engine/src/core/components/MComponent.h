@@ -249,12 +249,6 @@ struct SpriteComponent {
 		frameIndex,
 		color
 	)
-
-	// static void Reflect() {
-    //     entt::meta<SpriteComponent>()
-    //         .data<&SpriteComponent::path>("Path"_hs)
-    //         .data<&SpriteComponent::targetRenderer>("TargetRenderer"_hs);
-    // }
 };
 
 struct AnimationComponent {

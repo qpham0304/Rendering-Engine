@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <glm/glm.hpp>
+#include "MathIncludes.h"
 
 #define MAX_BONE_INFLUENCE 4
 
