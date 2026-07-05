@@ -101,6 +101,7 @@ add_subdirectory(Libraries/include/spdlog)
 add_subdirectory(Libraries/include/glfw)
 add_subdirectory(Libraries/include/external/json)
 add_subdirectory(Libraries/include/assimp)
+add_subdirectory(Libraries/include/lua-cmake)
 
 add_library(vulkan-1 STATIC IMPORTED)
 set_target_properties(vulkan-1 PROPERTIES
@@ -137,6 +138,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     nlohmann_json
     glfw
     opengl32
+    lua::lib
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC IMGUI_DEFINE_MATH_OPERATORS)

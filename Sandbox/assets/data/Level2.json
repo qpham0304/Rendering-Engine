@@ -9,21 +9,9 @@
           "name": "plane"
         },
         "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            9.0,
-            1.5,
-            9.0
-          ],
-          "translateVec": [
-            0.0,
-            -2.5,
-            0.0
-          ]
+          "rotateVec": [0.0, 0.0, 0.0],
+          "scaleVec": [9.0, 1.5, 9.0],
+          "translateVec": [0.0, -2.5, 0.0]
         }
       }
     },
@@ -36,12 +24,7 @@
           "name": "sprite entity"
         },
         "SpriteComponent": {
-          "color": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
+          "color": [1.0, 1.0, 1.0, 1.0],
           "frameIndex": 0,
           "numCols": 1,
           "numRows": 1,

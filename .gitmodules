@@ -21,3 +21,6 @@
 	path = Engine/ThirdParty/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
+[submodule "Engine/Libraries/include/lua-cmake"]
+	path = Engine/Libraries/include/lua-cmake
+	url = https://github.com/lubgr/lua-cmake.git

@@ -12,6 +12,7 @@
 #include "core/features/EngineUtils.h"
 #include "core/events/EventManager.h"
 #include "core/resources/managers/ModelManager.h"
+#include <scripting/ScriptManager.h>
 
 
 ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
@@ -20,6 +21,7 @@ ImGuiRightSidebarWidget::ImGuiRightSidebarWidget()
         errorPopupOpen(false),
         selectedTexture(0)
 {
+    m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
 }
 
@@ -382,6 +384,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
     _modelControl(entity);
     _meshControl(entity);
     _spriteControl(entity);
+    _scriptControl(entity);
 
     ImGui::Separator();
     if (ImGui::Button("+ Add Component", ImVec2(-1.0f, 0.0f))) {
@@ -411,66 +414,35 @@ void ImGuiRightSidebarWidget::_componentsControl()
         }
         
         if (ImGui::BeginMenu("Mesh")) {
-            /*
-            	EventManager& eventManager = EventManager::getInstance();
-                AsyncEvent asyncEvent;
-                eventManager.queue(asyncEvent, [this] (AsyncEvent event) {
-                    hdrImageID = textureManagerVulkan->loadTexture(
-                        "assets/textures/hdr/farm_field_puresky_2k.hdr", 
-                        // "assets/textures/hdr/newport_loft.hdr", 
-                        1, 
-                        false
-                    );
-                    EventManager& eventManager = EventManager::getInstance();
-
-                    eventManager.publish(event);
-                });
-
-                eventManager.subscribe(EventType::AsyncEvent, [](Event& event)) {
-                    AsyncEvent& e =
-                }
-            */
-
-            auto loadModelData = [] (
+            auto loadModelData = [this] (
                 Entity& entity,
                 Mesh& mesh,
-                TextureManager* textureManager,
-                MaterialManager* materialManager,
-                MeshManager* meshManager,
-                ModelManager* modelManager,
                 std::string meshType
             ){
+                std::string path = "assets/textures/mobi-padoru.png"; 
                 MaterialDesc materialDesc;
-                materialDesc.albedoIDs.push_back(
-                    textureManager->loadTexture(
-                    "assets/textures/mobi-padoru.png",
-                    1, 
-                    false
-                ));
+                materialDesc.albedoIDs.push_back(textureManager->loadTexture(path, 1, false));
                 mesh.materialID = materialManager->createMaterial(materialDesc);
 
                 Model model {};
                 model.meshIDs.push_back(meshManager->loadMesh(mesh));
-                ModelComponent modelComponent;
-                modelComponent.modelID = modelManager->addModel(model);
-                modelComponent.path = meshType;
-                entity.addComponent<ModelComponent>(modelComponent);
+                // ModelComponent modelComponent;
+                // modelComponent.modelID = modelManager->addModel(model);
+                // modelComponent.path = meshType;
+                entity.addComponent<ModelComponent>(meshType, modelManager->addModel(model));
             };
 
             if (ImGui::Selectable("Quad")) {
-                AsyncEvent asyncEvent;
-                eventManager.queue(asyncEvent, [&] (AsyncEvent event) {
-                    Mesh mesh = EngineUtils::drawQuad();  
-                    loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager, "$prim$Quad");
-                });
+                Mesh mesh = EngineUtils::drawQuad();  
+                loadModelData(entity, mesh, "$prim$Quad");
             }
             if (ImGui::Selectable("Cube")) {
                 Mesh mesh = EngineUtils::drawCube(2.0f);
-                loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager, "$prim$Quad");
+                loadModelData(entity, mesh, "$prim$Cube");
             }
             if (ImGui::Selectable("Sphere")) { 
                 Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
-                loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager, "$prim$Cube");
+                loadModelData(entity, mesh, "$prim$Sphere");
             }
             
             ImGui::EndMenu();
@@ -490,11 +462,19 @@ void ImGuiRightSidebarWidget::_componentsControl()
         }
 
         if (ImGui::BeginMenu("Scripts")) {
+            if (ImGui::Selectable("Test")) { 
+                // entity.addComponent<ScriptComponent>("assets/scripts/sandbox.lua");
+                // entity.onScriptComponentAdded();
+                ScriptManager* scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
+                scriptManager->reloadScript("assets/scripts/Camera.lua");
+            }
             if (ImGui::Selectable("PlayerController")) { 
-
+                entity.addComponent<ScriptComponent>("assets/scripts/Player.lua");
+                entity.onScriptComponentAdded();
             }
             if (ImGui::Selectable("CameraController")) { 
-
+                entity.addComponent<ScriptComponent>("assets/scripts/Camera.lua");
+                entity.onScriptComponentAdded();
             }
             ImGui::EndMenu();
         }
@@ -687,13 +667,14 @@ void ImGuiRightSidebarWidget::_spriteControl(const Entity& entity)
             ImGui::ColorEdit4("##color", &sprite.color[0]);
 
 
-            if(entity.hasComponent<RelationshipComponent>()) {
+            if(entity.hasComponent<AnimationComponent>()) {
                 auto& animation = entity.getComponent<AnimationComponent>();
             }
 
             if(entity.hasComponent<RelationshipComponent>()) {
                 auto& relationship = entity.getComponent<RelationshipComponent>();
                 auto& children = relationship.children;
+                // m_logger->error("error has relationship Component");
                 // for(auto& child : children) {
                 //     ImGui::TableNextRow();
                 //     ImGui::TableNextColumn(); ImGui::Text("color:");
@@ -708,6 +689,19 @@ void ImGuiRightSidebarWidget::_spriteControl(const Entity& entity)
 
             ImGui::EndTable();
         }
+    }
+}
+
+void ImGuiRightSidebarWidget::_scriptControl(const Entity &entity)
+{
+    if(!entity.hasComponent<ScriptComponent>()) {
+        return;
+    }
+    
+    ScriptComponent& script = entity.getComponent<ScriptComponent>();
+    if (ImGui::CollapsingHeader("Script", ImGuiTreeNodeFlags_DefaultOpen)) {
+        textInput(&script.path, "path");
+        
     }
 }
 

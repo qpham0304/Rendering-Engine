@@ -4,7 +4,6 @@
 #include <vector>
 #include <unordered_map>
 #include <functional>
-#include "entt.hpp"
 #include "core/entities/Entity.h"
 #include "core/components/MComponent.h"
 
@@ -23,6 +22,9 @@ struct SerializerInternal {
         e.getRegistry()->emplace_or_replace<Type>(e, data.get<Type>()); \
         HookFunction(e); \
     }; \
+    component_destroyer[Name] = [](Entity e) { \
+        e.removeComponent<Type>(); \
+    }; \
     entt::meta<Type>() \
         .type(entt::type_id<Type>().hash()) \
         .prop("name"_hs, std::string(Name)) \
@@ -33,6 +35,9 @@ class Logger;
 class Serializer 
 {
 public:
+    using ComponentLoader = std::function<void(Entity, const nlohmann::json&)>;
+    using ComponentDestroyer = std::function<void(Entity)>;
+    
     Serializer();
     ~Serializer();
 
@@ -61,8 +66,11 @@ public:
         entt::entity parent = entt::null
     );
 
+    const std::map<std::string, ComponentLoader>& getComponentFactory();
+    const std::map<std::string, ComponentDestroyer>& getComponentDestroyer();
+
 private:
-    using ComponentLoader = std::function<void(Entity, const nlohmann::json&)>;
     std::map<std::string, ComponentLoader> component_factory;
+    std::map<std::string, ComponentDestroyer> component_destroyer;
     Logger* m_logger;
 };

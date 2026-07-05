@@ -2,7 +2,6 @@
 
 #include <iomanip>
 #include <fstream>
-#include "core/entities/Entity.h"
 #include "Serializer.h"
 
 class SceneManager;

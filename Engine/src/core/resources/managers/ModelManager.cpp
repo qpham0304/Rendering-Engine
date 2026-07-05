@@ -116,7 +116,7 @@ void ModelManager::destroy(uint32_t id)
 std::vector<uint32_t> ModelManager::listIDs() const
 {
     std::vector<uint32_t> list;
-    for(const auto& [id, texture] : m_models) {
+    for(const auto& [id, model] : m_models) {
         list.emplace_back(id);
     }
     return list;

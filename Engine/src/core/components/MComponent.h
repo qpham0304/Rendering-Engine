@@ -1,11 +1,9 @@
 #pragma once
 
+#include "core/features/MathIncludes.h"
 #include <concepts>
 #include <string>
 #include <nlohmann/json.hpp>
-#include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <entt/entt.hpp>
 
 namespace glm {
@@ -130,7 +128,7 @@ public:
 
 struct NameComponent {
 public:
-	std::string name = "";
+	std::string name = "None";
 
 	NameComponent() = default;
 	NameComponent(const std::string& name) : name(name) {
@@ -151,6 +149,7 @@ public:
 
 	ModelComponent() = default;
 	ModelComponent(std::string_view p) : path(p) {};
+	ModelComponent(std::string_view p, uint32_t id) : path(p), modelID(id) {};
 
 	void reset() {
 		path = "None";
@@ -309,9 +308,13 @@ struct CameraComponent {
 
 struct ScriptComponent {
 	ScriptComponent() = default;
+	ScriptComponent(std::string scriptPath) : path(scriptPath) {};
 
-	std::string path;
-	std::function<void(double)> script;
+	std::string path { "None" };
+	std::function<void()> onInit = []() {};
+    std::function<void(double)> onUpdate = [](double) {};
+    std::function<void()> onDestroy = []() {};
+	bool initilized { false };
 
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ScriptComponent, path);
 };

@@ -45,6 +45,7 @@ private:
     std::unique_ptr<MaterialManager> materialManager;
     std::unique_ptr<RendererManager> rendererManager;
     std::unique_ptr<AnimationManager> animationManager;
+    std::unique_ptr<ScriptManager> scriptManager;
 
 private:
     std::vector<Service*> services;
