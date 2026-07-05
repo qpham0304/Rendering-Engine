@@ -7,6 +7,7 @@
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
+#include "scripting/ScriptManager.h"
 
 Entity::Entity(const entt::entity& entity, entt::registry& registry)
     : entity(entity), registry(&registry)
@@ -100,4 +101,11 @@ void Entity::onAnimationStateComponentAdded()
     // } else {
     //     printf("animation state name: [NameComponent not parsed yet]\n");
     // }
+}
+
+void Entity::onScriptComponentAdded()
+{
+    ScriptComponent& scriptComponent = getComponent<ScriptComponent>();
+    auto scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
+    scriptManager->loadScript(*this, scriptComponent.path);
 }

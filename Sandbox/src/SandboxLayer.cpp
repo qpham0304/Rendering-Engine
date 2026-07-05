@@ -12,7 +12,6 @@
 #include "core/features/Mesh.h"
 #include "core/features/EngineUtils.h"
 #include <random>
-#include <sol/sol.hpp>  //TODO: put around this in a script service
 
 SandBoxLayer::SandBoxLayer(const std::string& name)
     : Layer(name)
@@ -35,11 +34,11 @@ bool SandBoxLayer::init()
 
     // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
     Scene* scene2 = SceneManager::getInstance().addScene("Level2");
-    Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
+    // Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
     
     // scene1->loadScene("assets/data/Level1.json");
     scene2->loadScene("assets/data/Level2.json");
-    scene3->loadScene("assets/data/default-scene.json");
+    // scene3->loadScene("assets/data/default-scene.json");
 
     SceneManager::getInstance().setActiveScene(scene2->getName());
     Scene* activeScene = SceneManager::getInstance().getActiveScene();
@@ -159,15 +158,6 @@ bool SandBoxLayer::init()
     // lightProbeEntity.addComponent<ModelComponent>(modelComponent);
 
     // rendererManager->addRenderer();
-
-    std::cout << "=== opening a state ===" << std::endl;
-
-	sol::state lua;
-	// open some common libraries
-	lua.open_libraries(sol::lib::base, sol::lib::package);
-	lua.script("print('bark bark bark!')");
-
-	std::cout << std::endl;
 
 	return true;
 }

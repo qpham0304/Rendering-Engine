@@ -58,6 +58,7 @@ public:
 	void onSpriteComponentAdded();
 	void onAnimationComponentAdded();
 	void onAnimationStateComponentAdded();
+	void onScriptComponentAdded();
 	
 private:
 	entt::entity entity;

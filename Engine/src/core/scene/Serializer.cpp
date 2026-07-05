@@ -15,7 +15,7 @@ Serializer::Serializer()
     REGISTER_COMPONENT(PrefabComponent, "PrefabComponent", [](Entity entity) {});
     REGISTER_COMPONENT(SpriteComponent, "SpriteComponent", [](Entity entity) { entity.onSpriteComponentAdded(); });
     REGISTER_COMPONENT(AnimationStateComponent, "AnimationStateComponent", [](Entity entity) { entity.onAnimationStateComponentAdded(); });
-    
+    REGISTER_COMPONENT(ScriptComponent, "ScriptComponent", [](Entity entity) { entity.onScriptComponentAdded(); });
 }
 	
 
@@ -92,7 +92,6 @@ nlohmann::json Serializer::saveEntity(Entity entity)
         }
 
         const void* componentPtr = storage.value(handle);
-
         entt::meta_any result = serializeFunc.invoke({}, componentPtr);
 
         if (!result) {
@@ -126,7 +125,6 @@ nlohmann::json Serializer::saveEntity(Entity entity)
         data["overrides"].erase("components");
     }
 
-    // serialize children
     if (entity.hasComponent<RelationshipComponent>()) {
         auto& rel = entity.getComponent<RelationshipComponent>();
         for (auto childHandle : rel.children) {
@@ -198,7 +196,6 @@ entt::entity Serializer::loadEntity(
         }
     }
 
-    // recursively load child
     if (mergedData.contains("children") && mergedData["children"].is_array()) {
         for (const auto& childData : mergedData["children"]) {
             if (!childData.is_null()) {
@@ -208,4 +205,14 @@ entt::entity Serializer::loadEntity(
     }
 
     return entity;
+}
+
+const std::map<std::string, Serializer::ComponentLoader>& Serializer::getComponentFactory()
+{
+    return component_factory;
+}
+
+const std::map<std::string, Serializer::ComponentDestroyer>& Serializer::getComponentDestroyer()
+{
+    return component_destroyer;
 }

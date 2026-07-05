@@ -11,6 +11,7 @@
 #include "graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h"
 #include "graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h"
 #include "graphics/framework/Vulkan/renderers/RendererManagerVulkan.h"
+#include "scripting/framework/ScriptManagerLua.h"
 
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)
@@ -58,6 +59,11 @@ PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     GetFactory<RendererManager, RenderPlatform>().Register(
         RenderPlatform::VULKAN,
         RegisterConstructor<RendererManager, RendererManagerVulkan>()
+    );
+
+    GetFactory<ScriptManager, ScriptingPlatform>().Register(
+        ScriptingPlatform::LUA,
+        RegisterConstructor<ScriptManager, ScriptManagerLua>()
     );
     
 }

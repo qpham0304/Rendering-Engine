@@ -33,6 +33,7 @@ Engine::Engine(WindowConfig config)
 	materialManager = platformFactory.Create<MaterialManager>(windowConfig.renderPlatform);
 	guiManager = platformFactory.Create<GuiManager>(windowConfig.guiPlatform);
 	rendererManager = platformFactory.Create<RendererManager>(windowConfig.renderPlatform);
+	scriptManager = platformFactory.Create<ScriptManager>(windowConfig.scriptingPlatform);
 
 	meshManager = std::make_unique<MeshManager>();
 	modelManager = std::make_unique<ModelManager>();
@@ -57,6 +58,7 @@ Engine::Engine(WindowConfig config)
 	services.push_back(guiManager.get());
 	services.push_back(layerManager.get());
 	services.push_back(animationManager.get());
+	services.push_back(scriptManager.get());
 	services.push_back(rendererManager.get());
 }
 

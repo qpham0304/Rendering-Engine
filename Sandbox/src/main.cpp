@@ -10,6 +10,7 @@ int main()
         windowConfig.renderPlatform = RenderPlatform::VULKAN;
         windowConfig.guiPlatform = GuiPlatform::IMGUI;
         windowConfig.os = OperatingSystem::WINDOW;
+        windowConfig.scriptingPlatform = ScriptingPlatform::LUA;
         windowConfig.width = 1024;
         windowConfig.height = 720;
         windowConfig.vsync = false;
