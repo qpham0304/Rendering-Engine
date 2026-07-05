@@ -31,16 +31,17 @@ Engine::Engine(WindowConfig config)
 	descriptorManager = platformFactory.Create<DescriptorManager>(windowConfig.renderPlatform);
 	textureManager = platformFactory.Create<TextureManager>(windowConfig.renderPlatform);
 	materialManager = platformFactory.Create<MaterialManager>(windowConfig.renderPlatform);
+	guiManager = platformFactory.Create<GuiManager>(windowConfig.guiPlatform);
+	rendererManager = platformFactory.Create<RendererManager>(windowConfig.renderPlatform);
 
 	meshManager = std::make_unique<MeshManager>();
 	modelManager = std::make_unique<ModelManager>();
 	layerManager = std::make_unique<LayerManager>();
+	animationManager = std::make_unique<AnimationManager>();
 	serviceLocator.Register<MeshManager>("MeshManager", *meshManager);
 	serviceLocator.Register<ModelManager>("ModelManager", *modelManager);
 	serviceLocator.Register<LayerManager>("LayerManager", *layerManager);
-
-	guiManager = platformFactory.Create<GuiManager>(windowConfig.guiPlatform);
-	rendererManager = platformFactory.Create<RendererManager>(windowConfig.renderPlatform);
+	serviceLocator.Register<AnimationManager>("AnimationManager", *animationManager);
 
 	//NOTE: setup order is important!
 	services.push_back(&eventManager);
@@ -55,6 +56,7 @@ Engine::Engine(WindowConfig config)
 	services.push_back(modelManager.get());
 	services.push_back(guiManager.get());
 	services.push_back(layerManager.get());
+	services.push_back(animationManager.get());
 	services.push_back(rendererManager.get());
 }
 
@@ -89,6 +91,11 @@ void Engine::start()
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_ESCAPE) {
 			isRunning = false;
+		}
+		
+		else if (keyPressedEvent.keyCode == KEY_F4) {
+			isFullScreen = !isFullScreen;
+			AppWindow::setFullscreen(isFullScreen, true);
 		}
 	});
 }

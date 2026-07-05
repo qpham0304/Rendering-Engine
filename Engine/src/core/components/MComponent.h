@@ -1,13 +1,24 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
-#include <glm/glm.hpp>
 #include <concepts>
 #include <string>
-#include "animation/Animation.h" 	//TODO: resolve dependency between
-#include "animation/Animator.h" 	// animation and animator class
+#include <nlohmann/json.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <entt/entt.hpp>
 
 namespace glm {
+	inline void to_json(nlohmann::json& j, const glm::vec3& v) {
+        j = nlohmann::json{v.x, v.y, v.z};
+    }
+
+    inline void from_json(const nlohmann::json& j, glm::vec3& v) {
+        j.at(0).get_to(v.x);
+        j.at(1).get_to(v.y);
+        j.at(2).get_to(v.z);
+    }
+
     inline void to_json(nlohmann::json& j, const glm::vec4& v) {
         j = nlohmann::json{v.x, v.y, v.z, v.w};
     }
@@ -17,6 +28,17 @@ namespace glm {
         j.at(1).get_to(v.y);
         j.at(2).get_to(v.z);
         j.at(3).get_to(v.w);
+    }
+
+	inline void to_json(nlohmann::json& j, const glm::mat4& m) {
+        j = nlohmann::json{m[0], m[1], m[2], m[3]};
+    }
+
+    inline void from_json(const nlohmann::json& j, glm::mat4& m) {
+        j.at(0).get_to(m[0]);
+        j.at(1).get_to(m[1]);
+        j.at(2).get_to(m[2]);
+		j.at(3).get_to(m[3]);
     }
 }
 
@@ -106,7 +128,6 @@ public:
 
 };
 
-
 struct NameComponent {
 public:
 	std::string name = "";
@@ -170,10 +191,8 @@ public:
 };
 
 struct RelationshipComponent {
-    entt::entity parent{ entt::null };
+    entt::entity parent;
     std::vector<entt::entity> children;
-
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE(RelationshipComponent, parent, children)
 };
 
 struct PrefabComponent {
@@ -193,7 +212,6 @@ struct RenderTag {
 	std::vector<std::string> renderers;
 };
 
-
 struct LightProbeComponent {
 	LightProbeComponent() = default;
 
@@ -208,18 +226,92 @@ struct SpriteComponent {
 	SpriteComponent() = default;
 
 	std::string path { "None" };
+	std::string targetRenderer { "None" };
 	uint32_t textureID { 0 };
-	uint32_t numRows { 1 };
-	uint32_t numCols { 1 };
-	uint32_t frameIndex { 0 };
+	int numRows { 1 };
+	int numCols { 1 };
+	int frameIndex { 0 };
 	glm::vec4 color { 1.0 };
+
+	void setFrame(int frame) {
+		unsigned int frameCount = numRows * numCols;
+		if (frame < frameCount) {
+			frameIndex = frame;
+		}
+	}
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE(
 		SpriteComponent,
 		path,
+		targetRenderer,
 		numRows,
 		numCols,
 		frameIndex,
 		color
 	)
+};
+
+struct AnimationComponent {
+	AnimationComponent() = default;
+
+	int frameCount{ 8 };
+	float frameDuration{  1.0f / 24.0f };
+	float frameDelay{ 1.0f / 24.0f };
+	bool isRunning{ true };
+	bool isLooping{ true };
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+		AnimationComponent,
+		frameCount,
+		frameDuration,
+		frameDelay,
+		isLooping
+	);
+};
+
+struct AnimationStateComponent {
+	AnimationStateComponent() = default;
+
+	std::string texturePath{ "None" };
+	int startFrame{ 1 };
+	int frameCount{ 1 };
+	float frameDuration{ 0.0f };
+	bool isLooping{ true };
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+		AnimationStateComponent,
+		texturePath,
+		startFrame,
+		frameCount,
+		frameDuration,
+		isLooping
+	)
+};
+
+struct CameraComponent {
+	CameraComponent() = default;
+	
+	int viewWidth;
+	int viewHeight;	
+	glm::mat4 projection;
+	glm::mat4 view;
+	glm::vec3 orientation;
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+		CameraComponent,
+		viewWidth,
+		viewHeight,
+		projection,
+		view,
+		orientation
+	);
+};
+
+struct ScriptComponent {
+	ScriptComponent() = default;
+
+	std::string path;
+	std::function<void(double)> script;
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ScriptComponent, path);
 };

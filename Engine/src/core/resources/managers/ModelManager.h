@@ -13,7 +13,7 @@ class ModelManager : public Manager
 {
 public:
 	ModelManager();
-	~ModelManager();
+	virtual ~ModelManager();
 
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;

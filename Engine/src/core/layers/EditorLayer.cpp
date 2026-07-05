@@ -49,8 +49,8 @@ bool EditorLayer::init()
 	
 	guiController.addWidget<ImGuiLeftSidebarWidget>();
 	guiController.addWidget<ImGuiRightSidebarWidget>();
-	guiController.addWidget<ImGuiConsoleLogWidget>();
 	guiController.addWidget<ImGuiResourceInspectorWidget>();
+	guiController.addWidget<ImGuiConsoleLogWidget>();
 	guiController.addWidget<ImGuiMenuWidget>(guiController.getWidgets());
 	// addWidget(std::make_unique<ImGuiMathWidget>());
 

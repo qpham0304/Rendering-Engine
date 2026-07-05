@@ -129,6 +129,8 @@ void ForwardRendererVulkan::render(Camera& camera)
 	ubo.invProj[1][1] *= -1;
 	ubo.width = renderTarget.width;
 	ubo.height = renderTarget.height;
+	ubo.shadowMapID = shadowMapRenderer->depthMap->id();
+	ubo.blueNoiseID = shadowMapRenderer->blueNoiseImage->id();
 	
 	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.direction = glm::vec4(shadowMapRenderer->lightDir, 0.0f);

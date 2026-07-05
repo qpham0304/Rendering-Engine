@@ -71,6 +71,11 @@ set(PCH_HEADERS
     <variant>
     <any>
     <functional>
+    <random>
+    <cstdlib>
+    <cassert>
+    <typeindex>
+    <typeinfo>
     <glm/glm.hpp>
     <imgui.h>
     <vulkan/vulkan.h>
@@ -115,9 +120,10 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/misc/cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/stb
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/glm
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo
+    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/sol
     $ENV{VULKAN_SDK}/Include
 )
 

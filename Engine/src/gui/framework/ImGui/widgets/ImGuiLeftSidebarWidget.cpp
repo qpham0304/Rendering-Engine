@@ -5,7 +5,6 @@
 #include "core/scene/SceneManager.h"
 #include "core/events/EventManager.h"
 #include "core/components/MComponent.h"
-#include "core/components/CameraComponent.h"
 #include "window/appwindow.h"
 #include "graphics/utils/Utils.h"
 #include "core/features/ServiceLocator.h"
@@ -306,20 +305,6 @@ void ImGuiLeftSidebarWidget::MeshesTab()
 
 void ImGuiLeftSidebarWidget::ScenesTab()
 {
-    ImGui::Begin("Scenes");
-    SceneManager& sceneManager = SceneManager::getInstance();
-    for(uint32_t id : sceneManager.listIDs()) {
-        const Scene* scene = sceneManager.getScene(id);
-        
-        ImVec2 size = ImVec2(-1, 0);
-        if(sceneManager.getActiveScene()->getName() == scene->getName()) {
-            size = ImVec2(0, 0);
-        }
-        if(ImGui::Button(scene->getName().c_str(), size)) {
-            sceneManager.setActiveScene(scene->getName());
-        }
-    }
-    ImGui::End();
 }
 
 void ImGuiLeftSidebarWidget::render()

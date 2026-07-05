@@ -12,6 +12,7 @@ struct MaterialDesc {
     std::vector<uint32_t> emissiveIDs = {};
     
     glm::vec2 uv = glm::vec2(0.0f);     // not the actual uv, just the offset uv
+    glm::vec2 uvScale = glm::vec2(1.0f);     // not the actual uv, just the offset uv
     glm::vec4 albedo = glm::vec4(1.0f);
     glm::vec4 normal = glm::vec4(0.0f);
     float metallic  = 1.0f;
@@ -29,6 +30,7 @@ struct GPUMaterialData {
     uint32_t emissiveIdx;
 
     glm::vec2 uv = glm::vec2(0.0f);     // not the actual uv, just the offset uv
+    glm::vec2 uvScale = glm::vec2(0.0f);     // not the actual uv, just the offset uv
     glm::vec4 albedo = glm::vec4(1.0f);
     glm::vec4 normal = glm::vec4(0.0f);
     float metallic  = 1.0f;

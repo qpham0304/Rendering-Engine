@@ -56,6 +56,11 @@ double AppWindow::getTime()
 	return window->_getTime();
 }
 
+double AppWindow::getDeltaTime()
+{
+	return window->_getDeltaTime();
+}
+
 unsigned int AppWindow::getWidth()
 {
 	return window->m_width;
@@ -89,4 +94,9 @@ void AppWindow::waitEvents()
 void AppWindow::setContextCurrent()
 {
 	window->_setContextCurrent();
+}
+
+void AppWindow::setFullscreen(bool fullscreen, bool borderless)
+{
+	window->_setFullscreen(fullscreen, borderless);
 }

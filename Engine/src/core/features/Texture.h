@@ -1,8 +1,9 @@
 #pragma once
 
 #include <string>
+#include <core/resources/Resource.h>
 
-class Texture
+class Texture : public Resource
 {
 public:
 
@@ -26,12 +27,12 @@ protected:
 
 	virtual void loadTexture(const char* m_path, bool flip) = 0;
 
-
 protected:
 	uint32_t unit{ 0 };
 	uint32_t m_id{ 0 };
 	uint32_t m_width{ 0 };
 	uint32_t m_height{ 0 };
+	uint32_t m_numChannels{ 0 };
 
 	std::string m_type{ "undefined" };
 	std::string m_path{ "n/a" };

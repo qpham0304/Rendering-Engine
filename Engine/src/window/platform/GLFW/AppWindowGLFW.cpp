@@ -78,6 +78,10 @@ void AppWindowGLFW::onUpdate()
 		m_height = m_config.height;
 	}
 	
+	double currentTime = _getTime();
+	m_deltaTime = currentTime - m_lastTime;
+	m_lastTime = currentTime;
+
 	switch (m_config.renderPlatform) {
 		case RenderPlatform::OPENGL: _onUpdateOpenGL(); break;
 		case RenderPlatform::VULKAN: _onUpdateVulkan(); break;
@@ -101,6 +105,29 @@ void AppWindowGLFW::_setContextCurrent()
 	glfwMakeContextCurrent(m_windowHandle);
 }
 
+void AppWindowGLFW::_setFullscreen(bool fullscreen, bool borderless) {
+	if (fullscreen) {
+		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+
+		if (borderless) {
+			// borderless mode remove decorations and resize to fill screen
+			glfwSetWindowAttrib(m_windowHandle, GLFW_DECORATED, GLFW_FALSE);
+			glfwSetWindowMonitor(m_windowHandle, NULL, 0, 0, mode->width, mode->height, mode->refreshRate);
+		}
+		else {
+			// true fullscreen mode this actually changes the monitor resolution
+			glfwSetWindowMonitor(m_windowHandle, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+		}
+		m_width = mode->width;
+		m_height = mode->height;
+	}
+	else {
+		// windowed mode
+		glfwSetWindowAttrib(m_windowHandle, GLFW_DECORATED, GLFW_TRUE);
+		glfwSetWindowMonitor(m_windowHandle, NULL, 100, 100, m_config.width, m_config.height, 0);
+	}
+}
 
 void* AppWindowGLFW::_getWindow()
 {
@@ -141,6 +168,11 @@ double AppWindowGLFW::_getTime() const
 	return glfwGetTime();
 }
 
+double AppWindowGLFW::_getDeltaTime() const
+{
+	return m_deltaTime;
+
+}
 
 void AppWindowGLFW::_setEventCallback()
 {
@@ -286,6 +318,9 @@ bool AppWindowGLFW::_initVulkan()
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+
+	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+	//glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);	// disable title bar
 
 	m_windowHandle = glfwCreateWindow(m_width, m_height, m_config.title.c_str(), nullptr, nullptr);
 	glfwSetWindowUserPointer(m_windowHandle, this);

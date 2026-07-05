@@ -8,9 +8,11 @@
 #include "core/resources/managers/TextureManager.h"
 #include "core/resources/managers/RendererManager.h"
 #include "core/features/ServiceLocator.h"
+#include "core/events/EventManager.h"
 #include "core/features/Mesh.h"
 #include "core/features/EngineUtils.h"
 #include <random>
+#include <sol/sol.hpp>  //TODO: put around this in a script service
 
 SandBoxLayer::SandBoxLayer(const std::string& name)
     : Layer(name)
@@ -27,29 +29,23 @@ bool SandBoxLayer::init()
     modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
     rendererManager = &ServiceLocator::GetService<RendererManager>("RendererManagerVulkan");
 
-    // camera = std::make_unique<Camera>();
-    // camera->init(
-    //     AppWindow::getWidth(),
-    //     AppWindow::getHeight(),
-    //     glm::vec3(5.0),
-    //     glm::vec3(-5.0)
-    // );
-
+    camera = std::make_unique<Camera>();
+    camera->init(AppWindow::getWidth(), AppWindow::getHeight(), glm::vec3(5.0), glm::vec3(-5.0));
     // SceneManager::cameraController = camera.get();
 
     // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
-    // Scene* scene2 = SceneManager::getInstance().addScene("Sanbox scene 2");
-    Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene 3");
-    // if (!scene1 || !scene2 || !scene3) {
-    //     return false;
-    // }
+    Scene* scene2 = SceneManager::getInstance().addScene("Level2");
+    Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
     
-    // scene1->loadScene("assets/data/default-scene.json");
-    // scene2->loadScene("assets/data/Level1.json");
-    scene3->loadScene("assets/data/Level2.json");
+    // scene1->loadScene("assets/data/Level1.json");
+    scene2->loadScene("assets/data/Level2.json");
+    scene3->loadScene("assets/data/default-scene.json");
 
-    SceneManager::getInstance().setActiveScene(scene3->getName());
+    SceneManager::getInstance().setActiveScene(scene2->getName());
     Scene* activeScene = SceneManager::getInstance().getActiveScene();
+
+    EventManager& eventManager = EventManager::getInstance();
+    
     const int numLights = 0;
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -164,19 +160,14 @@ bool SandBoxLayer::init()
 
     // rendererManager->addRenderer();
 
-    /////////--------------
-    // uint32_t spriteEntityID = activeScene->addEntity("sprite entity");
-    // Entity spriteEntity = activeScene->getEntity(spriteEntityID);
+    std::cout << "=== opening a state ===" << std::endl;
 
-    // SpriteComponent spriteComponent;
-    // spriteComponent.path = "assets/textures/mobi-padoru.png";
-    // spriteEntity.addComponent<SpriteComponent>(spriteComponent);
-    // spriteEntity.onSpriteComponentAdded();
+	sol::state lua;
+	// open some common libraries
+	lua.open_libraries(sol::lib::base, sol::lib::package);
+	lua.script("print('bark bark bark!')");
 
-    // ModelComponent modelComponent;
-    // spriteEntity.addComponent<ModelComponent>(modelComponent);
-    // spriteEntity.onModelComponentAdded();
-
+	std::cout << std::endl;
 
 	return true;
 }

@@ -63,12 +63,41 @@ void Entity::onSpriteComponentAdded()
     auto materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
     
     assert(textureManager && modelManager && meshManager && materialManager && "failed to get texture manager");
-    sprite.textureID = textureManager->loadTexture(sprite.path);
 
-    ModelComponent& modelComponent = getComponent<ModelComponent>();
-    Model* model = modelManager->getModel(modelComponent.modelID);
-    Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
-    MaterialDesc material = materialManager->getMaterial(mesh->materialID);
-    material.albedoIDs = { sprite.textureID };
-    materialManager->updateMaterial(mesh->materialID, material);
+    if(!hasComponent<ModelComponent>()) {
+        addComponent<ModelComponent>("$prim$Quad");
+        onModelComponentAdded();
+    }
+    
+    if(!hasComponent<AnimationComponent>()) {
+        addComponent<AnimationComponent>();
+        onAnimationComponentAdded();
+    }
+
+    if(sprite.path != "None") {
+        sprite.textureID = textureManager->loadTexture(sprite.path);
+    }
+
+    if(sprite.textureID != 0) {
+        ModelComponent& modelComponent = getComponent<ModelComponent>();
+        Model* model = modelManager->getModel(modelComponent.modelID);
+        Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+        MaterialDesc material = materialManager->getMaterial(mesh->materialID);
+        material.albedoIDs = { sprite.textureID };
+        materialManager->updateMaterial(mesh->materialID, material);
+    }
+}
+
+void Entity::onAnimationComponentAdded()
+{
+    
+}
+
+void Entity::onAnimationStateComponentAdded()
+{
+    // if (hasComponent<NameComponent>()) {
+    //     printf("animation state name: %s\n", getComponent<NameComponent>().name.c_str());
+    // } else {
+    //     printf("animation state name: [NameComponent not parsed yet]\n");
+    // }
 }

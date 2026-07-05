@@ -11,7 +11,7 @@
 #include "core/components/MComponent.h"
 #include "core/features/EngineUtils.h"
 #include "core/events/EventManager.h"
-#include "core/resources/managers/modelManager.h"
+#include "core/resources/managers/ModelManager.h"
 
 
 ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
@@ -77,6 +77,48 @@ void ImGuiRightSidebarWidget::errorModal(const char* message) {
         ImGui::EndPopup();
     }
 }
+
+void ImGuiRightSidebarWidget::textInput(std::string *text, std::string message)
+{
+    static std::string buffer;
+        
+    ImGui::Columns(2);
+    ImGui::SetColumnWidth(0, 120.0f);
+    ImGui::Text(message.c_str());
+    ImGui::NextColumn();
+
+    std::string fieldID = "##" + message;
+    ImGuiID id = ImGui::GetID(std::string(fieldID + "_State").c_str());
+    ImGuiStorage* storage = ImGui::GetStateStorage();
+    bool isEditing = storage->GetBool(id, false);
+
+    if (!isEditing) {
+        ImGui::TextUnformatted(text->c_str());
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 45);
+        
+        if (ImGui::Button(std::string("Edit" + fieldID).c_str())) {
+            buffer = *text; 
+            storage->SetBool(id, true);
+        }
+    } else {
+        ImGui::PushItemWidth(-1);
+        bool entered = ImGui::InputText(fieldID.c_str(), &buffer, ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::PopItemWidth();
+
+        if (entered || ImGui::Button(std::string("Save" + fieldID).c_str())) {
+            *text = buffer;
+            storage->SetBool(id, false);
+        }
+        
+        ImGui::SameLine();
+        
+        if (ImGui::Button(std::string("Cancel" + fieldID).c_str())) {
+            storage->SetBool(id, false);
+        }
+    }
+    ImGui::Columns(1);
+}
+
 
 void ImGuiRightSidebarWidget::environmentControl()
 {
@@ -253,6 +295,7 @@ void ImGuiRightSidebarWidget::textureInspector()
             
             if(changed) {
                 m_meshesToUpdate.push_back(std::make_pair(mesh, materialDesc));
+                // materialManager->updateMaterial(mesh->materialID, materialDesc);
             }
 
             // float time = static_cast<float>(AppWindow::getTime());
@@ -281,6 +324,7 @@ void ImGuiRightSidebarWidget::render()
         // layersControl();
         textureInspector();
         environmentControl();
+        _scenesControl();
         ImGui::EndGroup();
     }
 }
@@ -337,6 +381,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
     _transformControl(entity);
     _modelControl(entity);
     _meshControl(entity);
+    _spriteControl(entity);
 
     ImGui::Separator();
     if (ImGui::Button("+ Add Component", ImVec2(-1.0f, 0.0f))) {
@@ -365,8 +410,6 @@ void ImGuiRightSidebarWidget::_componentsControl()
             // }
         }
         
-        
-
         if (ImGui::BeginMenu("Mesh")) {
             /*
             	EventManager& eventManager = EventManager::getInstance();
@@ -435,6 +478,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
 
         if (ImGui::Selectable("Sprite")) {
             entity.addComponent<SpriteComponent>();
+            entity.onSpriteComponentAdded();
         }
 
         if (ImGui::Selectable("Camera")) { 
@@ -465,44 +509,7 @@ void ImGuiRightSidebarWidget::_nameControl(const Entity& entity)
 {
     NameComponent& nameComponent = entity.getComponent<NameComponent>();
     if (ImGui::CollapsingHeader("Name", ImGuiTreeNodeFlags_DefaultOpen)) {
-        static std::string buffer;
-        
-        ImGui::Columns(2);
-        ImGui::SetColumnWidth(0, 120.0f);
-        ImGui::Text("Entity Name");
-        ImGui::NextColumn();
-
-        ImGuiID id = ImGui::GetID("##NameInput_State");
-        ImGuiStorage* storage = ImGui::GetStateStorage();
-        bool isEditing = storage->GetBool(id, false);
-
-        if (!isEditing) {
-            ImGui::TextUnformatted(nameComponent.name.c_str());
-            ImGui::SameLine(ImGui::GetContentRegionAvail().x - 45);
-            
-            if (ImGui::Button("Edit")) {
-                buffer = nameComponent.name; 
-                storage->SetBool(id, true);
-            }
-        } else {
-            ImGui::PushItemWidth(-1);
-            bool entered = ImGui::InputText("##NameInput", &buffer, ImGuiInputTextFlags_EnterReturnsTrue);
-            ImGui::PopItemWidth();
-
-            if (entered || ImGui::Button("Save")) {
-                const_cast<Entity&>(entity).getComponent<NameComponent>().name = buffer;
-                storage->SetBool(id, false);
-            }
-            
-            ImGui::SameLine();
-            
-            if (ImGui::Button("Cancel")) {
-                storage->SetBool(id, false);
-            }
-            
-            // ImGui::InputTextWithHint
-        }
-        ImGui::Columns(1);
+        textInput(&nameComponent.name, "Entity Name");
     }
 }
 
@@ -615,4 +622,117 @@ void ImGuiRightSidebarWidget::_meshControl(const Entity& entity)
     if (ImGui::CollapsingHeader("Mesh", ImGuiTreeNodeFlags_DefaultOpen)) {
 
     }
+}
+
+void ImGuiRightSidebarWidget::_spriteControl(const Entity& entity)
+{
+    if(!entity.hasComponent<SpriteComponent>()) {
+        return;
+    }
+    auto& sprite = entity.getComponent<SpriteComponent>();
+
+    // Create a 2-column table. ImGuiTableFlags_SizingFixedFit makes the left column fit the text.
+    if (ImGui::CollapsingHeader("Sprite Animation", ImGuiTreeNodeFlags_DefaultOpen)) {
+        textInput(&sprite.path, "path");
+        textInput(&sprite.targetRenderer, "renderer");
+        
+        if (ImGui::BeginTable("SpriteProperties", 2, ImGuiTableFlags_SizingFixedFit)) {
+            
+            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+            ImGui::TableSetupColumn("Widget", ImGuiTableColumnFlags_WidthStretch);
+
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::Text("path:");
+            ImGui::TableNextColumn(); ImGui::Text("%s", sprite.path.c_str());
+
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::Text("targetRenderer:");
+            ImGui::TableNextColumn(); ImGui::Text("%s", sprite.targetRenderer.c_str());
+
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::Text("numRows:");
+            ImGui::TableNextColumn(); 
+            ImGui::SetNextItemWidth(-FLT_MIN); // Makes the widget fill the remaining column space
+            ImGui::DragInt("##numRows", &sprite.numRows, 0.1f, 1.0f, 16.0f);
+
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::Text("numCols:");
+            ImGui::TableNextColumn(); 
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            ImGui::DragInt("##numCols", &sprite.numCols, 0.1f, 1.0f, 16.0f);
+
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::Text("frameIndex:");
+            ImGui::TableNextColumn(); 
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            if(ImGui::DragInt("##frameIndex", &sprite.frameIndex, 0.1f, 1.0f, 24.0f)) {
+                glm::vec2 uvScale = {1.0 / sprite.numRows, 1.0 / sprite.numCols};
+                int row = sprite.frameIndex % sprite.numRows;
+                int col = sprite.frameIndex % sprite.numCols;
+                glm::vec2 uvOffset = {uvScale.x * row, uvScale.y * col};
+
+                ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
+                Model* model = modelManager->getModel(modelComponent.modelID);
+                Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+                MaterialDesc material = materialManager->getMaterial(mesh->materialID);
+                material.uv = uvOffset;
+                material.uvScale = uvScale;
+                materialManager->updateMaterial(mesh->materialID, material);
+            }
+
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::Text("color:");
+            ImGui::TableNextColumn(); 
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            ImGui::ColorEdit4("##color", &sprite.color[0]);
+
+
+            if(entity.hasComponent<RelationshipComponent>()) {
+                auto& animation = entity.getComponent<AnimationComponent>();
+            }
+
+            if(entity.hasComponent<RelationshipComponent>()) {
+                auto& relationship = entity.getComponent<RelationshipComponent>();
+                auto& children = relationship.children;
+                // for(auto& child : children) {
+                //     ImGui::TableNextRow();
+                //     ImGui::TableNextColumn(); ImGui::Text("color:");
+                //     ImGui::TableNextColumn(); 
+                //     ImGui::SetNextItemWidth(-FLT_MIN);
+
+                //     Entity entity(scene. child)
+                //     if(child.has)
+                //     ImGui::Text()
+                // }
+            }
+
+            ImGui::EndTable();
+        }
+    }
+}
+
+void ImGuiRightSidebarWidget::_scenesControl()
+{
+    SceneManager& sceneManager = SceneManager::getInstance();
+    ImGui::Begin("Scenes Control");
+    if(ImGui::Button("Add Scene")) {
+        Scene* scene = SceneManager::getInstance().addScene("Level1");
+        scene->loadScene("assets/data/level2.json");
+        SceneManager::getInstance().setActiveScene(scene->getName());
+    }
+
+    for(uint32_t id : sceneManager.listIDs()) {
+        Scene* scene = sceneManager.getScene(id);
+        if(!scene){
+            continue;
+        }
+
+        bool isSelected = sceneManager.getActiveScene()->getName() == scene->getName();
+        if(ImGui::Selectable(scene->getName().c_str(), isSelected, 0, ImVec2(0, 0))) {
+            sceneManager.setActiveScene(scene->getName());
+            // scene->reloadScene();
+        }
+    }
+    ImGui::End();
+
 }

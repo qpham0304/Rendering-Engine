@@ -99,6 +99,7 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 	materialGPU.aoIdx = material.aoID;
 	materialGPU.emissiveIdx = material.emissiveID;
 	materialGPU.uv = material.uv;
+	materialGPU.uvScale = material.uvScale;
 	materialGPU.albedo = material.albedo;
 	materialGPU.normal = material.normal;
 	materialGPU.metallic = material.metallic;
@@ -142,6 +143,7 @@ MaterialDesc MaterialManagerVulkan::getMaterial(const uint32_t &id)
 		{ material.aoID },
 		{ material.emissiveID },
 		{ material.uv },
+		{ material.uvScale },
 		{ material.albedo },
 		{ material.normal },
 		{ material.metallic },
@@ -169,6 +171,7 @@ void MaterialManagerVulkan::_buildMaterialCache()
         gpuMaterial.emissiveIdx  = material.emissiveID;
 
 		gpuMaterial.uv = material.uv;
+		gpuMaterial.uvScale = material.uvScale;
 		gpuMaterial.albedo = material.albedo;
 		gpuMaterial.normal = material.normal;
 		gpuMaterial.metallic = material.metallic;
@@ -197,6 +200,7 @@ bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &mate
     material.aoID = _checkMaterial(materialDesc.aoIDs, fallback_aoID);
     material.emissiveID = _checkMaterial(materialDesc.emissiveIDs, fallback_emissiveID);
 	material.uv = materialDesc.uv;
+	material.uvScale = materialDesc.uvScale;
 	material.albedo = materialDesc.albedo;
 	material.normal = materialDesc.normal;
 	material.metallic  = materialDesc.metallic ;

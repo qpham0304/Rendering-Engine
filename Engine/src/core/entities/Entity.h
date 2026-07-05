@@ -56,6 +56,8 @@ public:
 	void onModelComponentAdded();
 	void onMeshComponentAdded();
 	void onSpriteComponentAdded();
+	void onAnimationComponentAdded();
+	void onAnimationStateComponentAdded();
 	
 private:
 	entt::entity entity;

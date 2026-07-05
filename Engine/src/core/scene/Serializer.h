@@ -26,8 +26,8 @@ struct SerializerInternal {
     entt::meta<Type>() \
         .type(entt::type_id<Type>().hash()) \
         .prop("name"_hs, std::string(Name)) \
-        .func<&SerializerInternal<Type>::Serialize>("serialize"_hs);
-
+        .func<&SerializerInternal<Type>::Serialize>("serialize"_hs) \
+        
 class Logger;
 
 class Serializer 

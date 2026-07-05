@@ -3,10 +3,14 @@
 #include "core/entities/Entity.h"
 #include "core/components/MComponent.h"
 #include "core/events/EventManager.h"
-#include "core/features/ServiceLocator.h"
 #include "Logging/Logger.h"
 #include "window/AppWindow.h"
 #include "core/scene/SceneManager.h"
+#include "core/features/ServiceLocator.h"
+#include "core/resources/managers/TextureManager.h"
+#include "core/resources/managers/ModelManager.h"
+#include "core/resources/managers/MeshManager.h"
+#include "core/resources/managers/MaterialManager.h"
 
 Scene::Scene(std::string name) 
 	: 	sceneName(name),
@@ -39,6 +43,13 @@ Scene::Scene(std::string name)
 				controlPressed = false;
 			}
 		}
+
+		if(keyCode == KEY_R) {
+			if(controlPressed){
+				reloading = true;
+				controlPressed = false;
+			}
+		}
 	});
 
 	// entities.reserve(1000);
@@ -52,6 +63,7 @@ uint32_t Scene::addEntity(const std::string& name)
     Entity entity(e, registry);
     entity.addComponent<TransformComponent>();
     entity.addComponent<NameComponent>(name);
+	entity.addComponent<RelationshipComponent>();
 
     frameNewEntities.push_back(entity); 
 	selectEntities({ entity }); 
@@ -142,6 +154,13 @@ const uint32_t Scene::getSelectedMeshID() const
 
 void Scene::onUpdate(const float& deltaTime)
 {
+	//TODO: properly test mesh and gpu resources cleanup
+	if(reloading) {
+		reloadScene();
+		reloading = false;
+		return;
+	}
+
 	for(auto& uuid : frameDeletedEntities) {
         _removeEntity(uuid);
     }
@@ -223,27 +242,19 @@ bool Scene::loadScene(std::string_view filePath)
 		return false;
 	}
 	
-	std::string newName = sceneJson["scene_name"];	// loaded scene might have different name
-	if(!SceneManager::getInstance().setSceneName(this, newName)) {
-		m_logger.warn("scene load failed to rename scene");
-	} else {
-		sceneName = newName;
-	}
+	scenePath = filePath;
+	// std::string newName = sceneJson["scene_name"];	// loaded scene might have different name
+	// if(!SceneManager::getInstance().setSceneName(this, newName)) {
+	// 	m_logger.warn("scene load failed to rename scene");
+	// } else {
+	// 	sceneName = newName;
+	// }
 
 	if(sceneJson.contains("entities")){
 		for (const auto& entityData : sceneJson["entities"]) {
 			m_serializer.loadEntity(entityData, registry, entities, entt::null);
 		}
 
-		// TODO: might better be serialized and called by the component itself
-		// for (auto& [id, entity] : entities) {
-		// 	if (entity.hasComponent<ModelComponent>()) { 
-		// 		entity.onModelComponentAdded();
-		// 	}
-		// 	if (entity.hasComponent<SpriteComponent>()) { 
-		// 		entity.onSpriteComponentAdded();
-		// 	}
-		// }
     	m_logger.info("scene loaded with {} entities", entities.size());
 	}
 
@@ -253,8 +264,38 @@ bool Scene::loadScene(std::string_view filePath)
 
 bool Scene::unloadScene() 
 {
+	// TODO: persistent heavy models are cached
+	// but require deletion of individual created mesh for now only sprite mesh
+	// or let the sprite unload the mesh itself
+    auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+    auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
 	
+	for(auto& [id, entity] : entities) {
+		if(entity.hasComponent<SpriteComponent>()) {
+			ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
+			Model* model = modelManager->getModel(modelComponent.modelID);
+			
+			for(auto& meshID : model->meshIDs) {
+				meshManager->destroy(meshID);
+			}
+			modelManager->destroy(modelComponent.modelID);
+		}
+	}
+
+	selectedMesh = 0;
+	selectedEntities.clear();
+	entities.clear();
+	frameNewEntities.clear();
+	frameDeletedEntities.clear();
+	registry.clear();
+
 	return true;
+}
+
+bool Scene::reloadScene()
+{
+	unloadScene();
+    return loadScene(scenePath);
 }
 
 void Scene::_addEntity(Entity& entity)

@@ -30,6 +30,7 @@ public:
 
 protected:
 	uint32_t currentRenderMode { 0 };
+
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	Renderer* applicationRenderer { nullptr };
 	Renderer* forwardRenderer { nullptr };

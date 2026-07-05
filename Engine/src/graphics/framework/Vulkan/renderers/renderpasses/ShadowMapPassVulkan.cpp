@@ -48,6 +48,10 @@ bool ShadowMapPassVulkan::init(WindowConfig config)
 	_createShadowFrameBuffer();
 	_createComputePipeline();
 
+	
+	textureManagerVulkan->registerTextureSampler(depthMap->id());
+	textureManagerVulkan->registerTextureSampler(blueNoiseImage->id());
+
 	pushconstant.radius = 64;  	// range 1 to 64
     pushconstant.sigma = 15;  	// range 1.0 to 30.0
 	lightDir = glm::normalize(glm::vec3(1.0f));

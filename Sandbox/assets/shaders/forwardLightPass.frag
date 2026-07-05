@@ -29,14 +29,17 @@ layout(set = 0, binding = 0)  uniform UniformBufferObject {
     mat4 invProj;
     float width;
     float height;
+    int shadowMapID;
+    int blueNoiseID;
+    
 } ubo;
 
 layout(set = 0, binding = 2, std430) readonly buffer LightSSBO {
     Light lights[];
 } lightSSBO;
 
-layout(set = 0, binding = 3) uniform sampler2D shadowMap;
-layout(set = 0, binding = 4) uniform sampler2D blueNoise;
+layout(set = 0, binding = 3) uniform sampler2D shadowMap_1;
+layout(set = 0, binding = 4) uniform sampler2D blueNoise_1;
 
 layout(set = 0, binding = 5) readonly buffer SHData {
     vec4 shCoeffs[9];
@@ -60,6 +63,7 @@ struct Material {
     uint emissiveIdx;
 
     vec2 uvOffset;
+    vec2 uvScale;
     vec4 albedoFactor;
     vec4 normalFactor;
     float metallicFactor;
@@ -149,7 +153,7 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm) {
     for(int i = -2; i <= 2; ++i) {
         for(int j = -2; j <= 2; ++j) {
             vec2 offset = vec2(i, j) * (searchRegion / 5.0);
-            float depth = texture(shadowMap, projCoords.xy + offset).r;
+            float depth = texture(samplerImages[ubo.shadowMapID], projCoords.xy + offset).r;
             
             if(depth < currentDepth - searchBias) { 
                 avgBlockerDepth += depth;
@@ -167,8 +171,8 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm) {
     float penumbra = (currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV;
     penumbra = clamp(penumbra, 0.0, 0.02); 
 
-    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
-    float noiseValue = texture(blueNoise, noiseUV).r;
+    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(samplerImages[ubo.blueNoiseID], 0));
+    float noiseValue = texture(samplerImages[ubo.blueNoiseID], noiseUV).r;
 
     float angle = noiseValue * 6.283185;
     float s = sin(angle);
@@ -191,7 +195,7 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm) {
     float shadow = 0.0;
     for (int i = 0; i < 16; i++) {
         vec2 offset = (rotation * poissonDisk32[i]) * penumbra;
-        float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
+        float pcfDepth = texture(samplerImages[ubo.shadowMapID], projCoords.xy + offset).r;
         
         if (currentDepth - pcfBias > pcfDepth) {
             shadow += 1.0;
@@ -231,10 +235,29 @@ float simpleNoise(vec3 p) {
 void main() {
     Material mat = pc.materialsRef.m[pc.materialIdx];
     
-    vec3 albedo     = texture(samplerImages[mat.albedoIdx], fragTexCoord).rgb;
+    vec2 frameUV = (fragTexCoord * mat.uvScale) + mat.uvOffset;
+    if (mat.uvScale.x < 0.99 || mat.uvScale.y < 0.99) {   // prevent sprite edge bleeding
+        vec2 texSize = vec2(textureSize(samplerImages[mat.albedoIdx], 0));
+        vec2 halfTexel = 0.5 / texSize;
+
+        vec2 cellMin = mat.uvOffset + halfTexel;
+        vec2 cellMax = mat.uvOffset + mat.uvScale - halfTexel;
+        frameUV = clamp(frameUV, cellMin, cellMax);
+    }
+
+    vec3 albedo     = texture(samplerImages[mat.albedoIdx], frameUV).rgb;
     float ao        = texture(samplerImages[mat.aoIdx], fragTexCoord).r;
     float roughness = texture(samplerImages[mat.roughnessIdx], fragTexCoord).g;
     float metallic  = texture(samplerImages[mat.metalnessIdx], fragTexCoord).b;
+
+    if (texture(samplerImages[mat.albedoIdx], frameUV).a < 0.01) { 
+        discard;
+    }
+    
+    albedo *= mat.albedoFactor.rgb;
+    ao *= mat.aoFactor;
+    roughness *= mat.roughnessFactor;
+    metallic *= mat.metallicFactor;
     
     // float alphaRoughness = roughness * roughness;
     // alphaRoughness = clamp(alphaRoughness, 0.05, 1.0); 
@@ -326,27 +349,12 @@ void main() {
     // float specularOcclusion = clamp(pow(NdotV + ao, exp2(-16.0 * roughness - 1.0)) - 1.0 + ao, 0.0, 1.0);
     // vec3 ambient = (kD_ibl * diffuseAmbient * ao) + (specularAmbient * specularOcclusion);
 
-    // vec3 emissive = texture(emissiveMaps, fragTexCoord).rgb;
-    vec3 emissive = texture(samplerImages[mat.emissiveIdx], fragTexCoord).rgb;
+    vec3 emissive = texture(samplerImages[mat.emissiveIdx], fragTexCoord).rgb * mat.emissiveFactor;
     vec3 color = ambient + Lo + emissive;
 
     vec3 V_dir = normalize(fragWorldPos - ubo.cameraPos.xyz);
     float maxDist = length(fragWorldPos - ubo.cameraPos.xyz);
-
-
-    // outColor = vec4(textureLod(prefilterMap, R, 1.0 * MAX_LOD).rgb, 1.0);
-    // return;
-    // outColor = vec4(F_ibl, 1.0);
-    // return;
-    // outColor = vec4(ambient, 1.0);
-    // return;
-    // outColor = vec4(kD_ibl, 1.0);
-    // return;
-    // outColor = vec4(specularAmbient, 1.0);
-    // return;
-    // outColor = vec4(vec3(1.0 - roughness), 1.0); 
-    // return;
-
+    
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2));
     if (any(isnan(color))) {

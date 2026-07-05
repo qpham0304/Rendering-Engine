@@ -41,7 +41,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
 
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
     // deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
-    raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
+    // raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
     
     // alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
     // hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
@@ -116,11 +116,11 @@ void RendererManagerVulkan::onUpdate()
     } 
     else if(currentRenderMode == 1) {
         auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-        if(tmp->pushConstantLight.aoOn) {
-            alchemyAORenderer->onUpdate();
-        }
-        deferredRenderer->onUpdate();
-        hiZPassRenderer->onUpdate();
+        // if(tmp->pushConstantLight.aoOn) {
+        //     alchemyAORenderer->onUpdate();
+        // }
+        // deferredRenderer->onUpdate();
+        // hiZPassRenderer->onUpdate();
         // SSRGIPassRenderer->onUpdate();
         // bloomRenderer->onUpdate();
         // if(tmp->denoiserOn) {
@@ -129,7 +129,7 @@ void RendererManagerVulkan::onUpdate()
         // ddgiPassRenderer->onUpdate();
         // deferredCombineRenderer->onUpdate();
     } else if(currentRenderMode == 2) {
-        raytracingRenderer->onUpdate();
+        // raytracingRenderer->onUpdate();
     }
 }
 
@@ -151,11 +151,11 @@ void RendererManagerVulkan::render()
     } 
     else if(currentRenderMode == 1) {
         auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-        if(tmp->pushConstantLight.aoOn) {
-            alchemyAORenderer->render(*camera);
-        }
-        deferredRenderer->render(*camera);
-        hiZPassRenderer->render(*camera);
+        // if(tmp->pushConstantLight.aoOn) {
+        //     alchemyAORenderer->render(*camera);
+        // }
+        // deferredRenderer->render(*camera);
+        // hiZPassRenderer->render(*camera);
         // SSRGIPassRenderer->render(*camera);
         // bloomRenderer->render(*camera);
         // if(tmp->denoiserOn) {
@@ -164,7 +164,7 @@ void RendererManagerVulkan::render()
         // ddgiPassRenderer->render(*camera);
         // deferredCombineRenderer->render(*camera);
     } else if(currentRenderMode == 2) {
-        raytracingRenderer->render(*camera);
+        // raytracingRenderer->render(*camera);
     }
 
     applicationRenderer->render(*camera);

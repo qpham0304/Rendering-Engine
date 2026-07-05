@@ -1,18 +1,14 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/rotate_vector.hpp>
-#include <glm/gtx/vector_angle.hpp>
-#include "core/features/serviceLocator.h"
 #include "gui/Themes/IconsFontAwesome5.h"
-
+#include "core/features/MathIncludes.h"
+#include "core/features/ServiceLocator.h"
 #include "core/resources/managers/TextureManager.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/MaterialManager.h" 
 #include "core/resources/managers/BufferManager.h" 
+#include "logging/logger.h"
 
 class Widget {
 public:
@@ -25,8 +21,10 @@ public:
     void setVisible(bool visible) { m_isVisible = visible; }
 
 protected:
-    Widget(std::string name = "widget") : m_isVisible(true), m_name(name) {
+    Widget(std::string name = "widget") : m_isVisible(true), m_name(name), m_firstFrame(true) {
+
         //TODO: might be better to move to a cpp file 
+        m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
         textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
         meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
         modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
@@ -41,8 +39,10 @@ protected:
 
 protected:
     bool m_isVisible;
+    bool m_firstFrame;
     std::string m_name;
-
+    Logger* m_logger;
+    
     TextureManager* textureManager{ nullptr };
     MeshManager* meshManager{ nullptr };
     ModelManager* modelManager{ nullptr };
