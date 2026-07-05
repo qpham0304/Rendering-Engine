@@ -41,6 +41,9 @@ public:
 	virtual DeviceInfo getDeviceInfo() const override;
 	virtual PipelineInfo getPipelineInfo() const override;
 
+	void beginLabel(VkCommandBuffer command, std::string_view label, std::array<float, 4> color = {1.0f, 1.0f, 1.0f, 0.0f});
+	void endLabel(VkCommandBuffer command);
+
 	void setViewport();
 	void setScissor();
 

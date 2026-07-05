@@ -6,6 +6,7 @@
 #include "core/features/ServiceLocator.h"
 #include "Logging/Logger.h"
 #include "window/AppWindow.h"
+#include "core/scene/SceneManager.h"
 
 Scene::Scene(std::string name) 
 	: 	sceneName(name),
@@ -27,7 +28,7 @@ Scene::Scene(std::string name)
 		if(keyCode == KEY_S) {
 			if(controlPressed){
 				std::string directory = "../../";
-				saveScene(directory + "assets/data/Level1-test.json");
+				saveScene(directory + "assets/data/" + sceneName + ".json");
 				controlPressed = false;
 			}
 		}
@@ -182,7 +183,7 @@ bool Scene::saveScene(std::string_view filePath)
         }
 
         if (!hasParent) {
-            sceneJson["entities"].push_back(m_serializer.saveEntity(entity, registry));
+            sceneJson["entities"].push_back(m_serializer.saveEntity(entity));
         }
     }
 
@@ -222,18 +223,27 @@ bool Scene::loadScene(std::string_view filePath)
 		return false;
 	}
 	
-	sceneName = sceneJson["scene_name"];
+	std::string newName = sceneJson["scene_name"];	// loaded scene might have different name
+	if(!SceneManager::getInstance().setSceneName(this, newName)) {
+		m_logger.warn("scene load failed to rename scene");
+	} else {
+		sceneName = newName;
+	}
 
 	if(sceneJson.contains("entities")){
 		for (const auto& entityData : sceneJson["entities"]) {
 			m_serializer.loadEntity(entityData, registry, entities, entt::null);
 		}
 
-		for (auto& [id, entity] : entities) {
-			if (entity.hasComponent<ModelComponent>()) { 
-				entity.onModelComponentAdded();	// TODO: might better be serialized and called by the component itself
-			}
-		}
+		// TODO: might better be serialized and called by the component itself
+		// for (auto& [id, entity] : entities) {
+		// 	if (entity.hasComponent<ModelComponent>()) { 
+		// 		entity.onModelComponentAdded();
+		// 	}
+		// 	if (entity.hasComponent<SpriteComponent>()) { 
+		// 		entity.onSpriteComponentAdded();
+		// 	}
+		// }
     	m_logger.info("scene loaded with {} entities", entities.size());
 	}
 

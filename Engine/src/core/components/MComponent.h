@@ -7,6 +7,19 @@
 #include "animation/Animation.h" 	//TODO: resolve dependency between
 #include "animation/Animator.h" 	// animation and animator class
 
+namespace glm {
+    inline void to_json(nlohmann::json& j, const glm::vec4& v) {
+        j = nlohmann::json{v.x, v.y, v.z, v.w};
+    }
+
+    inline void from_json(const nlohmann::json& j, glm::vec4& v) {
+        j.at(0).get_to(v.x);
+        j.at(1).get_to(v.y);
+        j.at(2).get_to(v.z);
+        j.at(3).get_to(v.w);
+    }
+}
+
 class Component {
 public:
 	Component() = default;
@@ -120,10 +133,9 @@ public:
 
 	void reset() {
 		path = "None";
+		modelID = 0;
 	}
 	
-	// NLOHMANN_DEFINE_TYPE_INTRUSIVE(ModelComponent, path, modelID);
-
 	friend void to_json(nlohmann::json& j, const ModelComponent& m) {
         j = nlohmann::json{{"path", m.path}};
     }
@@ -181,64 +193,33 @@ struct RenderTag {
 	std::vector<std::string> renderers;
 };
 
-// struct ShaderComponent {
-// 	std::string path;
 
-// 	ShaderComponent(const std::string&& path) : path(path) {
+struct LightProbeComponent {
+	LightProbeComponent() = default;
 
-// 	};
-// };
+	std::vector<glm::vec4> probeGrid;
+	size_t bufferSize;
+	uint32_t probesPerDimension;
+	float spacing;
+    glm::vec4 gridOrigin;
+};
 
-// struct AnimationComponent {
-// public:
-// 	std::string path = "None";
-// 	std::weak_ptr<Animation> animation;
-// 	Animator animator;
+struct SpriteComponent {
+	SpriteComponent() = default;
 
-// 	AnimationComponent() = default;
-// 	AnimationComponent(std::string&& path, std::shared_ptr<Animation> animation) : path(path), animation(animation) {
-// 		if (animation) {
-// 			animator.Init(animation.get());
-// 		}
-// 	};
-// 	AnimationComponent(std::string&& path) : path(path) {};
+	std::string path { "None" };
+	uint32_t textureID { 0 };
+	uint32_t numRows { 1 };
+	uint32_t numCols { 1 };
+	uint32_t frameIndex { 0 };
+	glm::vec4 color { 1.0 };
 
-// 	void reset() {
-// 		path = "None";
-// 		animation.reset();
-// 	}
-// };
-
-//struct AnimatorComponent {
-//public:
-//	std::string path;
-//	std::weak_ptr<Animator> animation;
-//	AnimatorComponent() = default;
-//	AnimatorComponent(std::string&& path) : path(path) {};
-//};
-
-// enum LightType { POINT_LIGHT, DIRECTION_LIGHT, SPOT_LIGHT, AREA_LIGHT };
-
-// struct MLightComponent {
-
-// public:
-// 	glm::vec3 color = glm::vec3(1.0f);
-// 	glm::vec3 position = glm::vec3(0.0f);
-// 	float radius = 0.0f;
-// 	LightType type = POINT_LIGHT;
-
-// 	MLightComponent() = default;
-// 	MLightComponent(glm::vec3&& color, glm::vec3&& position) : color(color), position(position) {};
-// 	MLightComponent(const glm::vec3& color, const glm::vec3& position, LightType type = POINT_LIGHT) 
-// 		: color(color), position(position), type(type) {};
-// };
-
-// struct LayerTagComponent {
-// public:
-// 	std::string layerName = "";
-
-// 	LayerTagComponent () = default;
-// 	LayerTagComponent (const std::string& layerName) : layerName(layerName) {
-
-// 	};
-// };
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+		SpriteComponent,
+		path,
+		numRows,
+		numCols,
+		frameIndex,
+		color
+	)
+};

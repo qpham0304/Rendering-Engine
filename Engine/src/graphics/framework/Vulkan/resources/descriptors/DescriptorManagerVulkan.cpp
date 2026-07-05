@@ -157,7 +157,7 @@ uint32_t DescriptorManagerVulkan::createSets(uint32_t layoutID, uint32_t poolID,
 void DescriptorManagerVulkan::writeUniform(
 	std::vector<VkWriteDescriptorSet>* writes,
 	const VkDescriptorSet& dstSet,
-		uint32_t binding,
+	uint32_t binding,
 	const VkDescriptorBufferInfo& bufferInfo
 ) {
 
@@ -217,7 +217,6 @@ void DescriptorManagerVulkan::writeStorage(
 	uint32_t binding,
 	const VkDescriptorBufferInfo& bufferInfo
 ) {
-
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.dstSet = dstSet;
@@ -236,7 +235,6 @@ void DescriptorManagerVulkan::writeAttachment(
 	uint32_t binding,
 	const VkDescriptorImageInfo& imageInfo
 ) {
-
 	VkWriteDescriptorSet write{};
 	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	write.dstSet = dstSet;
@@ -254,7 +252,7 @@ void DescriptorManagerVulkan::writeAccelStruct(
 	const VkDescriptorSet &dstSet, 
 	uint32_t binding, 
 	const std::vector<VkDescriptorSetLayoutBinding>& bindingTable,
-	VkWriteDescriptorSetAccelerationStructureKHR& descASInfo
+	const VkWriteDescriptorSetAccelerationStructureKHR& descASInfo
 ) {
     VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     write.dstSet          = dstSet;
@@ -265,11 +263,117 @@ void DescriptorManagerVulkan::writeAccelStruct(
     write.pNext      = &descASInfo;
 
     assert(bindingTable[binding].binding == binding);
-
     assert(write.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 
 	writes->push_back(write);
 }
+
+/*
+new descriptor write system
+*/
+void DescriptorManagerVulkan::writeUniform2(
+	DescriptorWriter& writer,
+	const VkDescriptorBufferInfo& bufferInfo
+) {
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = writer.descriptorSet;
+	write.dstBinding = writer.writes.size();
+	write.dstArrayElement = 0;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write.descriptorCount = 1;
+	write.pBufferInfo = &bufferInfo;
+
+	writer.writes.push_back(write);
+}
+
+void DescriptorManagerVulkan::writeImage2(
+	DescriptorWriter& writer,
+	const VkDescriptorImageInfo& imageInfo,
+	uint32_t arrayIndex
+) {
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = writer.descriptorSet;
+	write.dstBinding = writer.writes.size();
+	write.dstArrayElement = arrayIndex;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	write.descriptorCount = 1;
+	write.pImageInfo = &imageInfo;
+
+	writer.writes.push_back(write);
+}
+
+void DescriptorManagerVulkan::writeStorageImage2(
+	DescriptorWriter& writer,
+	const VkDescriptorImageInfo& imageInfo,
+	uint32_t arrayIndex
+) {
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = writer.descriptorSet;
+	write.dstBinding = writer.writes.size();
+	write.dstArrayElement = arrayIndex;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	write.descriptorCount = 1;
+	write.pImageInfo = &imageInfo;
+
+	writer.writes.push_back(write);
+}
+
+void DescriptorManagerVulkan::writeStorage2(
+	DescriptorWriter& writer,
+	const VkDescriptorBufferInfo& bufferInfo
+) {
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = writer.descriptorSet;
+	write.dstBinding = writer.writes.size();
+	write.dstArrayElement = 0;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	write.descriptorCount = 1;
+	write.pBufferInfo = &bufferInfo;
+
+	writer.writes.push_back(write);
+}
+
+void DescriptorManagerVulkan::writeAttachment2(
+	DescriptorWriter& writer,
+	const VkDescriptorImageInfo& imageInfo
+) {
+	VkWriteDescriptorSet write{};
+	write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write.dstSet = writer.descriptorSet;
+	write.dstBinding = writer.writes.size();
+	write.dstArrayElement = 0;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+	write.descriptorCount = 1;
+	write.pImageInfo = &imageInfo;
+
+	writer.writes.push_back(write);
+}
+
+void DescriptorManagerVulkan::writeAccelStruct2(
+	DescriptorWriter& writer, 
+	const std::vector<VkDescriptorSetLayoutBinding>& bindingTable,
+	const VkWriteDescriptorSetAccelerationStructureKHR& descASInfo
+) {
+	uint32_t binding = writer.writes.size();
+	
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstSet          = writer.descriptorSet;
+    write.dstBinding      = writer.writes.size();
+    write.dstArrayElement = 0;
+    write.descriptorCount = 1;
+    write.descriptorType  = bindingTable[binding].descriptorType;
+    write.pNext      = &descASInfo;
+
+    assert(bindingTable[binding].binding == binding);
+    assert(write.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+
+	writer.writes.push_back(write);
+}
+//----------------
 
 void DescriptorManagerVulkan::updateDescriptorSets(std::vector<VkWriteDescriptorSet>* const writes)
 {

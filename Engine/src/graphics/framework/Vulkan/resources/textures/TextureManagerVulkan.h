@@ -12,15 +12,6 @@ class VulkanDevice;
 class TextureManagerVulkan : public TextureManager
 {
 public:
-	struct TextureConfig {
-		uint32_t width;
-		uint32_t height; 
-		VkFormat format; 
-		VkImageUsageFlags usage; 
-		VkImageAspectFlags aspect;
-		uint32_t mipLevels;
-	};
-
 	static void createImage(
 		uint32_t width,
 		uint32_t height,
@@ -70,10 +61,7 @@ public:
 		const VulkanDevice& device
 	);
 
-	static void createTextureSampler(
-		VkSampler& textureSampler,
-		VulkanDevice& device
-	);
+	static VkSamplerCreateInfo createLinearSampler(VulkanDevice& device);
 
 	static void createTextureSampler(
 		VkSampler& textureSampler,
@@ -91,16 +79,7 @@ public:
 		uint32_t layerCount,
 		RenderDeviceVulkan* renderDeviceVulkan
 	);
-
-	static void transitionImageLayout(
-		VkImage image,
-		VkFormat format,
-		VkImageLayout oldLayout,
-		VkImageLayout newLayout,
-		uint32_t mipLevels,
-		RenderDeviceVulkan* renderDeviceVulkan
-	);
-
+	
 	static void copyBufferToImage(
 		VkBuffer buffer,
 		VkImage image,
@@ -147,6 +126,17 @@ public:
 		RenderDeviceVulkan* renderDeviceVulkan
 	);
 
+	static void copyImage(
+		VkCommandBuffer cmd,
+		TextureVulkan* srcImage,
+		TextureVulkan* dstImage,
+		VkFormat format,
+		VkImageAspectFlags aspect,
+		uint32_t imageWidth,
+		uint32_t imageHeight,
+		RenderDeviceVulkan* renderDeviceVulkan
+	);
+
 public:
 	TextureManagerVulkan(std::string serviceName = "TextureManagerVulkan");	
 	~TextureManagerVulkan();
@@ -156,14 +146,14 @@ public:
 	virtual void destroy(uint32_t id) override;
 	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture) override;
 	virtual uint32_t createTexture() override;
-	virtual uint32_t createTexture(TextureConfig textureConfig);
+	virtual uint32_t createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig);
 	virtual uint32_t createDepthTexture(uint32_t width, uint32_t height, uint32_t mipLevels) override;
 	virtual TextureVulkan* getTexture(uint32_t id) override;
 	virtual void* inspectTexture(uint32_t id) override;
 	virtual uint32_t getInspectorLayout();
 
 	void registerTextureSampler(uint32_t textureID);
-	void registerTextureStorage(uint32_t textureID, VkImageLayout layout);
+	void registerTextureStorage(uint32_t textureID);
 	uint32_t getBindlessTextureLayout();
 	uint32_t getBindlessSet();
 
@@ -175,7 +165,6 @@ private:
 	void _createBindlessDescriptor();
 
 private:
-
 	RenderDeviceVulkan* renderDeviceVulkan;
 	BufferManagerVulkan* vulkanBufferManager;
 	DescriptorManagerVulkan* descriptorManagerVulkan;

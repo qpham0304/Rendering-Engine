@@ -68,18 +68,18 @@ public:
 	
 	void writePostProcess(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeRayTracing(VkCommandBuffer cmd, uint32_t currentFrame);
+	void updateTlas();
 
 public:	//TODO: make private once done testing	
-	const int MAX_INSTANCES = 3000;
+	const int MAX_INSTANCES = 5000;
 	const int numInstances = 1;
 	const int numLights = 1000;
-	bool showGui{ true };
+	bool showGui { true };
 	uint32_t frameCounter { 0 };
 	bool m_tlasInitialized { false };
 	bool clear { false };
 	bool explicitPass { false };
 
-	
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
 	std::vector<StorageBufferVulkan*> prevStoragebufferList;
@@ -87,40 +87,37 @@ public:	//TODO: make private once done testing
 	std::vector<StorageBufferObject> instanceData;
 	std::vector<StorageBufferObject> instanceDataPrev;
 
-
 	PushConstant pushConstant;
 	std::vector<LightSSBO> lights;
 
-	Camera* cam;
 	UniformBufferObject ubo{};
 	glm::mat4 lastViewProj;
 	bool firstFrame { true };
 
+	TextureVulkan* rayTraceImage;
 	std::unique_ptr<VulkanPipeline> rtPipeline { nullptr };
 	uint32_t raytraceLayoutID;
 	uint32_t raytracePoolID;
 	uint32_t raytraceSetID;
-	uint32_t rayTraceImageID;
-	TextureVulkan* rayTraceImage;
 
+	TextureVulkan* postProcessImage;
 	std::unique_ptr<VulkanPipeline> postProcessPipeline { nullptr };
 	uint32_t postProcessLayoutID;
 	uint32_t postProcessPoolID;
 	uint32_t postProcessSetID;
-	uint32_t postProcessImageID;
-	TextureVulkan* postProcessImage;
 
 	uint32_t objDeviceAddressBufferID;
 	uint64_t objDeviceAddress;
 	uint64_t materialsAddress;
 	std::vector<ObjectDesc> objects;
 
-    RaytracingBuilderKHR m_rtBuilder{};
+	uint32_t currWidth;
+	uint32_t currHeight;
 
     std::vector<VkDescriptorSetLayoutBinding> rtBindings;
     std::vector<VkDescriptorSetLayoutBinding> postBindings;
 
-	
+    RaytracingBuilderKHR m_rtBuilder{};
     uint32_t handleSize{};
     uint32_t handleAlignment{};
     uint32_t baseAlignment{};
@@ -131,22 +128,19 @@ public:	//TODO: make private once done testing
     VkStridedDeviceAddressRegionKHR m_hitRegion{};       	// Hit shader region
     VkStridedDeviceAddressRegionKHR m_callRegion{};
 
-
-
-	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
-	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _createResources();
 	void _createPipeline();
 	void _createDescriptor();
 	void _updateDescriptor(uint32_t index);
 	void _recreateResources();
 	void _cleanupResources();
+	void _populateData(std::vector<VkAccelerationStructureInstanceKHR>& tlas, int& objectsIndex);
 
-	inline VkTransformMatrixKHR toTransformMatrixKHR(glm::mat4 matrix)
-	{
-		// VkTransformMatrixKHR uses a row-major layout, while glm::mat4's
-		// column-major layout. so transpose the matrix to memcpy its data directly.
-		glm::mat4        temp = glm::transpose(matrix);
+	
+	// VkTransformMatrixKHR uses a row-major layout, while glm::mat4's
+	// column-major layout. so transpose the matrix to memcpy its data directly.
+	inline VkTransformMatrixKHR toTransformMatrixKHR(glm::mat4 matrix) {
+		glm::mat4 temp = glm::transpose(matrix);
 		VkTransformMatrixKHR out_matrix;
 		memcpy(&out_matrix, &temp, sizeof(VkTransformMatrixKHR));
 		return out_matrix;
@@ -155,5 +149,4 @@ public:	//TODO: make private once done testing
 	BlasInput _toVkGeometry(uint32_t meshID);
 	void _createAccelStructure();
 	void _createShaderBindingTable();
-	void _updateTlas();
 };

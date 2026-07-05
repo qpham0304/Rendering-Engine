@@ -11,6 +11,8 @@
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
+#include <graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h>
+#include <core/scene/SceneManager.h>
 #include <window/AppWindow.h>
 #include <math.h>
 #include <algorithm>
@@ -39,12 +41,18 @@ bool DeferredCombinePassVulkan::init(WindowConfig config)
 	auto temporalPassRenderer = dynamic_cast<TemporalPassVulkan*>(renderer);
     renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
 	auto bloomPassRenderer = dynamic_cast<BloomPassVulkan*>(renderer);
+    renderer = rendererManagerVulkan->getRenderer("DDGIBuilderVulkan");
+	auto DDGIRenderer = dynamic_cast<DDGIBuilderVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     denoisedGIImage = temporalPassRenderer->getOutputImage();
     sceneImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
     albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
+    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
+    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
 	bloomImage = bloomPassRenderer->getOutputImage();
+    atlasImageGI = DDGIRenderer->getAtlasImage();
+    visibilityAtlasImageGI = DDGIRenderer->getVisibilityAtlasImage();
     
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
@@ -97,7 +105,33 @@ void DeferredCombinePassVulkan::render(Camera &camera)
         denoisedGIImage = SSRGIPassRenderer->getOutputImage();
     }
 
+
     pushConstant.shouldCombine = deferredRendererVulkan->shouldCombine ? 1 : 0;
+
+    SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	if(!scene){
+		m_logger->error("No scene to render");
+	}
+
+    //NOTE: only support one probe grid for the entire scene at the moment
+    auto entities = scene->getEntitiesWith<LightProbeComponent>();
+
+    if(entities.size() == 0) {
+		m_logger->error("No entity with light probe component");
+    } else {
+        Entity lightProbeEntity = entities[0];
+        auto& lightProbeComponent = lightProbeEntity.getComponent<LightProbeComponent>();
+        pushConstant.gridSpacing = lightProbeComponent.spacing;
+        pushConstant.gridOrigin = lightProbeComponent.gridOrigin;
+        pushConstant.probesPerDimension = lightProbeComponent.probesPerDimension;
+        pushConstant.probesResolution = 8;
+        
+        size_t probesPerDimension = lightProbeComponent.probesPerDimension;
+        float w = probesPerDimension * 8;
+        float h = probesPerDimension * probesPerDimension * 8;
+    }
+
 
     sceneImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
     albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
@@ -118,7 +152,9 @@ void DeferredCombinePassVulkan::render(Camera &camera)
     _updateDescriptor(currentFrame);
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+	renderDeviceVulkan->beginLabel(cmd, "Deferred Combine Pass");
     writeCombinedImage(cmd, currentFrame);
+	renderDeviceVulkan->endLabel(cmd);
 
     renderDeviceVulkan->waitIdle();
     rendererManagerVulkan->setDisplayImage(outputImage);
@@ -243,12 +279,16 @@ void DeferredCombinePassVulkan::_createDescriptors()
 		{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     };
 
 	uint32_t frameCount = VulkanUtils::numFrames();
     std::vector<VkDescriptorPoolSize> poolSizes {
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 8},
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 11},
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
 	};
 	
@@ -295,6 +335,26 @@ void DeferredCombinePassVulkan::_updateDescriptor(uint32_t index)
 	bloomImageInfo.imageView = bloomImage->textureImageView;
 	bloomImageInfo.sampler = bloomImage->textureSampler;
 
+    VkDescriptorImageInfo atlasImageInfo{};
+	atlasImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	atlasImageInfo.imageView = atlasImageGI->textureImageView;
+	atlasImageInfo.sampler = atlasImageGI->textureSampler;
+
+    VkDescriptorImageInfo depthImageInfo{};
+	depthImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	depthImageInfo.imageView = depthImage->textureImageView;
+	depthImageInfo.sampler = depthImage->textureSampler;
+
+    VkDescriptorImageInfo normalImageInfo{};
+	normalImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	normalImageInfo.imageView = normalImage->textureImageView;
+	normalImageInfo.sampler = normalImage->textureSampler;
+
+    VkDescriptorImageInfo visibilityAtlasImageInfo{};
+	visibilityAtlasImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	visibilityAtlasImageInfo.imageView = visibilityAtlasImageGI->textureImageView;
+	visibilityAtlasImageInfo.sampler = visibilityAtlasImageGI->textureSampler;
+
 	std::vector<VkWriteDescriptorSet> writes;
 	descriptorManagerVulkan->writeUniform(&writes, descriptorSets[index], 0, bufferInfo);
 	descriptorManagerVulkan->writeStorageImage(&writes, descriptorSets[index], 1, outputImageInfo);
@@ -302,6 +362,10 @@ void DeferredCombinePassVulkan::_updateDescriptor(uint32_t index)
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 3, sceneColorImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 4, albedoImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 5, bloomImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 6, atlasImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 7, depthImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 8, normalImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 9, visibilityAtlasImageInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 

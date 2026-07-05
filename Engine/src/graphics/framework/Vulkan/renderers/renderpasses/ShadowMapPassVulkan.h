@@ -78,4 +78,7 @@ private:
 	void _createMomentDescriptor();
 	// void _updateMomentDesccriptor();
 	void _createComputePipeline();
+
+	void _recreateResources() override;
+	void _cleanupResources() override;
 };

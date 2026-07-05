@@ -75,7 +75,7 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	size_t objectsBufferSize = MAX_INSTANCES * sizeof(ObjectDesc);
 	objDeviceAddressBufferID = bufferManagerVulkan->createBufferDeviceAddress(objectsBufferSize);
 	auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(objDeviceAddressBufferID));
-	objDeviceAddress = deviceAddress->getReference();
+	objDeviceAddress = deviceAddress->getAddress();
 
 	lights.reserve(numLights);
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
@@ -150,24 +150,33 @@ void DeferredRendererVulkan::render(Camera& camera)
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 			const Model* model = modelManager->getModel(modelID);
 			
+			uint32_t meshIdx = 0;
 			for (uint32_t meshID : model->meshIDs) {
-				instanceData.push_back({ transform.getModelMatrix() });
+				glm::mat4 worldMatrix = transform.getModelMatrix();
+
+				if(entity.hasComponent<LightProbeComponent>()) {	//TODO: this couple the probe data to the renderer so it need to be handled better
+					auto& lightProbeComponent = entity.getComponent<LightProbeComponent>();
+					worldMatrix = glm::translate(worldMatrix, glm::vec3(lightProbeComponent.probeGrid[meshIdx]));
+				}
+				instanceData.push_back({ worldMatrix });
 
 				ObjectDesc desc{};
 				desc.materialsRef = materialsAddress;
 				const MeshManager::MeshData& meshData = meshManager->getMeshData(meshID);
 				auto* bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.matIndicesBDA_ID));
-				desc.materialIndicesRef = bdaBuffer->getReference();
+				desc.materialIndicesRef = bdaBuffer->getAddress();
 				bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.vertexBDA_ID));
-				desc.vertexAddress = bdaBuffer->getReference();
+				desc.vertexAddress = bdaBuffer->getAddress();
 				bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID));
-				desc.indexAddress = bdaBuffer->getReference();
+				desc.indexAddress = bdaBuffer->getAddress();
 				// m_logger->error("index buffer BDA: {}", desc.indexAddress);
 
 				objects[currentDrawIdx] = desc;
 				currentDrawIdx++;
+				meshIdx++;
 			}
-		} else {
+		} 
+		else {
 			instanceData.push_back({ transform.getModelMatrix() });
 			objects[currentDrawIdx] = {}; 
 			currentDrawIdx++;
@@ -201,12 +210,11 @@ void DeferredRendererVulkan::render(Camera& camera)
 	
 
 	pushConstantLight.color = sunColor * sunIntensity;
-	pushConstantLight.direction = glm::vec4(shadowMapPass->lightDir, 0.0f);
+	pushConstantLight.direction = glm::vec4(shadowMapPass->lightDir, 1.0f);
 	pushConstantLight.sunlightMVP = shadowMapPass->lightSpaceMatrix;
     pushConstantLight.time = AppWindow::getTime();
 	pushConstantLight.numLights = lights.size();
 	
-	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
@@ -226,7 +234,11 @@ void DeferredRendererVulkan::render(Camera& camera)
 
 	lastViewProj = ubo.proj * ubo.view;
 
-	recordDrawCommand(cmdBuffer, currentFrame);
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+	renderDeviceVulkan->beginLabel(cmd, "Deferred Render Pass");
+	recordDrawCommand(cmd, currentFrame);
+	renderDeviceVulkan->endLabel(cmd);
+
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[currentFrame]);
 }
 
@@ -329,12 +341,18 @@ void DeferredRendererVulkan::renderGui()
 void DeferredRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
 	beginRecording(commandBuffer,renderTarget.renderPass,renderTarget.framebuffers[imageIndex]);
-	
-	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	_renderGeometryPass(commandBuffer, currentFrame);
-    vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);	// transition to next pass
-	_renderLightPass(commandBuffer, currentFrame);
+	{
+		uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+		renderDeviceVulkan->beginLabel(commandBuffer, "Geometry Pass");
+		_renderGeometryPass(commandBuffer, currentFrame);
+		renderDeviceVulkan->endLabel(commandBuffer);
 
+		vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);	// transition to next pass
+		
+		renderDeviceVulkan->beginLabel(commandBuffer, "Light Pass");
+		_renderLightPass(commandBuffer, currentFrame);
+		renderDeviceVulkan->endLabel(commandBuffer);
+	}
 	endRecording(commandBuffer);
 }
 
@@ -409,7 +427,6 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 	materialManager->bindMaterial(cmd, (void*)gPassPipeline.get());
 	
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
-		auto& transform = entity.getComponent<TransformComponent>();
 
 		if (entity.hasComponent<LightComponent>()) {
 			lightIndex++;
@@ -419,7 +436,9 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 			const Model* model = modelManager->getModel(modelID);
 
+			uint32_t meshIdx = 0;
 			for (uint32_t meshID : model->meshIDs) {
+
 				pushConstant.objectsRef = objDeviceAddress; 
 				pushConstant.objectIdx  = objectsIndex;
 
@@ -439,6 +458,7 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 				// vkCmdDraw(cmd, static_cast<uint32_t>(mesh->indices.size()), 1, 0, objectsIndex);
 
 				objectsIndex++;
+				meshIdx++;
 			}
 		} else {
 			objectsIndex++;
@@ -707,37 +727,24 @@ void DeferredRendererVulkan::_createFrameBuffers()
 				renderDeviceVulkan->device
 			);
 
-			VkSamplerCreateInfo samplerInfo{};
-			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-			samplerInfo.magFilter = VK_FILTER_LINEAR;
-			samplerInfo.minFilter = VK_FILTER_LINEAR;
-			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-			samplerInfo.anisotropyEnable = VK_TRUE;
-			samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-			samplerInfo.unnormalizedCoordinates = VK_FALSE;
-			samplerInfo.compareEnable = VK_FALSE;
-			samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-			samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			samplerInfo.mipLodBias = 0.0f;
-			samplerInfo.minLod = 0.0f;
-			samplerInfo.maxLod = 0.0f;
-
 			TextureManagerVulkan::createTextureSampler(
 				texture->textureSampler, 
 				renderDeviceVulkan->device,
-				samplerInfo
+				TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
 			);
 
+			VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 			TextureManagerVulkan::transitionImageLayout(
+				cmd,
 				texture->textureImage, 
 				format, 
 				VK_IMAGE_LAYOUT_UNDEFINED, 
 				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
 				1,
+				1,
 				renderDeviceVulkan
 			);
+			renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
 
 			return texture;
 		};
@@ -811,7 +818,11 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			renderDeviceVulkan->device
 		);
 
-		TextureManagerVulkan::createTextureSampler(renderTarget.depthTextures[i]->textureSampler, renderDeviceVulkan->device);
+		TextureManagerVulkan::createTextureSampler(
+			renderTarget.depthTextures[i]->textureSampler,
+			renderDeviceVulkan->device,
+			TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
+		);
 
 		std::array<VkImageView, 8> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,

@@ -132,9 +132,9 @@ void main() {
         );
 
         // traverse the Acceleration Structure
-        // This loop proceeds until a committed hit or miss is found
+        // proceeds until a committed hit or miss is found
         while(rayQueryProceedEXT(query)) {
-            // You can handle Alpha Testing / AnyHit logic here if needed
+            // deal with alpha testing / anyhit
         }
 
         vec3 finalColor;
@@ -188,7 +188,6 @@ void main() {
             const vec3 bary = vec3(1.0 - barycentrics.x - barycentrics.y, barycentrics.x, barycentrics.y);
             vec2 texCoord = v0.uv * bary.x + v1.uv * bary.y + v2.uv * bary.z;
 
-            // Ensure your samplerImages array is visible to the compute stage!
             vec3 albedo = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], texCoord).rgb;
             albedo *= mat.albedoFactor.rgb;
 

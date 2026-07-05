@@ -102,7 +102,10 @@ void TemporalPassVulkan::render(Camera &camera)
 	pushConstant.screenRes = { deferredRendererVulkan->renderTarget.width, deferredRendererVulkan->renderTarget.height };
     pushConstant.maxAccumulation = 128.0f;
 
-    writeTP(renderDeviceVulkan->commandPool.currentBuffer(), currentFrame);
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+    renderDeviceVulkan->beginLabel(cmd, "Temporal Reprojection Pass");
+    writeTP(cmd, currentFrame);
+    renderDeviceVulkan->endLabel(cmd);
 
     ubo.priorViewProj = currentViewProj;
 
@@ -143,7 +146,7 @@ void TemporalPassVulkan::writeTP(VkCommandBuffer cmd, uint32_t currentFrame)
         cmd, currentWriteTarget->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
         VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 
-    _copyDepthToHistory(cmd);
+    _copyImageReource(cmd);
 }
 
 void TemporalPassVulkan::writeTAA(VkCommandBuffer cmd, uint32_t currentFrame)
@@ -363,7 +366,7 @@ void TemporalPassVulkan::_cleanupResources()
     pipeline->destroy();
 }
 
-void TemporalPassVulkan::_copyDepthToHistory(VkCommandBuffer cmd) {
+void TemporalPassVulkan::_copyImageReource(VkCommandBuffer cmd) {
     TextureManagerVulkan::copyImage(cmd, depthImage, prevDepthImage, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT, renderDeviceVulkan);
     TextureManagerVulkan::copyImage(cmd, normalImage, prevNormalImage, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, renderDeviceVulkan);
 }

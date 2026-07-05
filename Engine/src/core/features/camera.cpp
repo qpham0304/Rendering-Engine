@@ -153,7 +153,7 @@ bool Camera::processMouse() {
 
 	if (AppWindow::isMousePressed(MOUSE_BUTTON_LEFT)) {
 		isMouseMoved = true;
-		mouseControl();
+		_mouseControl();
 	}
 	else if (!AppWindow::isMousePressed(MOUSE_BUTTON_LEFT)) {
 		// Unhides cursor since camera is not looking around anymore
@@ -188,7 +188,7 @@ void Camera::translate(const glm::vec3& position)
 	this->position = position;
 }
 
-void Camera::mouseControl()
+void Camera::_mouseControl()
 {
 	double x, y;
 	AppWindow::getCursorPos(&x, &y);

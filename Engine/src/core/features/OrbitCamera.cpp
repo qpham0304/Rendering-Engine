@@ -128,7 +128,7 @@ bool OrbitCamera::processMouse() {
 
         bool isPanning = AppWindow::isKeyPressed(KEY_LEFT_SHIFT);
         
-        mouseControl(isPanning); 
+        _mouseControl(isPanning); 
         return true;
     } 
     else {
@@ -137,7 +137,7 @@ bool OrbitCamera::processMouse() {
     }
 }
 
-void OrbitCamera::mouseControl(bool panning) 
+void OrbitCamera::_mouseControl(bool panning) 
 {
     double x, y;
     AppWindow::getCursorPos(&x, &y);
@@ -212,16 +212,6 @@ void OrbitCamera::scroll_callback(double xoffset, double yoffset)
     if (targetDistance > 100.0f) {
         targetDistance = 100.0f;
     }
-}
-
-void OrbitCamera::updateViewResize(int width, int height) 
-{
-    this->width = width;
-    this->height = height;
-}
-
-void OrbitCamera::setCameraSpeed(int speedMultiplier) { 
-    this->speedMultiplier = static_cast<float>(speedMultiplier); 
 }
 
 void OrbitCamera::translate(const glm::vec3& newPos) 

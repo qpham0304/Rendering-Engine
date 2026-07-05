@@ -11,14 +11,17 @@
 template<typename Type>
 struct SerializerInternal {
     static nlohmann::json Serialize(const void* instance) {
-        if (!instance) return nlohmann::json::object();
+        if (!instance) {
+            return nlohmann::json::object();
+        }
         return nlohmann::json(*static_cast<const Type*>(instance));
     }
 };
 
-#define REGISTER_COMPONENT(Type, Name) \
-    component_factory[Name] = [](entt::entity e, entt::registry& reg, const nlohmann::json& data) { \
-        reg.emplace_or_replace<Type>(e, data.get<Type>()); \
+#define REGISTER_COMPONENT(Type, Name, HookFunction) \
+    component_factory[Name] = [](Entity e, const nlohmann::json& data) { \
+        e.getRegistry()->emplace_or_replace<Type>(e, data.get<Type>()); \
+        HookFunction(e); \
     }; \
     entt::meta<Type>() \
         .type(entt::type_id<Type>().hash()) \
@@ -49,7 +52,7 @@ public:
     }
 
     nlohmann::json loadJson(const std::string& path);
-    nlohmann::json saveEntity(Entity entity, entt::registry& world);
+    nlohmann::json saveEntity(Entity entity);
 
     entt::entity loadEntity(
         const nlohmann::json& data, 
@@ -59,7 +62,7 @@ public:
     );
 
 private:
-    using ComponentLoader = std::function<void(entt::entity, entt::registry&, const nlohmann::json&)>;
+    using ComponentLoader = std::function<void(Entity, const nlohmann::json&)>;
     std::map<std::string, ComponentLoader> component_factory;
     Logger* m_logger;
 };

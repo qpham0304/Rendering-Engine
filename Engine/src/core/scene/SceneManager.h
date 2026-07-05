@@ -27,14 +27,15 @@ public:
 
 	static SceneManager& getInstance();
 	
-	bool addScene(const std::string& name);
+	Scene* addScene(const std::string& name);
 	Scene* getScene(const std::string& name);
 	Scene* getScene(const uint32_t& id);
 	Scene* getActiveScene();
 
 	virtual std::vector<uint32_t> listIDs() const override;
 	
-	void setActiveScene(const std::string& name);
+	bool setActiveScene(const std::string& name);
+	bool setSceneName(Scene* scene, const std::string& newName);
 	bool removeScene(const std::string& name);
 	bool empty();
 

@@ -41,8 +41,8 @@ public:
     void destroyTlas();
 
     // Returning the constructed top-level acceleration structure
-    VkAccelerationStructureKHR getAccelerationStructure() const;
-
+    AccelStructureBufferVulkan* getTlas() const;
+    
     // Return the Acceleration Structure Device Address of a BLAS Id
     VkDeviceAddress getBlasDeviceAddress(uint32_t blasId);
 

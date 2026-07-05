@@ -126,9 +126,11 @@ void ShadowMapPassVulkan::render(Camera& camera)
 	lightProjection[1][1] *= -1;
 	lightSpaceMatrix = lightProjection * lightView;
 
-	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
-	dispatchBlur(cmdBuffer, renderDeviceVulkan->getImageIndex());
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+    renderDeviceVulkan->beginLabel(cmd, "Shadow Pass");
+	recordDrawCommand(cmd, renderDeviceVulkan->getImageIndex());
+	dispatchBlur(cmd, renderDeviceVulkan->getImageIndex());
+    renderDeviceVulkan->endLabel(cmd);
 }
 
 void ShadowMapPassVulkan::beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline)
@@ -186,71 +188,73 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 	Scene* scene = sceneManager.getActiveScene();
 
 	beginRecording(commandBuffer, shadowRenderPass, shadowFramebuffer, shadowPipeline.get());
+	{
+		for (auto& entity : scene->getEntitiesWith<TransformComponent, ModelComponent>()) {
+			auto& transform = entity.getComponent<TransformComponent>();
+			auto& modelComp = entity.getComponent<ModelComponent>();
 
-	for (auto& entity : scene->getEntitiesWith<TransformComponent, ModelComponent>()) {
-		auto& transform = entity.getComponent<TransformComponent>();
-		auto& modelComp = entity.getComponent<ModelComponent>();
+			if(entity.hasComponent<LightProbeComponent>()) {
+				continue;
+			}
 
-		LightPushConstant push{};
-		push.model = transform.getModelMatrix();
-		push.lightMVP = lightSpaceMatrix;
+			LightPushConstant push{};
+			push.model = transform.getModelMatrix();
+			push.lightMVP = lightSpaceMatrix;
 
-		vkCmdPushConstants(
-			commandBuffer,
-			shadowPipeline->pipelineLayout,
-			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-			0,
-			sizeof(LightPushConstant),
-			&push
-		);
+			vkCmdPushConstants(
+				commandBuffer,
+				shadowPipeline->pipelineLayout,
+				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				0,
+				sizeof(LightPushConstant),
+				&push
+			);
 
-		const Model* model = modelManager->getModel(modelComp.modelID);
-		if (!model) {
-			continue;
+			const Model* model = modelManager->getModel(modelComp.modelID);
+			if (!model) {
+				continue;
+			}
+			
+			for (uint32_t meshID : model->meshIDs) {
+				const Mesh* mesh = meshManager->getMesh(meshID);
+				meshManager->bindMesh(meshID);
+
+				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+				vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+			}
 		}
-		
-		for (uint32_t meshID : model->meshIDs) {
-			const Mesh* mesh = meshManager->getMesh(meshID);
-			meshManager->bindMesh(meshID);
 
-			uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-			vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
-		}
-	}
+		for (auto& entity : scene->getEntitiesWith<TransformComponent, MeshComponent>()) {
+			auto& transform = entity.getComponent<TransformComponent>();
+			auto& meshComp = entity.getComponent<MeshComponent>();
 
-	for (auto& entity : scene->getEntitiesWith<TransformComponent, MeshComponent>()) {
-		auto& transform = entity.getComponent<TransformComponent>();
-		auto& meshComp = entity.getComponent<MeshComponent>();
+			LightPushConstant push{};
+			push.model = transform.getModelMatrix();
+			push.lightMVP = lightSpaceMatrix;
 
-		LightPushConstant push{};
-		push.model = transform.getModelMatrix();
-		push.lightMVP = lightSpaceMatrix;
+			vkCmdPushConstants(
+				commandBuffer,
+				shadowPipeline->pipelineLayout,
+				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				0,
+				sizeof(LightPushConstant),
+				&push
+			);
+			
+			for (uint32_t meshID : meshComp.meshIDs) {
+				const Mesh* mesh = meshManager->getMesh(meshID);
+				meshManager->bindMesh(meshID);
 
-		vkCmdPushConstants(
-			commandBuffer,
-			shadowPipeline->pipelineLayout,
-			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-			0,
-			sizeof(LightPushConstant),
-			&push
-		);
-		
-		for (uint32_t meshID : meshComp.meshIDs) {
-			const Mesh* mesh = meshManager->getMesh(meshID);
-			meshManager->bindMesh(meshID);
-
-			uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-			vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
-		}
+				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+				vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+			}
+		}	
 	}
 	endRecording(commandBuffer);
 }
 
 void ShadowMapPassVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIndex) 
 {
-	// TextureManagerVulkan::transitionImageLayout(
-		// cmd, momentImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
-		// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
 	TextureManagerVulkan::createBarrier(cmd, momentImage->textureImage,
 		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
@@ -328,7 +332,8 @@ void ShadowMapPassVulkan::_createDepthMap()
 
 	TextureManagerVulkan::createTextureSampler(
 		depthMap->textureSampler,
-		renderDeviceVulkan->device
+		renderDeviceVulkan->device,
+		TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
 	);
 }
 
@@ -392,8 +397,7 @@ void ShadowMapPassVulkan::_createShadowRenderPass()
 	momentAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	momentAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	momentAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	// set to GENERAL or COLOR_ATTACHMENT_OPTIMAL so Compute can use it
-	momentAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	momentAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;	// or GENERAL for compute
 
 	VkAttachmentReference momentReference{};
 	momentReference.attachment = 0;
@@ -403,7 +407,7 @@ void ShadowMapPassVulkan::_createShadowRenderPass()
     depthAttachment.format = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
     depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // We only need moments now
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -454,9 +458,9 @@ void ShadowMapPassVulkan::_createShadowFrameBuffer()
 
 void ShadowMapPassVulkan::_createMomentImage()
 {
-	auto createTexture = [&](TextureVulkan** outTexture) {
+	auto createTexture = [&](TextureVulkan*& texture) {
 		uint32_t imageID = textureManagerVulkan->createTexture();
-		*outTexture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(imageID));
+		texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(imageID));
 
 		TextureManagerVulkan::createImage(
 			width,
@@ -465,15 +469,15 @@ void ShadowMapPassVulkan::_createMomentImage()
 			VK_IMAGE_TILING_OPTIMAL,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			(*outTexture)->textureImage,
-			(*outTexture)->textureImageMemory,
+			texture->textureImage,
+			texture->textureImageMemory,
 			1,
 			renderDeviceVulkan->device
 		);
 
 		TextureManagerVulkan::createImageView(
-			(*outTexture)->textureImage,
-			(*outTexture)->textureImageView,
+			texture->textureImage,
+			texture->textureImageView,
 			VK_FORMAT_R32G32B32A32_SFLOAT,
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			1,
@@ -486,17 +490,17 @@ void ShadowMapPassVulkan::_createMomentImage()
 		samplerInfo.minFilter = VK_FILTER_LINEAR;
 		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE; // Clear to 1.0 depth
+		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE; // clear to 1.0 depth
 
 		TextureManagerVulkan::createTextureSampler(
-			(*outTexture)->textureSampler,
+			texture->textureSampler,
 			renderDeviceVulkan->device,
 			samplerInfo
 		);
 	};
 
-	createTexture(&momentImage);
-	createTexture(&tempMomentImage);
+	createTexture(momentImage);
+	createTexture(tempMomentImage);
 }
 
 void ShadowMapPassVulkan::_createMomentDescriptor()
@@ -572,4 +576,14 @@ void ShadowMapPassVulkan::_createComputePipeline() {
 		layouts,
 		sizeof(ComputePushConstant)
 	);
+}
+
+void ShadowMapPassVulkan::_recreateResources()
+{
+	m_logger->warn("recource recreation unimlemented");
+}
+
+void ShadowMapPassVulkan::_cleanupResources()
+{
+	m_logger->warn("recource cleanup unimlemented");
 }

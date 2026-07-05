@@ -45,9 +45,7 @@ private:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	void renderGui(void* commandBuffer);
 
-	void _createDescriptors();
 	void _createPipeline();
-	void _updateDescriptorSets(uint32_t index);
 	void _recreateResources();
 	void _cleanupResources();
 

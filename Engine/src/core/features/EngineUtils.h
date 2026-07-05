@@ -12,6 +12,7 @@
 #include <fstream>
 #include "Mesh.h"
 
+
 namespace FileReader {
 
 	static std::vector<char> readFileBinary(std::string_view filename) {

@@ -92,6 +92,6 @@ public:
 	virtual void scroll_callback(double xoffset, double yoffset);
 
 private:
-	void mouseControl();
+	void _mouseControl();
 };
 

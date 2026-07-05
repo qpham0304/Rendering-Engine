@@ -394,7 +394,8 @@ void ImGuiRightSidebarWidget::_componentsControl()
                 TextureManager* textureManager,
                 MaterialManager* materialManager,
                 MeshManager* meshManager,
-                ModelManager* modelManager
+                ModelManager* modelManager,
+                std::string meshType
             ){
                 MaterialDesc materialDesc;
                 materialDesc.albedoIDs.push_back(
@@ -409,6 +410,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
                 model.meshIDs.push_back(meshManager->loadMesh(mesh));
                 ModelComponent modelComponent;
                 modelComponent.modelID = modelManager->addModel(model);
+                modelComponent.path = meshType;
                 entity.addComponent<ModelComponent>(modelComponent);
             };
 
@@ -416,19 +418,23 @@ void ImGuiRightSidebarWidget::_componentsControl()
                 AsyncEvent asyncEvent;
                 eventManager.queue(asyncEvent, [&] (AsyncEvent event) {
                     Mesh mesh = EngineUtils::drawQuad();  
-                    loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager);
+                    loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager, "$prim$Quad");
                 });
             }
             if (ImGui::Selectable("Cube")) {
                 Mesh mesh = EngineUtils::drawCube(2.0f);
-                loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager);
+                loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager, "$prim$Quad");
             }
             if (ImGui::Selectable("Sphere")) { 
                 Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
-                loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager);
+                loadModelData(entity, mesh, textureManager, materialManager, meshManager, modelManager, "$prim$Cube");
             }
             
             ImGui::EndMenu();
+        }
+
+        if (ImGui::Selectable("Sprite")) {
+            entity.addComponent<SpriteComponent>();
         }
 
         if (ImGui::Selectable("Camera")) { 

@@ -41,22 +41,17 @@ void ImGuiMathWidget::render()
         return ImVec2(px, py);
     };
 
-    // Example: Draw a line from (t=0, y=-3) to (t=1, y=3)
     draw_list->AddLine(ToScreen(0.0f, -3.0f), ToScreen(1.0f, 3.0f), IM_COL32(255, 255, 0, 255), 2.0f);
    
     for (int i = 0; i <= degree; i++) {
-        // 1. Calculate the static t position for this dot
         float t_val = (float)i / (float)degree;
         
-        // 2. Map current math (t, y) to screen pixels
         ImVec2 pos = ToScreen(t_val, coeffs[i]);
         
-        // 3. Create an interaction area (Invisible Button)
         ImGui::PushID(i); // Unique ID for each button
         ImGui::SetCursorScreenPos(ImVec2(pos.x - 10, pos.y - 10)); // Center the 20x20 hitbox
         ImGui::InvisibleButton("dot_hitbox", ImVec2(20, 20));
 
-        // 4. Handle Dragging
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
             float mouseY = ImGui::GetIO().MousePos.y;
             
@@ -69,7 +64,6 @@ void ImGuiMathWidget::render()
         }
         ImGui::PopID();
 
-        // 5. Visual Feedback: Draw the dot and a vertical guide line
         draw_list->AddLine(ToScreen(t_val, -3.0f), ToScreen(t_val, 3.0f), IM_COL32(50, 50, 50, 255), 1.0f);
         draw_list->AddCircleFilled(pos, 6.0f, IM_COL32(255, 255, 0, 255));
         

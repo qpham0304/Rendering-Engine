@@ -74,9 +74,6 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	_createOffscreenTarget();
 	_createPipeline();
 
-	textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[0]->id());
-	textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[1]->id());
-
 	return true;
 }
 
@@ -97,11 +94,8 @@ void ForwardRendererVulkan::render(Camera& camera)
 {
     Timer timer(m_name, true);
 
-	if (needResize) {
-        _recreateResources();
-        needResize = false;
-        return; 
-    }
+    RendererVulkan::_resize();
+
 
 	instanceData.clear(); 
     lights.clear();
@@ -151,98 +145,100 @@ void ForwardRendererVulkan::render(Camera& camera)
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[frame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 
-	VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+	renderDeviceVulkan->beginLabel(cmd, "shadow Pass");
 	shadowMapRenderer->render(camera);
-	imageBasedRenderer->onUpdate();
-	imageBasedRenderer->computeSH(cmdBuffer, frame);
-	imageBasedRenderer->computePrefilter(cmdBuffer, frame);
+	renderDeviceVulkan->endLabel(cmd);
 
-	recordDrawToTextureCommand(cmdBuffer, frame);
+	renderDeviceVulkan->beginLabel(cmd, "IBL Pass");
+	imageBasedRenderer->onUpdate();
+	imageBasedRenderer->computeSH(cmd, frame);	//TODO: call this in render manager or somewhere general
+	imageBasedRenderer->computePrefilter(cmd, frame);
+	renderDeviceVulkan->endLabel(cmd);
+
+    renderDeviceVulkan->beginLabel(cmd, "Forward Render Pass");
+	recordDrawToTextureCommand(cmd, frame);
+    renderDeviceVulkan->endLabel(cmd);
+
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTextures[frame]);
 }
 
 void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint32_t imageIndex)
 {
-	beginRecording(
-		cmd,
-		renderTarget.renderPass,
-		renderTarget.framebuffers[imageIndex]
-	);
-	
-	offscreenPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
+	beginRecording(cmd,renderTarget.renderPass,renderTarget.framebuffers[imageIndex]);
+	{
+		offscreenPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
-	renderDeviceVulkan->setViewport(renderTarget.width, renderTarget.height);
-	renderDeviceVulkan->setScissor(renderTarget.width, renderTarget.height);
+		renderDeviceVulkan->setViewport(renderTarget.width, renderTarget.height);
+		renderDeviceVulkan->setScissor(renderTarget.width, renderTarget.height);
 
-	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	vkCmdBindDescriptorSets(
-		cmd,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		offscreenPipeline->pipelineLayout,
-		0,
-		1,
-		&descriptorSets[currentFrame],
-		0,
-		nullptr
-	);
+		uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+		vkCmdBindDescriptorSets(
+			cmd,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			offscreenPipeline->pipelineLayout,
+			0,
+			1,
+			&descriptorSets[currentFrame],
+			0,
+			nullptr
+		);
 
-
-
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if (!scene) {
-		m_logger->error("No scene to render");
-	}
-
-	int index = 0;
-	int lightIndex = 0;
-
-	materialManager->bindMaterial(cmd, (void*)offscreenPipeline.get());
-
-	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
-		TransformComponent& transform = entity.getComponent<TransformComponent>();
-		const glm::mat4& entityTransform = transform.getModelMatrix();
-		glm::vec3& translation = transform.translateVec;
-		
-		if(index >= instanceData.size()) {
-			instanceData.push_back({entityTransform});
-			continue;
+		SceneManager& sceneManager = SceneManager::getInstance();
+		Scene* scene = sceneManager.getActiveScene();
+		if (!scene) {
+			m_logger->error("No scene to render");
 		}
 
-		if(entity.hasComponent<ModelComponent>()) {
-			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-			const Model* model = modelManager->getModel(modelID);
+		int index = 0;
+		int lightIndex = 0;
 
-			if (!model) {
+		materialManager->bindMaterial(cmd, (void*)offscreenPipeline.get());
+
+		for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
+			TransformComponent& transform = entity.getComponent<TransformComponent>();
+			const glm::mat4& entityTransform = transform.getModelMatrix();
+			glm::vec3& translation = transform.translateVec;
+			
+			if(index >= instanceData.size()) {
+				instanceData.push_back({entityTransform});
 				continue;
 			}
-			
-			auto materialManagerVulkan = (MaterialManagerVulkan*)materialManager;
-			for (uint32_t meshID : model->meshIDs) {
-				const Mesh* mesh = meshManager->getMesh(meshID);
+
+			if(entity.hasComponent<ModelComponent>()) {
+				uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
+				const Model* model = modelManager->getModel(modelID);
+
+				if (!model) {
+					continue;
+				}
 				
-				pushConstantLight.materialIdx = mesh->materialID;
-				pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
+				auto materialManagerVulkan = (MaterialManagerVulkan*)materialManager;
+				for (uint32_t meshID : model->meshIDs) {
+					const Mesh* mesh = meshManager->getMesh(meshID);
+					
+					pushConstantLight.materialIdx = mesh->materialID;
+					pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
 
-				meshManager->bindMesh(meshID);
+					meshManager->bindMesh(meshID);
 
-				vkCmdPushConstants(
-					cmd,
-					offscreenPipeline->pipelineLayout,
-					VK_SHADER_STAGE_FRAGMENT_BIT,
-					0,
-					sizeof(PushConstantLight),
-					&pushConstantLight
-				);
-				
+					vkCmdPushConstants(
+						cmd,
+						offscreenPipeline->pipelineLayout,
+						VK_SHADER_STAGE_FRAGMENT_BIT,
+						0,
+						sizeof(PushConstantLight),
+						&pushConstantLight
+					);
+					
 
-				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				renderDeviceVulkan->draw(indexCount, numInstances, index);
+					uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
+					renderDeviceVulkan->draw(indexCount, numInstances, index);
+				}
 			}
+			index++;
 		}
-		index++;
 	}
-
 	endRecording(cmd);
 }
 
@@ -376,84 +372,37 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		uint32_t id = textureManagerVulkan->createTexture();
 
-		auto createTexture = [&] () {
-			auto* texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-			renderTarget.colorTextures[i] = texture;
+		auto createTexture = [&] (TextureVulkan*& texture,
+			uint32_t w, uint32_t h,	VkFormat format,
+			VkImageAspectFlagBits aspect, VkImageUsageFlags extraUsage = 0
+		) {
+			TextureSamplerConfig samplerConfig {};
+			TextureConfig imageConfig { .width = w, .height = h, .format = format, .aspectBits = aspect};
+			imageConfig.usage |= extraUsage;
 
-			TextureManagerVulkan::createImage(
-				swapchain.swapChainExtent.width,
-				swapchain.swapChainExtent.height,
-				swapchain.swapChainImageFormat,
-				VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				texture->textureImage,
-				texture->textureImageMemory,
-				1,
-				renderDeviceVulkan->device
-			);
-
-			TextureManagerVulkan::createImageView(
-				texture->textureImage,
-				texture->textureImageView,
-				swapchain.swapChainImageFormat,
-				VK_IMAGE_ASPECT_COLOR_BIT,
-				1,
-				renderDeviceVulkan->device
-			);
-
-			TextureManagerVulkan::createTextureSampler(
-				texture->textureSampler, 
-				renderDeviceVulkan->device
-			);
-
-			
-			VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-			TextureManagerVulkan::transitionImageLayout(
-				cmd,
-				texture->textureImage,
-				swapchain.swapChainImageFormat,
-				VK_IMAGE_LAYOUT_UNDEFINED,
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-				1,
-				1,
-				renderDeviceVulkan
-			);
-			
-			renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
-
+			uint32_t id = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
+			texture = textureManagerVulkan->getTexture(id);
 		};
 
-		createTexture();
-
-
-		VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
-
-		uint32_t depthId = textureManagerVulkan->createTexture();
-		renderTarget.depthTextures[i] = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(depthId));
-
-		TextureManagerVulkan::createImage(
-			swapchain.swapChainExtent.width,
-			swapchain.swapChainExtent.height,
-			depthFormat,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			renderTarget.depthTextures[i]->textureImage,
-			renderTarget.depthTextures[i]->textureImageMemory,
-			1,
-			renderDeviceVulkan->device
+		createTexture(
+			renderTarget.colorTextures[i],
+			renderTarget.width,
+			renderTarget.height,
+			swapchain.swapChainImageFormat,
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
 		);
 
-		TextureManagerVulkan::createImageView(
-			renderTarget.depthTextures[i]->textureImage,
-			renderTarget.depthTextures[i]->textureImageView,
-			depthFormat,
+		createTexture(
+			renderTarget.depthTextures[i],
+			renderTarget.width,
+			renderTarget.height,
+			TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device),
 			VK_IMAGE_ASPECT_DEPTH_BIT,
-			1,
-			renderDeviceVulkan->device
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 		);
 
+		textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[i]->id());
 
 		std::array<VkImageView, 2> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,
@@ -472,6 +421,7 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &renderTarget.framebuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create offscreen framebuffer!");
 		}
+		
 	}
 }
 
@@ -515,65 +465,17 @@ void ForwardRendererVulkan::_createDescriptorSets()
 void ForwardRendererVulkan::_updateDescriptor()
 {
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
-		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = static_cast<VkBuffer>(*uniformbuffersList[i]);
-		bufferInfo.offset = 0;
-		bufferInfo.range = VK_WHOLE_SIZE;
-
-		VkDescriptorBufferInfo ssboInfo{};
-		ssboInfo.buffer = static_cast<VkBuffer>(*storagebuffersList[i]);
-		ssboInfo.offset = 0;
-		ssboInfo.range = VK_WHOLE_SIZE;
-
-		VkDescriptorBufferInfo lightsBufferInfo{};
-		lightsBufferInfo.buffer = static_cast<VkBuffer>(*lightStoragebuffers[i]);
-		lightsBufferInfo.offset = 0;
-		lightsBufferInfo.range = VK_WHOLE_SIZE;
-
-		VkDescriptorImageInfo imageInfo{};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = shadowMapRenderer->depthMap->textureImageView;
-		imageInfo.sampler = shadowMapRenderer->depthMap->textureSampler;
-		// imageInfo.imageView = shadowMapRenderer->momentImage->textureImageView;
-		// imageInfo.sampler = shadowMapRenderer->momentImage->textureSampler;
-
-		VkDescriptorImageInfo noiseImageInfo{};
-		noiseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		noiseImageInfo.imageView = shadowMapRenderer->blueNoiseImage->textureImageView;
-		noiseImageInfo.sampler = shadowMapRenderer->blueNoiseImage->textureSampler;
-
-		VkDescriptorBufferInfo bufferInfoSH{};
-		bufferInfoSH.buffer = static_cast<VkBuffer>(*imageBasedRenderer->finalSumBuffers[i]);
-		bufferInfoSH.offset = 0;
-		bufferInfoSH.range = VK_WHOLE_SIZE;
-
-		VkDescriptorImageInfo brdfLutImageInfo{};
-		brdfLutImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		brdfLutImageInfo.imageView = imageBasedRenderer->brdfLUT->textureImageView;
-		brdfLutImageInfo.sampler = imageBasedRenderer->brdfLUT->textureSampler;
-
-		VkDescriptorImageInfo prefilterImageInfo{};
-		prefilterImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		prefilterImageInfo.imageView = imageBasedRenderer->prefilterMap->textureImageView;
-		prefilterImageInfo.sampler = imageBasedRenderer->prefilterMap->textureSampler;
-
-		VkDescriptorImageInfo hdrImageInfo{};
-		hdrImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		hdrImageInfo.imageView = imageBasedRenderer->hdrImage->textureImageView;
-		hdrImageInfo.sampler = imageBasedRenderer->hdrImage->textureSampler;
- 
-
-		std::vector<VkWriteDescriptorSet> writes = {};
-		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
-		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 1, ssboInfo);
-		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 2, lightsBufferInfo);
-		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 3, imageInfo);
-		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 4, noiseImageInfo);
-		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 5, bufferInfoSH);
-		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 6, brdfLutImageInfo);
-		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 7, prefilterImageInfo);
-		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 8, hdrImageInfo);
-		descriptorManagerVulkan->updateDescriptorSets(&writes);
+		DescriptorWriter writer{{}, descriptorSets[i] };
+		descriptorManagerVulkan->writeUniform2(writer, uniformbuffersList[i]->getDescUniformBufferInfo());
+		descriptorManagerVulkan->writeStorage2(writer, storagebuffersList[i]->getDescStorageBufferInfo());
+		descriptorManagerVulkan->writeStorage2(writer, lightStoragebuffers[i]->getDescStorageBufferInfo());
+		descriptorManagerVulkan->writeImage2(writer, shadowMapRenderer->depthMap->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeImage2(writer, shadowMapRenderer->blueNoiseImage->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeStorage2(writer, imageBasedRenderer->finalSumBuffers[i]->getDescStorageBufferInfo());
+		descriptorManagerVulkan->writeImage2(writer, imageBasedRenderer->brdfLUT->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeImage2(writer, imageBasedRenderer->prefilterMap->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeImage2(writer, imageBasedRenderer->hdrImage->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->updateDescriptorSets(&writer.writes);
 	}
 }
 

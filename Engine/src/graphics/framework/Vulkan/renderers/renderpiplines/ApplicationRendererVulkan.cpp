@@ -53,7 +53,6 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 		}
 	});
 
-	_createDescriptors();
 	_createPipeline();
 
 	return true;
@@ -72,19 +71,21 @@ void ApplicationRendererVulkan::onUpdate()
 
 void ApplicationRendererVulkan::render(Camera& camera)
 {
-	pushConstantData.index = rendererManagerVulkan->getDisplayImage()->id();
-
 	// stop rendering as we can't record begin/endRecording because the manager's 
 	// command Buffer recording state is likely corrupted by the destruction inside
 	//  _recreateResources By returning, we let the manager call endFrame on an empty buffer
-    if (needResize) {
-        _recreateResources();
-        needResize = false;
-        return; 
-    }
-
-    VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-	recordDrawCommand(cmdBuffer, renderDeviceVulkan->getImageIndex());
+    RendererVulkan::_resize();
+	
+	if(rendererManagerVulkan->getDisplayImage()) {
+		pushConstantData.index = rendererManagerVulkan->getDisplayImage()->id();
+	} else {
+		m_logger->warn("Application has no image to render");
+	}
+	
+    VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+    renderDeviceVulkan->beginLabel(cmd, "Application Pass");
+	recordDrawCommand(cmd, renderDeviceVulkan->getImageIndex());
+    renderDeviceVulkan->endLabel(cmd);
 }
 
 void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -102,54 +103,52 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
     if (texture && texture->textureImageView != lastView) {
 		renderDeviceVulkan->waitIdle(); 
     
-		for (uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
-			_updateDescriptorSets(i);
-		}
         lastView = texture->textureImageView;
     }
 
-	beginRecording(
-		commandBuffer,
-		renderDeviceVulkan->swapchain.renderPass,
-		renderDeviceVulkan->swapchain.currentFrameBuffer()
-	);
+	beginRecording(commandBuffer, renderDeviceVulkan->swapchain.renderPass, renderDeviceVulkan->swapchain.currentFrameBuffer());
+	{
+		if(showGui){
+			renderDeviceVulkan->beginLabel(commandBuffer, "Render to Gui Image Mode");
+			renderGui(commandBuffer);
+			renderDeviceVulkan->endLabel(commandBuffer);
+		} 
+		else {
+			renderDeviceVulkan->beginLabel(commandBuffer, "Render To Swap Chain Mode");
+			// vkCmdBindDescriptorSets(
+			// 	commandBuffer,
+			// 	VK_PIPELINE_BIND_POINT_GRAPHICS,
+			// 	appPipeline->pipelineLayout,
+			// 	0,
+			// 	1,
+			// 	&descriptorSets[renderDeviceVulkan->getCurrentFrameIndex()],
+			// 	0,
+			// 	nullptr
+			// );
 
-	if(showGui){
-		renderGui(commandBuffer);
-	} 
-	else {
-		vkCmdBindDescriptorSets(
-			commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			appPipeline->pipelineLayout,
-			0,
-			1,
-			&descriptorSets[renderDeviceVulkan->getCurrentFrameIndex()],
-			0,
-			nullptr
-		);
+			vkCmdBindDescriptorSets(
+				commandBuffer,
+				VK_PIPELINE_BIND_POINT_GRAPHICS,
+				appPipeline->pipelineLayout,
+				0, 
+				1, 
+				&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
+				0, 
+				nullptr
+			);
 
-		vkCmdBindDescriptorSets(
-			commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			appPipeline->pipelineLayout,
-			1, 
-			1, 
-			&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
-			0, 
-			nullptr
-		);
+			vkCmdPushConstants(
+				commandBuffer,
+				appPipeline->pipelineLayout,
+				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				0,
+				sizeof(PushConstantData),
+				&pushConstantData
+			);
 
-		vkCmdPushConstants(
-			commandBuffer,
-			appPipeline->pipelineLayout,
-			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-			0,
-			sizeof(PushConstantData),
-			&pushConstantData
-		);
-
-		vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+			vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+			renderDeviceVulkan->endLabel(commandBuffer);
+		}
 	}
 	endRecording(commandBuffer);
 }
@@ -192,30 +191,30 @@ void ApplicationRendererVulkan::endRecording(void* cmdBuffer)
 
 void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 {
-	RendererVulkan* renderer = nullptr;
-	renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
-	auto shadowMapRenderer = dynamic_cast<ShadowMapPassVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
-	auto imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("ForwardRendererVulkan");
-	auto forwardRendererVulkan = dynamic_cast<ForwardRendererVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
-	auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
+	// RendererVulkan* renderer = nullptr;
+	// renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
+	// auto shadowMapRenderer = dynamic_cast<ShadowMapPassVulkan*>(renderer);
+	// renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
+	// auto imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
+	// renderer = rendererManagerVulkan->getRenderer("ForwardRendererVulkan");
+	// auto forwardRendererVulkan = dynamic_cast<ForwardRendererVulkan*>(renderer);
+	// renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
+	// auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	// renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
+	// auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
 
-	assert(shadowMapRenderer && imageBasedRenderer && 
-		forwardRendererVulkan && deferredRendererVulkan && 
-		"failed to retrieve renderer"
-	);
+	// assert(shadowMapRenderer && imageBasedRenderer && 
+	// 	forwardRendererVulkan && deferredRendererVulkan && 
+	// 	"failed to retrieve renderer"
+	// );
 
 	guiManager->start();
 	
-	//TODO: temporarily use imgui renderer, abstract to gui service and remove these
+	// //TODO: temporarily use imgui renderer, abstract to gui service and remove these
 	int currentMode = rendererManagerVulkan->getRenderMode(); 
 	if(currentMode == 1) {
-		deferredRendererVulkan->renderGui();
-		bloomPassRendererVulkan->renderGui();
+	// 	// deferredRendererVulkan->renderGui();
+	// 	// bloomPassRendererVulkan->renderGui();
 	}
 
 	ImGui::Begin("Application");
@@ -285,30 +284,6 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	guiManager->end();
 }
 
-void ApplicationRendererVulkan::_createDescriptors()
-{
-	uint32_t frameCount = VulkanUtils::numFrames();
-
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { 
-		{ 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, nullptr },
-	};
-	
-	std::vector<VkDescriptorPoolSize> poolSizes = {
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount },
-	};
-	
-	layoutID = descriptorManagerVulkan->createLayout(bindings);
-	poolID = descriptorManagerVulkan->createPool(poolSizes, frameCount);
-	setsID = descriptorManagerVulkan->createSets(layoutID, poolID, frameCount);
-	
-	descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
-	descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
-	descriptorSets = descriptorManagerVulkan->getDescriptorSet(setsID);
-	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
-		_updateDescriptorSets(i);
-	}
-}
-
 void ApplicationRendererVulkan::_createPipeline()
 {
 	void* handle = materialManager->getMaterialLayout();
@@ -337,26 +312,9 @@ void ApplicationRendererVulkan::_createPipeline()
 		"assets/shaders/spv/default.frag.spv",
 		pipelineConfig,
 		emptyVertexInput,
-		{ descriptorSetLayout, bindlessLayout }, 
+		{ bindlessLayout }, 
 		sizeof(PushConstantData)
 	);
-}
-
-void ApplicationRendererVulkan::_updateDescriptorSets(uint32_t index)
-{
-	TextureVulkan* texture = rendererManagerVulkan->getDisplayImage();
-	if(!texture) {
-		return;
-	}
-
-	VkDescriptorImageInfo imageInfo;
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = texture->textureImageView;
-	imageInfo.sampler = texture->textureSampler;
-
-	std::vector<VkWriteDescriptorSet> writes = {};
-	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 0, imageInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
 void ApplicationRendererVulkan::_recreateResources()
@@ -365,10 +323,6 @@ void ApplicationRendererVulkan::_recreateResources()
 
 	_cleanupResources();
 	_createPipeline();
-
-	for (uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
-        _updateDescriptorSets(i);
-    }
 }
 
 void ApplicationRendererVulkan::_cleanupResources()

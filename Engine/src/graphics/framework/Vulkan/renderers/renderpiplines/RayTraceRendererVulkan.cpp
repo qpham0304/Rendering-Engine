@@ -19,9 +19,8 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h>
-#include <graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h>
-#include <graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h>
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
+#include <graphics/framework/Vulkan/resources/buffers/AccelStructureBufferVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
 #include <glm/gtx/string_cast.hpp>
@@ -53,7 +52,7 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
 	size_t objectsBufferSize = MAX_INSTANCES * sizeof(ObjectDesc);
 	objDeviceAddressBufferID = bufferManagerVulkan->createBufferDeviceAddress(objectsBufferSize);
 	auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(objDeviceAddressBufferID));
-	objDeviceAddress = deviceAddress->getReference();
+	objDeviceAddress = deviceAddress->getAddress();
 
 	lights.reserve(MAX_INSTANCES);
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
@@ -63,7 +62,7 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
 
 	m_rtBuilder.setup(renderDeviceVulkan, bufferManagerVulkan);
 	m_rtBuilder.create();
-    // m_rtBuilder.destroy();
+    
 	_createAccelStructure();
 	_createDescriptor();
 	_createPipeline();
@@ -90,7 +89,6 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
 		}
     });
 
-    
     EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_L) {
@@ -102,9 +100,7 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
 
     uint32_t imageID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
     textureManagerVulkan->registerTextureSampler(imageID);
-
     pushConstant.bluenoiseIdx = imageID;
-
 
 	return true;
 }
@@ -126,11 +122,7 @@ void RayTraceRendererVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 	
-	if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
+	RendererVulkan::_resize();
 
 	instanceDataPrev = std::move(instanceData);
 	// instanceData.clear(); 
@@ -156,8 +148,8 @@ void RayTraceRendererVulkan::render(Camera& camera)
 	ubo.invView = camera.getInViewMatrix();
 	ubo.invProj = camera.getInProjectionMatrix();
 	ubo.invProj[1][1] *= -1.0;
-	ubo.width  = AppWindow::getWidth();
-    ubo.height = AppWindow::getHeight();
+	ubo.width  = currWidth;
+    ubo.height = currHeight;
     
     bool shouldClear = camera.isMoving() || clear;
     ubo.frameSeed = !shouldClear ? rand() % 32768 : ubo.frameSeed;
@@ -184,7 +176,7 @@ void RayTraceRendererVulkan::render(Camera& camera)
 	pushConstant.objectIdx  = 0;//objectsIndex;
     pushConstant.explicitPass = explicitPass ? 1 : 0;
 
-	_updateTlas();
+	updateTlas();
     
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
@@ -198,24 +190,17 @@ void RayTraceRendererVulkan::render(Camera& camera)
 
 void RayTraceRendererVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-	TextureManagerVulkan::transitionImageLayout(
-		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
-	);
-
-	TextureManagerVulkan::transitionImageLayout(
-		cmd, postProcessImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
-	);
+	rayTraceImage->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1);
+    postProcessImage->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1);
 	
     VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-    uint32_t groupX = (swapchain.swapChainExtent.width + 15) / 16;
-    uint32_t groupY = (swapchain.swapChainExtent.height + 15) / 16;
+    uint32_t groupX = (currWidth + 15) / 16;
+    uint32_t groupY = (currHeight + 15) / 16;
 
 	postProcessPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 	auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(postProcessSetID)[currentFrame];
 	auto bindlessSet = descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0];
-	std::vector<VkDescriptorSet> sets = { descriptorSet, bindlessSet };
+	std::vector<VkDescriptorSet> sets = { descriptorSet, bindlessSet }; //TODO: add material set
 
 	vkCmdPushConstants(cmd, postProcessPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushConstant), &pushConstant);
     vkCmdBindDescriptorSets(
@@ -225,115 +210,57 @@ void RayTraceRendererVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t curr
     );
     vkCmdDispatch(cmd, groupX, groupY, 1);
 
-	TextureManagerVulkan::transitionImageLayout(
-		cmd, postProcessImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
-		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-	);
-    
-	TextureManagerVulkan::transitionImageLayout(
-		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
-		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-	);
+	rayTraceImage->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1);
+    postProcessImage->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1);
 }
 
 void RayTraceRendererVulkan::writeRayTracing(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-	TextureManagerVulkan::transitionImageLayout(
-		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan
-	);
+	rayTraceImage->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1);
 
 	rtPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
 	VkDescriptorSet rtSet = descriptorManagerVulkan->getDescriptorSet(raytraceSetID)[currentFrame];
 	auto bindlessSet = descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0];
-	// auto rayTraceLayout = descriptorManagerVulkan->getDescriptorLayout(raytraceLayoutID);
 	std::vector<VkDescriptorSet> sets = { rtSet, bindlessSet };
 
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, 
-							rtPipeline->pipelineLayout, 0, 
-							static_cast<uint32_t>(sets.size()), sets.data(), 
-							0, nullptr);
+	vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, 
+        rtPipeline->pipelineLayout, 0, 
+        static_cast<uint32_t>(sets.size()), sets.data(), 
+        0, nullptr
+    );
 
-	vkCmdPushConstants(cmd, rtPipeline->pipelineLayout, 
-					VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 
-					0, sizeof(PushConstant), &pushConstant);
+	vkCmdPushConstants(
+        cmd, rtPipeline->pipelineLayout, 
+        VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 
+        0, sizeof(PushConstant), &pushConstant
+    );
 
-	// Trace Command using SBT region info
 	vkCmdTraceRaysKHR(cmd, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, ubo.width, ubo.height, 1);
 
-	TextureManagerVulkan::transitionImageLayout(
-		cmd, rayTraceImage->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
-		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-	);
+	rayTraceImage->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1);
 }
 
 #pragma region setup
 void RayTraceRendererVulkan::_createResources() 
 {
-    auto createTexture = [this] (uint32_t& id, TextureVulkan*& texture){
-        id = textureManagerVulkan->createTexture();
+    currWidth = renderDeviceVulkan->swapchain.swapChainExtent.width;
+    currHeight = renderDeviceVulkan->swapchain.swapChainExtent.height;
+    auto createTexture = [this] (TextureVulkan*& texture){
+        uint32_t w = currWidth;
+        uint32_t h = currHeight;
+        TextureSamplerConfig samplerConfig = { VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_MIPMAP_MODE_LINEAR };
+        TextureConfig imageConfig { .width = w, .height = h, .format = VK_FORMAT_R32G32B32A32_SFLOAT};
+
+        uint32_t id = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
         texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-        
-        assert(texture && "failed to cast texture into vulkan texture");
-        
-        VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-        VkDevice device = renderDeviceVulkan->device;
-        
-        TextureManagerVulkan::createImage(
-            swapchain.swapChainExtent.width,
-            swapchain.swapChainExtent.height,
-            VK_FORMAT_R32G32B32A32_SFLOAT,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            texture->textureImage,
-            texture->textureImageMemory,
-            1,
-            renderDeviceVulkan->device
-        );
-
-        TextureManagerVulkan::createImageView(
-            texture->textureImage,
-            texture->textureImageView,
-            VK_FORMAT_R32G32B32A32_SFLOAT,
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            1,
-            renderDeviceVulkan->device
-        );
-
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.anisotropyEnable = VK_FALSE;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias = 0.0f;
-        samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = 1.0f;
-
-        TextureManagerVulkan::createTextureSampler(
-            texture->textureSampler, 
-            renderDeviceVulkan->device,
-            samplerInfo
-        );
-
-		VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-		TextureManagerVulkan::transitionImageLayout(
-			cmd, texture->textureImage, VK_FORMAT_R32G32B32A32_SFLOAT,
-			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-		);
-		renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
     };
-	
-	createTexture(rayTraceImageID, rayTraceImage);
-	createTexture(postProcessImageID, postProcessImage);
+
+	createTexture(rayTraceImage);
+	createTexture(postProcessImage);
+
+    textureManagerVulkan->registerTextureSampler(rayTraceImage->id());
+    textureManagerVulkan->registerTextureSampler(postProcessImage->id());
 }
 
 void RayTraceRendererVulkan::_createPipeline()
@@ -406,61 +333,26 @@ void RayTraceRendererVulkan::_createDescriptor()
 }
 
 void RayTraceRendererVulkan::_updateDescriptor(uint32_t index)
-{	
-	VkDescriptorImageInfo inputImageInfo{};
-	VkDescriptorImageInfo outputImageInfo{};
-	VkDescriptorBufferInfo bufferInfo{};
-    VkDescriptorBufferInfo storageBufferInfo{};
-	VkWriteDescriptorSetAccelerationStructureKHR descASInfo{};
+{
+	AccelStructureBufferVulkan* tlas = m_rtBuilder.getTlas();
 
 	//ray tracing
 	auto rtDescriptorSets = descriptorManagerVulkan->getDescriptorSet(raytraceSetID);
-	auto tlas = m_rtBuilder.getAccelerationStructure();
-
-	outputImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	outputImageInfo.imageView = rayTraceImage->textureImageView;
-	outputImageInfo.sampler = rayTraceImage->textureSampler;
-    
-    bufferInfo.buffer = static_cast<VkBuffer>(*uniformbuffersList[index]);
-    bufferInfo.offset = 0;
-    bufferInfo.range = VK_WHOLE_SIZE;
-
-    storageBufferInfo.buffer = static_cast<VkBuffer>(*lightStoragebuffers[index]);
-    storageBufferInfo.offset = 0;
-    storageBufferInfo.range = VK_WHOLE_SIZE;
-	
-	descASInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-    descASInfo.accelerationStructureCount = 1;
-    descASInfo.pAccelerationStructures    = &tlas;
-
-	std::vector<VkWriteDescriptorSet> writesRayTrace;
-	descriptorManagerVulkan->writeAccelStruct(&writesRayTrace, rtDescriptorSets[index], 0, rtBindings, descASInfo);
-	descriptorManagerVulkan->writeStorageImage(&writesRayTrace, rtDescriptorSets[index], 1, outputImageInfo);
-	descriptorManagerVulkan->writeUniform(&writesRayTrace, rtDescriptorSets[index], 2, bufferInfo);
-	descriptorManagerVulkan->writeStorage(&writesRayTrace, rtDescriptorSets[index], 3, storageBufferInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writesRayTrace);
+	DescriptorWriter writesRayTrace { {}, rtDescriptorSets[index] };
+	descriptorManagerVulkan->writeAccelStruct2(writesRayTrace, rtBindings,  tlas->getDescAccelStructInfo());
+	descriptorManagerVulkan->writeStorageImage2(writesRayTrace, rayTraceImage->getDescImageInfoGeneral());
+	descriptorManagerVulkan->writeUniform2(writesRayTrace, uniformbuffersList[index]->getDescUniformBufferInfo());
+	descriptorManagerVulkan->writeStorage2(writesRayTrace, lightStoragebuffers[index]->getDescStorageBufferInfo());
+	descriptorManagerVulkan->updateDescriptorSets(&writesRayTrace.writes);
 	
 	//post process
 	auto postDescriptorSets = descriptorManagerVulkan->getDescriptorSet(postProcessSetID);
-
-    inputImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	inputImageInfo.imageView = rayTraceImage->textureImageView;
-	inputImageInfo.sampler = rayTraceImage->textureSampler;
-
-	outputImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	outputImageInfo.imageView = postProcessImage->textureImageView;
-	outputImageInfo.sampler = postProcessImage->textureSampler;
-
-    bufferInfo.buffer = static_cast<VkBuffer>(*uniformbuffersList[index]);
-    bufferInfo.offset = 0;
-    bufferInfo.range = VK_WHOLE_SIZE;
-
-	std::vector<VkWriteDescriptorSet> writePostProcess;
-	descriptorManagerVulkan->writeStorageImage(&writePostProcess, postDescriptorSets[index], 0, inputImageInfo);
-	descriptorManagerVulkan->writeStorageImage(&writePostProcess, postDescriptorSets[index], 1, outputImageInfo);
-	descriptorManagerVulkan->writeUniform(&writePostProcess, postDescriptorSets[index], 2, bufferInfo);
-	descriptorManagerVulkan->writeAccelStruct(&writePostProcess, postDescriptorSets[index], 3, postBindings, descASInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writePostProcess);
+	DescriptorWriter writePostProcess { {}, postDescriptorSets[index] };
+	descriptorManagerVulkan->writeStorageImage2(writePostProcess, rayTraceImage->getDescImageInfoGeneral());
+	descriptorManagerVulkan->writeStorageImage2(writePostProcess, postProcessImage->getDescImageInfoGeneral());
+	descriptorManagerVulkan->writeUniform2(writePostProcess, uniformbuffersList[index]->getDescUniformBufferInfo());
+	descriptorManagerVulkan->writeAccelStruct2(writePostProcess, postBindings,  tlas->getDescAccelStructInfo());
+	descriptorManagerVulkan->updateDescriptorSets(&writePostProcess.writes);
 }
 
 void RayTraceRendererVulkan::_recreateResources()
@@ -468,18 +360,83 @@ void RayTraceRendererVulkan::_recreateResources()
 	renderDeviceVulkan->waitIdle();
 	rendererManagerVulkan->setDisplayImage(nullptr);
 	_cleanupResources();
+    
 	_createResources();
 	_createDescriptor();
-	uint32_t frameCount = VulkanUtils::numFrames();
-	for(int i = 0; i < frameCount; i++) {
+	for(int i = 0; i < VulkanUtils::numFrames(); i++) {
         _updateDescriptor(i);
     }
+    _createPipeline();
 }
 
 void RayTraceRendererVulkan::_cleanupResources()
 {
+    textureManagerVulkan->destroy(rayTraceImage->id());
+    textureManagerVulkan->destroy(postProcessImage->id());
 	rtPipeline->destroy();
 	postProcessPipeline->destroy();
+}
+
+void RayTraceRendererVulkan::_populateData(std::vector<VkAccelerationStructureInstanceKHR>& tlas, int& objectsIndex)
+{	
+    SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	if(!scene){
+		m_logger->error("No scene to render");
+	}
+	lights.clear();
+    
+    auto entities = scene->getEntitiesWith<TransformComponent, ModelComponent>();
+    for (auto& entity : entities) {
+        auto& transform = entity.getComponent<TransformComponent>();
+        uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
+        const Model* model = modelManager->getModel(modelID);
+        
+        for (uint32_t meshID : model->meshIDs) {
+			const MeshManager::MeshData& meshData = meshManager->getMeshData(meshID);
+			
+			ObjectDesc desc{};
+			desc.vertexAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.vertexBDA_ID))->getAddress();
+			desc.indexAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID))->getAddress();
+			desc.materialsRef = materialsAddress;
+			desc.materialIndicesRef = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.matIndicesBDA_ID))->getAddress();
+			objects[objectsIndex] = desc;	//blas per mesh not per entity
+
+            VkAccelerationStructureInstanceKHR inst{};
+            inst.transform = toTransformMatrixKHR(transform.getModelMatrix());
+            inst.instanceCustomIndex = objectsIndex;
+            inst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(meshID - 1);
+            inst.mask = 0xFF;
+            inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+            
+            tlas.push_back(inst);
+
+            Mesh* mesh = meshManager->getMesh(meshID);
+            MaterialDesc mat = materialManager->getMaterial(mesh->materialID);
+            if (mat.emissive > 0.01f) {
+                LightSSBO light{};
+                
+                // light.color = mat.albedo;
+                // light.color.a = mat.emissive; 
+
+                glm::mat4 modelMatrix = transform.getModelMatrix();
+
+                glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
+                glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
+                glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
+
+                light.v0 = modelMatrix * glm::vec4(localV0, 1.0f);
+                light.v1 = modelMatrix * glm::vec4(localV1, 1.0f);
+                light.v2 = modelMatrix * glm::vec4(localV2, 1.0f);
+
+                light.instanceIdx = objectsIndex; 
+                light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
+                
+                lights.push_back(light);
+            }
+            objectsIndex++;
+        }
+    }
 }
 
 BlasInput RayTraceRendererVulkan::_toVkGeometry(uint32_t meshID) {
@@ -490,11 +447,11 @@ BlasInput RayTraceRendererVulkan::_toVkGeometry(uint32_t meshID) {
 	desc.materialsRef = materialsAddress;
 	DeviceAddressBufferVulkan* bdaBuffer;
 	bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.matIndicesBDA_ID));
-	desc.materialIndicesRef = bdaBuffer->getReference();
+	desc.materialIndicesRef = bdaBuffer->getAddress();
 	bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.vertexBDA_ID));
-	desc.vertexAddress = bdaBuffer->getReference();
+	desc.vertexAddress = bdaBuffer->getAddress();
 	bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID));
-	desc.indexAddress = bdaBuffer->getReference();
+	desc.indexAddress = bdaBuffer->getAddress();
     
     // describe the geometry with BDA pointers
     VkAccelerationStructureGeometryKHR geometry{};
@@ -557,83 +514,13 @@ void RayTraceRendererVulkan::_createAccelStructure()
 
     m_rtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if(!scene){
-		m_logger->error("No scene to render");
-	}
-	
-    auto entities = scene->getEntitiesWith<TransformComponent, ModelComponent>();
-	int index = 0;
     int objectsIndex = 0;
-    for (auto& entity : entities) {
-        auto& transform = entity.getComponent<TransformComponent>();
+	_populateData(tlas, objectsIndex);
 
-        if (entity.hasComponent<ModelComponent>()) {
-            uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-            const Model* model = modelManager->getModel(modelID);
-            
-            for (uint32_t meshID : model->meshIDs) {
-				const MeshManager::MeshData& meshData = meshManager->getMeshData(meshID);
-                
-                ObjectDesc desc{};
-                desc.vertexAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.vertexBDA_ID))->getReference();
-                desc.indexAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID))->getReference();
-                desc.materialsRef = materialsAddress;
-                desc.materialIndicesRef = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.matIndicesBDA_ID))->getReference();
-                objects[objectsIndex] = desc;	//blas per mesh not per entity
-
-                VkAccelerationStructureInstanceKHR inst{};
-                inst.transform = toTransformMatrixKHR(transform.getModelMatrix());
-                inst.instanceCustomIndex = objectsIndex; 											// links the Ray Hit to objects[objectsIndex]
-                inst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(meshID - 1);	// meshID starts at 1 while so id -1 match blas array index
-                inst.mask = 0xFF;
-                inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-                
-                tlas.push_back(inst);
-
-				Mesh* mesh = meshManager->getMesh(meshID);
-                MaterialDesc mat = materialManager->getMaterial(mesh->materialID);
-                if (mat.emissive > 0.01f) {
-                    LightSSBO light{};
-                    
-                    // 1. Setup Color and Intensity (using the .a for intensity as discussed)
-                    // light.color = mat.albedo;
-                    // light.color.a = mat.emissive; 
-
-                    // 2. Get the Model Matrix to transform vertices to World Space
-                    glm::mat4 modelMatrix = transform.getModelMatrix();
-
-                    // 3. Pick a triangle (usually the first one, index 0, 1, 2)
-                    // We fetch the local positions from your mesh data
-                    glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
-                    glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
-                    glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
-
-                    // 4. Transform local vertices to World Space
-                    light.v0 = modelMatrix * glm::vec4(localV0, 1.0f);
-                    light.v1 = modelMatrix * glm::vec4(localV1, 1.0f);
-                    light.v2 = modelMatrix * glm::vec4(localV2, 1.0f);
-
-                    // 5. Meta-data
-                    light.instanceIdx = objectsIndex; 
-                    // Divide by 3 if you want the actual triangle count, not index count
-                    light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
-                    
-                    lights.push_back(light);
-                }
-                objectsIndex++;
-            }
-        }
-    }
-    
-    // first frame tlas must be built first before it can be updated 
-    // or get a screen flash with app crash blue screen
+    // first frame tlas must be built first before it can be updated or get a screen flash
     m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR, m_tlasInitialized, false);
     m_tlasInitialized = true;
 }
-
-
 
 template <class integral>
 constexpr integral align_up(integral x, size_t a) noexcept
@@ -679,9 +566,8 @@ void RayTraceRendererVulkan::_createShaderBindingTable()
     printf("    hit  %2ld:%2ld\n", m_hitRegion.stride,  m_hitRegion.size);
     printf("    call %2ld:%2ld\n", m_callRegion.stride, m_callRegion.size);
 
-    // Get the shader group handles.  This is a byte array retrieved
-    // from the pipeline.
-    uint32_t             dataSize = handleCount * handleSize;
+    // Get the shader group handles.  This is a byte array retrieved from the pipeline.
+    uint32_t dataSize = handleCount * handleSize;
     std::vector<uint8_t> handles(dataSize);
     printf("\n");
     VkResult result = vkGetRayTracingShaderGroupHandlesKHR(
@@ -735,13 +621,15 @@ void RayTraceRendererVulkan::_createShaderBindingTable()
     offset = m_rgenRegion.size;
     for(uint32_t c = 0; c < missCount; c++) {
         memcpy(mappedMemAddress+offset, getHandle(handleIdx++), handleSize);
-        offset += m_missRegion.stride; }
+        offset += m_missRegion.stride; 
+    }
 
     // Hit
     offset = m_rgenRegion.size + m_missRegion.size;
     for(uint32_t c = 0; c < hitCount; c++) {
         memcpy(mappedMemAddress+offset, getHandle(handleIdx++), handleSize);
-        offset += m_hitRegion.stride; }
+        offset += m_hitRegion.stride; 
+    }
 
     vkUnmapMemory(renderDeviceVulkan->device, stagingBuffer->getMemory());
     
@@ -750,77 +638,11 @@ void RayTraceRendererVulkan::_createShaderBindingTable()
 	bufferManagerVulkan->destroy(stagingBufferID);
 }
 
-void RayTraceRendererVulkan::_updateTlas() {
+void RayTraceRendererVulkan::updateTlas() {
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
 
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if(!scene){
-		m_logger->error("No scene to render");
-	}
-	lights.clear();
-    
-    auto entities = scene->getEntitiesWith<TransformComponent, ModelComponent>();
     int objectsIndex = 0;
-
-    for (auto& entity : entities) {
-        auto& transform = entity.getComponent<TransformComponent>();
-        uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-        const Model* model = modelManager->getModel(modelID);
-        
-        for (uint32_t meshID : model->meshIDs) {
-			const MeshManager::MeshData& meshData = meshManager->getMeshData(meshID);
-			
-			ObjectDesc desc{};
-			desc.vertexAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.vertexBDA_ID))->getReference();
-			desc.indexAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID))->getReference();
-			desc.materialsRef = materialsAddress;
-			desc.materialIndicesRef = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.matIndicesBDA_ID))->getReference();
-			objects[objectsIndex] = desc;	//blas per mesh not per entity
-
-            VkAccelerationStructureInstanceKHR inst{};
-            inst.transform = toTransformMatrixKHR(transform.getModelMatrix());
-            inst.instanceCustomIndex = objectsIndex;
-            inst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(meshID - 1);
-            inst.mask = 0xFF;
-            inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-            
-            tlas.push_back(inst);
-
-            
-            Mesh* mesh = meshManager->getMesh(meshID);
-            MaterialDesc mat = materialManager->getMaterial(mesh->materialID);
-            if (mat.emissive > 0.01f) {
-                LightSSBO light{};
-                
-                // 1. Setup Color and Intensity (using the .a for intensity as discussed)
-                // light.color = mat.albedo;
-                // light.color.a = mat.emissive; 
-
-                // 2. Get the Model Matrix to transform vertices to World Space
-                glm::mat4 modelMatrix = transform.getModelMatrix();
-
-                // 3. Pick a triangle (usually the first one, index 0, 1, 2)
-                // We fetch the local positions from your mesh data
-                glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
-                glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
-                glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
-
-                // 4. Transform local vertices to World Space
-                light.v0 = modelMatrix * glm::vec4(localV0, 1.0f);
-                light.v1 = modelMatrix * glm::vec4(localV1, 1.0f);
-                light.v2 = modelMatrix * glm::vec4(localV2, 1.0f);
-
-                // 5. Meta-data
-                light.instanceIdx = objectsIndex; 
-                // Divide by 3 if you want the actual triangle count, not index count
-                light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
-                
-                lights.push_back(light);
-            }
-            objectsIndex++;
-        }
-    }
+    _populateData(tlas, objectsIndex);
 
     m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR, m_tlasInitialized, false);
     
@@ -829,7 +651,7 @@ void RayTraceRendererVulkan::_updateTlas() {
 
 	VkWriteDescriptorSetAccelerationStructureKHR descASInfo{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
 	descASInfo.accelerationStructureCount = 1;
-	VkAccelerationStructureKHR tlasHandle = m_rtBuilder.getAccelerationStructure();
+	VkAccelerationStructureKHR tlasHandle = m_rtBuilder.getTlas()->getAccelStr();
 	descASInfo.pAccelerationStructures = &tlasHandle;
 
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
@@ -838,5 +660,4 @@ void RayTraceRendererVulkan::_updateTlas() {
 	descriptorManagerVulkan->writeAccelStruct(&writes, rayTraceSet, 0, rtBindings, descASInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
-
 #pragma endregion setup

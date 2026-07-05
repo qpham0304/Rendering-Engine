@@ -15,6 +15,7 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/DeferredCombinePassVulkan.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
+#include "graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h"
 #include "RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
 
@@ -34,32 +35,41 @@ bool RendererManagerVulkan::init(WindowConfig config)
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
 
     applicationRenderer = addRenderer<ApplicationRendererVulkan>("ApplicationRendererVulkan");
-    forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
-    deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
-    raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
+    
     shadowMapPass = addRenderer<ShadowMapPassVulkan>("ShadowMapPassVulkan");
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
-    alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
-    hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
-    SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
-    bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
-    temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
-    deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
+
+    forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
+    // deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
+    raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
+    
+    // alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
+    // hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
+    // SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
+    // bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
+    // temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
+    // ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
+    // deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
     // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererRendererVulkan");
 	
-    applicationRenderer->init(config);
-	imageBasedRenderer->init(config);
-	shadowMapPass->init(config);
-    // alchemyAORenderer->init(config);
-    // hiZPassRenderer->init(config);
-    forwardRenderer->init(config);
-	deferredRenderer->init(config);
-	raytracingRenderer->init(config);
-    SSRGIPassRenderer->init(config);
-    bloomRenderer->init(config);
-    temporalPassRenderer->init(config);
-    deferredCombineRenderer->init(config);
-	// postProcessRenderer->init(config);
+    // applicationRenderer->init(config);
+	// imageBasedRenderer->init(config);
+	// shadowMapPass->init(config);
+    // // // alchemyAORenderer->init(config);
+    // // // hiZPassRenderer->init(config);
+    // forwardRenderer->init(config);
+	// // deferredRenderer->init(config);
+	// raytracingRenderer->init(config);
+    // // SSRGIPassRenderer->init(config);
+    // // bloomRenderer->init(config);
+    // // temporalPassRenderer->init(config);
+    // // ddgiPassRenderer->init(config);
+    // // deferredCombineRenderer->init(config);
+	// // postProcessRenderer->init(config);
+
+    for(auto& [name, renderer] : m_renderers) {
+        renderer->init(config);
+    }
 
     return true;
 }
@@ -68,22 +78,23 @@ bool RendererManagerVulkan::onClose()
 {
     Service::onClose();
 
-    // for(auto& [name, renderer] : m_renderers) {
-    //     renderer->onClose();
-    // }
     renderDeviceVulkan->waitIdle();
-    applicationRenderer->onClose();
-	forwardRenderer->onClose();
-	deferredRenderer->onClose();
-	raytracingRenderer->onClose();
-	shadowMapPass->onClose();
-	imageBasedRenderer->onClose();
-    alchemyAORenderer->onClose();
-    hiZPassRenderer->onClose();
-    SSRGIPassRenderer->onClose();
-    bloomRenderer->onClose();
-    temporalPassRenderer->onClose();
-    deferredCombineRenderer->onClose();
+    for (auto& [name, renderer] : std::views::reverse(m_renderers)) {
+        renderer->onClose();
+    }
+    // applicationRenderer->onClose();
+	// forwardRenderer->onClose();
+	// deferredRenderer->onClose();
+	// raytracingRenderer->onClose();
+	// shadowMapPass->onClose();
+	// imageBasedRenderer->onClose();
+    // alchemyAORenderer->onClose();
+    // hiZPassRenderer->onClose();
+    // SSRGIPassRenderer->onClose();
+    // bloomRenderer->onClose();
+    // temporalPassRenderer->onClose();
+    // ddgiPassRenderer->onClose();
+    // deferredCombineRenderer->onClose();
 	// postProcessRenderer->onClose();
     return true;
 }
@@ -110,12 +121,13 @@ void RendererManagerVulkan::onUpdate()
         }
         deferredRenderer->onUpdate();
         hiZPassRenderer->onUpdate();
-        SSRGIPassRenderer->onUpdate();
-        bloomRenderer->onUpdate();
-        if(tmp->denoiserOn) {
-            temporalPassRenderer->onUpdate();
-        }
-        deferredCombineRenderer->onUpdate();
+        // SSRGIPassRenderer->onUpdate();
+        // bloomRenderer->onUpdate();
+        // if(tmp->denoiserOn) {
+        //     temporalPassRenderer->onUpdate();
+        // }
+        // ddgiPassRenderer->onUpdate();
+        // deferredCombineRenderer->onUpdate();
     } else if(currentRenderMode == 2) {
         raytracingRenderer->onUpdate();
     }
@@ -143,13 +155,14 @@ void RendererManagerVulkan::render()
             alchemyAORenderer->render(*camera);
         }
         deferredRenderer->render(*camera);
-        // hiZPassRenderer->render(*camera);
+        hiZPassRenderer->render(*camera);
         // SSRGIPassRenderer->render(*camera);
-        bloomRenderer->render(*camera);
+        // bloomRenderer->render(*camera);
         // if(tmp->denoiserOn) {
         //     temporalPassRenderer->render(*camera);
         // }
-        deferredCombineRenderer->render(*camera);
+        // ddgiPassRenderer->render(*camera);
+        // deferredCombineRenderer->render(*camera);
     } else if(currentRenderMode == 2) {
         raytracingRenderer->render(*camera);
     }
@@ -160,11 +173,12 @@ void RendererManagerVulkan::render()
 
 RendererVulkan* RendererManagerVulkan::getRenderer(std::string_view name)
 {
-    auto it = m_renderers.find(name.data());
-    if(it == m_renderers.end()) {
-        return nullptr;
+    for(auto& tuple : m_renderers) {
+        if(name.data() == std::get<0>(tuple)) {
+            return dynamic_cast<RendererVulkan*>(std::get<1>(tuple).get());
+        }
     }
-    return dynamic_cast<RendererVulkan*>(it->second.get());
+    return nullptr;
 }
 
 void RendererManagerVulkan::setRenderMode(uint32_t mode)

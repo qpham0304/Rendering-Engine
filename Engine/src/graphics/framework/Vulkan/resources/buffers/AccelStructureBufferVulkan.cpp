@@ -27,13 +27,16 @@ VkAccelerationStructureKHR AccelStructureBufferVulkan::getAccelStr()
     return accelStr;
 }
 
+const VkWriteDescriptorSetAccelerationStructureKHR& AccelStructureBufferVulkan::getDescAccelStructInfo()
+{
+    descASInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+    descASInfo.accelerationStructureCount = 1;
+    descASInfo.pAccelerationStructures    = &accelStr;
+    return descASInfo;
+}
+
 void AccelStructureBufferVulkan::destroy(VkDevice device)
 {
     BufferVulkan::destroy(device);
     vkDestroyAccelerationStructureKHR(device, accelStr, nullptr);
 }
-
-// void AccelStructureBufferVulkan::update(const void* data, size_t size)
-// {
-// 	memcpy(uniformBufferMapped, data, size);
-// }

@@ -21,3 +21,12 @@ void UniformBufferVulkan::update(const void* data, size_t size)
 {
 	memcpy(uniformBufferMapped, data, size);
 }
+
+const VkDescriptorBufferInfo& UniformBufferVulkan::getDescUniformBufferInfo()
+{
+	bufferInfo.buffer = buffer;
+	bufferInfo.offset = 0;
+	bufferInfo.range = VK_WHOLE_SIZE;
+
+    return bufferInfo;
+}

@@ -5,6 +5,7 @@
 
 struct RayPayload {
     vec3 hitPos;
+    vec3 worldNormal;
     vec3 bc;
     int instanceIndex;
     int primitiveIndex;

@@ -79,4 +79,8 @@ private:
 	void _createDescriptorSetGlobalSum();
 	void _createResourceLUT();
 	void _createResourcePrefilteredMap();
+	void _createPipelines();
+	void _recreateResources() override;
+	void _cleanupResources() override;
+
 };

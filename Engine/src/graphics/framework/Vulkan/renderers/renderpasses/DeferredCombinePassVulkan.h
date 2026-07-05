@@ -11,6 +11,10 @@ public:
 		alignas(4) float time;
 		alignas(4) float frameSeed;
 		alignas(4) int shouldCombine;
+		alignas(4) float gridSpacing;
+		alignas(4) uint32_t probesPerDimension;
+		alignas(16) glm::vec4 gridOrigin;
+		alignas(4) uint32_t probesResolution;
 	};
 
 	struct UniformBufferObject {
@@ -35,7 +39,11 @@ public: // TODO: consider make private
 	TextureVulkan* denoisedGIImage;
 	TextureVulkan* sceneImage;
 	TextureVulkan* albedoImage;
+	TextureVulkan* depthImage;
+	TextureVulkan* normalImage;
 	TextureVulkan* bloomImage;
+	TextureVulkan* atlasImageGI;
+	TextureVulkan* visibilityAtlasImageGI;
 
 protected:
 	void _createResources();

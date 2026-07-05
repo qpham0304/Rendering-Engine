@@ -206,14 +206,14 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 		renderDeviceVulkan->device
 	);
 
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
 	transitionImageLayout(
-		texture->textureImage,
-		format,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		mipLevels,
-		renderDeviceVulkan
+		cmd, texture->textureImage, format,
+		VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		mipLevels, 1, renderDeviceVulkan
 	);
+	renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+
 	copyBufferToImage(stagingBuffer, texture->textureImage, texWidth, texHeight, renderDeviceVulkan);
 	generateMipmaps(texture->textureImage, format, texWidth, texHeight, mipLevels, renderDeviceVulkan);
 
@@ -314,13 +314,13 @@ void TextureManagerVulkan::registerTextureSampler(uint32_t textureID)
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
-void TextureManagerVulkan::registerTextureStorage(uint32_t textureID, VkImageLayout layout)
+void TextureManagerVulkan::registerTextureStorage(uint32_t textureID)
 {
     TextureVulkan* tex = getTexture(textureID);
     VkDescriptorSet globalSet = descriptorManagerVulkan->getDescriptorSet(globalBindlessSetID)[0];
 
     VkDescriptorImageInfo imageInfo{};
-    imageInfo.imageLayout = layout;
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
     imageInfo.imageView = tex->textureImageView;
     imageInfo.sampler = tex->textureSampler;
 
@@ -465,7 +465,7 @@ void TextureManagerVulkan::createImageView(
     }
 }
 
-void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, VulkanDevice& device)
+VkSamplerCreateInfo TextureManagerVulkan::createLinearSampler(VulkanDevice &device)
 {
 	VkPhysicalDeviceProperties properties{};
 	vkGetPhysicalDeviceProperties(device.getPhysicalDevice(), &properties);
@@ -488,9 +488,7 @@ void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, Vulka
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
 
-	if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create texture sampler!");
-	}
+	return samplerInfo;
 }
 
 void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, VulkanDevice& device, VkSamplerCreateInfo samplerInfo)
@@ -505,8 +503,6 @@ void TextureManagerVulkan::createTextureSampler(VkSampler& textureSampler, Vulka
 	}
 }
 
-// NOTE: transition only support color bit at the moment
-// depth transition need to create it own barrier
 void TextureManagerVulkan::transitionImageLayout(
 	VkCommandBuffer cmd,
 	VkImage image,
@@ -518,9 +514,7 @@ void TextureManagerVulkan::transitionImageLayout(
 	RenderDeviceVulkan* renderDeviceVulkan	//TODO: this is not used
 ){
 	VkImageAspectFlags aspect = 0;
-	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL || 
-    	format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D16_UNORM) 
-	{
+	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL || format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D16_UNORM) {
 		aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
 	} else {
 		aspect = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -614,7 +608,6 @@ void TextureManagerVulkan::transitionImageLayout(
 		sourceStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 		
-		// Check if it's a depth format to set the correct aspect mask
 		if (format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D16_UNORM || format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
 			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		} else {
@@ -683,31 +676,6 @@ void TextureManagerVulkan::transitionImageLayout(
 }
 
 
-void TextureManagerVulkan::transitionImageLayout(
-	VkImage image,
-	VkFormat format,
-	VkImageLayout oldLayout,
-	VkImageLayout newLayout,
-	uint32_t mipLevels,
-	RenderDeviceVulkan* renderDeviceVulkan
-){
-	VkCommandBuffer commandBuffer = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-
-	transitionImageLayout(
-		commandBuffer,
-		image,
-		format,
-		oldLayout,
-		newLayout,
-		mipLevels,
-		1,
-		renderDeviceVulkan
-	);
-
-	renderDeviceVulkan->commandPool.endSingleTimeCommand(commandBuffer);
-}
-
-
 void TextureManagerVulkan::copyBufferToImage(
 	VkBuffer buffer,
 	VkImage image,
@@ -742,7 +710,7 @@ void TextureManagerVulkan::copyBufferToImage(
 	renderDeviceVulkan->commandPool.endSingleTimeCommand(commandBuffer);
 }
 
-uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig)
+uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig)
 {
 	std::shared_ptr<TextureVulkan> texture = std::make_shared<TextureVulkan>(m_ids);
 	m_textures[m_ids] = texture;
@@ -751,9 +719,9 @@ uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig)
 		textureConfig.width,
 		textureConfig.height,
 		textureConfig.format,
-		VK_IMAGE_TILING_OPTIMAL,
+		textureConfig.tiling,
 		textureConfig.usage,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		textureConfig.properties,
 		texture->textureImage,
 		texture->textureImageMemory,
 		textureConfig.mipLevels,
@@ -764,16 +732,39 @@ uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig)
 		texture->textureImage,
 		texture->textureImageView,
 		textureConfig.format,
-		textureConfig.aspect,
+		textureConfig.aspectBits,
 		textureConfig.mipLevels,
 		renderDeviceVulkan->device
 	);
 
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = samplerConfig.filter;
+	samplerInfo.minFilter = samplerConfig.filter;
+	samplerInfo.addressModeU = samplerConfig.addressMode;
+	samplerInfo.addressModeV = samplerConfig.addressMode;
+	samplerInfo.addressModeW = samplerConfig.addressMode;
+	samplerInfo.anisotropyEnable = VK_FALSE;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode = samplerConfig.mipmapMode;
+	samplerInfo.mipLodBias = 0.0f;
+	samplerInfo.minLod = 0.0f;
+	samplerInfo.maxLod = 1.0f;
+
 	TextureManagerVulkan::createTextureSampler(
 		texture->textureSampler, 
-		renderDeviceVulkan->device
+		renderDeviceVulkan->device,
+		samplerInfo
 	);
 
+	texture->init(textureConfig, samplerConfig);
+
+	auto cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+	texture->transitImage(cmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
 	
     return _assignID();
 }
@@ -1008,6 +999,45 @@ void TextureManagerVulkan::copyImage(
         renderDeviceVulkan->swapchain.swapChainExtent.height, 
         1 
     };
+
+    vkCmdCopyImage(
+        cmd, srcImage->textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dstImage->textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &copyRegion
+    );
+
+    TextureManagerVulkan::transitionImageLayout(
+        cmd, srcImage->textureImage, format,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
+
+    TextureManagerVulkan::transitionImageLayout(
+        cmd, dstImage->textureImage, format,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
+
+}
+
+void TextureManagerVulkan::copyImage(
+	VkCommandBuffer cmd,
+	TextureVulkan *srcImage,
+	TextureVulkan *dstImage,
+	VkFormat format,
+	VkImageAspectFlags aspect,
+	uint32_t imageWidth,
+	uint32_t imageHeight,
+	RenderDeviceVulkan *renderDeviceVulkan
+) {
+    TextureManagerVulkan::transitionImageLayout(
+        cmd, srcImage->textureImage, format,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 1, 1, renderDeviceVulkan);
+
+    TextureManagerVulkan::transitionImageLayout(
+        cmd, dstImage->textureImage, format,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, 1, renderDeviceVulkan);
+
+    VkImageCopy copyRegion{};
+    copyRegion.srcSubresource = { aspect, 0, 0, 1 };
+    copyRegion.dstSubresource = { aspect, 0, 0, 1 };
+    copyRegion.extent = { imageWidth, imageHeight, 1 };
 
     vkCmdCopyImage(
         cmd, srcImage->textureImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

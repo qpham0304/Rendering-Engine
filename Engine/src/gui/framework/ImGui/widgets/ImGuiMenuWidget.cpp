@@ -22,17 +22,11 @@ void ImGuiMenuWidget::MainMenuBar()
 {
 	if (ImGui::BeginMainMenuBar())
 	{
-		ImGui::SetNextWindowSize({ 250.0f, 0.0f });
 		FileMenu();
-		ImGui::SetNextWindowSize({ 250.0f, 0.0f });
 		EditMenu();
-		ImGui::SetNextWindowSize({ 250.0f, 0.0f });
 		ToolMenu();
-		ImGui::SetNextWindowSize({ 250.0f, 0.0f });
 		WindowMenu();
-		ImGui::SetNextWindowSize({ 250.0f, 0.0f });
 		HelpMenu();
-
 
 		ImGui::EndMainMenuBar();
 	}
@@ -121,10 +115,6 @@ void ImGuiMenuWidget::ToolMenu()
 
 void ImGuiMenuWidget::WindowMenu()
 {
-	// for(auto& widget : m_widgetRefs) {
-	// 	printf("widget: %s", widget->getName());
-	// }
-
 	if (ImGui::BeginMenu("Window"))
 	{
 		if (ImGui::MenuItem("Show all Debugs", nullptr, &m_showDebug)) {

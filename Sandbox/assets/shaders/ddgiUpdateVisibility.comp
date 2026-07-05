@@ -1,0 +1,136 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+#extension GL_ARB_gpu_shader_int64 : require
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform UniformBufferObject {
+    mat4 view;
+    mat4 prevViewProj;
+    mat4 proj;
+    vec4 cameraPos;
+    mat4 invView;
+    mat4 invProj;
+    float width;
+    float height;
+    float frameSeed;
+    int frameCount;
+    int clear;
+} ubo;
+
+layout(set = 0, binding = 1, rg16f) readonly uniform image2D rayDistanceBuffer;
+layout(set = 0, binding = 2) uniform sampler2D lastFrameVisibilityAtlas;
+layout(set = 0, binding = 3, rg16f) uniform image2D currentFrameVisibilityAtlas;
+
+layout(push_constant) uniform PushConstant {
+    uint64_t dummy0;
+    uint64_t dummy1;
+    vec4 gridOrigin;
+    uint probesPerDimension;
+    uint probesResolution; 
+    float gridSpacing;
+    uint padding;
+    vec4 lightDir;
+} pc;
+
+#define PI 3.14159265359
+#define RAYS_PER_PROBE 64
+
+vec3 sphericalFibonacci(float i, float n) {
+    const float PHI = sqrt(5.0) * 0.5 + 0.5;
+    float phi = 2.0 * PI * (i * (PHI - 1.0) - floor(i * (PHI - 1.0)));
+    float cosTheta = 1.0 - (2.0 * i + 1.0) / n;
+    float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+    return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+}
+
+vec3 octDecode(vec2 o) {
+    vec3 v = vec3(o.x, o.y, 1.0 - abs(o.x) - abs(o.y));
+    if (v.z < 0.0) {
+        vec2 signNotZero = vec2(v.x >= 0.0 ? 1.0 : -1.0, v.y >= 0.0 ? 1.0 : -1.0);
+        v.xy = (1.0 - abs(v.yx)) * signNotZero;
+    }
+    return normalize(v);
+}
+
+void main() {
+    uint probeIdx = gl_WorkGroupID.x;
+    uint totalGridProbes = pc.probesPerDimension * pc.probesPerDimension * pc.probesPerDimension;
+    if (probeIdx >= totalGridProbes) return;
+
+    ivec2 localTexelCoord = ivec2(gl_LocalInvocationID.xy);
+
+    vec2 octCoord = (vec2(localTexelCoord) + vec2(0.5)) / 16.0;
+    octCoord = octCoord * 2.0 - 1.0;
+    vec3 currentTexelDirection = octDecode(octCoord);
+
+    vec2 accumulatedVisibility = vec2(0.0);
+    float totalWeight = 0.0;
+
+    for (int r = 0; r < RAYS_PER_PROBE; ++r) {
+        vec3 rayDir = sphericalFibonacci(float(r), float(RAYS_PER_PROBE));
+        float rayDistance = imageLoad(rayDistanceBuffer, ivec2(r, probeIdx)).r;
+
+        float weight = pow(max(0.0, dot(currentTexelDirection, rayDir)), 24.0);
+        if (weight > 0.0001) {
+            accumulatedVisibility.x += rayDistance * weight;
+            accumulatedVisibility.y += (rayDistance * rayDistance) * weight;
+            totalWeight += weight;
+        }
+    }
+
+    if (totalWeight > 0.0) {
+        accumulatedVisibility /= totalWeight;
+    }
+
+    uint tilesX = pc.probesPerDimension; 
+    uint tilesY = (totalGridProbes + tilesX - 1) / tilesX;
+    ivec2 tileCoord = ivec2(probeIdx % tilesX, probeIdx / tilesX);
+    
+    ivec2 atlasBaseCoord = tileCoord * 18; 
+    ivec2 finalWriteCoord = atlasBaseCoord + ivec2(1) + localTexelCoord;
+
+    vec2 texSize = vec2(tilesX * 18, tilesY * 18);
+    vec2 textureUV = vec2(finalWriteCoord) / texSize;
+    
+    vec2 historicalVisibility = texture(lastFrameVisibilityAtlas, textureUV).rg;
+    float hysteresis = (ubo.clear == 1) ? 0.0 : 0.95;
+    accumulatedVisibility = mix(accumulatedVisibility, historicalVisibility, hysteresis);
+
+    imageStore(currentFrameVisibilityAtlas, finalWriteCoord, vec4(accumulatedVisibility, 0.0, 0.0));
+
+    memoryBarrier();
+    barrier();
+
+    if (localTexelCoord.y == 0) {
+        ivec2 src = atlasBaseCoord + ivec2(16 - localTexelCoord.x, 1);
+        vec4 valTop = imageLoad(currentFrameVisibilityAtlas, src);
+        imageStore(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(1 + localTexelCoord.x, 0), valTop);
+    }
+    if (localTexelCoord.y == 15) {
+        ivec2 src = atlasBaseCoord + ivec2(16 - localTexelCoord.x, 16);
+        vec4 valBot = imageLoad(currentFrameVisibilityAtlas, src);
+        imageStore(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(1 + localTexelCoord.x, 17), valBot);
+    }
+    if (localTexelCoord.x == 0) {
+        ivec2 src = atlasBaseCoord + ivec2(1, 16 - localTexelCoord.y);
+        vec4 valLeft = imageLoad(currentFrameVisibilityAtlas, src);
+        imageStore(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(0, 1 + localTexelCoord.y), valLeft);
+    }
+    if (localTexelCoord.x == 15) {
+        ivec2 src = atlasBaseCoord + ivec2(16, 16 - localTexelCoord.y);
+        vec4 valRight = imageLoad(currentFrameVisibilityAtlas, src);
+        imageStore(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(17, 1 + localTexelCoord.y), valRight);
+    }
+
+    memoryBarrier();
+    barrier();
+
+    if (gl_LocalInvocationIndex == 0) {
+        imageStore(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(0, 0),   imageLoad(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(16, 16)));
+        imageStore(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(17, 0),  imageLoad(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(1, 16)));
+        imageStore(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(0, 17),  imageLoad(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(16, 1)));
+        imageStore(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(17, 17), imageLoad(currentFrameVisibilityAtlas, atlasBaseCoord + ivec2(1, 1)));
+    }
+}

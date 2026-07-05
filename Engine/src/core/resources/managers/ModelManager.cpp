@@ -11,8 +11,17 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp_glm_helpers.h>
+#include <functional>
 #include "core/events/EventManager.h"
 #include "core/events/Event.h"
+#include "core/features/EngineUtils.h"
+
+const std::unordered_map<std::string, std::function<std::pair<std::string, Mesh>()>> meshPrimitives = {
+    { "$prim$Sphere", []() { return std::pair<std::string, Mesh>( "$prim$Sphere", EngineUtils::drawSphere(0.5f, 36, 36) ); }},
+    { "$prim$Quad",   []() { return std::pair<std::string, Mesh>( "$prim$Quad", EngineUtils::drawQuad() ); }},
+    { "$prim$Cube",   []() { return std::pair<std::string, Mesh>( "$prim$Cube", EngineUtils::drawCube(1.0) ); } }
+};
+
 
 ModelManager::ModelManager()
     :   Manager("ModelManager")
@@ -44,25 +53,43 @@ bool ModelManager::init(WindowConfig config)
         if (!e.entity.hasComponent<ModelComponent>()) {
 			e.entity.addComponent<ModelComponent>();
 		}
-		
-		ModelComponent& component = e.entity.getComponent<ModelComponent>();
-		component.path = "Loading...";
-        uint32_t modelID = loadModel(e.path);
 
-		if (component.path != e.path && modelID != 0) {
-			component.path = e.path;
-            component.modelID = modelID;
-		}
-		
-		else {
-            //TODO: imgui or a widget register an event to popup a warning message
-            //ideally editor handle it or supress it for run time version
-            std::string message = "Failed to load Model from path: " + e.path;
-            m_logger->error(message);
+        ModelComponent& modelComponent = e.entity.getComponent<ModelComponent>();
+        auto it = meshPrimitives.find(e.path);
+        if(it != meshPrimitives.end()) {
+            MaterialDesc materialDesc {};
+            
+            auto pair = it->second();
+            Mesh mesh = pair.second;
+            mesh.materialID = materialManager->createMaterial(materialDesc);
 
-            GuiMessageEvent failEvent(message);
-            eventManager.publish(failEvent);
-		}
+            Model model {};
+            model.meshIDs.push_back(meshManager->loadMesh(mesh));
+            model.path = pair.first;
+            modelComponent.modelID = addModel(model);
+        }
+
+        else {
+            modelComponent.path = "Loading...";
+            uint32_t modelID = loadModel(e.path);
+
+            if (modelID != 0) {
+                modelComponent.path = e.path;
+                modelComponent.modelID = modelID;
+            }
+            
+            else {
+                //TODO: imgui or a widget register an event to popup a warning message
+                //ideally editor handle it or supress it for run time version
+                std::string message = "Failed to load Model from path: " + e.path;
+                m_logger->error(message);
+
+                GuiMessageEvent failEvent(message);
+                eventManager.publish(failEvent);
+
+                e.entity.removeComponent<ModelComponent>();
+            }
+        }
     });
 
     return true;

@@ -15,10 +15,7 @@ public:
 
 	void update(const void* src, size_t size);
 
-	uint64_t getReference();
-	
 private:
-	uint64_t bufferAddressRef;
 	void* mappedBuffer;
 };
 
