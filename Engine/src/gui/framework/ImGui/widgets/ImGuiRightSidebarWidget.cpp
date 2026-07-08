@@ -462,11 +462,15 @@ void ImGuiRightSidebarWidget::_componentsControl()
         }
 
         if (ImGui::BeginMenu("Scripts")) {
-            if (ImGui::Selectable("Test")) { 
-                // entity.addComponent<ScriptComponent>("assets/scripts/sandbox.lua");
-                // entity.onScriptComponentAdded();
+            if (ImGui::Selectable("LoadOneTimeScript")) { 
                 ScriptManager* scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
-                scriptManager->reloadScript("assets/scripts/Camera.lua");
+                std::string path = "assets/scripts/sandbox.lua";
+                scriptManager->loadScript(path);
+                scriptManager->runScript(path);
+            }
+            if (ImGui::Selectable("ReloadScript")) { 
+                ScriptManager* scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
+                scriptManager->reloadScript("assets/scripts/sandbox.lua");
             }
             if (ImGui::Selectable("PlayerController")) { 
                 entity.addComponent<ScriptComponent>("assets/scripts/Player.lua");

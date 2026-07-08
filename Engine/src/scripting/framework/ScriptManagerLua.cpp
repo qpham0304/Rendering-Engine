@@ -20,7 +20,7 @@ namespace LuaJsonBridge {
         
         if (j.is_array()) {
             sol::table t = lua.create_table();
-            int index = 1; // Lua array index start at 1... why?
+            int index = 1; // Lua array index starts at 1... why?
             for (const auto& item : j) {
                 t[index++] = jsonToLua(lua, item);
             }
@@ -102,13 +102,14 @@ bool ScriptManagerLua::init(WindowConfig config)
     shareToLua.input(m_luaState);
     shareToLua.event(m_luaState);
     shareToLua.component(m_luaState);
+    shareToLua.scene(m_luaState);
     shareToLua.logging(m_luaState);
     
     Serializer serializer;
     auto componentFactory = serializer.getComponentFactory();
     auto componentDestroyer = serializer.getComponentDestroyer();
     m_luaState.new_usertype<Entity>("Entity",
-        "getComponent", [this](Entity& entity, std::string_view componentName) -> sol::object {
+        "getComponent", [this](Entity& self, std::string_view componentName) -> sol::object {
             entt::meta_type metaType;
             for (auto&& [id, type] : entt::resolve()) {
                 auto prop = type.prop("name"_hs);
@@ -127,12 +128,12 @@ bool ScriptManagerLua::init(WindowConfig config)
             }
 
             // fetch the raw pointer to the component on this entity using its underlying type ID
-            auto* storage = entity.getRegistry()->storage(metaType.id());
-            if (!storage || !storage->contains(entity)) {
+            auto* storage = self.getRegistry()->storage(metaType.id());
+            if (!storage || !storage->contains(self)) {
                 return sol::nil;
             }
             
-            const void* componentPtr = storage->value(entity);
+            const void* componentPtr = storage->value(self);
 
             // invoke SerializerInternal::Serialize function dynamically over the raw pointer
             auto serializeFunc = metaType.func("serialize"_hs);
@@ -147,32 +148,32 @@ bool ScriptManagerLua::init(WindowConfig config)
 
             return sol::nil;
         },
-        "setComponent", [this, componentFactory](Entity& entity, std::string_view componentName, sol::object luaTable) {
+        "setComponent", [this, componentFactory](Entity& self, std::string_view componentName, sol::object luaTable) {
             nlohmann::json updatedData = LuaJsonBridge::luaToJson(luaTable);
             
             auto it = componentFactory.find(std::string(componentName));
             if (it != componentFactory.end()) {
                 // invoke the factory lambda registered via REGISTER_COMPONENT
                 // this replaces the C++ data and runs the matching lifecycle hooks
-                it->second(entity, updatedData);
+                it->second(self, updatedData);
             } else {
                 m_logger->error("Failed to update component: '{}' factory not registered.", componentName);
             }
         },
-        "addComponent", [this, componentFactory](Entity& entity, std::string_view componentName, sol::object luaTable) {
+        "addComponent", [this, componentFactory](Entity& self, std::string_view componentName, sol::object luaTable) {
             nlohmann::json updatedData = LuaJsonBridge::luaToJson(luaTable);
 
             auto it = componentFactory.find(std::string(componentName));
             if (it != componentFactory.end()) {
-                it->second(entity, updatedData);
+                it->second(self, updatedData);
             } else {
                 m_logger->error("Failed to add component: '{}' factory not registered.", componentName);
             }
         },
-        "removeComponent", [this, componentDestroyer](Entity& entity, std::string_view componentName) {
+        "removeComponent", [this, componentDestroyer](Entity& self, std::string_view componentName) {
             auto it = componentDestroyer.find(std::string(componentName));
             if (it != componentDestroyer.end()) {
-                it->second(entity);
+                it->second(self);
             } else {
                 m_logger->error("Failed to add component: '{}' factory not registered.", componentName);
             }

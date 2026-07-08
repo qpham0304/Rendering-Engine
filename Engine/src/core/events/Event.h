@@ -1,8 +1,8 @@
 #pragma once
 
 #include <string>
-#include "../../core/entities/Entity.h"
-#include "../../core/components/MComponent.h"
+#include "core/entities/Entity.h"
+#include "core/components/MComponent.h"
 
 enum class EventType
 {
@@ -299,7 +299,6 @@ public:
 	std::string ToString() const override {
 		return "GuiMessageEvent";
 	}
-
 };
 
 
@@ -325,5 +324,4 @@ public:
 	std::string ToString() const override {
 		return "GuiFocusEvent";
 	}
-
 };

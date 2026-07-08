@@ -111,6 +111,18 @@ bool Scene::removeEntity(const uint32_t& uuid)
 	return true;
 }
 
+bool Scene::removeEntity(const std::string& name)
+{
+	auto view = getEnttEntities<NameComponent>();
+	for(auto& enttEntity : view) {
+		auto& nameComponent = registry.get<NameComponent>(enttEntity);
+		if(nameComponent.name == name) {
+			return removeEntity(static_cast<uint32_t>(enttEntity));
+		}
+	}
+    return false;
+}
+
 bool Scene::hasEntity(const uint32_t& uuid)
 {
 	return (entities.find(uuid) != entities.end());
