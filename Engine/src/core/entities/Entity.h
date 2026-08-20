@@ -37,7 +37,7 @@ public:
 		if (hasComponent<T>()) {
 			return registry->get<T>(entity);
 		}
-		throw std::runtime_error("Component does not exist");
+		throw std::runtime_error("entity GetComponent(): Component does not exist");
 	}
 
 	template<typename ...T>
@@ -45,7 +45,7 @@ public:
 		if (registry->all_of<T...>(entity)) {
 			return registry->get<T...>(entity);
 		}
-		throw std::runtime_error("Component does not exist");
+		throw std::runtime_error("entity GetComponent(): Component does not exist");
 	}
 
 	uint32_t getID() const;
@@ -59,9 +59,9 @@ public:
 	void onAnimationComponentAdded();
 	void onAnimationStateComponentAdded();
 	void onScriptComponentAdded();
+	void onColliderComponentAdded();
 	
 private:
 	entt::entity entity;
 	entt::registry* registry;
-
 };

@@ -18,9 +18,9 @@ struct SerializerInternal {
 };
 
 #define REGISTER_COMPONENT(Type, Name, HookFunction) \
-    component_factory[Name] = [](Entity e, const nlohmann::json& data) { \
+    component_factory[Name] = [](Entity e, const nlohmann::json& data) -> std::function<void()> { \
         e.getRegistry()->emplace_or_replace<Type>(e, data.get<Type>()); \
-        HookFunction(e); \
+        return [e]() { HookFunction(e); }; \
     }; \
     component_destroyer[Name] = [](Entity e) { \
         e.removeComponent<Type>(); \
@@ -35,7 +35,7 @@ class Logger;
 class Serializer 
 {
 public:
-    using ComponentLoader = std::function<void(Entity, const nlohmann::json&)>;
+    using ComponentLoader = std::function<std::function<void()>(Entity, const nlohmann::json&)>;
     using ComponentDestroyer = std::function<void(Entity)>;
     
     Serializer();

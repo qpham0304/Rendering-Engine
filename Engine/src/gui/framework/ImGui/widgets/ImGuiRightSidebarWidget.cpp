@@ -13,6 +13,7 @@
 #include "core/events/EventManager.h"
 #include "core/resources/managers/ModelManager.h"
 #include <scripting/ScriptManager.h>
+#include <physics/PhysicsManager.h>
 
 
 ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
@@ -483,6 +484,22 @@ void ImGuiRightSidebarWidget::_componentsControl()
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Collider")) {
+            if (ImGui::Selectable("add colider")) { 
+                auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+                auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+                auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
+                
+                ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
+                Model* model = modelManager->getModel(modelComponent.modelID);
+                Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+
+                uint32_t bodyID = physicsManager->createBody(*mesh, false);
+                entity.addComponent<ColliderComponent>(bodyID);
+                // entity.onColliderComponentAdded();
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndPopup();
     }
     ImGui::End();

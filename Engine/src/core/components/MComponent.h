@@ -318,3 +318,13 @@ struct ScriptComponent {
 
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ScriptComponent, path);
 };
+
+struct ColliderComponent {
+	ColliderComponent() = default;
+	ColliderComponent(uint32_t id) : shapeID(id) {}
+	
+	uint32_t shapeID{ 0 };
+	bool isStatic{ true };
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ColliderComponent, isStatic);
+};

@@ -26,6 +26,10 @@ enum class ScriptingPlatform {
 	UNDEFINED, LUA, MONO
 };
 
+enum class PhysicsFramework {
+	UNDEFINED, BOX3D, JOLT, PHYSX
+};
+
 struct WindowConfig {
 	std::string title = "Untitled";
 	WindowPlatform windowPlatform = WindowPlatform::UNDEFINED;
@@ -33,6 +37,7 @@ struct WindowConfig {
 	GuiPlatform guiPlatform = GuiPlatform::UNDEFINED;
 	OperatingSystem os = OperatingSystem::UNDEFINED;
 	ScriptingPlatform scriptingPlatform = ScriptingPlatform::LUA;
+	PhysicsFramework physicsFramework = PhysicsFramework::BOX3D;
 	int width = 1280;
 	int height = 720;
 	bool vsync = true;

@@ -34,6 +34,7 @@ Engine::Engine(WindowConfig config)
 	guiManager = platformFactory.Create<GuiManager>(windowConfig.guiPlatform);
 	rendererManager = platformFactory.Create<RendererManager>(windowConfig.renderPlatform);
 	scriptManager = platformFactory.Create<ScriptManager>(windowConfig.scriptingPlatform);
+	physicsManager = platformFactory.Create<PhysicsManager>(windowConfig.physicsFramework);
 
 	meshManager = std::make_unique<MeshManager>();
 	modelManager = std::make_unique<ModelManager>();
@@ -56,9 +57,10 @@ Engine::Engine(WindowConfig config)
 	services.push_back(meshManager.get());
 	services.push_back(modelManager.get());
 	services.push_back(guiManager.get());
-	services.push_back(layerManager.get());
 	services.push_back(animationManager.get());
 	services.push_back(scriptManager.get());
+	services.push_back(physicsManager.get());
+	services.push_back(layerManager.get());
 	services.push_back(rendererManager.get());
 }
 
@@ -123,6 +125,7 @@ void Engine::run() {
 		
         while(accumulator >= targetUpdateTime && updatesThisFrame < maxUpdates) {
             for (Service* service : services) {
+				// engineLogger->error("service: {}", service->getServiceName());
                 service->onUpdate();
             }
             accumulator -= targetUpdateTime;

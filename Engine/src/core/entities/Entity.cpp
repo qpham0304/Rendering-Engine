@@ -7,6 +7,7 @@
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
+#include "physics/PhysicsManager.h"
 #include "scripting/ScriptManager.h"
 
 Entity::Entity(const entt::entity& entity, entt::registry& registry)
@@ -108,4 +109,30 @@ void Entity::onScriptComponentAdded()
     ScriptComponent& scriptComponent = getComponent<ScriptComponent>();
     auto scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
     scriptManager->loadScript(*this, scriptComponent.path);
+}
+
+void Entity::onColliderComponentAdded()
+{
+    auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+    auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+    auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
+    
+    if(!hasComponent<ColliderComponent>()){
+        printf("critical collider not found");
+        return;
+    }
+
+    if(!hasComponent<ModelComponent>()){
+        printf("critical ModelComponent not found");
+        return;
+    }
+
+    ColliderComponent& colliderComponent = getComponent<ColliderComponent>();
+    
+    ModelComponent& modelComponent = getComponent<ModelComponent>();
+    Model* model = modelManager->getModel(modelComponent.modelID);
+    Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+
+    auto shapeID = physicsManager->createBody(*mesh, colliderComponent.isStatic);
+    colliderComponent.shapeID = shapeID;
 }

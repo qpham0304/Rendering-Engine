@@ -102,6 +102,7 @@ add_subdirectory(Libraries/include/glfw)
 add_subdirectory(Libraries/include/external/json)
 add_subdirectory(Libraries/include/assimp)
 add_subdirectory(Libraries/include/lua-cmake)
+add_subdirectory(Libraries/include/box3d)
 
 add_library(vulkan-1 STATIC IMPORTED)
 set_target_properties(vulkan-1 PROPERTIES
@@ -139,6 +140,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     glfw
     opengl32
     lua::lib
+    box3d::box3d
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC IMGUI_DEFINE_MATH_OPERATORS)

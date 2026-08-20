@@ -2,6 +2,7 @@
 #include "core/scene/SceneManager.h"
 #include "core/features/camera.h"
 #include "window/AppWindow.h"
+#include "physics/PhysicsManager.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
 #include "core/resources/managers/ModelManager.h"
@@ -27,6 +28,8 @@ bool SandBoxLayer::init()
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
     modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
     rendererManager = &ServiceLocator::GetService<RendererManager>("RendererManagerVulkan");
+    auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
+
 
     camera = std::make_unique<Camera>();
     camera->init(AppWindow::getWidth(), AppWindow::getHeight(), glm::vec3(5.0), glm::vec3(-5.0));
@@ -45,7 +48,7 @@ bool SandBoxLayer::init()
 
     EventManager& eventManager = EventManager::getInstance();
     
-    const int numLights = 0;
+    const int numLights = 10;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> posDist(-numLights, numLights);
@@ -83,8 +86,10 @@ bool SandBoxLayer::init()
         lightEntity.addComponent<ModelComponent>(modelComponent);
 
         glm::vec4 randomColor(colorDist(gen), colorDist(gen), colorDist(gen), 1.0f);
-
         lightEntity.addComponent<LightComponent>(randomColor, 15.0f, 1.0f);
+
+        uint32_t bodyID = physicsManager->createBody(mesh, false);
+        lightEntity.addComponent<ColliderComponent>(bodyID);
     }
 
     // light probe manager component
@@ -158,6 +163,7 @@ bool SandBoxLayer::init()
     // lightProbeEntity.addComponent<ModelComponent>(modelComponent);
 
     // rendererManager->addRenderer();
+
 
 	return true;
 }

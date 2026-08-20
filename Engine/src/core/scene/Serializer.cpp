@@ -5,6 +5,17 @@
 #include <entt/entt.hpp>
 using namespace entt::literals;
 
+const std::vector<std::string> hookExecutionPriority = {
+    "NameComponent",
+    "TransformComponent",
+    "PrefabComponent",
+    "ModelComponent",
+    "SpriteComponent",
+    "AnimationStateComponent",
+    "ColliderComponent",
+    "ScriptComponent"
+};
+
 Serializer::Serializer()
 {
 	m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
@@ -16,6 +27,7 @@ Serializer::Serializer()
     REGISTER_COMPONENT(SpriteComponent, "SpriteComponent", [](Entity entity) { entity.onSpriteComponentAdded(); });
     REGISTER_COMPONENT(AnimationStateComponent, "AnimationStateComponent", [](Entity entity) { entity.onAnimationStateComponentAdded(); });
     REGISTER_COMPONENT(ScriptComponent, "ScriptComponent", [](Entity entity) { entity.onScriptComponentAdded(); });
+    REGISTER_COMPONENT(ColliderComponent, "ColliderComponent", [](Entity entity) { entity.onColliderComponentAdded(); });
 }
 	
 
@@ -167,11 +179,13 @@ entt::entity Serializer::loadEntity(
     }
 
     if (mergedData.contains("components") && mergedData["components"].is_object()) {
+        std::unordered_map<std::string, std::function<void()>> hooks;
         for (auto& [name, compData] : mergedData["components"].items()) {
             auto it = component_factory.find(name);
             if (it != component_factory.end()) {
                 try {
-                    it->second(entities[static_cast<uint32_t>(entity)], compData);
+                    auto func = it->second(entities[static_cast<uint32_t>(entity)], compData);
+                    hooks[name] = func;
                 } 
                 catch (const std::exception& e) {
                     m_logger->error("Error loading component '" + name + "': " + e.what());
@@ -180,6 +194,19 @@ entt::entity Serializer::loadEntity(
                 m_logger->warn("Unknown component type found in save file: " + name);
                 m_logger->warn("Make sure you register the component in the serializer");
             }
+        }
+
+        
+        for (const auto& compName : hookExecutionPriority) {   // call prioritized hooks
+            auto it = hooks.find(compName);
+            if (it != hooks.end()) {
+                it->second();
+                hooks.erase(it);    // prevent double call
+            }
+        }
+
+        for(auto& [name, func] : hooks) {   // call the rest of the hooks
+            func();
         }
     }
 
