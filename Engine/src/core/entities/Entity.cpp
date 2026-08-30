@@ -43,10 +43,9 @@ entt::registry *Entity::getRegistry()
 
 void Entity::onCameraComponentAdded()
 {
-    if (!this->hasComponent<ModelComponent>()) {
-        Scene& scene = *SceneManager::getInstance().getActiveScene();
-        auto& modelComponent = this->addComponent<ModelComponent>();
-    }
+    CameraUpdateEvent cameraUpdateEvent;
+    EventManager::getInstance().publish(cameraUpdateEvent);
+    printf("---------------camera added\n");
 }
 
 void Entity::onModelComponentAdded()
@@ -127,12 +126,13 @@ void Entity::onColliderComponentAdded()
         return;
     }
 
+    TransformComponent& transformComponent = getComponent<TransformComponent>();
     ColliderComponent& colliderComponent = getComponent<ColliderComponent>();
     
     ModelComponent& modelComponent = getComponent<ModelComponent>();
     Model* model = modelManager->getModel(modelComponent.modelID);
     Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
 
-    auto shapeID = physicsManager->createBody(*mesh, colliderComponent.isStatic);
+    auto shapeID = physicsManager->createBody(*mesh, transformComponent.translateVec, transformComponent.scaleVec, colliderComponent.isStatic);
     colliderComponent.shapeID = shapeID;
 }

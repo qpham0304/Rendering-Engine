@@ -8,9 +8,6 @@
 class RendererManager : public Manager
 {
 public:
-	struct StorageBuffer {
-		glm::mat4 model;
-	};
 
 	virtual ~RendererManager() override = default;
 
@@ -40,7 +37,5 @@ protected:
 
 	std::vector<std::tuple<std::string, std::shared_ptr<Renderer>>> m_renderers;
 	std::unordered_map<std::string, std::shared_ptr<Texture>> m_renderTextures;
-
-	std::vector<StorageBuffer> instanceData;
 
 };

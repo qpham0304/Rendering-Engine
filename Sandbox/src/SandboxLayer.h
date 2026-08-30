@@ -3,6 +3,7 @@
 #include <core/layers/Layer.h>
 
 class Camera;
+class ScriptableCamera;
 class MeshManager;
 class ModelManager;
 class MaterialManager;
@@ -23,7 +24,7 @@ public:
 	void onEvent(Event& event) override;
 
 private:
-	std::unique_ptr<Camera> camera;
+	std::unique_ptr<ScriptableCamera> camera;
 
 	MeshManager* meshManager{ nullptr };
 	ModelManager* modelManager{ nullptr };

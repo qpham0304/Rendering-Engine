@@ -78,14 +78,14 @@ void EventManager::queue(AsyncEvent event, AsyncCallback callback)
 	runningTasks.fetch_add(1, std::memory_order_relaxed);
 }
 
-void EventManager::subscribe(const std::string& event, EventListener& listener) {
-	if (listeners.find(event) != listeners.end()) {
-		listeners[event].emplace_back(std::move(listener));
-	}
-	else {
-		listeners[event] = { std::move(listener) };
-	}
-}
+// void EventManager::subscribe(const std::string& event, EventListener& listener) {
+// 	if (listeners.find(event) != listeners.end()) {
+// 		listeners[event].emplace_back(std::move(listener));
+// 	}
+// 	else {
+// 		listeners[event] = { std::move(listener) };
+// 	}
+// }
 
 bool EventManager::init(WindowConfig config)
 {

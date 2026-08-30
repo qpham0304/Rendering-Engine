@@ -15,7 +15,7 @@ public:
 	virtual std::vector<uint32_t> listIDs() const override;
     virtual void onUpdate() override;
 
-	virtual uint32_t createBody(const Mesh& mesh, bool isStatic) override;
+	virtual uint32_t createBody(const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, bool isStatic) override;
 
 
 private:

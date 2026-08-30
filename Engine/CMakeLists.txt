@@ -20,7 +20,6 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
 )
 
-# ImGui + ImGuizmo sources
 set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/imgui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/imgui_draw.cpp
@@ -37,14 +36,12 @@ set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImSequencer.cpp
 )
 
-# Build as STATIC library
 add_library(${PROJECT_NAME} STATIC
     ${ENGINE_SOURCES}
     ${ENGINE_HEADERS}
     ${IMGUI_SOURCES}
 )
 
-# precompile headers
 set(PCH_HEADERS
     <string>
     <sstream>
@@ -95,6 +92,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>"
 )
 add_definitions(-DNOMINMAX)
+
 # Dependencies
 add_subdirectory(Libraries/include/glad)
 add_subdirectory(Libraries/include/spdlog)
@@ -130,7 +128,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 
-# Link dependencies (publicly)
+# Link dependencies
 target_link_libraries(${PROJECT_NAME} PUBLIC
     assimp
     vulkan-1

@@ -40,10 +40,6 @@ namespace glm {
     }
 }
 
-class Component {
-public:
-	Component() = default;
-};
 
 class TransformComponent {
 private:
@@ -60,6 +56,10 @@ public:
 		
 	};
 
+	glm::mat4& getModelMatrix() {
+		return modelMatrix;
+	}
+
 	void updateTransform() {
 		glm::mat4 rotationMat = glm::toMat4(glm::quat(rotateVec));
 		glm::mat4 translateMat = glm::translate(glm::mat4(1.0), translateVec);
@@ -67,38 +67,19 @@ public:
 		modelMatrix = translateMat * rotationMat * scaleMat;
 	}
 
-	void translate(const glm::vec3& translate) {
+	void translate(glm::vec3 translate) {
 		translateVec = translate;
 		updateTransform();
 	}
 
-	void rotate(const glm::vec3& rotate) {
+	void rotate(glm::vec3 rotate) {
 		rotateVec = rotate;
 		updateTransform();
 	}
 
-	void scale(const glm::vec3& scale) {
+	void scale(glm::vec3 scale) {
 		scaleVec = scale;
 		updateTransform();
-	}
-
-	void translate(glm::vec3&& translate) {
-		translateVec = translate;
-		updateTransform();
-	}
-
-	void rotate(glm::vec3&& rotate) {
-		rotateVec = rotate;
-		updateTransform();
-	}
-
-	void scale(glm::vec3&& scale) {
-		scaleVec = scale;
-		updateTransform();
-	}
-
-	glm::mat4& getModelMatrix() {
-		return modelMatrix;
 	}
 
 	// NLOHMANN_DEFINE_TYPE_INTRUSIVE(TransformComponent, translateVec, rotateVec, scaleVec);
@@ -114,13 +95,10 @@ public:
 	friend void from_json(const nlohmann::json& j, TransformComponent& t) {
 		auto tr = j.at("translateVec");
 		t.translateVec = glm::vec3(tr[0], tr[1], tr[2]);
-
 		auto rt = j.at("rotateVec");
 		t.rotateVec = glm::vec3(rt[0], rt[1], rt[2]);
-
 		auto sc = j.at("scaleVec");
 		t.scaleVec = glm::vec3(sc[0], sc[1], sc[2]);
-
 		t.updateTransform();
 	}
 
@@ -219,6 +197,8 @@ struct LightProbeComponent {
 	uint32_t probesPerDimension;
 	float spacing;
     glm::vec4 gridOrigin;
+
+	//NLOHMANN_DEFINE_TYPE_INTRUSIVE(LightProbeComponent, probeGrid);
 };
 
 struct SpriteComponent {

@@ -24,19 +24,21 @@ public:
 	static EventManager& getInstance();
 	
 
-	template<typename... Args>
-	void publish(const std::string& event, Args... args) {
-		if (listeners.find(event) != listeners.end()) {
-			std::vector<EventListener>& events = listeners[event];
-			for (EventListener& e : events) {
-				e.onEvent(args...);
-			}
-		}
-		else {
-			Console::error("Event not found\n");
-		}
-	}
-	void subscribe(const std::string& event, EventListener& listener);
+	// void subscribe(const std::string& event, EventListener& listener);
+	
+	// template<typename... Args>
+	// void publish(const std::string& event, Args... args) {
+	// 	if (listeners.find(event) != listeners.end()) {
+	// 		std::vector<EventListener>& events = listeners[event];
+	// 		for (EventListener& e : events) {
+	// 			e.onEvent(args...);
+	// 		}
+	// 	}
+	// 	else {
+	// 		Console::error("Event not found\n");
+	// 	}
+	// }
+	
 	uint32_t subscribe(EventType eventType, EventCallback callback);
 	void unsubscribe(EventType eventType, uint32_t cbID);
 	void publish(Event& event);
@@ -56,7 +58,6 @@ private:
 
 private:
 	std::atomic<int> runningTasks{ 0 };
-
 	std::atomic<uint32_t> callbackID{ 0 };
 	std::unordered_map<std::string, std::vector<EventListener>> listeners;
 	std::unordered_map<EventType, std::vector<std::pair<uint32_t, EventCallback>>> callbacks;

@@ -21,6 +21,24 @@
     {
       "components": {
         "ModelComponent": {
+          "path": "assets/models/cube/cube-notex.gltf"
+        },
+        "NameComponent": {
+          "name": "plane"
+        },
+        "ColliderComponent": {
+          "isStatic": false
+        },
+        "TransformComponent": {
+          "rotateVec": [0.0, 0.0, 0.0],
+          "scaleVec": [1.0, 1.0, 1.0],
+          "translateVec": [0.0, 5.0, 1.0]
+        }
+      }
+    },
+    {
+      "components": {
+        "ModelComponent": {
           "path": "$prim$Quad"
         },
         "NameComponent": {

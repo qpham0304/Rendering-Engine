@@ -1,4 +1,5 @@
 #include "AppWindowGLFW.h"
+#include "core/features/EngineStates.h"
 #include <glad/glad.h>
 #define GLFW_INCLUDE_VULKAN
 #include "InputGLFW.h"
@@ -78,8 +79,19 @@ void AppWindowGLFW::onUpdate()
 		m_height = m_config.height;
 	}
 	
+	//TODO: deltatime ideally should be passed through system's update not from AppWindow
 	double currentTime = _getTime();
-	m_deltaTime = currentTime - m_lastTime;
+	m_deltaTime = 0.0;
+	
+	if(EngineState::isPlaying()) {
+		if(EngineState::didJustResume()) {
+			m_deltaTime = 0.0;
+		} else {
+			m_deltaTime = currentTime - m_lastTime;
+		}
+	} else {
+		m_deltaTime = 0.0;
+	}
 	m_lastTime = currentTime;
 
 	switch (m_config.renderPlatform) {

@@ -1,8 +1,9 @@
 #include "SandboxLayer.h"
-#include "core/scene/SceneManager.h"
-#include "core/features/camera.h"
 #include "window/AppWindow.h"
 #include "physics/PhysicsManager.h"
+#include "core/scene/SceneManager.h"
+#include "core/features/camera.h"
+#include "core/features/ScriptableCamera.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
 #include "core/resources/managers/ModelManager.h"
@@ -12,6 +13,7 @@
 #include "core/events/EventManager.h"
 #include "core/features/Mesh.h"
 #include "core/features/EngineUtils.h"
+#include "core/features/EngineStates.h"
 #include <random>
 
 SandBoxLayer::SandBoxLayer(const std::string& name)
@@ -30,10 +32,10 @@ bool SandBoxLayer::init()
     rendererManager = &ServiceLocator::GetService<RendererManager>("RendererManagerVulkan");
     auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
 
-
-    camera = std::make_unique<Camera>();
-    camera->init(AppWindow::getWidth(), AppWindow::getHeight(), glm::vec3(5.0), glm::vec3(-5.0));
+    // camera = std::make_unique<Camera>();
+    // camera->init(AppWindow::getWidth(), AppWindow::getHeight(), glm::vec3(5.0), glm::vec3(-5.0));
     // SceneManager::cameraController = camera.get();
+    camera = std::make_unique<ScriptableCamera>();
 
     // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
     Scene* scene2 = SceneManager::getInstance().addScene("Level2");
@@ -43,10 +45,46 @@ bool SandBoxLayer::init()
     scene2->loadScene("assets/data/Level2.json");
     // scene3->loadScene("assets/data/default-scene.json");
 
+    EventManager& eventManager = EventManager::getInstance();
     SceneManager::getInstance().setActiveScene(scene2->getName());
     Scene* activeScene = SceneManager::getInstance().getActiveScene();
 
-    EventManager& eventManager = EventManager::getInstance();
+    Entity cameraEntity = activeScene->getEntity(activeScene->addEntity("Camera"));
+    TransformComponent& cameraTransform = cameraEntity.getComponent<TransformComponent>();
+    cameraTransform.translateVec = glm::vec3(5.0);
+    
+    float width = static_cast<float>(AppWindow::getWidth());
+    float height = static_cast<float>(AppWindow::getHeight());
+    float aspectRatio = width / height;
+
+    // glm::mat4 view = glm::lookAt(cameraTransform.translateVec, glm::vec3(0.0), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = cameraTransform.getModelMatrix();
+
+    glm::mat4 projection = glm::ortho(
+        -aspectRatio,		// Left
+        aspectRatio,		// Right
+        -1.0f,				// Bottom
+        1.0f,				// Top
+        -1.0f,				// Near
+        1.0f				// Far
+    );
+
+    CameraComponent cameraComponent;
+    cameraComponent.viewWidth = AppWindow::getWidth();
+    cameraComponent.viewHeight = AppWindow::getHeight();
+    cameraComponent.projection = projection;
+    cameraComponent.view = view;
+    cameraComponent.orientation = -cameraTransform.translateVec;
+    cameraEntity.addComponent<CameraComponent>(cameraComponent);
+    
+    camera->setCamera(&cameraEntity.getComponent<CameraComponent>());
+
+    eventManager.subscribe(EventType::CameraUpdateEvent, [this](Event& event) {
+        CameraUpdateEvent& cameraUpdateEvent = static_cast<CameraUpdateEvent&>(event);
+        CameraComponent& cameraComponent = cameraUpdateEvent.camera;
+        camera->setCamera(&cameraComponent);
+    });
+    
     
     const int numLights = 10;
     std::random_device rd;
@@ -56,8 +94,7 @@ bool SandBoxLayer::init()
 
     for (int i = 0; i < numLights; ++i) {
         std::string entityName = "light_sphere_" + std::to_string(i);
-        uint32_t lightID = activeScene->addEntity(entityName);
-        Entity lightEntity = activeScene->getEntity(lightID);
+        Entity lightEntity = activeScene->getEntity(activeScene->addEntity(entityName));
 
         TransformComponent& transform = lightEntity.getComponent<TransformComponent>();
         float xPos = posDist(gen);
@@ -88,7 +125,8 @@ bool SandBoxLayer::init()
         glm::vec4 randomColor(colorDist(gen), colorDist(gen), colorDist(gen), 1.0f);
         lightEntity.addComponent<LightComponent>(randomColor, 15.0f, 1.0f);
 
-        uint32_t bodyID = physicsManager->createBody(mesh, false);
+        //TODO: body should be according to transform as well
+        uint32_t bodyID = physicsManager->createBody(mesh, transform.translateVec, transform.scaleVec, false);
         lightEntity.addComponent<ColliderComponent>(bodyID);
     }
 
@@ -180,7 +218,9 @@ void SandBoxLayer::onDetach()
 
 void SandBoxLayer::onUpdate()
 {
-
+    if(EngineState::isPlaying()) {
+        SceneManager::cameraController = camera.get();
+    }
 }
 
 void SandBoxLayer::onGuiUpdate()

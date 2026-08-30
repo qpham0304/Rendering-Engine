@@ -48,9 +48,6 @@ bool PhysicsManagerBox3D::init(WindowConfig config)
     m_worldDef.gravity = {0.0f, -9.81f, 0.0f};
     m_worldId = b3CreateWorld(&m_worldDef);
 
-    m_logger->warn("Success! Box3D world created successfully.");
-
-
     return true;
 }
 
@@ -62,7 +59,17 @@ bool PhysicsManagerBox3D::onClose()
 
 void PhysicsManagerBox3D::destroy(uint32_t id)
 {
-    
+    auto it = m_shapeIDs.find(id);
+    if(it == m_shapeIDs.end()) {
+        m_logger->error("failed to destroy body id: {}", id);
+        return;
+    }
+
+    b3ShapeId shapeId = it->second;
+    b3BodyId bodyId = b3Shape_GetBody(shapeId);
+    b3DestroyBody(bodyId);
+
+    m_shapeIDs.erase(id);
 }
 
 std::vector<uint32_t> PhysicsManagerBox3D::listIDs() const
@@ -72,7 +79,12 @@ std::vector<uint32_t> PhysicsManagerBox3D::listIDs() const
 
 void PhysicsManagerBox3D::onUpdate()
 {
-    // m_logger->info("updating physics");
+    //TODO: should be passing dt through updateFunction not from AppWindow
+    float deltaTime = AppWindow::getDeltaTime();
+    if(deltaTime <= 0) {
+        return;
+    }
+
 	float timeStep = 1.0f / 60.0f; 
     b3World_Step(m_worldId, timeStep, 4);
 
@@ -104,7 +116,7 @@ void PhysicsManagerBox3D::onUpdate()
     }
 }
 
-uint32_t PhysicsManagerBox3D::createBody(const Mesh &mesh, bool isStatic)
+uint32_t PhysicsManagerBox3D::createBody(const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, bool isStatic)
 {
     const float min = std::numeric_limits<float>::max();
     const float max = -std::numeric_limits<float>::max();
@@ -127,13 +139,14 @@ uint32_t PhysicsManagerBox3D::createBody(const Mesh &mesh, bool isStatic)
     center.z = (minBounds.z + maxBounds.z) * 0.5;
 
     //Half-extents: distance from center to edges
-    float hx = (maxBounds.x - minBounds.x) * 0.5;
-    float hy = (maxBounds.y - minBounds.y) * 0.5;
-    float hz = (maxBounds.z - minBounds.z) * 0.5;
+    float hx = (maxBounds.x - minBounds.x) * 0.5 * scale.x;
+    float hy = (maxBounds.y - minBounds.y) * 0.5 * scale.y;
+    float hz = (maxBounds.z - minBounds.z) * 0.5 * scale.z;
 
     b3BodyDef bodyDef = b3DefaultBodyDef();
     bodyDef.type = isStatic ? b3_staticBody : b3_dynamicBody;
-    bodyDef.position = center;
+    // bodyDef.position = center;
+    bodyDef.position = { pos.x + center.x, pos.y + center.y, pos.z + center.z };
 
     b3BodyId bodyId = b3CreateBody(m_worldId, &bodyDef);
 

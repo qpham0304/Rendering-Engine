@@ -2,6 +2,7 @@
 #include "graphics/utils/Utils.h"
 #include "core/features/Timer.h"
 #include "core/features/Camera.h"
+#include "window/AppWindow.h"
 #include <glad/glad.h>
 
 static const float g = 9.8f; // Gravity
@@ -144,7 +145,7 @@ void ParticleGeometry::render(ShaderOpenGL& shader, Camera* camera, int& numRend
 
         for (unsigned int i = 0; i < numRender; i++) {
             if (!pause) {
-                float velocity = speed * camera->getDeltaTime();
+                float velocity = speed * AppWindow::getDeltaTime();
                 //flyDirections[i].x -= weights[i] * velocity;
                 flyDirections[i].y -= weights[i] * velocity;
                 //flyDirections[i].z -= weights[i] * velocity;

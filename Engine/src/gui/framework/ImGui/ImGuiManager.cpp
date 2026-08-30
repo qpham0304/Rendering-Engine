@@ -8,6 +8,7 @@
 #include "core/features/ServiceLocator.h"
 #include "graphics/renderers/RenderDevice.h"
 #include "core/features/Camera.h"
+#include "core/features/EngineStates.h"
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
@@ -202,11 +203,17 @@ void ImGuiManager::applicationWindow()
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonActiveColor);
 	ImGui::SetCursorPos(ImVec2(ImGui::GetWindowContentRegionMax().x / 2, 10.0f));
 	ImGui::BeginGroup();
-	ImGui::Button(ICON_FA_PAUSE, buttonSize);
+	if(ImGui::Button(ICON_FA_PAUSE, buttonSize)) {
+		EngineState::pause();
+	}
 	ImGui::SameLine();
-	ImGui::Button(ICON_FA_PLAY, buttonSize);
+	if(ImGui::Button(ICON_FA_PLAY, buttonSize)) {
+		EngineState::play();
+	}
 	ImGui::SameLine();
-	ImGui::Button(ICON_FA_STOP, buttonSize);
+	if(ImGui::Button(ICON_FA_STOP, buttonSize)) {
+		EngineState::stop();
+	}
 	ImGui::EndGroup();
 	ImGui::PopStyleColor();
 }

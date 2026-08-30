@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <typeindex>
 #include <functional>
 #include "core/entities/Entity.h"
 #include "core/components/MComponent.h"
@@ -14,6 +15,10 @@ struct SerializerInternal {
             return nlohmann::json::object();
         }
         return nlohmann::json(*static_cast<const Type*>(instance));
+    }
+
+    static std::type_index TypePtrID() {
+        return std::type_index(typeid(Type));
     }
 };
 
@@ -29,6 +34,7 @@ struct SerializerInternal {
         .type(entt::type_id<Type>().hash()) \
         .prop("name"_hs, std::string(Name)) \
         .func<&SerializerInternal<Type>::Serialize>("serialize"_hs) \
+        .func<&SerializerInternal<Type>::TypePtrID>("typePtrID"_hs) \
         
 class Logger;
 

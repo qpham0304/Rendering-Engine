@@ -392,6 +392,9 @@ void ImGuiRightSidebarWidget::_componentsControl()
         ImGui::OpenPopup("AddComponentPopup"); 
     }
 
+    //TODO: currently manually add every single component to display
+    // loop through the serializer object to get the list of components
+    // use write an adapter to translate nlohman json to imgui component
     float buttonWidth = ImGui::GetContentRegionAvail().x;
     ImGui::SetNextWindowSizeConstraints(ImVec2(buttonWidth, 0.0f), ImVec2(buttonWidth, 500.0f));
     if (ImGui::BeginPopup("AddComponentPopup")) {
@@ -471,7 +474,8 @@ void ImGuiRightSidebarWidget::_componentsControl()
             }
             if (ImGui::Selectable("ReloadScript")) { 
                 ScriptManager* scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
-                scriptManager->reloadScript("assets/scripts/sandbox.lua");
+                // scriptManager->reloadScript("assets/scripts/sandbox.lua");
+                scriptManager->reloadScript("assets/scripts/Camera.lua");
             }
             if (ImGui::Selectable("PlayerController")) { 
                 entity.addComponent<ScriptComponent>("assets/scripts/Player.lua");
@@ -490,11 +494,12 @@ void ImGuiRightSidebarWidget::_componentsControl()
                 auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
                 auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
                 
+                TransformComponent& transform = entity.getComponent<TransformComponent>();
                 ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
                 Model* model = modelManager->getModel(modelComponent.modelID);
                 Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
 
-                uint32_t bodyID = physicsManager->createBody(*mesh, false);
+                uint32_t bodyID = physicsManager->createBody(*mesh, transform.translateVec, transform.scaleVec, false);
                 entity.addComponent<ColliderComponent>(bodyID);
                 // entity.onColliderComponentAdded();
             }
@@ -723,6 +728,10 @@ void ImGuiRightSidebarWidget::_scriptControl(const Entity &entity)
     if (ImGui::CollapsingHeader("Script", ImGuiTreeNodeFlags_DefaultOpen)) {
         textInput(&script.path, "path");
         
+        if(ImGui::Button("Reload Script", ImVec2(-1.0f, 0.0f))) {
+            ScriptManager* scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
+            scriptManager->reloadScript(script.path);
+        }
     }
 }
 

@@ -3,6 +3,11 @@
 #include "core/resources/managers/Manager.h"
 #include "core/features/Mesh.h"
 
+enum class BodyType {
+	None = 0,
+	Box, Sphere, Capsule, Plane
+};
+
 class PhysicsManager : public Manager
 {
 public:
@@ -15,7 +20,7 @@ public:
 	virtual std::vector<uint32_t> listIDs() const = 0;
     virtual void onUpdate() = 0;
 
-	virtual uint32_t createBody(const Mesh& mesh, bool isStatic) = 0;
+	virtual uint32_t createBody(const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, bool isStatic) = 0;
 
 protected:
 	

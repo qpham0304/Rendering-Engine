@@ -1,20 +1,20 @@
 #include "EditorLayer.h"
 #include "window/appwindow.h"
-#include "core/events/EventManager.h"
-#include "core/components/MComponent.h"
 #include "window/Input.h"
-#include "core/layers/layerManager.h"
 #include "gui/GuiManager.h"
 #include "core/features/camera.h"
 #include "core/features/OrbitCamera.h"
+#include "core/features/EngineStates.h"
+#include "core/events/EventManager.h"
+#include "core/layers/layerManager.h"
+#include "core/components/MComponent.h"
 
-
-#include "src/gui/framework/ImGui/widgets/ImGuiConsoleLogWidget.h"
-#include "src/gui/framework/ImGui/widgets/ImGuiLeftSidebarWidget.h"
-#include "src/gui/framework/ImGui/widgets/ImGuiRightSidebarWidget.h"
-#include "src/gui/framework/ImGui/widgets/ImGuiMenuWidget.h"
-#include "src/gui/framework/ImGui/widgets/ImGuiMathWidget.h"
-#include <gui/framework/ImGui/widgets/ImGuiResourcesInspectorWidget.h>
+#include "gui/framework/ImGui/widgets/ImGuiConsoleLogWidget.h"
+#include "gui/framework/ImGui/widgets/ImGuiLeftSidebarWidget.h"
+#include "gui/framework/ImGui/widgets/ImGuiRightSidebarWidget.h"
+#include "gui/framework/ImGui/widgets/ImGuiMenuWidget.h"
+#include "gui/framework/ImGui/widgets/ImGuiMathWidget.h"
+#include "gui/framework/ImGui/widgets/ImGuiResourcesInspectorWidget.h"
 
 void EditorLayer::renderGuizmo()
 {
@@ -112,7 +112,9 @@ void EditorLayer::onDetach()
 
 void EditorLayer::onUpdate()
 {
-	
+    if(EngineState::isStopped()) {
+        SceneManager::cameraController = editorCamera.get();
+    }
 }
 
 void EditorLayer::onGuiUpdate()

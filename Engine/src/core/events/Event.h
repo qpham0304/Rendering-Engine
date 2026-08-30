@@ -4,6 +4,13 @@
 #include "core/entities/Entity.h"
 #include "core/components/MComponent.h"
 
+#define REFELECT_EVENT_TYPE(ClassName, ...) \
+    static const char* GetStaticType() { return #ClassName; } \
+    template <typename Visitor> \
+    static void VisitFields(Visitor&& visitor) { \
+        __VA_ARGS__; \
+    }
+
 enum class EventType
 {
 	None = 0,
@@ -11,7 +18,8 @@ enum class EventType
 	KeyPressed, KeyCombined, KeyReleased, KeyTyped,
 	MousePressed, MouseReleased, MouseMoved, MouseScrolled,
 	AsyncEvent, ModelLoadEvent, AnimationLoadEvent,
-	GuiMessageEvent, GuiFocusedEvent
+	GuiMessageEvent, GuiFocusedEvent,
+	CameraUpdateEvent
 };
 
 class Event
@@ -22,8 +30,26 @@ public:
 	virtual ~Event() = default;
 
 	virtual EventType GetEventType() const = 0;
-	virtual const char* GetName() const = 0;
-	virtual std::string ToString() const { return GetName(); }
+    virtual const char* GetName() const = 0;
+    virtual std::string ToString() const { return GetName(); }
+
+};
+
+class KeyPressedEvent : public Event
+{
+public:
+    int keyCode = 0;
+    bool isRepeat = false;
+
+    KeyPressedEvent(int keyCode, bool isRepeat = false) : keyCode(keyCode), isRepeat(isRepeat) {}
+
+    EventType GetEventType() const override { return EventType::KeyPressed; }
+    const char* GetName() const override { return "KeyPressedEvent"; }
+    
+    REFELECT_EVENT_TYPE(KeyPressedEvent,
+        visitor("keyCode", &KeyPressedEvent::keyCode),
+        visitor("isRepeat", &KeyPressedEvent::isRepeat)
+    );
 };
 
 class MouseMoveEvent : public Event
@@ -34,17 +60,13 @@ public:
 
 	MouseMoveEvent(double x, double y) : m_x(x), m_y(y) {}
 
-	EventType GetEventType() const override {
-		return EventType::MouseMoved;
-	}
-
-	const char* GetName() const override {
-		return "MouseMoveEvent";
-	};
-
-	std::string ToString() const override {
-		return "MouseMoveEvent";
-	}
+	EventType GetEventType() const override { return EventType::MouseMoved; }
+	const char* GetName() const override { return "MouseMoveEvent"; };
+	
+	REFELECT_EVENT_TYPE(MouseMoveEvent,
+        visitor("m_x", &MouseMoveEvent::m_x),
+        visitor("m_y", &MouseMoveEvent::m_y)
+    );
 };
 
 class MouseScrollEvent : public Event
@@ -55,39 +77,14 @@ public:
 
 	MouseScrollEvent(double x, double y) : m_x(x), m_y(y){}
 
-	EventType GetEventType() const override {
-		return EventType::MouseScrolled;
-	}
-
-	const char* GetName() const override {
-		return "MouseScrollEvent";
-	};
-
-	std::string ToString() const override {
-		return "MouseScrollEvent";
-	}
+	EventType GetEventType() const override { return EventType::MouseScrolled; }
+	const char* GetName() const override { return "MouseScrollEvent"; };
+	
+	REFELECT_EVENT_TYPE(MouseScrollEvent,
+        visitor("m_x", &MouseScrollEvent::m_x),
+        visitor("m_y", &MouseScrollEvent::m_y)
+    );
 };
-
-class KeyPressedEvent : public Event
-{
-public:
-	int keyCode = 0;
-
-	KeyPressedEvent(int keyCode) : keyCode(keyCode) {}
-
-	EventType GetEventType() const override {
-		return EventType::KeyPressed;
-	}
-
-	const char* GetName() const override {
-		return "KeyPressedEvent";
-	};
-
-	std::string ToString() const override {
-		return "KeyPressedEvent";
-	}
-};
-
 
 class KeyCombinedEvent : public Event
 {
@@ -96,37 +93,22 @@ public:
 
 	KeyCombinedEvent(std::vector<int> keys) : keyCodes(keys) {}
 
-	EventType GetEventType() const override {
-		return EventType::KeyPressed;
-	}
-
-	const char* GetName() const override {
-		return "KeyCombinedEvent";
-	};
-
-	std::string ToString() const override {
-		return "KeyCombinedEvent";
-	}
+	EventType GetEventType() const override { return EventType::KeyCombined; }
+	const char* GetName() const override { return "KeyCombinedEvent"; };
+	
+	REFELECT_EVENT_TYPE(KeyCombinedEvent,
+        visitor("keyCodes", &KeyCombinedEvent::keyCodes)
+    );
 };
-
 
 class WindowCloseEvent : public Event
 {
 public:
+	WindowCloseEvent() = default;
 
-	WindowCloseEvent() {}
-
-	EventType GetEventType() const override {
-		return EventType::WindowClose;
-	}
-
-	const char* GetName() const override {
-		return "WindowCloseEvent";
-	};
-
-	std::string ToString() const override {
-		return "WindowCloseEvent";
-	}
+	EventType GetEventType() const override { return EventType::WindowClose; }
+	const char* GetName() const override { return "WindowCloseEvent"; };
+	
 };
 
 class WindowResizeEvent : public Event
@@ -137,17 +119,9 @@ public:
 
 	WindowResizeEvent(int width, int height) : m_width(width), m_height(height){}
 
-	EventType GetEventType() const override {
-		return EventType::WindowResize;
-	}
+	EventType GetEventType() const override { return EventType::WindowResize; }
+	const char* GetName() const override { return "WindowResizeEvent"; };
 
-	const char* GetName() const override {
-		return "WindowResizeEvent";
-	};
-
-	std::string ToString() const override {
-		return "WindowResizeEvent";
-	}
 };
 
 class AsyncEvent : public Event
@@ -166,40 +140,9 @@ public:
 
 	};
 
-	virtual EventType GetEventType() const override {
-		return EventType::AsyncEvent;
-	}
+	virtual EventType GetEventType() const override { return EventType::AsyncEvent; }
+	virtual const char* GetName() const override { return "AsyncEvent"; };
 
-	virtual const char* GetName() const override {
-		return "AsyncEvent";
-	};
-
-	virtual std::string ToString() const override {
-		return "AsyncEvent";
-	}
-};
-
-class ComponentLoadAsyncEvent : public AsyncEvent
-{
-public:
-	Component* component = nullptr;
-
-	ComponentLoadAsyncEvent(Component* component) : component(component)
-	{
-
-	};
-
-	EventType GetEventType() const override {
-		return EventType::AsyncEvent;
-	}
-
-	const char* GetName() const override {
-		return "ComponentLoadAsyncEvent";
-	};
-
-	std::string ToString() const override {
-		return "ComponentLoadAsyncEvent";
-	}
 };
 
 class ModelLoadAsyncEvent : public AsyncEvent
@@ -213,19 +156,10 @@ public:
 
 	};
 
-	EventType GetEventType() const override {
-		return EventType::AsyncEvent;
-	}
-
-	const char* GetName() const override {
-		return "ModelLoadAsyncEvent";
-	};
-
-	std::string ToString() const override {
-		return "ModelLoadAsyncEvent";
-	}
+	EventType GetEventType() const override { return EventType::AsyncEvent; }
+	const char* GetName() const override { return "ModelLoadAsyncEvent"; };
+	
 };
-
 
 class ModelLoadEvent : public Event
 {
@@ -239,17 +173,9 @@ public:
 
 	};
 
-	EventType GetEventType() const override {
-		return EventType::ModelLoadEvent;
-	}
-
-	const char* GetName() const override {
-		return "ModelLoadEvent";
-	};
-
-	std::string ToString() const override {
-		return "ModelLoadEvent";
-	}
+	EventType GetEventType() const override { return EventType::ModelLoadEvent; }
+	const char* GetName() const override { return "ModelLoadEvent"; };
+	
 };
 
 class AnimationLoadEvent : public Event
@@ -264,17 +190,9 @@ public:
 
 	};
 
-	EventType GetEventType() const override {
-		return EventType::AnimationLoadEvent;
-	}
-
-	const char* GetName() const override {
-		return "AnimationLoadEvent";
-	};
-
-	std::string ToString() const override {
-		return "AnimationLoadEvent";
-	}
+	EventType GetEventType() const override { return EventType::AnimationLoadEvent; }
+	const char* GetName() const override { return "AnimationLoadEvent"; };
+	
 };
 
 class GuiMessageEvent : public Event
@@ -288,19 +206,10 @@ public:
 
 	};
 
-	EventType GetEventType() const override {
-		return EventType::GuiMessageEvent;
-	}
-
-	const char* GetName() const override {
-		return "GuiMessageEvent";
-	};
-
-	std::string ToString() const override {
-		return "GuiMessageEvent";
-	}
+	EventType GetEventType() const override { return EventType::GuiMessageEvent; }
+	const char* GetName() const override { return "GuiMessageEvent"; };
+	
 };
-
 
 class GuiFocusEvent : public Event
 {
@@ -313,15 +222,23 @@ public:
 
 	};
 
-	EventType GetEventType() const override {
-		return EventType::GuiFocusedEvent;
-	}
+	EventType GetEventType() const override { return EventType::GuiFocusedEvent; }
+	const char* GetName() const override { return "GuiFocusEvent"; };
+	
+};
 
-	const char* GetName() const override {
-		return "GuiFocusEvent";
-	};
+class CameraUpdateEvent : public Event
+{
+public:
+	CameraComponent camera;
 
-	std::string ToString() const override {
-		return "GuiFocusEvent";
-	}
+	CameraUpdateEvent() = default;
+	CameraUpdateEvent(CameraComponent cam) : camera(cam) {};
+
+	EventType GetEventType() const override { return EventType::CameraUpdateEvent; }
+	const char* GetName() const override { return "CameraUpdateEvent"; };
+
+	REFELECT_EVENT_TYPE(CameraUpdateEvent,
+		visitor("camera", &CameraUpdateEvent::camera);
+	);
 };

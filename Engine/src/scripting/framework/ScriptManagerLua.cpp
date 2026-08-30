@@ -93,7 +93,8 @@ bool ScriptManagerLua::init(WindowConfig config)
 {
     Service::init(config);
     
-    //TODO: this won't work on dynamically added components, serializer must be awared of the changes
+    //TODO: this won't work on dynamically defined components by the script
+    // the serializer must be aware of the changes to deal with the new component
 
 	m_luaState.open_libraries(sol::lib::base, sol::lib::package);
 
@@ -101,7 +102,6 @@ bool ScriptManagerLua::init(WindowConfig config)
     
     shareToLua.input(m_luaState);
     shareToLua.event(m_luaState);
-    shareToLua.component(m_luaState);
     shareToLua.scene(m_luaState);
     shareToLua.logging(m_luaState);
     
@@ -113,8 +113,7 @@ bool ScriptManagerLua::init(WindowConfig config)
             entt::meta_type metaType;
             for (auto&& [id, type] : entt::resolve()) {
                 auto prop = type.prop("name"_hs);
-                if (prop) {
-                    // assumes component is registered in the serializer's macro
+                if (prop) { // assumes component is registered in the serializer's macro
                     if (prop.value().cast<std::string>() == componentName) {
                         metaType = type;
                         break;
@@ -123,7 +122,7 @@ bool ScriptManagerLua::init(WindowConfig config)
             }
 
             if (!metaType) {
-                m_logger->error("Lua requested component '{}' which doesn't exist in C++ EnTT reflection!", componentName);
+                m_logger->error("Lua failed to get component '{}' which doesn't exist in C++ EnTT reflection!", componentName);
                 return sol::nil;
             }
 
@@ -175,10 +174,11 @@ bool ScriptManagerLua::init(WindowConfig config)
             if (it != componentDestroyer.end()) {
                 it->second(self);
             } else {
-                m_logger->error("Failed to add component: '{}' factory not registered.", componentName);
+                m_logger->error("Failed to remove component: '{}' factory not registered.", componentName);
             }
         }
     );
+    shareToLua.component(m_luaState);
 
     return true;
 }
