@@ -8,7 +8,7 @@ class ImGuiLogger : public Logger {
 public:
     struct LogInfo{
         LogLevel logLevel;
-        std::string message;
+        int repeatCount { 0 };
     };
 
     ImGuiLogger() : Logger("ImGuiInternal"), m_logLevel("DEBUG") {}
@@ -17,7 +17,7 @@ public:
     void setLevel(LogLevel level) override;
     void pollMessage();
 
-    std::span<LogInfo> logEntries();
+    const std::unordered_map<std::string, LogInfo>& logEntries() const;
     void clear();
     
     const char* getLevelString(LogLevel level);
@@ -27,7 +27,7 @@ protected:
 
 private:
     std::string m_logLevel;
-    std::vector<LogInfo> m_logHistory;
+    std::unordered_map<std::string, LogInfo> m_logHistory;
 
 };
 

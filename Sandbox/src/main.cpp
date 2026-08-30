@@ -12,8 +12,8 @@ int main()
         windowConfig.os = OperatingSystem::WINDOW;
         windowConfig.scriptingPlatform = ScriptingPlatform::LUA;
 	    windowConfig.physicsFramework = PhysicsFramework::BOX3D;
-        windowConfig.width = 1024;
-        windowConfig.height = 720;
+        windowConfig.width = 1920;
+        windowConfig.height = 1080;
         windowConfig.vsync = false;
         windowConfig.targetRenderFPS = 60.0f;
         windowConfig.targetUpdateFPS = 60.0f;

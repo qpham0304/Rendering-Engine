@@ -230,15 +230,15 @@ public:
 class CameraUpdateEvent : public Event
 {
 public:
-	CameraComponent camera;
+	Entity entity;
 
 	CameraUpdateEvent() = default;
-	CameraUpdateEvent(CameraComponent cam) : camera(cam) {};
+	CameraUpdateEvent(Entity entt) : entity(entt) {};
 
 	EventType GetEventType() const override { return EventType::CameraUpdateEvent; }
 	const char* GetName() const override { return "CameraUpdateEvent"; };
 
 	REFELECT_EVENT_TYPE(CameraUpdateEvent,
-		visitor("camera", &CameraUpdateEvent::camera);
+		visitor("entity", &CameraUpdateEvent::entity);
 	);
 };

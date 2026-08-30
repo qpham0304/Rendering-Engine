@@ -13,6 +13,7 @@ const std::vector<std::string> hookExecutionPriority = {
     "SpriteComponent",
     "AnimationStateComponent",
     "ColliderComponent",
+    "CameraComponent",
     "ScriptComponent"
 };
 

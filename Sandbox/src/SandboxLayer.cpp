@@ -19,7 +19,11 @@
 SandBoxLayer::SandBoxLayer(const std::string& name)
     : Layer(name)
 {
-
+    EventManager::getInstance().subscribe(EventType::CameraUpdateEvent, [this](Event& event) {
+        auto& cameraUpdateEvent = static_cast<CameraUpdateEvent&>(event);
+        auto& cameraComponent = cameraUpdateEvent.entity.getComponent<CameraComponent>();
+        camera->setCamera(&cameraComponent);
+    });
 }
 
 bool SandBoxLayer::init()
@@ -49,41 +53,36 @@ bool SandBoxLayer::init()
     SceneManager::getInstance().setActiveScene(scene2->getName());
     Scene* activeScene = SceneManager::getInstance().getActiveScene();
 
-    Entity cameraEntity = activeScene->getEntity(activeScene->addEntity("Camera"));
-    TransformComponent& cameraTransform = cameraEntity.getComponent<TransformComponent>();
-    cameraTransform.translateVec = glm::vec3(5.0);
+    // Entity cameraEntity = activeScene->getEntity(activeScene->addEntity("Camera"));
+    // TransformComponent& cameraTransform = cameraEntity.getComponent<TransformComponent>();
+    // cameraTransform.translateVec = glm::vec3(5.0);
     
-    float width = static_cast<float>(AppWindow::getWidth());
-    float height = static_cast<float>(AppWindow::getHeight());
-    float aspectRatio = width / height;
+    // float width = static_cast<float>(AppWindow::getWidth());
+    // float height = static_cast<float>(AppWindow::getHeight());
+    // float aspectRatio = width / height;
 
-    // glm::mat4 view = glm::lookAt(cameraTransform.translateVec, glm::vec3(0.0), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 view = cameraTransform.getModelMatrix();
+    // // glm::mat4 view = glm::lookAt(cameraTransform.translateVec, glm::vec3(0.0), glm::vec3(0.0f, 1.0f, 0.0f));
+    // glm::mat4 view = cameraTransform.getModelMatrix();
 
-    glm::mat4 projection = glm::ortho(
-        -aspectRatio,		// Left
-        aspectRatio,		// Right
-        -1.0f,				// Bottom
-        1.0f,				// Top
-        -1.0f,				// Near
-        1.0f				// Far
-    );
+    // glm::mat4 projection = glm::ortho(
+    //     -aspectRatio,		// Left
+    //     aspectRatio,		// Right
+    //     -1.0f,				// Bottom
+    //     1.0f,				// Top
+    //     -1.0f,				// Near
+    //     1.0f				// Far
+    // );
 
-    CameraComponent cameraComponent;
-    cameraComponent.viewWidth = AppWindow::getWidth();
-    cameraComponent.viewHeight = AppWindow::getHeight();
-    cameraComponent.projection = projection;
-    cameraComponent.view = view;
-    cameraComponent.orientation = -cameraTransform.translateVec;
-    cameraEntity.addComponent<CameraComponent>(cameraComponent);
+    // CameraComponent cameraComponent;
+    // cameraComponent.viewWidth = AppWindow::getWidth();
+    // cameraComponent.viewHeight = AppWindow::getHeight();
+    // cameraComponent.projection = projection;
+    // cameraComponent.view = view;
+    // cameraComponent.orientation = -cameraTransform.translateVec;
+    // cameraEntity.addComponent<CameraComponent>(cameraComponent);
     
-    camera->setCamera(&cameraEntity.getComponent<CameraComponent>());
+    // camera->setCamera(&cameraEntity.getComponent<CameraComponent>());
 
-    eventManager.subscribe(EventType::CameraUpdateEvent, [this](Event& event) {
-        CameraUpdateEvent& cameraUpdateEvent = static_cast<CameraUpdateEvent&>(event);
-        CameraComponent& cameraComponent = cameraUpdateEvent.camera;
-        camera->setCamera(&cameraComponent);
-    });
     
     
     const int numLights = 10;

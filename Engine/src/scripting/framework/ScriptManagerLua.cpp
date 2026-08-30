@@ -102,6 +102,7 @@ bool ScriptManagerLua::init(WindowConfig config)
     
     shareToLua.input(m_luaState);
     shareToLua.event(m_luaState);
+    shareToLua.component(m_luaState);
     shareToLua.scene(m_luaState);
     shareToLua.logging(m_luaState);
     
@@ -178,7 +179,6 @@ bool ScriptManagerLua::init(WindowConfig config)
             }
         }
     );
-    shareToLua.component(m_luaState);
 
     return true;
 }

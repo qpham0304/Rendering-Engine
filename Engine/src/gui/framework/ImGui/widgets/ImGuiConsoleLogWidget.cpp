@@ -101,29 +101,30 @@ void ImGuiConsoleLogWidget::_renderConsole()
 		ImGui::TextUnformatted(text);
 	};
 	
+	int i = 0;
     auto entries = m_imguiLogger.logEntries();
-    for (int i = 0; i < (int)entries.size(); i++) {
-        const auto& entry = entries[i];
+    for (auto& [message, logInfo] : entries) {
+		LogLevel logLevel = logInfo.logLevel;
         
-        if (entry.logLevel == LogLevel::Debug && !showDebug) continue;
-        if (entry.logLevel == LogLevel::Info  && !showInfo)  continue;
-        if (entry.logLevel == LogLevel::Warn  && !showWarn)  continue;
-        if (entry.logLevel == LogLevel::Error && !showError) continue;
+        if (logLevel == LogLevel::Debug && !showDebug) continue;
+        if (logLevel == LogLevel::Info  && !showInfo)  continue;
+        if (logLevel == LogLevel::Warn  && !showWarn)  continue;
+        if (logLevel == LogLevel::Error && !showError) continue;
 
         if (searchFilter[0] != '\0') {
-            std::string msgLower = entry.message;
+            std::string msgLower = message;
             std::transform(msgLower.begin(), msgLower.end(), msgLower.begin(), ::tolower);
             if (msgLower.find(searchStr) == std::string::npos) continue;
         }
 
-        ImVec4 color = getColorForLevel(entry.logLevel);
+        ImVec4 color = getColorForLevel(logLevel);
         
         ImGui::BeginGroup();
 		{
-			ImGui::TextColored(color, "[%s]", m_imguiLogger.getLevelString(entry.logLevel));
+			ImGui::TextColored(color, "[%s]", m_imguiLogger.getLevelString(logLevel));
 			ImGui::SameLine();
 
-			std::string originalMsg = entry.message;
+			std::string originalMsg = message;
 			size_t matchPos = std::string::npos;
 
 			if (searchFilter[0] != '\0') {
@@ -152,14 +153,14 @@ void ImGuiConsoleLogWidget::_renderConsole()
 
 			ImGui::SameLine(0, 0); 
 			ImGui::SetCursorPosX(ImGui::GetWindowContentRegionMin().x);
-			std::string id = "##row_" + std::to_string(i);
+			std::string id = "##row_" + std::to_string(i++);
 
 			ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
 			ImGui::PushStyleColor(ImGuiCol_HeaderActive,  ImVec4(1.0f, 1.0f, 1.0f, 0.1f));
 
 			if (ImGui::Selectable(id.c_str(), false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick)) {
 				if (ImGui::IsMouseDoubleClicked(0)) {
-					ImGui::SetClipboardText(entry.message.c_str());
+					ImGui::SetClipboardText(message.c_str());
 				}
 			}
 

@@ -458,7 +458,15 @@ void ImGuiRightSidebarWidget::_componentsControl()
         }
 
         if (ImGui::Selectable("Camera")) { 
+            entity.addComponent<CameraComponent>();
 
+            // CameraComponent& cameraComponent = entity.getComponent<CameraComponent>();
+            // cameraComponent.viewWidth = AppWindow::getWidth();
+            // cameraComponent.viewHeight = AppWindow::getHeight();
+            // cameraComponent.projection = projection;
+            // cameraComponent.view = entity.getComponent<TransformComponent>().translateVec;
+            // cameraComponent.orientation = -cameraTransform.translateVec;
+            // cameraEntity.addComponent<CameraComponent>(cameraComponent);
         }
 
         if (ImGui::Selectable("Physics")) { 

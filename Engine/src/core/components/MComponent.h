@@ -278,10 +278,10 @@ struct CameraComponent {
 
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
 		CameraComponent,
-		viewWidth,
-		viewHeight,
-		projection,
-		view,
+		// viewWidth,
+		// viewHeight,
+		// projection,
+		// view,
 		orientation
 	);
 };

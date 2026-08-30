@@ -9,6 +9,7 @@
 #include "core/resources/managers/MaterialManager.h"
 #include "physics/PhysicsManager.h"
 #include "scripting/ScriptManager.h"
+#include "window/AppWindow.h"
 
 Entity::Entity(const entt::entity& entity, entt::registry& registry)
     : entity(entity), registry(&registry)
@@ -43,9 +44,31 @@ entt::registry *Entity::getRegistry()
 
 void Entity::onCameraComponentAdded()
 {
-    CameraUpdateEvent cameraUpdateEvent;
+    TransformComponent& transformComponent = getComponent<TransformComponent>();
+    glm::mat4 view = transformComponent.getModelMatrix();
+
+    float width = static_cast<float>(AppWindow::getWidth());
+    float height = static_cast<float>(AppWindow::getHeight());
+    float aspectRatio = width / height;
+
+    glm::mat4 projection = glm::ortho(
+        -aspectRatio,		// Left
+        aspectRatio,		// Right
+        -1.0f,				// Bottom
+        1.0f,				// Top
+        -1.0f,				// Near
+        1.0f				// Far
+    );
+
+    CameraComponent& cameraComponent = getComponent<CameraComponent>();
+    cameraComponent.viewWidth = width;
+    cameraComponent.viewHeight = height;
+    cameraComponent.projection = projection;
+    cameraComponent.view = view;
+    cameraComponent.orientation = -transformComponent.translateVec;
+
+    CameraUpdateEvent cameraUpdateEvent(*this);
     EventManager::getInstance().publish(cameraUpdateEvent);
-    printf("---------------camera added\n");
 }
 
 void Entity::onModelComponentAdded()

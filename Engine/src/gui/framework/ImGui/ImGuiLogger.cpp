@@ -33,13 +33,18 @@ void ImGuiLogger::pollMessage()
             case LogLevel::Debug: logMessage(level, message); break;
             default: break;
         }
-        m_logHistory.emplace_back(level, std::move(message));
+
+        auto [it, inserted] = m_logHistory.try_emplace(message, LogInfo{level, 1});
+        if(!inserted) {
+            it->second.repeatCount++;
+            it->second.logLevel = level;
+        }
+
         Logger::messageQueue.pop();
     }
 }
 
-
-std::span<ImGuiLogger::LogInfo> ImGuiLogger::logEntries()
+const std::unordered_map<std::string, ImGuiLogger::LogInfo> &ImGuiLogger::logEntries() const
 {
     return m_logHistory;
 }
