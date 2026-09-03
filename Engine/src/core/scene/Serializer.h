@@ -8,6 +8,13 @@
 #include "core/entities/Entity.h"
 #include "core/components/MComponent.h"
 
+#define REFELECT_TYPE(ClassName, ...) \
+    static const char* GetStaticType() { return #ClassName; } \
+    template <typename Visitor> \
+    static void VisitFields(Visitor&& visitor) { \
+        __VA_ARGS__; \
+    }
+    
 template<typename Type>
 struct SerializerInternal {
     static nlohmann::json Serialize(const void* instance) {

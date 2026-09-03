@@ -53,6 +53,7 @@ private:
 	void _meshControl(const Entity& entity);
 	void _spriteControl(const Entity& entity);
 	void _scriptControl(const Entity& entity);
+	void _colliderControl(const Entity& entity);
 	void _scenesControl();
 };
 

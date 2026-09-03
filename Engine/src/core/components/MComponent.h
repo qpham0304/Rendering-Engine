@@ -44,7 +44,6 @@ namespace glm {
 class TransformComponent {
 private:
 	glm::mat4 modelMatrix = glm::mat4(1.0f);
-	bool isDirty = true;
 
 public:
 	glm::vec3 translateVec = glm::vec3(0.0f);
@@ -52,9 +51,7 @@ public:
 	glm::vec3 scaleVec = glm::vec3(1.0f);
 
 	TransformComponent() = default;
-	TransformComponent(glm::mat4&& modelMatrix) : modelMatrix(modelMatrix) {
-		
-	};
+	TransformComponent(glm::mat4&& modelMatrix) : modelMatrix(modelMatrix) {};
 
 	glm::mat4& getModelMatrix() {
 		return modelMatrix;
@@ -281,7 +278,7 @@ struct CameraComponent {
 		// viewWidth,
 		// viewHeight,
 		// projection,
-		// view,
+		view,
 		orientation
 	);
 };
@@ -301,10 +298,17 @@ struct ScriptComponent {
 
 struct ColliderComponent {
 	ColliderComponent() = default;
-	ColliderComponent(uint32_t id) : shapeID(id) {}
+	ColliderComponent(uint32_t id, uint32_t type) : shapeID(id), colliderType(type) {}
 	
-	uint32_t shapeID{ 0 };
-	bool isStatic{ true };
+	uint32_t shapeID { 0 };
+	std::string bodyType = "None";
+	
+	bool isActive { true };
+	uint32_t colliderType { 0 };
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ColliderComponent, isStatic);
+	float mass { 1.0 };
+	glm::vec3 center{ glm::vec3(0.0) };
+	glm::mat3 inertia{ glm::mat3(1.0) };
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ColliderComponent, shapeID, colliderType, bodyType);
 };

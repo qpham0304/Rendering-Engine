@@ -11,11 +11,14 @@ class SharedFunctionsLua
 public:
     SharedFunctionsLua(Logger* logger);
 
+    void math(sol::state& luaState);
     void input(sol::state& luaState);
     void event(sol::state& luaState);
     void component(sol::state& luaState);
     void scene(sol::state& luaState);
     void logging(sol::state& luaState);
+    void physics(sol::state& luaState);
+    
 private:
     Logger* m_logger;
 

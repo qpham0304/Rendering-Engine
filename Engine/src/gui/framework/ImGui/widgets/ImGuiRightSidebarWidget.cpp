@@ -12,8 +12,8 @@
 #include "core/features/EngineUtils.h"
 #include "core/events/EventManager.h"
 #include "core/resources/managers/ModelManager.h"
-#include <scripting/ScriptManager.h>
-#include <physics/PhysicsManager.h>
+#include "scripting/ScriptManager.h"
+#include "physics/PhysicsManager.h"
 
 
 ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
@@ -386,6 +386,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
     _meshControl(entity);
     _spriteControl(entity);
     _scriptControl(entity);
+    _colliderControl(entity);
 
     ImGui::Separator();
     if (ImGui::Button("+ Add Component", ImVec2(-1.0f, 0.0f))) {
@@ -469,47 +470,65 @@ void ImGuiRightSidebarWidget::_componentsControl()
             // cameraEntity.addComponent<CameraComponent>(cameraComponent);
         }
 
-        if (ImGui::Selectable("Physics")) { 
-
-        }
-
         if (ImGui::BeginMenu("Scripts")) {
             if (ImGui::Selectable("LoadOneTimeScript")) { 
                 ScriptManager* scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
-                std::string path = "assets/scripts/sandbox.lua";
+                std::string path = "../../assets/scripts/sandbox.lua";
                 scriptManager->loadScript(path);
                 scriptManager->runScript(path);
             }
-            if (ImGui::Selectable("ReloadScript")) { 
-                ScriptManager* scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
-                // scriptManager->reloadScript("assets/scripts/sandbox.lua");
-                scriptManager->reloadScript("assets/scripts/Camera.lua");
-            }
             if (ImGui::Selectable("PlayerController")) { 
-                entity.addComponent<ScriptComponent>("assets/scripts/Player.lua");
+                entity.addComponent<ScriptComponent>("../../assets/scripts/Player.lua");
                 entity.onScriptComponentAdded();
             }
             if (ImGui::Selectable("CameraController")) { 
-                entity.addComponent<ScriptComponent>("assets/scripts/Camera.lua");
+                entity.addComponent<ScriptComponent>("../../assets/scripts/Camera.lua");
                 entity.onScriptComponentAdded();
             }
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Collider")) {
-            if (ImGui::Selectable("add colider")) { 
-                auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-                auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-                auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
-                
-                TransformComponent& transform = entity.getComponent<TransformComponent>();
-                ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
-                Model* model = modelManager->getModel(modelComponent.modelID);
-                Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+            auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+            auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+            auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
+            
+            TransformComponent& transform = entity.getComponent<TransformComponent>();
+            ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
+            Model* model = modelManager->getModel(modelComponent.modelID);
+            Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
 
-                uint32_t bodyID = physicsManager->createBody(*mesh, transform.translateVec, transform.scaleVec, false);
-                entity.addComponent<ColliderComponent>(bodyID);
+            if (ImGui::BeginMenu("Static Body")) { 
+                if (ImGui::Selectable("Mesh collider")) { 
+                    uint32_t type = static_cast<uint32_t>(ColliderType::Static);
+                    uint32_t bodyID = physicsManager->createMeshBody(entity, *mesh, transform.translateVec, transform.scaleVec, type);
+                    entity.addComponent<ColliderComponent>(bodyID, type);
+                    // entity.onColliderComponentAdded();
+                }
+                ImGui::EndMenu();
+            }
+            
+            if (ImGui::BeginMenu("Kinematic Body")) { 
+                uint32_t type = static_cast<uint32_t>(ColliderType::Kinematic);
+                // uint32_t bodyID = physicsManager->createKineticBody(entity, *mesh, transform.translateVec, transform.scaleVec, type);
+                // entity.addComponent<ColliderComponent>(bodyID, type);
                 // entity.onColliderComponentAdded();
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Dynamic Body")) { 
+                uint32_t type = static_cast<uint32_t>(ColliderType::Dynamic);
+                if (ImGui::Selectable("Box collider")) {
+                    uint32_t bodyID = physicsManager->createBoxBody(entity, *mesh, transform.translateVec, transform.scaleVec, type);
+                    entity.addComponent<ColliderComponent>(bodyID, type);
+                    // entity.onColliderComponentAdded();
+                }
+                if (ImGui::Selectable("Sphere collider")) {
+                    uint32_t bodyID = physicsManager->createSphereBody(entity, *mesh, transform.translateVec, transform.scaleVec, 0.5f, type);
+                    entity.addComponent<ColliderComponent>(bodyID, type);
+                    // entity.onColliderComponentAdded();
+                }
+                ImGui::EndMenu();
             }
             ImGui::EndMenu();
         }
@@ -741,6 +760,49 @@ void ImGuiRightSidebarWidget::_scriptControl(const Entity &entity)
             scriptManager->reloadScript(script.path);
         }
     }
+}
+
+void ImGuiRightSidebarWidget::_colliderControl(const Entity &entity)
+{
+    if(!entity.hasComponent<ColliderComponent>()) {
+        return;
+    }
+
+    auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+    auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+    auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
+    
+    ColliderComponent& collider = entity.getComponent<ColliderComponent>();
+    
+    bool changed = false;
+    if (ImGui::CollapsingHeader("Collider", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text(std::string("collider id: " + std::to_string(collider.shapeID)).c_str());
+        if(ImGui::Button("Add Force")) {
+            physicsManager->addForce(collider.shapeID, {0.0, 100.0, 0.0});
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("Impulse")) {
+            physicsManager->addImpulse(collider.shapeID, {0.0, 100.0, 0.0});
+        }
+        changed |= ImGui::DragFloat("mass: ", &collider.mass, 0.01f, -25.0f, 25.0f);
+        changed |= ImGui::DragFloat3("Gravity Center", &collider.center[0], 0.0f, 0.0f, 10.0f);
+        changed |= ImGui::DragFloat3("Inertia x", &collider.inertia[0][0], 0.0f, 0.0f, 10.0f);
+        changed |= ImGui::DragFloat3("Inertia y", &collider.inertia[1][0], 0.0f, 0.0f, 10.0f);
+        changed |= ImGui::DragFloat3("Inertia z", &collider.inertia[2][0], 0.0f, 0.0f, 10.0f);
+    }
+
+    if(changed) {
+        MassData data{};
+        data.mass = collider.mass;
+        data.center = collider.center;
+        data.inertia = collider.inertia;
+        physicsManager->setMass(collider.shapeID, data);
+    }
+
+    // MassData data = physicsManager->getMass(collider.shapeID);
+    // m_logger->info("updated mass: {}", data.mass);
+    // m_logger->info("updated Gravity Center: x:{}, y:{}, z:{}", data.center.x, data.center.y, data.center.z);
+
 }
 
 void ImGuiRightSidebarWidget::_scenesControl()

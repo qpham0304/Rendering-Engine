@@ -124,19 +124,19 @@ bool Scene::removeEntity(const std::string& name)
     return false;
 }
 
-bool Scene::hasEntity(const uint32_t& uuid)
+bool Scene::hasEntity(const uint32_t& id)
 {
-	return (entities.find(uuid) != entities.end());
+	return (entities.find(id) != entities.end());
 }
 
-Entity Scene::getEntity(const uint32_t& uuid)
+Entity Scene::getEntity(const uint32_t& id)
 {
-	if (entities.find(uuid) != entities.end()) {
-		return entities[uuid];
+	if (entities.find(id) != entities.end()) {
+		return entities[id];
 	}
 
 	for (auto& entity : frameNewEntities) {
-        if (entt::to_integral((entt::entity)entity) == uuid) {
+        if (entt::to_integral((entt::entity)entity) == id) {
             return entity;
         }
     }

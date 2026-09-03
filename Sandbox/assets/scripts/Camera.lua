@@ -35,7 +35,6 @@ function Camera:processKeyboard()
     end
 
     if cameraComponent and cameraComponent.view then
-        log_info("updating camera")
         cameraComponent.view[4][1] = -transform.translateVec[1]
         cameraComponent.view[4][2] = -transform.translateVec[2]
         cameraComponent.view[4][3] = -transform.translateVec[3]
@@ -59,8 +58,6 @@ function Camera:onInit()
     --         end
     --     end
     -- )
-
-    log_warn("----init should be only once")
 end
 
 function Camera:onUpdate(deltaTime)

@@ -2,24 +2,6 @@
   "entities": [
     {
       "components": {
-        "NameComponent": {
-          "name": "Camera"
-        },
-        "TransformComponent": {
-          "translateVec": [0.0, 0.0, 0.0],
-          "rotateVec": [0.0, 0.0, 0.0],
-          "scaleVec": [1.0, 1.0, 1.0]
-        },
-        "CameraComponent": {
-          "orientation": [0.0, 0.0, 0.0]
-        },
-        "ScriptComponent": {
-          "path": "assets/scripts/Camera.lua" 
-        }
-      }
-    },
-    {
-      "components": {
         "ModelComponent": {
           "path": "assets/models/cube/cube-notex.gltf"
         },
@@ -27,7 +9,9 @@
           "name": "plane"
         },
         "ColliderComponent": {
-          "isStatic": true
+          "shapeID": 0,
+          "colliderType": 0,
+          "bodyType": "Cube"
         },
         "TransformComponent": {
           "rotateVec": [0.0, 0.0, 0.0],
@@ -45,7 +29,9 @@
           "name": "cube"
         },
         "ColliderComponent": {
-          "isStatic": false
+          "shapeID": 0,
+          "colliderType": 2,
+          "bodyType": "Cube"
         },
         "TransformComponent": {
           "rotateVec": [0.0, 0.0, 0.0],

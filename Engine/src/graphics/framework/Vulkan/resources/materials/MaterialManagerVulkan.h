@@ -45,8 +45,8 @@ public:
 	virtual uint32_t createMaterial(const MaterialDesc& materialDesc) override;
     virtual void bindMaterial(void* cmdBuffer, void* pipeline) override;
     virtual MaterialDesc getMaterial(const uint32_t& id) override;
-	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc);
 	virtual void* getMaterialLayout() override;
+	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc) override;
 	
 	uint64_t getMaterialAddress();
 	

@@ -54,7 +54,11 @@ namespace LuaJsonBridge {
             if (len > 0) {
                 is_array = true;
                 for (size_t i = 1; i <= len; ++i) {
-                    if (t[i] == sol::nil) { is_array = false; break; }
+                    sol::object val = t[i];
+                    if (!val.valid() || val == sol::nil) { 
+                        is_array = false; 
+                        break; 
+                    }
                 }
             }
             
@@ -96,19 +100,22 @@ bool ScriptManagerLua::init(WindowConfig config)
     //TODO: this won't work on dynamically defined components by the script
     // the serializer must be aware of the changes to deal with the new component
 
-	m_luaState.open_libraries(sol::lib::base, sol::lib::package);
+	m_luaState.open_libraries(sol::lib::base, sol::lib::package, sol::lib::math);
 
     SharedFunctionsLua shareToLua(m_logger.get()); 
     
+    shareToLua.math(m_luaState);
     shareToLua.input(m_luaState);
     shareToLua.event(m_luaState);
     shareToLua.component(m_luaState);
     shareToLua.scene(m_luaState);
     shareToLua.logging(m_luaState);
+    shareToLua.physics(m_luaState);
     
     Serializer serializer;
     auto componentFactory = serializer.getComponentFactory();
     auto componentDestroyer = serializer.getComponentDestroyer();
+    //TODO: brute force copy to lua table, return direct pointer to avoid copy
     m_luaState.new_usertype<Entity>("Entity",
         "getComponent", [this](Entity& self, std::string_view componentName) -> sol::object {
             entt::meta_type metaType;
@@ -185,7 +192,23 @@ bool ScriptManagerLua::init(WindowConfig config)
 
 bool ScriptManagerLua::onClose()
 {
+    SceneManager& sceneManager = SceneManager::getInstance();
+    for(uint32_t sceneID : sceneManager.listIDs()) {
+        Scene* scene = sceneManager.getScene(sceneID);
 
+        auto func = std::function<void(Entity)>([&](Entity entity) -> void {
+            entity.getComponent<ScriptComponent>().onDestroy();
+            entity.removeComponent<ScriptComponent>();
+        });
+
+        scene->forEnitiesWith<ScriptComponent>(func);
+    }
+
+    m_scripts.clear();
+    m_scriptCache.clear();
+
+    m_luaState["Entity"] = sol::nil;
+    m_luaState.collect_garbage();
 
     return true;
 }
@@ -221,14 +244,10 @@ void ScriptManagerLua::onUpdate()
         }
     }
 
-    // for(auto& path : m_scriptsToReload) {
-    //     _reloadScript(path);
-    // }
-    // m_scriptsToReload.clear();
-
     SceneManager& sceneManager = SceneManager::getInstance();
-    for(uint32_t sceneID : sceneManager.listIDs()) {
-        Scene* scene = sceneManager.getScene(sceneID);
+    // for(uint32_t sceneID : sceneManager.listIDs()) {
+        // Scene* scene = sceneManager.getScene(sceneID);
+        Scene* scene = sceneManager.getActiveScene();
 
         auto func = std::function<void(Entity)>([&](Entity entity) -> void {
             auto& scriptComponent = entity.getComponent<ScriptComponent>();
@@ -245,101 +264,112 @@ void ScriptManagerLua::onUpdate()
         });
 
         scene->forEnitiesWith<ScriptComponent>(func);
-    }
+    // }
 
 }
 
 void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
 {
-    if(!entity.hasComponent<ScriptComponent>()) {
-        m_logger->error("ScriptComponent not found in entity {}", entity.getComponent<NameComponent>().name);
-        return;
-    }
-
-    auto& scriptComponent = entity.getComponent<ScriptComponent>();
-
-    sol::table scriptClass;
     std::string filePath(path);
     if(filePath.empty() || filePath == "None") {
         return;
     }
 
-    auto it = m_scriptCache.find(filePath);
-    if (it != m_scriptCache.end()) {
-        scriptClass = it->second;
-    } else {
-        if (!std::filesystem::exists(filePath)) {
-            m_logger->error("Script loading failed: File does not exist at path '{}'", filePath);
+    try {
+        if(!entity.hasComponent<ScriptComponent>()) {
+            m_logger->error("ScriptComponent not found in entity {}", entity.getComponent<NameComponent>().name);
             return;
         }
 
-        auto scriptResult = m_luaState.script_file(filePath);
-        if (!scriptResult.valid()) {
-            sol::error err = scriptResult;
-            m_logger->error("Failed to compile/execute Lua script file {}: {}", filePath, err.what());
-            return;
-        }
-        
-        std::string className = std::filesystem::path(filePath).stem().string(); 
-        auto proxy = m_luaState[className];
-        if(!proxy.valid()) {
-            m_logger->error("Failed to find Lua class table: {}", className);
-            m_logger->error("Make sure file name matches defined class name");
-            return;
-        }
-        
-        sol::table loadedClass = proxy;
-        if (!loadedClass.valid()) {
-            m_logger->error("Failed to validate Lua class table: {}", className);
-            return;
-        }
+        sol::table scriptClass;
+        auto& scriptComponent = entity.getComponent<ScriptComponent>();
 
-        m_scriptCache[filePath] = loadedClass;
-        scriptClass = loadedClass;
-    }
-
-    sol::protected_function constructor = scriptClass["new"];
-    if (!constructor.valid()) {
-        std::string className = std::filesystem::path(filePath).stem().string();
-        m_logger->error("Class {} does not have a 'new' constructor function!", className);
-        return;
-    }
-
-    sol::protected_function_result result = constructor(Entity(entity));
-    if (!result.valid()) {
-        sol::error err = result;
-        std::string className = std::filesystem::path(filePath).stem().string();
-        m_logger->error("Failed to construct instance for Lua class {}: {}", className, err.what());
-        return;
-    }
-    sol::table luaInstance = result;
-
-    sol::protected_function initFunc = luaInstance["onInit"];
-    if(initFunc.valid()) {
-        scriptComponent.onInit = [luaInstance, initFunc]() mutable { initFunc(luaInstance); };
-    } else {
-        scriptComponent.onInit = [](){};
-    }
-
-    sol::protected_function updateFunc = luaInstance["onUpdate"];
-    if(updateFunc.valid()) {
-        scriptComponent.onUpdate = [luaInstance, updateFunc, this](double dt) mutable {
-            auto result = updateFunc(luaInstance, dt); 
-            if (!result.valid()) {
-                sol::error err = result;
-                m_logger->error("Lua script update error: {}", err.what());
+        auto it = m_scriptCache.find(filePath);
+        if (it != m_scriptCache.end()) {
+            scriptClass = it->second;
+        } else {
+            if (!std::filesystem::exists(filePath)) {
+                m_logger->error("Script loading failed: File does not exist at path '{}'", filePath);
+                return;
             }
-        };
-    } else {
-        scriptComponent.onUpdate = [](double){};
-    }
 
-    sol::protected_function destroyFunc = luaInstance["onDestroy"];
-    if(destroyFunc.valid()) {
-        scriptComponent.onDestroy = [luaInstance, destroyFunc]() mutable { destroyFunc(luaInstance); };
-    } else {
-        scriptComponent.onDestroy = [](){};
+            auto scriptResult = m_luaState.safe_script_file(filePath);
+            if (!scriptResult.valid()) {
+                sol::error err = scriptResult;
+                m_logger->error("Failed to compile/execute Lua script file {}: {}", filePath, err.what());
+                return;
+            }
+            
+            std::string className = std::filesystem::path(filePath).stem().string(); 
+            auto proxy = m_luaState[className];
+            if(!proxy.valid()) {
+                m_logger->error("Failed to find Lua class table: {}", className);
+                m_logger->error("Make sure file name matches defined class name");
+                return;
+            }
+            
+            sol::table loadedClass = proxy;
+            if (!loadedClass.valid()) {
+                m_logger->error("Failed to validate Lua class table: {}", className);
+                return;
+            }
+
+            m_scriptCache[filePath] = loadedClass;
+            scriptClass = loadedClass;
+        }
+
+        sol::protected_function constructor = scriptClass["new"];
+        if (!constructor.valid()) {
+            std::string className = std::filesystem::path(filePath).stem().string();
+            m_logger->error("Class {} does not have a 'new' constructor function!", className);
+            return;
+        }
+
+        sol::protected_function_result result = constructor(Entity(entity));
+        if (!result.valid()) {
+            sol::error err = result;
+            std::string className = std::filesystem::path(filePath).stem().string();
+            m_logger->error("Failed to construct instance for Lua class {}: {}", className, err.what());
+            return;
+        }
+        sol::table luaInstance = result;
+
+        sol::protected_function initFunc = luaInstance["onInit"];
+        if(initFunc.valid()) {
+            if(scriptComponent.initilized) {
+                scriptComponent.initilized = false;
+            }
+            scriptComponent.onInit = [luaInstance, initFunc]() mutable { initFunc(luaInstance); };
+        } else {
+            scriptComponent.onInit = [](){};
+        }
+
+        sol::protected_function updateFunc = luaInstance["onUpdate"];
+        if(updateFunc.valid()) {
+            scriptComponent.onUpdate = [luaInstance, updateFunc, this](double dt) mutable {
+                auto result = updateFunc(luaInstance, dt); 
+                if (!result.valid()) {
+                    sol::error err = result;
+                    m_logger->error("Lua script update error: {}", err.what());
+                }
+            };
+        } else {
+            scriptComponent.onUpdate = [](double){};
+        }
+
+        sol::protected_function destroyFunc = luaInstance["onDestroy"];
+        if(destroyFunc.valid()) {
+            if(scriptComponent.onDestroy != nullptr) {
+                scriptComponent.onDestroy();    // call clean up for script reload
+            }
+            scriptComponent.onDestroy = [luaInstance, destroyFunc]() mutable { destroyFunc(luaInstance); };
+        } else {
+            scriptComponent.onDestroy = [](){};
+        }
+    } catch (const std::runtime_error& e) {
+        m_logger->error("{}", e.what());
     }
+    
 }
 
 // on demand script calls, this will run the entire lua script file
@@ -347,10 +377,10 @@ void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
 void ScriptManagerLua::loadScript(std::string_view path)
 {
     sol::load_result fx = m_luaState.load_file(std::string(path));
-	if (!fx.valid()) {
-		sol::error err = fx;
-		m_logger->error("failed to load string-based script into the program {}", err.what());
-	} else {
+    if (!fx.valid()) {
+        sol::error err = fx;
+        m_logger->error("failed to load script into the program {}", err.what());
+    } else {
         m_scripts[std::string(path)] = fx.get<sol::protected_function>();
     }
 }
@@ -391,13 +421,7 @@ void ScriptManagerLua::_reloadScript(const std::string& filePath)
         return; 
     }
 
-    auto itCache = m_scriptCache.find(filePath);
-    if (itCache == m_scriptCache.end()) {
-        m_logger->warn("No script to reload at: {}", filePath);
-        return;
-    }
-
-    m_scriptCache.erase(itCache);
+    m_scriptCache.erase(filePath);
 
     SceneManager& sceneManager = SceneManager::getInstance();
     for(uint32_t sceneID : sceneManager.listIDs()) {

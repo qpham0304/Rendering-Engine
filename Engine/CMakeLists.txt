@@ -9,6 +9,10 @@ else()
     set(ARCH "Win32")
 endif()
 
+if(MSVC)
+    add_compile_options(/bigobj)
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

@@ -35,11 +35,11 @@ void EventManager::unsubscribe(EventType eventType, uint32_t cbID)
 
 void EventManager::publish(Event& event)
 {
-	if (callbacks.find(event.GetEventType()) == callbacks.end()) {
+	auto it = callbacks.find(event.GetEventType());
+	if (it == callbacks.end()) {
 		return;
 	}
 
-	auto it = callbacks.find(event.GetEventType());
 	for (const auto& [id, callback] : it->second | std::views::reverse) {
         callback(event);
         if (event.Handled) {

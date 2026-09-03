@@ -19,6 +19,14 @@
       "path": "assets/textures/MonkeyWalk.png",
       "targetRenderer": "SpriteRenderer"
     },
+    "ColliderComponent": {
+        "shapeID": 0,
+        "colliderType": 2,
+        "bodyType": "Cube"
+    },
+    "ScriptComponent": {
+      "path": "../../assets/scripts/Player.lua"
+    },
     "ModelComponent": { "path": "$prim$Quad" }
   }
 }

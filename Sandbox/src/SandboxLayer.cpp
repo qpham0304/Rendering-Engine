@@ -97,8 +97,9 @@ bool SandBoxLayer::init()
 
         TransformComponent& transform = lightEntity.getComponent<TransformComponent>();
         float xPos = posDist(gen);
+        float yPos = posDist(gen);
         float zPos = posDist(gen);
-        transform.translate(glm::vec3(xPos, 2.0f, zPos));
+        transform.translate(glm::vec3(xPos, yPos, zPos));
 
         MaterialDesc materialDesc;
         materialDesc.albedoIDs.push_back(
@@ -112,7 +113,8 @@ bool SandBoxLayer::init()
         // these need to be set to have emision
         materialDesc.emissive = 5.0;
 
-        Mesh mesh = EngineUtils::drawSphere(0.5f, 36, 36);
+        float radius = 0.5;
+        Mesh mesh = EngineUtils::drawSphere(radius, 36, 36);
         mesh.materialID = materialManager->createMaterial(materialDesc);
 
         Model model {};
@@ -125,8 +127,15 @@ bool SandBoxLayer::init()
         lightEntity.addComponent<LightComponent>(randomColor, 15.0f, 1.0f);
 
         //TODO: body should be according to transform as well
-        uint32_t bodyID = physicsManager->createBody(mesh, transform.translateVec, transform.scaleVec, false);
-        lightEntity.addComponent<ColliderComponent>(bodyID);
+        uint32_t bodyID = physicsManager->createSphereBody(
+            lightEntity,
+            mesh,
+            transform.translateVec,
+            transform.scaleVec,
+            radius,
+            static_cast<uint32_t>(ColliderType::Dynamic)
+        );
+        lightEntity.addComponent<ColliderComponent>(bodyID, static_cast<uint32_t>(ColliderType::Dynamic));
     }
 
     // light probe manager component
@@ -218,7 +227,7 @@ void SandBoxLayer::onDetach()
 void SandBoxLayer::onUpdate()
 {
     if(EngineState::isPlaying()) {
-        SceneManager::cameraController = camera.get();
+        // SceneManager::cameraController = camera.get();
     }
 }
 

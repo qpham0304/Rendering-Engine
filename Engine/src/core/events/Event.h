@@ -1,15 +1,7 @@
 #pragma once
 
 #include <string>
-#include "core/entities/Entity.h"
-#include "core/components/MComponent.h"
-
-#define REFELECT_EVENT_TYPE(ClassName, ...) \
-    static const char* GetStaticType() { return #ClassName; } \
-    template <typename Visitor> \
-    static void VisitFields(Visitor&& visitor) { \
-        __VA_ARGS__; \
-    }
+#include "core/scene/Serializer.h"
 
 enum class EventType
 {
@@ -46,7 +38,7 @@ public:
     EventType GetEventType() const override { return EventType::KeyPressed; }
     const char* GetName() const override { return "KeyPressedEvent"; }
     
-    REFELECT_EVENT_TYPE(KeyPressedEvent,
+    REFELECT_TYPE(KeyPressedEvent,
         visitor("keyCode", &KeyPressedEvent::keyCode),
         visitor("isRepeat", &KeyPressedEvent::isRepeat)
     );
@@ -63,7 +55,7 @@ public:
 	EventType GetEventType() const override { return EventType::MouseMoved; }
 	const char* GetName() const override { return "MouseMoveEvent"; };
 	
-	REFELECT_EVENT_TYPE(MouseMoveEvent,
+	REFELECT_TYPE(MouseMoveEvent,
         visitor("m_x", &MouseMoveEvent::m_x),
         visitor("m_y", &MouseMoveEvent::m_y)
     );
@@ -80,7 +72,7 @@ public:
 	EventType GetEventType() const override { return EventType::MouseScrolled; }
 	const char* GetName() const override { return "MouseScrollEvent"; };
 	
-	REFELECT_EVENT_TYPE(MouseScrollEvent,
+	REFELECT_TYPE(MouseScrollEvent,
         visitor("m_x", &MouseScrollEvent::m_x),
         visitor("m_y", &MouseScrollEvent::m_y)
     );
@@ -96,7 +88,7 @@ public:
 	EventType GetEventType() const override { return EventType::KeyCombined; }
 	const char* GetName() const override { return "KeyCombinedEvent"; };
 	
-	REFELECT_EVENT_TYPE(KeyCombinedEvent,
+	REFELECT_TYPE(KeyCombinedEvent,
         visitor("keyCodes", &KeyCombinedEvent::keyCodes)
     );
 };
@@ -238,7 +230,7 @@ public:
 	EventType GetEventType() const override { return EventType::CameraUpdateEvent; }
 	const char* GetName() const override { return "CameraUpdateEvent"; };
 
-	REFELECT_EVENT_TYPE(CameraUpdateEvent,
+	REFELECT_TYPE(CameraUpdateEvent,
 		visitor("entity", &CameraUpdateEvent::entity);
 	);
 };

@@ -32,6 +32,11 @@ Entity::operator entt::entity()
     return entity;
 }
 
+Entity::operator uint32_t()
+{
+    return static_cast<uint32_t>(entity);
+}
+
 uint32_t Entity::getID() const
 {
     return static_cast<uint32_t>(entity);
@@ -156,6 +161,6 @@ void Entity::onColliderComponentAdded()
     Model* model = modelManager->getModel(modelComponent.modelID);
     Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
 
-    auto shapeID = physicsManager->createBody(*mesh, transformComponent.translateVec, transformComponent.scaleVec, colliderComponent.isStatic);
+    auto shapeID = physicsManager->createBoxBody(*this, *mesh, transformComponent.translateVec, transformComponent.scaleVec, colliderComponent.colliderType);
     colliderComponent.shapeID = shapeID;
 }

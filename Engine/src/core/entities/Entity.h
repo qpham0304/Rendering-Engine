@@ -11,6 +11,7 @@ public:
 	bool operator==(const Entity& other) const;
 	bool operator!=(const Entity& other) const;
 	operator entt::entity();
+	operator uint32_t();
 
 	template<typename T, typename ...Args>
 	T& addComponent(Args&& ...args) {

@@ -19,23 +19,6 @@ public:
 	virtual void reloadScript(std::string_view path) override;
 	virtual void runScript(std::string_view path) override;
 
-	
-	template<typename T, typename... Args>
-	void bindComponent(const std::string& name, Args&&... args) {
-		m_luaState.new_usertype<T>(name, sol::constructors<T()>(), std::forward<Args>(args)...);
-	};
-	
-	template<typename Func, typename... Args>
-	void bindFunction(const std::string& name, Func&& function, Args&&... args) {
-		m_luaState[name] = function(std::forward<Args>(args));
-	};
-	
-	template<typename... Args>
-	void bindVariable(const std::string& name, Args&&... args) {
-		m_luaState[name] = std::forward<Args>(args);
-	};
-
-	
 protected:
 	sol::state m_luaState;
 	std::unordered_map<std::string, sol::protected_function> m_scripts;

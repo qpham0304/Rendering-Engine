@@ -136,10 +136,13 @@ Scene* SceneManager::getActiveScene()
 }
 
 
+//TODO: properly unlock non active scene or there'll be duplicate data like collider
 bool SceneManager::setActiveScene(const std::string& name)
 {
 	if (scenes.find(name) != scenes.end()) {
+		// getActiveScene()->unloadScene();
 		activeScene = name;
+		// getActiveScene()->reloadScene();
 		return true;
 	}
 	return false;
