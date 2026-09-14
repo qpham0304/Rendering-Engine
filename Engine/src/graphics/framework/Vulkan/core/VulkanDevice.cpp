@@ -1,7 +1,5 @@
 #include "VulkanDevice.h"
 #include "core/features/ServiceLocator.h"
-//#define GLFW_INCLUDE_VULKAN
-//#include <GLFW/glfw3.h>
 #include "../../../../window/AppWindow.h"
 #include <windows.h>
 #include <vulkan/vulkan_win32.h>
@@ -141,12 +139,20 @@ void VulkanDevice::submitDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT sev
 
 void VulkanDevice::createSurface() {
 	//TODO: only window surface creation is supported now, add support for linux and android
+	
+#if defined(_WIN32)
 	VkWin32SurfaceCreateInfoKHR surfaceInfo = {};
 	surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	surfaceInfo.hinstance = GetModuleHandle(nullptr);
 	surfaceInfo.hwnd = static_cast<HWND>(AppWindow::getNativeWindowHandle());
 
 	vkCreateWin32SurfaceKHR(instance, &surfaceInfo, nullptr, &surface);
+#elif defined(__linux__)
+	throw std::runtime_error("unsupported platform");
+#elif defined(__APPLE__)
+	throw std::runtime_error("unsupported platform");
+#endif
+
 }
 
 void VulkanDevice::selectPhysicalDevice() {

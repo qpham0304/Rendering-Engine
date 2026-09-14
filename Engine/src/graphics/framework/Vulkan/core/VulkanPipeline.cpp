@@ -101,8 +101,6 @@ void VulkanPipeline::createGraphicsPipeline(
 	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | 
-		VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	colorBlendAttachment.blendEnable = VK_TRUE;
 	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -525,20 +523,16 @@ PipelineConfigInfo VulkanPipeline::defaultPipelineConfigInfo(uint32_t numAttachm
 	configInfo.viewportInfo.pScissors = nullptr;  	// Can be null because of dynamic state
 
     for (uint32_t i = 0; i < numAttachments; i++) {
-        VkPipelineColorBlendAttachmentState attachment{};
-        attachment.colorWriteMask = 
-            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | 
-            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        attachment.blendEnable = VK_FALSE; // Default to opaque
-        configInfo.colorBlendAttachments.push_back(attachment);
-
-		configInfo.colorBlendAttachments[i].blendEnable = VK_FALSE;
-		configInfo.colorBlendAttachments[i].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;   // Optional
-		configInfo.colorBlendAttachments[i].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;  // Optional
-		configInfo.colorBlendAttachments[i].colorBlendOp = VK_BLEND_OP_ADD;              // Optional
-		configInfo.colorBlendAttachments[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;   // Optional
-		configInfo.colorBlendAttachments[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;  // Optional
-		configInfo.colorBlendAttachments[i].alphaBlendOp = VK_BLEND_OP_ADD;              // Optional
+        configInfo.colorBlendAttachments.push_back(VkPipelineColorBlendAttachmentState());
+        configInfo.colorBlendAttachments[i].colorWriteMask = 
+			VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        configInfo.colorBlendAttachments[i].blendEnable = VK_FALSE; // Default to opaque
+		configInfo.colorBlendAttachments[i].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+		configInfo.colorBlendAttachments[i].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+		configInfo.colorBlendAttachments[i].colorBlendOp = VK_BLEND_OP_ADD;
+		configInfo.colorBlendAttachments[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		configInfo.colorBlendAttachments[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		configInfo.colorBlendAttachments[i].alphaBlendOp = VK_BLEND_OP_ADD;
 	}
 
 	configInfo.colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;

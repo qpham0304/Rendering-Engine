@@ -362,4 +362,6 @@ void BloomPassVulkan::_cleanupResources()
     for(auto& view : mipChain) {
         vkDestroyImageView(renderDeviceVulkan->device, view, nullptr);
     }
+
+    outputImage->textureImageView = VK_NULL_HANDLE;
 }

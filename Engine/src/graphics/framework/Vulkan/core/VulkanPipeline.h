@@ -15,6 +15,33 @@ struct PipelineConfigInfo {
     VkPipelineDynamicStateCreateInfo dynamicStateInfo;
 	VkRenderPass renderPass = VK_NULL_HANDLE;
 	uint32_t subpass = 0;
+
+    // standard alpha blending usually for physical materials
+	void setAlphaBlend() {
+		for(auto& attachment : colorBlendAttachments) {
+			attachment.blendEnable = VK_TRUE;
+			attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			attachment.colorBlendOp = VK_BLEND_OP_ADD;
+			attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+		}
+
+	};
+    
+	// additive alpha blending usually for particle effects and no depth test needed if render separately from the world
+	void setAdditiveBlend() {
+		for(auto& attachment : colorBlendAttachments) {
+			attachment.blendEnable = VK_TRUE;
+			attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+			attachment.colorBlendOp = VK_BLEND_OP_ADD;
+			attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+		}
+	};
 };
 
 struct AttachmentsInfo {

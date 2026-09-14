@@ -372,8 +372,6 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 	renderTarget.framebuffers.resize(numFrames);
 
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
-		uint32_t id = textureManagerVulkan->createTexture();
-
 		auto createTexture = [&] (TextureVulkan*& texture,
 			uint32_t w, uint32_t h,	VkFormat format,
 			VkImageAspectFlagBits aspect, VkImageUsageFlags extraUsage = 0

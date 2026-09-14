@@ -57,17 +57,17 @@ bool RendererManagerVulkan::init(WindowConfig config)
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
 
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
-    deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
-    raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
+    // deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
+    // raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
     
-    alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
-    hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
-    SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
-    bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
-    temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
-    ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
-    deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
-    // postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererVulkan");
+    // alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
+    // hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
+    // SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
+    // bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
+    // temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
+    // ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
+    // //deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
+    // //postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererVulkan");
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
 	
     // applicationRenderer->init(config);

@@ -388,6 +388,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
     _animationControl(entity);
     _scriptControl(entity);
     _colliderControl(entity);
+    _particleControl(entity);
 
     ImGui::Separator();
     if (ImGui::Button("+ Add Component", ImVec2(-1.0f, 0.0f))) {
@@ -701,18 +702,19 @@ void ImGuiRightSidebarWidget::_spriteControl(const Entity& entity)
             ImGui::SetNextItemWidth(-FLT_MIN);
             int maxFrames = (sprite.numRows * sprite.numCols) - 1;
             if (ImGui::DragInt("##frameIndex", &sprite.frameIndex, 0.1f, 0, maxFrames)) {
-                glm::vec2 uvScale = {1.0 / sprite.numCols, 1.0 / sprite.numRows};
                 int currentRow = sprite.frameIndex / sprite.numCols;   // row represents y while col represents x 
                 int currentCol = sprite.frameIndex % sprite.numCols;   // i.e pixel 1, 2 =  arr[2][1] NOT [arr1][2]
                 int flippedRow = (sprite.numRows - 1) - currentRow;    // uv offset sampling need to be flipped also
-                glm::vec2 uvOffset = {uvScale.x * currentCol, uvScale.y * flippedRow};
+                sprite.uvScale = {1.0 / sprite.numCols, 1.0 / sprite.numRows};
+                sprite.uvOffset = {sprite.uvScale.x * currentCol, sprite.uvScale.y * flippedRow};
+
 
                 ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
                 Model* model = modelManager->getModel(modelComponent.modelID);
                 Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
                 MaterialDesc material = materialManager->getMaterial(mesh->materialID);
-                material.uv = uvOffset;
-                material.uvScale = uvScale;
+                material.uv = sprite.uvOffset;
+                material.uvScale = sprite.uvScale;
                 materialManager->updateMaterial(mesh->materialID, material);
             }
 
@@ -822,6 +824,39 @@ void ImGuiRightSidebarWidget::_colliderControl(const Entity &entity)
     // MassData data = physicsManager->getMass(collider.shapeID);
     // m_logger->info("updated mass: {}", data.mass);
     // m_logger->info("updated Gravity Center: x:{}, y:{}, z:{}", data.center.x, data.center.y, data.center.z);
+
+}
+
+void ImGuiRightSidebarWidget::_particleControl(const Entity &entity)
+{
+    if(!entity.hasComponent<ParticleEmitter>()) {
+        return;
+    }
+
+    ParticleEmitter& emitter = entity.getComponent<ParticleEmitter>();
+    if (ImGui::CollapsingHeader("Particle", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text(std::to_string(emitter.behaviorType).c_str());
+        ImGui::SameLine();
+        if(ImGui::Button("-") && emitter.behaviorType > 0) {
+            emitter.behaviorType--;
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("+") && emitter.behaviorType <= 2) {
+            emitter.behaviorType++;
+        }
+
+        ImGui::DragInt("emitMax", &emitter.emitMax, 100.0f, 1.0f, 500000);
+        ImGui::DragInt("emitCount", &emitter.emitCount, 100.0f, 1.0f, 500000);
+        ImGui::Checkbox("areRecycled", &emitter.areRecycled);
+        ImGui::DragFloat("emitRate", &emitter.emitRate, 100.0f, 1.0f, 500000);
+        ImGui::DragFloat("lifetimeMin", &emitter.lifetimeMin, 100.0f, 1.0f, 500000);
+        ImGui::DragFloat("lifetimeMax", &emitter.lifetimeMax, 100.0f, 1.0f, 500000);
+        ImGui::DragFloat("speedMin", &emitter.speedMin, 1.0f, 1.0f, 100);
+        ImGui::DragFloat("speedMax", &emitter.speedMax, 1.0f, 1.0f, 100);
+        ImGui::DragFloat3("spawnPosition", &emitter.spawnPosition[0], 1.0f, -10.0f, 10.0f);
+        ImGui::DragFloat3("force", &emitter.force[0], 1.0f, -50.0f, 50.0f);
+        ImGui::Checkbox("resetPosition", &emitter.resetPosition);
+    }
 
 }
 

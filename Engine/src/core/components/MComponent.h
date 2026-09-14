@@ -201,9 +201,12 @@ struct LightProbeComponent {
 struct SpriteComponent {
 	SpriteComponent() = default;
 
+	uint32_t textureID { 0 };
+	glm::vec2 uvScale { 1.0, 1.0 };
+	glm::vec2 uvOffset { 0.0 };
+
 	std::string path { "None" };
 	std::string targetRenderer { "None" };
-	uint32_t textureID { 0 };
 	int numRows { 1 };
 	int numCols { 1 };
 	int frameIndex { 0 };
@@ -318,6 +321,7 @@ struct ParticleEmitter {
 
 	uint32_t containerID;
 
+	int behaviorType{ 0 };
 	int emitMax{ 100 };
 	int emitCount{ 0 };
 	bool areRecycled{ false };
@@ -333,6 +337,7 @@ struct ParticleEmitter {
 
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
 		ParticleEmitter,
+		behaviorType,
 		emitMax,
 		emitCount,
 		areRecycled,
