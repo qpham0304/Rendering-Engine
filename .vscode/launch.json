@@ -7,16 +7,16 @@
             "request": "launch",
             "program": "${workspaceFolder}/Sandbox/bin/Debug/Sandbox.exe",
             "cwd": "${workspaceFolder}/Sandbox/bin/Debug",
-            "console": "externalTerminal",
+            "console": "integratedTerminal",
             "preLaunchTask": "build Sandbox Debug"
         },
-        {
+    {
             "name": "Debug Editor",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/Editor/bin/Debug/Editor.exe",
             "cwd": "${workspaceFolder}/Editor/bin/Debug",
-            "console": "externalTerminal",
+            "console": "integratedTerminal",
             "preLaunchTask": "build Editor Debug"
         },
         {
@@ -25,7 +25,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/Sandbox/bin/Release/Sandbox.exe",
             "cwd": "${workspaceFolder}/Sandbox/bin/Release",
-            "console": "externalTerminal",
+            "console": "integratedTerminal",
             "preLaunchTask": "build Sandbox Release"
         },
         {
@@ -34,7 +34,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/Editor/bin/Release/Editor.exe",
             "cwd": "${workspaceFolder}/Editor/bin/Release",
-            "console": "externalTerminal",
+            "console": "integratedTerminal",
             "preLaunchTask": "build Editor Release"
         }
     ]

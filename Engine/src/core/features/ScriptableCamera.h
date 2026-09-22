@@ -6,7 +6,7 @@
 
 class CameraComponent;
 
-class ScriptableCamera : public Camera
+class MYGRAPHICSENGINE_EXPORT ScriptableCamera : public Camera
 {
 protected:
 

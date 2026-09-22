@@ -5,7 +5,7 @@
 #include "core/features/Texture.h"
 #include <glm/glm.hpp>
 
-class RendererManager : public Manager
+class MYGRAPHICSENGINE_EXPORT RendererManager : public Manager
 {
 public:
 

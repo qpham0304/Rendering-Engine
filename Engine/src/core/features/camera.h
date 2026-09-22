@@ -1,8 +1,9 @@
 #pragma once
 
+#include "Engine/EngineCoreAPI.h"
 #include <glm/glm.hpp>
 
-class Camera
+class MYGRAPHICSENGINE_EXPORT Camera
 {
 public:
 	Camera();

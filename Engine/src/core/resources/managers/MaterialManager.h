@@ -5,7 +5,7 @@
 
 class MaterialDesc;
 
-class MaterialManager : public Manager
+class MYGRAPHICSENGINE_EXPORT MaterialManager : public Manager
 {
 public:
     virtual ~MaterialManager() = default;

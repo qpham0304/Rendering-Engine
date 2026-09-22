@@ -1,7 +1,7 @@
 #include "core/resources/managers/Manager.h"
 #include "ParticleContainer.h"
 
-class ParticleManager : public Manager
+class MYGRAPHICSENGINE_EXPORT ParticleManager : public Manager
 {
 public:
 	struct ContainerData {

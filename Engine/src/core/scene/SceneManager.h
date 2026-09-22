@@ -16,7 +16,7 @@
 
 class Camera;
 
-class SceneManager : public Manager
+class MYGRAPHICSENGINE_EXPORT SceneManager : public Manager
 {
 public:
 	static Camera* cameraController;

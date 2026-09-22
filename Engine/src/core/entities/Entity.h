@@ -1,10 +1,11 @@
 #pragma once
+#include "Engine/EngineCoreAPI.h"
 #include "entt.hpp"
 #include <format>
 #include <stdexcept>
 #include <typeinfo>
 
-class Entity
+class MYGRAPHICSENGINE_EXPORT Entity
 {
 public:
 	Entity() = default;

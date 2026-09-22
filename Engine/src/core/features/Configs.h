@@ -1,36 +1,37 @@
 #pragma once
 
+#include "Engine/EngineCoreAPI.h"
 #include <string>
 
-enum class GuiPlatform {
+enum class MYGRAPHICSENGINE_EXPORT GuiPlatform {
 	UNDEFINED, IMGUI, QT
 };
 
-enum class WindowPlatform {
+enum class MYGRAPHICSENGINE_EXPORT WindowPlatform {
 	UNDEFINED, GLFW, SDL, Win32
 };
 
-enum class RenderPlatform {
+enum class MYGRAPHICSENGINE_EXPORT RenderPlatform {
 	UNDEFINED, OPENGL, VULKAN, DIRECTX,
 };
 
-enum class LoggerPlatform {
+enum class MYGRAPHICSENGINE_EXPORT LoggerPlatform {
 	UNDEFINED, SPDLOG
 };
 
-enum class OperatingSystem {
+enum class MYGRAPHICSENGINE_EXPORT OperatingSystem {
 	UNDEFINED, WINDOW, LINUX, MACOS
 };
 
-enum class ScriptingPlatform {
+enum class MYGRAPHICSENGINE_EXPORT ScriptingPlatform {
 	UNDEFINED, LUA, MONO
 };
 
-enum class PhysicsFramework {
+enum class MYGRAPHICSENGINE_EXPORT PhysicsFramework {
 	UNDEFINED, BOX3D, JOLT, PHYSX
 };
 
-struct WindowConfig {
+struct MYGRAPHICSENGINE_EXPORT WindowConfig {
 	std::string title = "Untitled";
 	WindowPlatform windowPlatform = WindowPlatform::UNDEFINED;
 	RenderPlatform renderPlatform = RenderPlatform::UNDEFINED;
@@ -51,7 +52,7 @@ struct AppConfig {
 
 };
 
-struct GraphicsConfig {
+struct MYGRAPHICSENGINE_EXPORT GraphicsConfig {
 	RenderPlatform platform;
 
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/EngineCoreAPI.h"
 #include <vector>
 #include <unordered_map>
 #include <atomic>
@@ -11,7 +12,7 @@
 
 class Logger;
 
-class Manager : public Service
+class MYGRAPHICSENGINE_EXPORT Manager : public Service
 {
 public:
 	virtual ~Manager() = default;
