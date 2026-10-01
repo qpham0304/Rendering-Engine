@@ -1,7 +1,7 @@
 #pragma once
 
 #include "PostProcessRendererVulkan.h"
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 class TemporalPassVulkan : public PostProcessRendererVulkan
 {

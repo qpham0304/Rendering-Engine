@@ -19,7 +19,7 @@
 #include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 ShadowMapPassVulkan::ShadowMapPassVulkan() 
 	: RendererVulkan("ShadowMapPassVulkan")

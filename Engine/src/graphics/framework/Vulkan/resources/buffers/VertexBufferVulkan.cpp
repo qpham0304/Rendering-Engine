@@ -1,5 +1,5 @@
 #include "VertexBufferVulkan.h"
-#include "vulkan/vulkan.h"
+#include <volk.h>
 
 VertexBufferVulkan::VertexBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory)
 	: BufferVulkan(id, buffer, bufferMemory)

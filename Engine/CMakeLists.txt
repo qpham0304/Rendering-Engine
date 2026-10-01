@@ -51,51 +51,6 @@ generate_export_header(${PROJECT_NAME}
     EXPORT_FILE_NAME include/Engine/EngineCoreAPI.h
 )
 
-set(PCH_HEADERS
-    <string>
-    <sstream>
-    <iostream>
-    <algorithm>
-    <memory>
-    <unordered_map>
-    <unordered_set>
-    <set>
-    <future>
-    <mutex>
-    <shared_mutex>
-    <thread>
-    <atomic>
-    <cstring>
-    <fstream>
-    <stdexcept>
-    <vector>
-    <array>
-    <span>
-    <cstdint>
-    <limits>
-    <optional>
-    <variant>
-    <any>
-    <functional>
-    <random>
-    <cstdlib>
-    <cassert>
-    <typeindex>
-    <typeinfo>
-    <glm/glm.hpp>
-    <imgui.h>
-    <vulkan/vulkan.h>
-    <nlohmann/json.hpp>
-)
-
-if(WIN32)
-    # Use definitions to keep windows.h from breaking things
-    target_compile_definitions(${PROJECT_NAME} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
-    list(APPEND PCH_HEADERS <windows.h>)
-endif()
-
-target_precompile_headers(${PROJECT_NAME} PRIVATE ${PCH_HEADERS})
-
 # Output folders
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>"
@@ -119,6 +74,15 @@ add_subdirectory(extern/vk-bootstrap)
 find_package(Vulkan REQUIRED)
 
 
+add_compile_definitions(${PROJECT_NAME} PUBLIC 
+    VK_NO_PROTOTYPES
+    IMGUI_IMPL_VULKAN_NO_PROTOTYPES
+    IMGUI_DEFINE_MATH_OPERATORS
+    IMGUI_IMPL_OPENGL_LOADER_GLAD
+)
+
+target_precompile_headers(MyGraphicsEngine PRIVATE src/core/features/pch.h)
+
 # Include directories to propagate to Sandbox
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -136,6 +100,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/misc/cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/src
     ${CMAKE_CURRENT_BINARY_DIR}/extern/lua/include
+    ${CMAKE_CURRENT_BINARY_DIR}/extern/volk
     $ENV{VULKAN_SDK}/Include
 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -160,10 +125,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     box3d::box3d
 )
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC 
-    IMGUI_DEFINE_MATH_OPERATORS
-    IMGUI_IMPL_OPENGL_LOADER_GLAD
-)
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /bigobj /utf-8 /MP)

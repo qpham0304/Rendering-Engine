@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/resources/managers/TextureManager.h"
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include "TextureVulkan.h"
 
 class RenderDeviceVulkan;

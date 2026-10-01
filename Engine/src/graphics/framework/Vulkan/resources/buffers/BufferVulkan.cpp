@@ -1,5 +1,5 @@
 #include "BufferVulkan.h"
-#include "vulkan/vulkan.h"
+#include <volk.h>
 #include <stdexcept>
 
 BufferVulkan::BufferVulkan(uint32_t id, VkBuffer vkBuffer, VkDeviceMemory vkBufferMemory) 

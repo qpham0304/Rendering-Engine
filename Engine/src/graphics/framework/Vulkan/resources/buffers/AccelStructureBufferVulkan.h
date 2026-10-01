@@ -1,7 +1,7 @@
 #pragma once
 
 #include "BufferVulkan.h"
-#include "vulkan/vulkan.h"
+#include <volk.h>
 
 class AccelStructureBufferVulkan : public BufferVulkan
 {

@@ -1,6 +1,6 @@
 #include "TextureManagerVulkan.h"
 #include <stb/stb_image.h>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include "core/features/ServiceLocator.h"
 #include "graphics/framework/vulkan/renderers/RenderDeviceVulkan.h"
 #include "graphics/framework/vulkan/core/VulkanDevice.h"

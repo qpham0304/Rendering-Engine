@@ -1,5 +1,5 @@
 #include "StorageBufferVulkan.h"
-#include "vulkan/vulkan.h"
+#include <volk.h>
 #include <cassert>
 #include <cstring>
 

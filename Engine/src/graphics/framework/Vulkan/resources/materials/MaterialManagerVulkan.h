@@ -3,7 +3,7 @@
 #include "graphics/framework/Vulkan/core/WrapperStructs.h"
 #include "core/resources/managers/MaterialManager.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <glm/glm.hpp>
 #include <cstdint>
 

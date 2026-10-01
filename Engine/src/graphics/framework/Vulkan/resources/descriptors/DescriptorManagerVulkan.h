@@ -2,7 +2,7 @@
 
 #include "graphics/framework/Vulkan/core/WrapperStructs.h"
 #include "core/resources/managers/DescriptorManager.h"
-#include <vulkan/vulkan.h>
+#include <volk.h>
 class RenderDeviceVulkan;
 
 struct DescriptorWriter {

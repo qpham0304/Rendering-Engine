@@ -1,9 +1,35 @@
+#if defined(_WIN32)
+    #define VK_USE_PLATFORM_WIN32_KHR
+#elif defined(__ANDROID__)
+    #define VK_USE_PLATFORM_ANDROID_KHR
+#elif defined(__linux__) || defined(__gnu_linux__)
+    #define VK_USE_PLATFORM_WAYLAND_KHR
+    #define VK_USE_PLATFORM_XLIB_KHR
+#elif defined(__APPLE__)
+    #include <TargetConditionals.h>
+    #if TARGET_OS_IPHONE || TARGET_OS_SIMULATOR
+        #define VK_USE_PLATFORM_IOS_MVK
+    #elif TARGET_OS_MAC
+        #define VK_USE_PLATFORM_MACOS_MVK
+    #endif
+#endif
+
+#define VMA_IMPLEMENTATION
+#define VOLK_IMPLEMENTATION
 #include "VulkanDevice.h"
+
+#include <iostream>
+#include <cmath>
+
+#define VALIDATE(vkFunc) \
+    if((vkFunc) != VK_SUCCESS) { \
+        throw std::runtime_error(std::format("fail to submit: {}", #vkFunc)); \
+    } \
+
 #include "core/features/ServiceLocator.h"
-#include "../../../../window/AppWindow.h"
-#include <windows.h>
-#include <vulkan/vulkan_win32.h>
-#include "VulkanExtensions.hpp"
+#include "window/AppWindow.h"
+// #include <vulkan/vulkan_win32.h>
+// #include "VulkanExtensions.hpp"
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, 
 	const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, 
@@ -70,6 +96,11 @@ void VulkanDevice::destroy()
 
 void VulkanDevice::createInstance()
 {
+	if (volkInitialize() != VK_SUCCESS) {
+		throw std::runtime_error("fail to initilize volk");
+		std::cerr << "Failed to initialize Volk loader!\n";
+	}
+
 	if (enableValidationLayers && !checkValidationLayerSupport()) {
 		throw std::runtime_error("validation layers requested, but not available!");
 	}
@@ -107,6 +138,8 @@ void VulkanDevice::createInstance()
 	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create instance!");
 	}
+
+	volkLoadInstance(instance);
 }
 
 void VulkanDevice::setupDebugMessenger() {

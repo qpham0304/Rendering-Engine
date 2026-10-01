@@ -7,7 +7,7 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <logging/Logger.h>
 #include <core/events/EventManager.h>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <stdexcept>
 
 TextureVulkan::TextureVulkan() :

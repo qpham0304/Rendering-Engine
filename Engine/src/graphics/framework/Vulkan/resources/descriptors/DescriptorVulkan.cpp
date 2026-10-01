@@ -4,7 +4,7 @@
 #include <graphics/framework/Vulkan/resources/buffers/BufferVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <core/events/EventManager.h>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 
 DescriptorVulkan::DescriptorVulkan()

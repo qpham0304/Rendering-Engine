@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <functional>
 #include <memory>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 namespace VulkanUtils
 {
