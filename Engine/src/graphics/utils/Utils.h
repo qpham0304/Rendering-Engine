@@ -81,7 +81,6 @@ namespace Utils::uuid {
 }
 
 namespace Console {
-#define DEBUG
 
 #ifdef DEBUG
 	template<typename... Args>

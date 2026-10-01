@@ -20,6 +20,8 @@ const std::unordered_map<std::string, std::function<std::pair<std::string, Mesh>
     { "$prim$Sphere", []() { return std::pair<std::string, Mesh>( "$prim$Sphere", EngineUtils::drawSphere(0.5f, 36, 36) ); }},
     { "$prim$Quad",   []() { return std::pair<std::string, Mesh>( "$prim$Quad", EngineUtils::drawQuad() ); }},
     { "$prim$Cube",   []() { return std::pair<std::string, Mesh>( "$prim$Cube", EngineUtils::drawCube(1.0) ); } }
+    // { "$prim$Capsule",   []() { return std::pair<std::string, Mesh>( "$prim$Capsule", EngineUtils::drawCapsule(1.0) ); } },
+    // { "$prim$Convex",   []() { return std::pair<std::string, Mesh>( "$prim$Convex", EngineUtils::drawConvex(1.0) ); } }
 };
 
 

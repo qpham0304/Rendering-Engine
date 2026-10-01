@@ -35,7 +35,7 @@ public:
 
     void writeCombinedImage(VkCommandBuffer cmd, uint32_t currentFrame);
 
-public: // TODO: consider make private
+private: // TODO: consider make private
 	TextureVulkan* denoisedGIImage;
 	TextureVulkan* sceneImage;
 	TextureVulkan* albedoImage;

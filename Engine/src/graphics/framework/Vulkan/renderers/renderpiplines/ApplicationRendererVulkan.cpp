@@ -191,30 +191,20 @@ void ApplicationRendererVulkan::endRecording(void* cmdBuffer)
 
 void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 {
-	// RendererVulkan* renderer = nullptr;
-	// renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
-	// auto shadowMapRenderer = dynamic_cast<ShadowMapPassVulkan*>(renderer);
-	// renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
-	// auto imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
-	// renderer = rendererManagerVulkan->getRenderer("ForwardRendererVulkan");
-	// auto forwardRendererVulkan = dynamic_cast<ForwardRendererVulkan*>(renderer);
-	// renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	// auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-	// renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
-	// auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
+	RendererVulkan* renderer = nullptr;
+	renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
+	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
+	auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
 
-	// assert(shadowMapRenderer && imageBasedRenderer && 
-	// 	forwardRendererVulkan && deferredRendererVulkan && 
-	// 	"failed to retrieve renderer"
-	// );
 
 	guiManager->start();
 	
 	// //TODO: temporarily use imgui renderer, abstract to gui service and remove these
 	int currentMode = rendererManagerVulkan->getRenderMode(); 
 	if(currentMode == 1) {
-	// 	// deferredRendererVulkan->renderGui();
-	// 	// bloomPassRendererVulkan->renderGui();
+		deferredRendererVulkan->renderGui();
+		bloomPassRendererVulkan->renderGui();
 	}
 
 	ImGui::Begin("Application");

@@ -17,6 +17,12 @@ struct PipelineConfigInfo {
 	uint32_t subpass = 0;
 };
 
+struct AttachmentsInfo {
+	std::vector<VkFormat> colorAttachmentFormats = {};		// how many output from the shader
+	VkFormat depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+	VkFormat stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+};
+
 class VulkanPipeline
 {
 public:
@@ -49,6 +55,17 @@ public:
 		const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, 
 		uint32_t pushConstantSize
 	);
+
+	void createGraphicsPipelineDynamic(
+		const std::string& vertFilepath,
+		const std::string& fragFilepath,
+		const PipelineConfigInfo& configInfo,
+		const AttachmentsInfo& attachmentsInfo,
+		const VkPipelineVertexInputStateCreateInfo& vertexInputInfo,
+		const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, 
+		uint32_t pushConstantSize
+	);
+
 
 	void createComputePipeline(
 		const std::string& compFilepath,

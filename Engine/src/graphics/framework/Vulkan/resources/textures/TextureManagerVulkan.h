@@ -147,7 +147,6 @@ public:
 	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture) override;
 	virtual uint32_t createTexture() override;
 	virtual uint32_t createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig);
-	virtual uint32_t createDepthTexture(uint32_t width, uint32_t height, uint32_t mipLevels) override;
 	virtual TextureVulkan* getTexture(uint32_t id) override;
 	virtual void* inspectTexture(uint32_t id) override;
 	virtual uint32_t getInspectorLayout();

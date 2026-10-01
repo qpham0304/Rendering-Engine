@@ -11,11 +11,12 @@ int main()
         windowConfig.guiPlatform = GuiPlatform::IMGUI;
         windowConfig.os = OperatingSystem::WINDOW;
         windowConfig.scriptingPlatform = ScriptingPlatform::LUA;
-        windowConfig.width = 1024;
-        windowConfig.height = 720;
+	    windowConfig.physicsFramework = PhysicsFramework::BOX3D;
+        windowConfig.width = 1920;
+        windowConfig.height = 1080;
         windowConfig.vsync = false;
-        windowConfig.targetRenderFPS = 360.0f;
-        windowConfig.targetUpdateFPS = 360.0f;
+        windowConfig.targetRenderFPS = 60.0f;
+        windowConfig.targetUpdateFPS = 60.0f;
 
         Engine app(windowConfig);
         app.pushLayer(new SandBoxLayer("Sandbox Layer"));

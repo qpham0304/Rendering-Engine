@@ -5,6 +5,7 @@
 #include "core/events/EventManager.h"
 #include "Logging/Logger.h"
 #include "window/AppWindow.h"
+#include "physics/PhysicsManager.h"
 #include "core/scene/SceneManager.h"
 #include "core/features/ServiceLocator.h"
 #include "core/resources/managers/TextureManager.h"
@@ -111,19 +112,31 @@ bool Scene::removeEntity(const uint32_t& uuid)
 	return true;
 }
 
-bool Scene::hasEntity(const uint32_t& uuid)
+bool Scene::removeEntity(const std::string& name)
 {
-	return (entities.find(uuid) != entities.end());
+	auto view = getEnttEntities<NameComponent>();
+	for(auto& enttEntity : view) {
+		auto& nameComponent = registry.get<NameComponent>(enttEntity);
+		if(nameComponent.name == name) {
+			return removeEntity(static_cast<uint32_t>(enttEntity));
+		}
+	}
+    return false;
 }
 
-Entity Scene::getEntity(const uint32_t& uuid)
+bool Scene::hasEntity(const uint32_t& id)
 {
-	if (entities.find(uuid) != entities.end()) {
-		return entities[uuid];
+	return (entities.find(id) != entities.end());
+}
+
+Entity Scene::getEntity(const uint32_t& id)
+{
+	if (entities.find(id) != entities.end()) {
+		return entities[id];
 	}
 
 	for (auto& entity : frameNewEntities) {
-        if (entt::to_integral((entt::entity)entity) == uuid) {
+        if (entt::to_integral((entt::entity)entity) == id) {
             return entity;
         }
     }
@@ -266,9 +279,11 @@ bool Scene::unloadScene()
 {
 	// TODO: persistent heavy models are cached
 	// but require deletion of individual created mesh for now only sprite mesh
-	// or let the sprite unload the mesh itself
+	// or let the sprite unload the mesh itself same goes for box3D created collider
+	// this is not manageable, either a resource manager or use entity add and remove hook
     auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
     auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+	auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
 	
 	for(auto& [id, entity] : entities) {
 		if(entity.hasComponent<SpriteComponent>()) {
@@ -279,6 +294,10 @@ bool Scene::unloadScene()
 				meshManager->destroy(meshID);
 			}
 			modelManager->destroy(modelComponent.modelID);
+		}
+		if(entity.hasComponent<ColliderComponent>()){
+			ColliderComponent& colliderComponent = entity.getComponent<ColliderComponent>();
+			physicsManager->destroy(colliderComponent.shapeID);
 		}
 	}
 

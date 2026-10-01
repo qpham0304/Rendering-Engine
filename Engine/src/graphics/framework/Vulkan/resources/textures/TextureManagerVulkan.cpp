@@ -768,39 +768,6 @@ uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, Textur
     return _assignID();
 }
 
-uint32_t TextureManagerVulkan::createDepthTexture(uint32_t width, uint32_t height, uint32_t miplevels) {
-	
-	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);
-	TextureVulkan* texture = static_cast<TextureVulkan*>(m_textures[m_ids].get());
-
-	VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
-
-	TextureManagerVulkan::createImage(
-		width,
-		height,
-		depthFormat,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		texture->textureImage,
-		texture->textureImageMemory,
-		miplevels,
-		renderDeviceVulkan->device
-	);
-	
-	TextureManagerVulkan::createImageView(
-		texture->textureImage,
-		texture->textureImageView,
-		depthFormat,
-		VK_IMAGE_ASPECT_DEPTH_BIT,
-		miplevels,
-		renderDeviceVulkan->device
-	);
-
-	return _assignID();
-}
-
-
 VkFormat TextureManagerVulkan::findDepthFormat(const VulkanDevice& device) {
 	return TextureManagerVulkan::findSupportedFormat(
 		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
@@ -816,8 +783,7 @@ VkFormat TextureManagerVulkan::findSupportedFormat(
 	VkFormatFeatureFlags features,
 	const VulkanDevice& device
 ) {
-	for (VkFormat format : candidates
-	) {
+	for (VkFormat format : candidates) {
 		VkFormatProperties props;
 		vkGetPhysicalDeviceFormatProperties(device.getPhysicalDevice(), format, &props);
 

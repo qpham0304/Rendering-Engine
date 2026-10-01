@@ -45,12 +45,12 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 
 	_createMaterialDescriptorSet();
 	
+	//TODO: hard coded the max number of material indices
 	materialsGPU.resize(10000);
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
     auto bufferManagerVulkan = &dynamic_cast<BufferManagerVulkan&>(bufferManager);
 
 	
-	//TODO: might abstract this behind the bufferManager for resue
     VkDeviceSize bufferSize = sizeof(GPUMaterialData) * materialsGPU.size();
 	uint32_t bufferID = bufferManagerVulkan->createBufferDeviceAddress(bufferSize);
 	materialDeviceAddress = (DeviceAddressBufferVulkan*)bufferManagerVulkan->getBuffer(bufferID);
@@ -117,12 +117,13 @@ void MaterialManagerVulkan::bindMaterial(void* cmdBuffer, void* p)
 
 	VulkanPipeline* pipeline = static_cast<VulkanPipeline*>(p);
 	
-	// note: the interface only support binding compute right now
+	//TODO: read **Note**
+	// **Note**: the interface only support binding compute right now
 	vkCmdBindDescriptorSets(
 		reinterpret_cast<VkCommandBuffer>(cmdBuffer),
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		pipeline->pipelineLayout,
-		1,	// note: this always bind set 1 so always reserve set 1 if use this bind function
+		1,	// **Note**: this always bind set 1 so always reserve set 1 if use this bind function
 		1,
 		&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
 		0,

@@ -13,7 +13,6 @@ public:
 
 public:
 	PostProcessRendererVulkan(std::string serviceName = "PostProcessRendererVulkan");
-
 	virtual ~PostProcessRendererVulkan() override;
 
 	virtual bool init(WindowConfig config) override;

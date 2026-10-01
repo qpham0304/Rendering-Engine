@@ -1,0 +1,76 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+#include "common/buffers.glsl"
+
+layout(set = 0, binding = 0) uniform UniformBufferObject {
+    mat4 invNormal;
+    mat4 view;
+    mat4 prevViewProj;
+    mat4 proj;
+    vec4 cameraPos;
+    mat4 invView;
+    mat4 invProj;
+    float width;
+    float height;
+} ubo;
+
+layout(set = 0, binding = 1) uniform EmitterUBO {
+    int emitMax;
+    int emitCount;
+    bool areRecycled;
+    float emitAccumulator;
+    float emitRate;
+    float lifetimeMin;
+    float lifetimeMax;
+    float speedMin;
+    float speedMax;
+    vec3 spawnPosition;
+    vec3 force;
+    bool resetPosition;
+} emitter;
+
+struct Container {
+    uint64_t lifetimeRef;
+    uint64_t positionsRef;
+    uint64_t scalesRef;
+    uint64_t velocitiesRef;
+    uint64_t colorsRef;
+};
+
+layout(buffer_reference, scalar) buffer ContainerBuffers { Container containers[]; };
+layout(buffer_reference, scalar) buffer Lifetime { float lifetime[]; };
+layout(buffer_reference, scalar) buffer Positions { vec3 positions[]; };
+layout(buffer_reference, scalar) buffer Scales { vec3 scales[]; };
+layout(buffer_reference, scalar) buffer Velocities { vec3 velocities[]; };
+layout(buffer_reference, scalar) buffer Colors { vec4 colors[]; };
+
+layout(push_constant) uniform ParticleContainerRefs {
+    ContainerBuffers containersRef;
+    uint containerIdx;
+    uint particleCount;
+    float deltaTime;
+} pc;
+
+layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+    uint particleID = gl_GlobalInvocationID.x;
+    if(particleID >= pc.particleCount) {
+        return;
+    }
+    
+    Container c = pc.containersRef.containers[pc.containerIdx];
+    Positions posBuffer = Positions(c.positionsRef);
+    Velocities velBuffer = Velocities(c.velocitiesRef);
+    
+    vec3 position = posBuffer.positions[particleID];
+    vec3 velocity = velBuffer.velocities[particleID];
+
+    velocity += emitter.force * pc.deltaTime;
+    position += velocity * pc.deltaTime;
+
+    posBuffer.positions[particleID] = position;
+    // velBuffer.velocities[particleID] = velocity;
+}

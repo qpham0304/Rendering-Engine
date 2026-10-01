@@ -23,6 +23,7 @@ public:
 	uint32_t addEntity(const std::string& name = "Entity");
 	uint32_t duplicateEntity(Entity source);
 	bool removeEntity(const uint32_t& uuid);
+	bool removeEntity(const std::string& name);
 	bool hasEntity(const uint32_t& id);
 	Entity getEntity(const uint32_t& id);
 	void selectEntities(std::vector<Entity> entities);

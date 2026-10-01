@@ -81,7 +81,7 @@ struct Object {
     uint64_t vertexAddress;
     uint64_t indexAddress;
     uint64_t materialsRef;
-    uint64_t materialIndicesRef;
+    uint64_t materialIndiciesRef;
 };
 
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };

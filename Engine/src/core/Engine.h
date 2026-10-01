@@ -6,6 +6,7 @@
 #include <core/layers/LayerManager.h>
 #include <core/scene/SceneManager.h>
 #include <animation/AnimationManager.h>
+#include <particle/ParticleManager.h>
 
 class Layer;
 class EventManager;
@@ -46,6 +47,8 @@ private:
     std::unique_ptr<RendererManager> rendererManager;
     std::unique_ptr<AnimationManager> animationManager;
     std::unique_ptr<ScriptManager> scriptManager;
+    std::unique_ptr<PhysicsManager> physicsManager;
+    std::unique_ptr<ParticleManager> particleManager;
 
 private:
     std::vector<Service*> services;

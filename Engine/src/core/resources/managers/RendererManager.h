@@ -8,9 +8,6 @@
 class RendererManager : public Manager
 {
 public:
-	struct StorageBuffer {
-		glm::mat4 model;
-	};
 
 	virtual ~RendererManager() override = default;
 
@@ -34,13 +31,17 @@ public:
 	}
 
     virtual Renderer* getRenderer(std::string_view name) = 0;
+	
+	
+	void addRenderTexture(std::string_view name, uint32_t textureID);
+	std::shared_ptr<Texture> getRenderTexture(std::string_view name);
 
 protected:
+	friend class Engine;
+	
     RendererManager(std::string serviceName = "RendererManager") : Manager(serviceName) {};
 
 	std::vector<std::tuple<std::string, std::shared_ptr<Renderer>>> m_renderers;
 	std::unordered_map<std::string, std::shared_ptr<Texture>> m_renderTextures;
-
-	std::vector<StorageBuffer> instanceData;
 
 };

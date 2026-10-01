@@ -73,10 +73,11 @@ void SpriteAnimator::onUpdate(float dt)
             auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
             auto materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
             
-            glm::vec2 uvScale = {1.0 / sprite.numRows, 1.0 / sprite.numCols};
-            int row = sprite.frameIndex % sprite.numRows;
-            int col = sprite.frameIndex % sprite.numCols;
-            glm::vec2 uvOffset = {uvScale.x * row, uvScale.y * col};
+            glm::vec2 uvScale = {1.0 / sprite.numCols, 1.0 / sprite.numRows};
+            int currentRow = sprite.frameIndex / sprite.numCols;   // row represents y while col represents x 
+            int currentCol = sprite.frameIndex % sprite.numCols;   // i.e pixel 1, 2 =  arr[2][1] NOT [arr1][2]
+            int flippedRow = (sprite.numRows - 1) - currentRow;    // uv offset sampling need to be flipped also
+            glm::vec2 uvOffset = {uvScale.x * currentCol, uvScale.y * flippedRow};
 
             ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
             Model* model = modelManager->getModel(modelComponent.modelID);

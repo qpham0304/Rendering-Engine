@@ -76,7 +76,7 @@ void VulkanPipeline::createGraphicsPipeline(
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;	//VK_PRIMITIVE_TOPOLOGY_LINE_LIST
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 	VkPipelineViewportStateCreateInfo viewportState{};
@@ -88,7 +88,7 @@ void VulkanPipeline::createGraphicsPipeline(
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterizer.depthClampEnable = VK_FALSE;
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;	//VK_POLYGON_MODE_LINE
 	rasterizer.lineWidth = 1.0f;
 	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -256,6 +256,86 @@ void VulkanPipeline::createGraphicsPipeline(
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
+void VulkanPipeline::createGraphicsPipelineDynamic(
+	const std::string &vertFilepath,
+	const std::string &fragFilepath,
+	const PipelineConfigInfo& configInfo,
+	const AttachmentsInfo& attachmentsInfo,
+	const VkPipelineVertexInputStateCreateInfo &vertexInputInfo,
+	const std::vector<VkDescriptorSetLayout> &descriptorSetLayouts,
+	uint32_t pushConstantSize
+) {
+    auto vertShaderCode = VulkanUtils::readFile(vertFilepath);
+    auto fragShaderCode = VulkanUtils::readFile(fragFilepath);
+    VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+    VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+    VkPipelineShaderStageCreateInfo shaderStages[2];
+    shaderStages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
+    shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    shaderStages[0].module = vertShaderModule;
+    shaderStages[0].pName = "main";
+
+    shaderStages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
+    shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderStages[1].module = fragShaderModule;
+    shaderStages[1].pName = "main";
+
+	VkPushConstantRange pushConstantRange = {};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = pushConstantSize;
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
+    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
+    pipelineLayoutInfo.pushConstantRangeCount = (pushConstantSize > 0) ? 1 : 0;
+    pipelineLayoutInfo.pPushConstantRanges = (pushConstantSize > 0) ? &pushConstantRange : nullptr;
+
+    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create pipeline layout!");
+    }
+
+	auto config = configInfo; 
+    config.colorBlendInfo.pAttachments = config.colorBlendAttachments.data();
+    config.dynamicStateInfo.pDynamicStates = config.dynamicStateEnables.data();
+    config.dynamicStateInfo.dynamicStateCount = static_cast<uint32_t>(config.dynamicStateEnables.size());
+
+	VkPipelineRenderingCreateInfoKHR pipelineCreateInfo{};
+	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+	pipelineCreateInfo.pNext = VK_NULL_HANDLE;
+	pipelineCreateInfo.colorAttachmentCount = attachmentsInfo.colorAttachmentFormats.size();
+	pipelineCreateInfo.pColorAttachmentFormats = attachmentsInfo.colorAttachmentFormats.data();
+	pipelineCreateInfo.depthAttachmentFormat = attachmentsInfo.depthAttachmentFormat;
+	pipelineCreateInfo.stencilAttachmentFormat = attachmentsInfo.stencilAttachmentFormat;
+
+	VkGraphicsPipelineCreateInfo pipelineInfo{};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.pNext = &pipelineCreateInfo;
+	pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &config.inputAssemblyInfo;
+    pipelineInfo.pViewportState = &config.viewportInfo;
+    pipelineInfo.pRasterizationState = &config.rasterizationInfo;
+    pipelineInfo.pMultisampleState = &config.multisampleInfo;
+    pipelineInfo.pColorBlendState = &config.colorBlendInfo;
+    pipelineInfo.pDepthStencilState = &config.depthStencilInfo;
+    pipelineInfo.pDynamicState = &config.dynamicStateInfo;
+	
+	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.renderPass = VK_NULL_HANDLE;
+	pipelineInfo.subpass = 0;
+	
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create graphics pipeline!");
+    }
+
+    vkDestroyShaderModule(device, vertShaderModule, nullptr);
+    vkDestroyShaderModule(device, fragShaderModule, nullptr);
+}
+
 void VulkanPipeline::createComputePipeline(
 	const std::string& compFilepath,
 	const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
@@ -413,7 +493,7 @@ PipelineConfigInfo VulkanPipeline::defaultPipelineConfigInfo(uint32_t numAttachm
 {
 	PipelineConfigInfo configInfo{};
 	configInfo.inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;	//VK_PRIMITIVE_TOPOLOGY_LINE_LIST
 	configInfo.inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
 	configInfo.rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -422,6 +502,8 @@ PipelineConfigInfo VulkanPipeline::defaultPipelineConfigInfo(uint32_t numAttachm
 	configInfo.rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
 	configInfo.rasterizationInfo.lineWidth = 1.0f;
 	configInfo.rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	// configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+	// configInfo.rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	// configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 	configInfo.rasterizationInfo.depthBiasEnable = VK_FALSE;
 	configInfo.rasterizationInfo.depthBiasConstantFactor = 0.0f;  // Optional

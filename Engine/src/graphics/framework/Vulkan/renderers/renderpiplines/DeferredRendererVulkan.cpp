@@ -1,16 +1,15 @@
 #include "DeferredRendererVulkan.h"
-#include "core/features/ServiceLocator.h"
-#include "core/events/EventManager.h"
-#include "graphics/renderers/RenderDevice.h"
-#include "window/AppWindow.h"
-
+#include <window/AppWindow.h>
 #include <core/resources/managers/TextureManager.h>
 #include <core/resources/managers/MeshManager.h>
 #include <core/resources/managers/ModelManager.h>
 #include <core/resources/managers/DescriptorManager.h>
-#include <gui/GuiManager.h>
+#include <core/scene/SceneManager.h>
+#include <core/features/ServiceLocator.h>
+#include <core/events/EventManager.h>
 #include <core/features/Mesh.h>
 #include <core/features/Camera.h>
+#include <graphics/renderers/RenderDevice.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
@@ -18,12 +17,12 @@
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
-#include <core/scene/SceneManager.h>
+#include <graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h>
+#include <graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h>
+#include <graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h>
+#include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
+#include <gui/GuiManager.h>
 #include <imgui.h>
-#include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
-#include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
-#include "graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h"
 
 DeferredRendererVulkan::DeferredRendererVulkan() 
 	: RendererVulkan("DeferredRendererVulkan")

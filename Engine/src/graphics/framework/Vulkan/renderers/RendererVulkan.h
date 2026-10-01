@@ -43,13 +43,12 @@ protected:
 	MeshManager* meshManager{ nullptr };
 	ModelManager* modelManager{ nullptr };
 	MaterialManager* materialManager{ nullptr };
-    BufferManager* bufferManager{ nullptr };
 	GuiManager* guiManager{ nullptr };
 
 	bool isActive{ false };
 	bool needResize{ false };
 
-	virtual void _resize();
+	void _resize();
 	virtual void _recreateResources() = 0;
 	virtual void _cleanupResources() = 0;
 };

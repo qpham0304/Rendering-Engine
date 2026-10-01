@@ -1,5 +1,8 @@
 #pragma once
 #include "entt.hpp"
+#include <format>
+#include <stdexcept>
+#include <typeinfo>
 
 class Entity
 {
@@ -11,6 +14,7 @@ public:
 	bool operator==(const Entity& other) const;
 	bool operator!=(const Entity& other) const;
 	operator entt::entity();
+	operator uint32_t();
 
 	template<typename T, typename ...Args>
 	T& addComponent(Args&& ...args) {
@@ -37,7 +41,8 @@ public:
 		if (hasComponent<T>()) {
 			return registry->get<T>(entity);
 		}
-		throw std::runtime_error("Component does not exist");
+		std::string msg = std::format("entity getComponent(): Component: {} does not exist", typeid(T).name());
+		throw std::runtime_error(msg);
 	}
 
 	template<typename ...T>
@@ -45,23 +50,25 @@ public:
 		if (registry->all_of<T...>(entity)) {
 			return registry->get<T...>(entity);
 		}
-		throw std::runtime_error("Component does not exist");
+		std::string msg = std::format("entity getComponents(): Component: {} does not exist", typeid(T).name());
+		throw std::runtime_error(msg);
 	}
 
 	uint32_t getID() const;
 
 	entt::registry* getRegistry();
 
-	void onCameraComponentAdded();
 	void onModelComponentAdded();
 	void onMeshComponentAdded();
 	void onSpriteComponentAdded();
 	void onAnimationComponentAdded();
 	void onAnimationStateComponentAdded();
 	void onScriptComponentAdded();
+	void onColliderComponentAdded();
+	void onCameraComponentAdded();
+	void onParticleEmitterAdded();
 	
 private:
 	entt::entity entity;
 	entt::registry* registry;
-
 };

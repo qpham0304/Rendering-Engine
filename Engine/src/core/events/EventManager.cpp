@@ -35,11 +35,11 @@ void EventManager::unsubscribe(EventType eventType, uint32_t cbID)
 
 void EventManager::publish(Event& event)
 {
-	if (callbacks.find(event.GetEventType()) == callbacks.end()) {
+	auto it = callbacks.find(event.GetEventType());
+	if (it == callbacks.end()) {
 		return;
 	}
 
-	auto it = callbacks.find(event.GetEventType());
 	for (const auto& [id, callback] : it->second | std::views::reverse) {
         callback(event);
         if (event.Handled) {
@@ -78,14 +78,14 @@ void EventManager::queue(AsyncEvent event, AsyncCallback callback)
 	runningTasks.fetch_add(1, std::memory_order_relaxed);
 }
 
-void EventManager::subscribe(const std::string& event, EventListener& listener) {
-	if (listeners.find(event) != listeners.end()) {
-		listeners[event].emplace_back(std::move(listener));
-	}
-	else {
-		listeners[event] = { std::move(listener) };
-	}
-}
+// void EventManager::subscribe(const std::string& event, EventListener& listener) {
+// 	if (listeners.find(event) != listeners.end()) {
+// 		listeners[event].emplace_back(std::move(listener));
+// 	}
+// 	else {
+// 		listeners[event] = { std::move(listener) };
+// 	}
+// }
 
 bool EventManager::init(WindowConfig config)
 {

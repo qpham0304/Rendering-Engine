@@ -3,11 +3,14 @@
 #include <core/layers/Layer.h>
 
 class Camera;
+class ScriptableCamera;
 class MeshManager;
 class ModelManager;
 class MaterialManager;
 class TextureManager;
 class RendererManager;
+class PhysicsManager;
+class ParticleManager;
 
 class SandBoxLayer : public Layer
 {
@@ -23,12 +26,19 @@ public:
 	void onEvent(Event& event) override;
 
 private:
-	std::unique_ptr<Camera> camera;
+	std::unique_ptr<ScriptableCamera> camera;
 
 	MeshManager* meshManager{ nullptr };
 	ModelManager* modelManager{ nullptr };
 	MaterialManager* materialManager{ nullptr };
 	TextureManager* textureManager{ nullptr };
 	RendererManager* rendererManager{ nullptr };
+	PhysicsManager* physicsManager{ nullptr };
+	ParticleManager* particleManager{ nullptr };
+
+	void createLights();
+	void createLightProbes();
+	void createScriptableCamera();
+	void createParticle();
 	
 };

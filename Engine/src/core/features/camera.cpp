@@ -103,11 +103,6 @@ bool Camera::isMoving()
 	return cameraMove;
 }
 
-float Camera::getDeltaTime()
-{
-	return deltaTime;
-}
-
 bool Camera::processKeyboard() 
 {
 	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -243,6 +238,10 @@ void Camera::_mouseControl()
 		front.x = 0.001;
 	orientation = glm::normalize(front);
 }
+
+void Camera::setFOV(float f) { fov = f; }
+void Camera::setViewWidth(int w) { width = w; }
+void Camera::setViewHeight(int h) { height = h; }
 
 void Camera::scroll_callback(double xoffset, double yoffset)
 {

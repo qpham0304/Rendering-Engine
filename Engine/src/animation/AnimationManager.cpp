@@ -31,6 +31,8 @@ void AnimationManager::destroy(uint32_t id)
 
 std::vector<uint32_t> AnimationManager::listIDs() const
 {
+    m_logger->error("listIDs is unimplmented for AnimationManager");
+    
     return std::vector<uint32_t>();
 }
 

@@ -40,15 +40,10 @@ namespace glm {
     }
 }
 
-class Component {
-public:
-	Component() = default;
-};
 
 class TransformComponent {
 private:
 	glm::mat4 modelMatrix = glm::mat4(1.0f);
-	bool isDirty = true;
 
 public:
 	glm::vec3 translateVec = glm::vec3(0.0f);
@@ -56,9 +51,11 @@ public:
 	glm::vec3 scaleVec = glm::vec3(1.0f);
 
 	TransformComponent() = default;
-	TransformComponent(glm::mat4&& modelMatrix) : modelMatrix(modelMatrix) {
-		
-	};
+	TransformComponent(glm::mat4&& modelMatrix) : modelMatrix(modelMatrix) {};
+
+	glm::mat4& getModelMatrix() {
+		return modelMatrix;
+	}
 
 	void updateTransform() {
 		glm::mat4 rotationMat = glm::toMat4(glm::quat(rotateVec));
@@ -67,38 +64,19 @@ public:
 		modelMatrix = translateMat * rotationMat * scaleMat;
 	}
 
-	void translate(const glm::vec3& translate) {
+	void translate(glm::vec3 translate) {
 		translateVec = translate;
 		updateTransform();
 	}
 
-	void rotate(const glm::vec3& rotate) {
+	void rotate(glm::vec3 rotate) {
 		rotateVec = rotate;
 		updateTransform();
 	}
 
-	void scale(const glm::vec3& scale) {
+	void scale(glm::vec3 scale) {
 		scaleVec = scale;
 		updateTransform();
-	}
-
-	void translate(glm::vec3&& translate) {
-		translateVec = translate;
-		updateTransform();
-	}
-
-	void rotate(glm::vec3&& rotate) {
-		rotateVec = rotate;
-		updateTransform();
-	}
-
-	void scale(glm::vec3&& scale) {
-		scaleVec = scale;
-		updateTransform();
-	}
-
-	glm::mat4& getModelMatrix() {
-		return modelMatrix;
 	}
 
 	// NLOHMANN_DEFINE_TYPE_INTRUSIVE(TransformComponent, translateVec, rotateVec, scaleVec);
@@ -114,13 +92,10 @@ public:
 	friend void from_json(const nlohmann::json& j, TransformComponent& t) {
 		auto tr = j.at("translateVec");
 		t.translateVec = glm::vec3(tr[0], tr[1], tr[2]);
-
 		auto rt = j.at("rotateVec");
 		t.rotateVec = glm::vec3(rt[0], rt[1], rt[2]);
-
 		auto sc = j.at("scaleVec");
 		t.scaleVec = glm::vec3(sc[0], sc[1], sc[2]);
-
 		t.updateTransform();
 	}
 
@@ -219,6 +194,8 @@ struct LightProbeComponent {
 	uint32_t probesPerDimension;
 	float spacing;
     glm::vec4 gridOrigin;
+
+	//NLOHMANN_DEFINE_TYPE_INTRUSIVE(LightProbeComponent, probeGrid);
 };
 
 struct SpriteComponent {
@@ -298,9 +275,9 @@ struct CameraComponent {
 
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
 		CameraComponent,
-		viewWidth,
-		viewHeight,
-		projection,
+		// viewWidth,
+		// viewHeight,
+		// projection,
 		view,
 		orientation
 	);
@@ -318,3 +295,55 @@ struct ScriptComponent {
 
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ScriptComponent, path);
 };
+
+struct ColliderComponent {
+	ColliderComponent() = default;
+	ColliderComponent(uint32_t id, uint32_t type) : shapeID(id), colliderType(type) {}
+	
+	uint32_t shapeID { 0 };
+	std::string bodyType = "None";
+	
+	bool isActive { true };
+	uint32_t colliderType { 0 };
+
+	float mass { 1.0 };
+	glm::vec3 center{ glm::vec3(0.0) };
+	glm::mat3 inertia{ glm::mat3(1.0) };
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ColliderComponent, shapeID, colliderType, bodyType);
+};
+
+struct ParticleEmitter {
+	ParticleEmitter() = default;
+
+	uint32_t containerID;
+
+	int emitMax{ 100 };
+	int emitCount{ 0 };
+	bool areRecycled{ false };
+	float emitAccumulator{ 0.0f };
+	float emitRate{ 1.0f };
+	float lifetimeMin{ 1.0f };
+	float lifetimeMax{ 1.0f };
+	float speedMin{ 1.0f };
+	float speedMax{ 1.0f };
+	glm::vec3 spawnPosition{ 0.0f, 0.0f, 0.0f };
+	glm::vec3 force{ 0.0f, 0.0f, 0.0f };
+	bool resetPosition{ false };
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+		ParticleEmitter,
+		emitMax,
+		emitCount,
+		areRecycled,
+		emitAccumulator,
+		emitRate,
+		lifetimeMin,
+		lifetimeMax,
+		speedMin,
+		speedMax,
+		spawnPosition,
+		force
+	)
+};
+

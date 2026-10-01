@@ -1,18 +1,12 @@
--- Player.lua
-Player = {}
-Player.__index = Player
+local a = 5
+log_info("value: " .. a)
 
--- Constructor (Using a dot '.' means only 'entityWrapper' is passed)
-function Player:new(entityWrapper)
-    local instance = {
-        entity = entityWrapper
-    }
-    return setmetatable(instance, Player)
-end
+local activeScene = getActiveScene()
+log_info("scene name: ".. activeScene:getName())
 
--- Lifecycle Loop (CRITICAL: Using a colon ':' injects 'self' automatically!)
-function Player:onUpdate(deltaTime)
-    -- Now 'self' points to the specific instance table, and self.entity works!
-    local nameComp = self.entity:getName()
-    print("Executing frame logic for entity: " .. nameComp.name)
-end
+local entityName = "TestEntity"
+-- activeScene:addEntity(entityName)
+-- log_info("addEntity: ".. entityName)
+
+-- activeScene:removeEntity(entityName)
+-- log_info("removeEntity: ".. entityName)

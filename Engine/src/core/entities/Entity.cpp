@@ -7,7 +7,10 @@
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
+#include "physics/PhysicsManager.h"
 #include "scripting/ScriptManager.h"
+#include "window/AppWindow.h"
+#include "particle/ParticleContainer.h"
 
 Entity::Entity(const entt::entity& entity, entt::registry& registry)
     : entity(entity), registry(&registry)
@@ -30,6 +33,11 @@ Entity::operator entt::entity()
     return entity;
 }
 
+Entity::operator uint32_t()
+{
+    return static_cast<uint32_t>(entity);
+}
+
 uint32_t Entity::getID() const
 {
     return static_cast<uint32_t>(entity);
@@ -42,10 +50,40 @@ entt::registry *Entity::getRegistry()
 
 void Entity::onCameraComponentAdded()
 {
-    if (!this->hasComponent<ModelComponent>()) {
-        Scene& scene = *SceneManager::getInstance().getActiveScene();
-        auto& modelComponent = this->addComponent<ModelComponent>();
-    }
+    TransformComponent& transformComponent = getComponent<TransformComponent>();
+    glm::mat4 view = transformComponent.getModelMatrix();
+
+    float width = static_cast<float>(AppWindow::getWidth());
+    float height = static_cast<float>(AppWindow::getHeight());
+    float aspectRatio = width / height;
+
+    glm::mat4 projection = glm::ortho(
+        -aspectRatio,		// Left
+        aspectRatio,		// Right
+        -1.0f,				// Bottom
+        1.0f,				// Top
+        -1.0f,				// Near
+        1.0f				// Far
+    );
+
+    CameraComponent& cameraComponent = getComponent<CameraComponent>();
+    cameraComponent.viewWidth = width;
+    cameraComponent.viewHeight = height;
+    cameraComponent.projection = projection;
+    cameraComponent.view = view;
+    cameraComponent.orientation = -transformComponent.translateVec;
+
+    CameraUpdateEvent cameraUpdateEvent(*this);
+    EventManager::getInstance().publish(cameraUpdateEvent);
+}
+
+void Entity::onParticleEmitterAdded()
+{
+    auto particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
+    
+    ParticleEmitter& emitter = getComponent<ParticleEmitter>();
+
+    
 }
 
 void Entity::onModelComponentAdded()
@@ -108,4 +146,31 @@ void Entity::onScriptComponentAdded()
     ScriptComponent& scriptComponent = getComponent<ScriptComponent>();
     auto scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
     scriptManager->loadScript(*this, scriptComponent.path);
+}
+
+void Entity::onColliderComponentAdded()
+{
+    auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+    auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+    auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
+    
+    if(!hasComponent<ColliderComponent>()){
+        printf("critical collider not found");
+        return;
+    }
+
+    if(!hasComponent<ModelComponent>()){
+        printf("critical ModelComponent not found");
+        return;
+    }
+
+    TransformComponent& transformComponent = getComponent<TransformComponent>();
+    ColliderComponent& colliderComponent = getComponent<ColliderComponent>();
+    
+    ModelComponent& modelComponent = getComponent<ModelComponent>();
+    Model* model = modelManager->getModel(modelComponent.modelID);
+    Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+
+    auto shapeID = physicsManager->createBoxBody(*this, *mesh, transformComponent.translateVec, transformComponent.scaleVec, colliderComponent.colliderType);
+    colliderComponent.shapeID = shapeID;
 }

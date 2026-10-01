@@ -144,6 +144,9 @@ void BufferManagerVulkan::bind(uint32_t id)
 
 BufferVulkan* BufferManagerVulkan::getBuffer(uint32_t id)
 {
+	if(id == 0) {
+		return nullptr;
+	}
 	if (buffers.find(id) == buffers.end()) {
 		throw std::runtime_error("buffer not found");
 	}

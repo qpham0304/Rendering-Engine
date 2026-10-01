@@ -1,5 +1,5 @@
 //TODO: only used this to shortten includes in .cpp files
-//do NOT include in .h files
+//**NOTE** do NOT include in .h files which will cause dependency issues
 #include "core/features/ServiceLocator.h"
 #include "services/Service.h"
 #include "gui/GuiManager.h"

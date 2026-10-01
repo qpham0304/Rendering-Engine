@@ -236,7 +236,7 @@ void main() {
     Material mat = pc.materialsRef.m[pc.materialIdx];
     
     vec2 frameUV = (fragTexCoord * mat.uvScale) + mat.uvOffset;
-    if (mat.uvScale.x < 0.99 || mat.uvScale.y < 0.99) {   // prevent sprite edge bleeding
+    if (any(lessThan(mat.uvScale, vec2(1.0 - 1e-4)))) { //treats binlinear filtering
         vec2 texSize = vec2(textureSize(samplerImages[mat.albedoIdx], 0));
         vec2 halfTexel = 0.5 / texSize;
 

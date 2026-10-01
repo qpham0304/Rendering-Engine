@@ -4,6 +4,39 @@
 
 class Camera
 {
+public:
+	Camera();
+	Camera(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation);
+	Camera(unsigned int width, unsigned int height, glm::vec3 position);
+	virtual ~Camera() = default;
+
+	glm::vec3 getPosition();
+	glm::vec3 getOrientation();
+	glm::mat4 getViewMatrix();
+	glm::mat4 getInViewMatrix();
+	glm::mat4 getProjectionMatrix();
+	glm::mat4 getInProjectionMatrix();
+	glm::mat4 getMVP();
+
+	float getFOV();
+	int getViewWidth();
+	int getViewHeight();
+	bool isMoving();
+	void setFOV(float fov);
+	void setViewWidth(int width);
+	void setViewHeight(int height);
+	void updateViewResize(int width, int height);
+	
+	virtual void init(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation);
+	virtual void onUpdate();
+	virtual void resetCamera();
+	virtual void setCameraSpeed(int speedMultiplier);
+	virtual void translate(const glm::vec3& position);
+
+	virtual bool processKeyboard();
+	virtual bool processMouse();
+	virtual void scroll_callback(double xoffset, double yoffset);
+
 protected:
 	const float DEFAULT_SPEED = 0.1f;
 	const float DEFAULT_SENSITIVITY = 0.1f;
@@ -58,38 +91,6 @@ protected:
 	glm::mat4 projection;
 	glm::mat4 inProjection;
 	glm::mat4 mvp;
-
-public:
-
-	Camera();
-	Camera(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation);
-	Camera(unsigned int width, unsigned int height, glm::vec3 position);
-	virtual ~Camera() = default;
-
-	glm::vec3 getPosition();
-	glm::vec3 getOrientation();
-	glm::mat4 getViewMatrix();
-	glm::mat4 getInViewMatrix();
-	glm::mat4 getProjectionMatrix();
-	glm::mat4 getInProjectionMatrix();
-	glm::mat4 getMVP();
-
-	float getFOV();
-	int getViewWidth();
-	int getViewHeight();
-	bool isMoving();
-	float getDeltaTime();
-	
-	virtual void init(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation);
-	virtual void onUpdate();
-	virtual void updateViewResize(int width, int height);
-	virtual void resetCamera();
-	virtual void setCameraSpeed(int speedMultiplier);
-	virtual void translate(const glm::vec3& position);
-
-	virtual bool processKeyboard();
-	virtual bool processMouse();
-	virtual void scroll_callback(double xoffset, double yoffset);
 
 private:
 	void _mouseControl();
