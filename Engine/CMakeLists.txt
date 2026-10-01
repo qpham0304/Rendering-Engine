@@ -40,10 +40,15 @@ set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImSequencer.cpp
 )
 
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} ${WK_LIB_TYPE}
     ${ENGINE_SOURCES}
     ${ENGINE_HEADERS}
     ${IMGUI_SOURCES}
+)
+
+include(GenerateExportHeader)
+generate_export_header(${PROJECT_NAME}
+    EXPORT_FILE_NAME include/Engine/EngineCoreAPI.h
 )
 
 set(PCH_HEADERS
@@ -91,8 +96,10 @@ endif()
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE ${PCH_HEADERS})
 
-# Output folders (optional)
+# Output folders
 set_target_properties(${PROJECT_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>"
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>"
 )
 add_definitions(-DNOMINMAX)
@@ -106,11 +113,8 @@ add_subdirectory(Libraries/include/assimp)
 add_subdirectory(Libraries/include/lua-cmake)
 add_subdirectory(Libraries/include/box3d)
 
-add_library(vulkan-1 STATIC IMPORTED)
-set_target_properties(vulkan-1 PROPERTIES
-    IMPORTED_LOCATION "$ENV{VULKAN_SDK}/Lib/vulkan-1.lib"
-    INTERFACE_INCLUDE_DIRECTORIES "$ENV{VULKAN_SDK}/Include"
-)
+find_package(Vulkan REQUIRED)
+
 
 # Include directories to propagate to Sandbox
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -129,13 +133,17 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/glm
     ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/sol
     $ENV{VULKAN_SDK}/Include
+
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
 
 
 # Link dependencies
 target_link_libraries(${PROJECT_NAME} PUBLIC
     assimp
-    vulkan-1
+    Vulkan::Vulkan
     glad
     spdlog
     nlohmann_json

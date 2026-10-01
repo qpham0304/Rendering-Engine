@@ -1,5 +1,7 @@
 #include "AppWindowGLFW.h"
 #include "core/features/EngineStates.h"
+#include "core/features/Timer.h"
+#include "core/events/eventManager.h"
 #include <glad/glad.h>
 #define GLFW_INCLUDE_VULKAN
 #include "InputGLFW.h"
@@ -7,15 +9,7 @@
 #if defined _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
-#include "core/features/Timer.h"
-#include "core/events/eventManager.h"
 #endif
-
-//extern "C" __declspec(dllexport)
-//AppWindow* CreateAppWindowGLFW()
-//{
-//	return new AppWindowGLFW();
-//}
 
 AppWindowGLFW::AppWindowGLFW() 
 	: AppWindow(), m_windowHandle(nullptr), m_sharedWindowHandle(nullptr)

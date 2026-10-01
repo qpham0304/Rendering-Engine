@@ -4,7 +4,7 @@
 
 class Texture;
 
-class TextureManager : public Manager
+class MYGRAPHICSENGINE_EXPORT TextureManager : public Manager
 {
 public:
 	TextureManager(std::string serviceName = "TextureManager") : Manager(serviceName) {};

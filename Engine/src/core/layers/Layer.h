@@ -1,11 +1,12 @@
 #pragma once
 
+#include "Engine/EngineCoreAPI.h"
 #include "core/events/Event.h"
 #include "Logging/Logger.h"
 
 class LayerManager;
 
-class Layer
+class MYGRAPHICSENGINE_EXPORT Layer
 {
 public:
 	bool m_Enabled;

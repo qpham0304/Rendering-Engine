@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/EngineCoreAPI.h"
 #include "core/features/MathIncludes.h"
 #include <concepts>
 #include <string>
@@ -41,7 +42,7 @@ namespace glm {
 }
 
 
-class TransformComponent {
+class MYGRAPHICSENGINE_EXPORT TransformComponent {
 private:
 	glm::mat4 modelMatrix = glm::mat4(1.0f);
 
@@ -101,7 +102,7 @@ public:
 
 };
 
-struct NameComponent {
+struct MYGRAPHICSENGINE_EXPORT NameComponent {
 public:
 	std::string name = "None";
 
@@ -117,7 +118,7 @@ public:
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(NameComponent, name);
 };
 
-struct ModelComponent {
+struct MYGRAPHICSENGINE_EXPORT ModelComponent {
 public:
 	std::string path = "None";
 	uint32_t modelID = 0;
@@ -142,7 +143,7 @@ public:
 
 };
 
-struct MeshComponent {
+struct MYGRAPHICSENGINE_EXPORT MeshComponent {
 public:
 	std::vector<uint32_t> meshIDs = {};
 
@@ -152,7 +153,7 @@ public:
 	// NLOHMANN_DEFINE_TYPE_INTRUSIVE(MeshComponent, meshIDs);
 };
 
-struct LightComponent {
+struct MYGRAPHICSENGINE_EXPORT LightComponent {
 public:
 	glm::vec4 color;
 	float intensity;
@@ -164,12 +165,12 @@ public:
 	//NLOHMANN_DEFINE_TYPE_INTRUSIVE(LightComponent, meshIDs);
 };
 
-struct RelationshipComponent {
+struct MYGRAPHICSENGINE_EXPORT RelationshipComponent {
     entt::entity parent;
     std::vector<entt::entity> children;
 };
 
-struct PrefabComponent {
+struct MYGRAPHICSENGINE_EXPORT PrefabComponent {
     std::string prefabPath;
 
     friend void to_json(nlohmann::json& j, const PrefabComponent& p) {
@@ -180,13 +181,13 @@ struct PrefabComponent {
     }
 };
 
-struct RenderTag {
+struct MYGRAPHICSENGINE_EXPORT RenderTag {
 	RenderTag() = default;
 
 	std::vector<std::string> renderers;
 };
 
-struct LightProbeComponent {
+struct MYGRAPHICSENGINE_EXPORT LightProbeComponent {
 	LightProbeComponent() = default;
 
 	std::vector<glm::vec4> probeGrid;
@@ -198,12 +199,15 @@ struct LightProbeComponent {
 	//NLOHMANN_DEFINE_TYPE_INTRUSIVE(LightProbeComponent, probeGrid);
 };
 
-struct SpriteComponent {
+struct MYGRAPHICSENGINE_EXPORT SpriteComponent {
 	SpriteComponent() = default;
+
+	uint32_t textureID { 0 };
+	glm::vec2 uvScale { 1.0, 1.0 };
+	glm::vec2 uvOffset { 0.0 };
 
 	std::string path { "None" };
 	std::string targetRenderer { "None" };
-	uint32_t textureID { 0 };
 	int numRows { 1 };
 	int numCols { 1 };
 	int frameIndex { 0 };
@@ -227,7 +231,7 @@ struct SpriteComponent {
 	)
 };
 
-struct AnimationComponent {
+struct MYGRAPHICSENGINE_EXPORT AnimationComponent {
 	AnimationComponent() = default;
 
 	int frameCount{ 8 };
@@ -245,7 +249,7 @@ struct AnimationComponent {
 	);
 };
 
-struct AnimationStateComponent {
+struct MYGRAPHICSENGINE_EXPORT AnimationStateComponent {
 	AnimationStateComponent() = default;
 
 	std::string texturePath{ "None" };
@@ -264,7 +268,7 @@ struct AnimationStateComponent {
 	)
 };
 
-struct CameraComponent {
+struct MYGRAPHICSENGINE_EXPORT CameraComponent {
 	CameraComponent() = default;
 	
 	int viewWidth;
@@ -283,7 +287,7 @@ struct CameraComponent {
 	);
 };
 
-struct ScriptComponent {
+struct MYGRAPHICSENGINE_EXPORT ScriptComponent {
 	ScriptComponent() = default;
 	ScriptComponent(std::string scriptPath) : path(scriptPath) {};
 
@@ -296,7 +300,7 @@ struct ScriptComponent {
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ScriptComponent, path);
 };
 
-struct ColliderComponent {
+struct MYGRAPHICSENGINE_EXPORT ColliderComponent {
 	ColliderComponent() = default;
 	ColliderComponent(uint32_t id, uint32_t type) : shapeID(id), colliderType(type) {}
 	
@@ -313,11 +317,12 @@ struct ColliderComponent {
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ColliderComponent, shapeID, colliderType, bodyType);
 };
 
-struct ParticleEmitter {
+struct MYGRAPHICSENGINE_EXPORT ParticleEmitter {
 	ParticleEmitter() = default;
 
 	uint32_t containerID;
 
+	int behaviorType{ 0 };
 	int emitMax{ 100 };
 	int emitCount{ 0 };
 	bool areRecycled{ false };
@@ -333,6 +338,7 @@ struct ParticleEmitter {
 
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
 		ParticleEmitter,
+		behaviorType,
 		emitMax,
 		emitCount,
 		areRecycled,

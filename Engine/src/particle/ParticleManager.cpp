@@ -102,9 +102,13 @@ uint32_t ParticleManager::createContainer(uint32_t size, glm::vec3 minSpacing, g
         float x = Random::GenFloat(minSpacing.x, maxSpacing.x);
         float y = Random::GenFloat(minSpacing.y, maxSpacing.y);
         float z = Random::GenFloat(minSpacing.z, maxSpacing.z);
-        
         container.m_positions[i] = glm::vec3(x, y ,z);
-        container.m_velocities[i] = glm::vec3(-x, -y ,-z);
+        
+        float r = Random::GenFloat(0.0f, 1.0f);
+        float g = Random::GenFloat(0.0f, 1.0f);
+        float b = Random::GenFloat(0.0f, 1.0f);
+        float a = Random::GenFloat(0.25f, 1.0f);
+        container.m_colors[i] = glm::vec4(r, g, b, a);
     }
     
     bufferManager->updateBufferDeviceAddress(data.lifetimeBufferID, container.m_lifetime.data(), lifetimeSize);
@@ -113,6 +117,12 @@ uint32_t ParticleManager::createContainer(uint32_t size, glm::vec3 minSpacing, g
     bufferManager->updateBufferDeviceAddress(data.velocitiesBufferID, container.m_velocities.data(), velocitiesSize);
     bufferManager->updateBufferDeviceAddress(data.colorsBufferID, container.m_colors.data(), colorsSize);
 
+    //TODO: ideally after uploaded to gpu cpu side containers can be clearned up but keep them for now
+    container.m_lifetime.clear();
+    container.m_positions.clear();
+    container.m_scales.clear();
+    container.m_velocities.clear();
+    container.m_colors.clear();
 
     return _assignID();
 }

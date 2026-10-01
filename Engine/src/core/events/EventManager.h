@@ -13,7 +13,7 @@
 #include "core/features/Timer.h"
 #include "core/resources/managers/Manager.h"
 
-class EventManager : public Manager
+class MYGRAPHICSENGINE_EXPORT EventManager : public Manager
 {
 public:
 	using EventCallback = std::function<void(Event&)>;

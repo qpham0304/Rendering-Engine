@@ -3,6 +3,7 @@
 #extension GL_GOOGLE_include_directive : require
 
 #include "common/buffers.glsl"
+#include "common/mathUtils.glsl"
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 invNormal;
@@ -16,10 +17,10 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     float height;
 } ubo;
 
-layout(set = 0, binding = 1) uniform EmitterUBO {
+struct Emitter {
     int emitMax;
     int emitCount;
-    bool areRecycled;
+    int areRecycled;
     float emitAccumulator;
     float emitRate;
     float lifetimeMin;
@@ -28,8 +29,12 @@ layout(set = 0, binding = 1) uniform EmitterUBO {
     float speedMax;
     vec3 spawnPosition;
     vec3 force;
-    bool resetPosition;
-} emitter;
+    int resetPosition;
+    vec2 uvOffset;
+    vec2 uvScale;
+    int textureID;
+    int behaviorType;
+};
 
 struct Container {
     uint64_t lifetimeRef;
@@ -39,6 +44,7 @@ struct Container {
     uint64_t colorsRef;
 };
 
+layout(buffer_reference, scalar) buffer EmittersBuffers { Emitter emitters[]; };
 layout(buffer_reference, scalar) buffer ContainerBuffers { Container containers[]; };
 layout(buffer_reference, scalar) buffer Lifetime { float lifetime[]; };
 layout(buffer_reference, scalar) buffer Positions { vec3 positions[]; };
@@ -47,6 +53,7 @@ layout(buffer_reference, scalar) buffer Velocities { vec3 velocities[]; };
 layout(buffer_reference, scalar) buffer Colors { vec4 colors[]; };
 
 layout(push_constant) uniform ParticleContainerRefs {
+    EmittersBuffers emittersRef;
     ContainerBuffers containersRef;
     uint containerIdx;
     uint particleCount;
@@ -55,22 +62,139 @@ layout(push_constant) uniform ParticleContainerRefs {
 
 layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
+vec3 randomRange(uint particleID, vec3 scaleFactor) {
+    float x = random(vec2(pc.deltaTime, particleID + 1.0));
+    float y = random(vec2(pc.deltaTime, particleID + 2.0));
+    float z = random(vec2(pc.deltaTime, particleID + 3.0));
+    return vec3(x, y, z) * scaleFactor;
+}
+
+vec3 randomRangeNDC(uint particleID, vec3 scaleFactor) {
+    float x = random(vec2(pc.deltaTime, particleID + 1.0)) * 2.0 - 1.0;
+    float y = random(vec2(pc.deltaTime, particleID + 2.0)) * 2.0 - 1.0;
+    float z = random(vec2(pc.deltaTime, particleID + 3.0)) * 2.0 - 1.0;
+    return vec3(x, y, z) * scaleFactor;
+}
+
+vec2 randomCircle(uint particleID, float radius) {
+    float angle = random(vec2(pc.deltaTime, particleID + 1.0)) * 2.0 * PI;
+    float r = sqrt(random(vec2(pc.deltaTime, particleID + 2.0))) * radius;
+    
+    return vec2(cos(angle) * r, sin(angle) * r);
+}
+
+vec3 randomSphere(uint particleID, float radius) {
+    float u = random(vec2(pc.deltaTime, particleID + 1.0));
+    float v = random(vec2(pc.deltaTime, particleID + 2.0));
+    
+    float theta = u * 6.2831853;        // Azimuthal angle
+    float phi = acos(2.0 * v - 1.0);    // Polar angle
+    float r = pow(random(vec2(pc.deltaTime, particleID + 3.0)), 1.0 / 3.0) * radius;    // Cube root for uniform 3D volume
+
+    float sinPhi = sin(phi);
+    return vec3(
+        r * sinPhi * cos(theta),
+        r * sinPhi * sin(theta),
+        r * cos(phi)
+    );
+}
+
 void main() {
     uint particleID = gl_GlobalInvocationID.x;
     if(particleID >= pc.particleCount) {
         return;
     }
     
+    Emitter emitter = pc.emittersRef.emitters[pc.containerIdx];
     Container c = pc.containersRef.containers[pc.containerIdx];
+    Lifetime lifeBuffer = Lifetime(c.lifetimeRef);
     Positions posBuffer = Positions(c.positionsRef);
     Velocities velBuffer = Velocities(c.velocitiesRef);
     
+    float lifetime = lifeBuffer.lifetime[particleID];
     vec3 position = posBuffer.positions[particleID];
     vec3 velocity = velBuffer.velocities[particleID];
 
-    velocity += emitter.force * pc.deltaTime;
-    position += velocity * pc.deltaTime;
+    lifetime -= pc.deltaTime;
 
+    switch (emitter.behaviorType) {
+        case 0: {
+            if(lifetime <= 0) {
+                position = emitter.spawnPosition + randomRangeNDC(particleID, vec3(1.0, 0.0, 1.0));
+             
+                lifetime = emitter.lifetimeMin + random(vec2(particleID + 11, pc.deltaTime)) * (emitter.lifetimeMax - emitter.lifetimeMin);
+            } else {
+
+            }
+            break;
+        }
+        
+        case 1: {
+            if(lifetime <= 0) {
+                position = emitter.spawnPosition + randomRangeNDC(particleID, vec3(1.0, 0.0, 1.0));
+                velocity = randomRangeNDC(particleID, vec3(1.0, emitter.speedMax - emitter.speedMin, 1.0));
+
+                lifetime = emitter.lifetimeMin + random(vec2(particleID + 11, pc.deltaTime)) * (emitter.lifetimeMax - emitter.lifetimeMin);
+            } else {
+                velocity += (emitter.force + G_FORCE) * pc.deltaTime;
+                position += velocity * pc.deltaTime;
+            }
+            break;
+
+        }
+        
+        case 2: {
+            if(lifetime <= 0) {
+                position = emitter.spawnPosition + randomSphere(particleID, 2.0);
+                velocity = randomRangeNDC(particleID, vec3(1.0, 1.0, 1.0) * (emitter.speedMax - emitter.speedMin));
+             
+                lifetime = emitter.lifetimeMin + random(vec2(particleID + 11, pc.deltaTime)) * (emitter.lifetimeMax - emitter.lifetimeMin);
+            }
+
+            break;
+        }
+        
+        case 3: {
+            if(lifetime <= 0) { // vortex
+                position = emitter.spawnPosition + randomRangeNDC(particleID, vec3(1.0, 0.0, 1.0));
+                velocity = randomRange(particleID, vec3(1.0, (emitter.speedMax - emitter.speedMin), 1.0));
+                // float initialUpSpeed = mix(emitter.speedMin, emitter.speedMax, random(vec2(particleID, pc.deltaTime)));
+                // velocity = vec3(0.0, initialUpSpeed, 0.0);
+
+                lifetime = emitter.lifetimeMin + random(vec2(particleID + 11, pc.deltaTime)) * (emitter.lifetimeMax - emitter.lifetimeMin);
+            } else {
+                vec2 offset = position.xz - emitter.spawnPosition.xz;
+                vec2 tangent = vec2(-offset.y, offset.x);
+                if (length(tangent) > 0.0001) {
+                    tangent = normalize(tangent);
+                }
+
+                float lifeRatio = clamp(lifetime / emitter.lifetimeMax, 0.0, 1.0);
+                vec3 rotationForce = vec3(tangent.x, 0.0, tangent.y) * vec3(emitter.force.x, 0.0, emitter.force.z) * lifeRatio;
+                vec3 upwardForce = vec3(0.0, emitter.force.y, 0.0) + G_FORCE;
+
+                // inward pull toward the center to make a funnel shape
+                vec2 inwardPull = -normalize(offset) * 5.0;
+                vec3 radialForce = vec3(inwardPull.x, 0.0, inwardPull.y);
+
+                vec3 totalForce = rotationForce + upwardForce + radialForce;
+                velocity += totalForce * pc.deltaTime;
+                velocity *= (1.0 - 2.0 * pc.deltaTime); // drag
+
+                position += velocity * pc.deltaTime;
+            }
+            break;
+        }
+
+        default: {
+            velocity += emitter.force * pc.deltaTime;
+            position += velocity * pc.deltaTime;
+            break;
+        }
+    }
+
+
+    lifeBuffer.lifetime[particleID] = lifetime;
     posBuffer.positions[particleID] = position;
-    // velBuffer.velocities[particleID] = velocity;
+    velBuffer.velocities[particleID] = velocity;
 }

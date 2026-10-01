@@ -20,7 +20,7 @@ struct MassData {
 	glm::mat3 inertia;		// The inertia tensor about the shape center of mass.
 };
 
-class PhysicsManager : public Manager
+class MYGRAPHICSENGINE_EXPORT PhysicsManager : public Manager
 {
 public:
 	PhysicsManager(std::string serviceName = "PhysicsManager") : Manager(serviceName) {};	

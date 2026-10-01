@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/EngineCoreAPI.h"
 #include <vector>
 #include <memory>
 #include "Layer.h"
@@ -7,7 +8,7 @@
 #include "core/resources/managers/Manager.h"
 #include "../../graphics/framework/OpenGL/renderers/FrameBuffer.h"
 
-class LayerManager : public Manager
+class MYGRAPHICSENGINE_EXPORT LayerManager : public Manager
 {
 public:
 	friend class Layer;

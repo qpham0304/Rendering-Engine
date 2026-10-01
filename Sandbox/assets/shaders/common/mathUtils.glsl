@@ -3,7 +3,7 @@
 
 #extension GL_GOOGLE_include_directive : require
 
-#include "common/definitions.glsl"
+#include "definitions.glsl"
 
 vec3 getPosWorld(vec2 uv, float depth, mat4 invProj, mat4 invView) {
     vec4 clip = vec4(uv * 2.0 - 1.0, depth, 1.0);
@@ -18,6 +18,10 @@ vec3 getPos(vec2 uv, float depth, mat4 invProj, mat4 invView) {
     vec4 viewPos = invProj * clip;
     viewPos /= viewPos.w;
     return viewPos.xyz;
+}
+
+float random(vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
 }
 
 #endif

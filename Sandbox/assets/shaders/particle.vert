@@ -6,28 +6,8 @@
 
 #include "common/buffers.glsl"
 
-struct Container {
-    uint64_t lifetimeRef;
-    uint64_t positionsRef;
-    uint64_t scalesRef;
-    uint64_t velocitiesRef;
-    uint64_t colorsRef;
-};
-
-layout(buffer_reference, scalar) buffer ContainerBuffers { Container containers[]; };
-layout(buffer_reference, scalar) buffer Lifetime { float lifetime[]; };
-layout(buffer_reference, scalar) buffer Positions { vec3 positions[]; };
-layout(buffer_reference, scalar) buffer Scales { vec3 scales[]; };
-layout(buffer_reference, scalar) buffer Velocities { vec3 velocities[]; };
-layout(buffer_reference, scalar) buffer Colors { vec4 colors[]; };
-
-layout(push_constant) uniform ParticleContainerRefs {
-    ContainerBuffers containersRef;
-    uint containerIdx; // The index for THIS draw call
-    uint particleCount;
-    float deltaTime;
-} pc;
-
+layout(location = 0) flat out int particleID;
+layout(location = 1) out vec2 fragTexCoord;
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 invNormal;
@@ -41,10 +21,10 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     float height;
 } ubo;
 
-layout(set = 0, binding = 1) uniform EmitterUBO {
+struct Emitter {
     int emitMax;
     int emitCount;
-    bool areRecycled;
+    int areRecycled;
     float emitAccumulator;
     float emitRate;
     float lifetimeMin;
@@ -53,24 +33,55 @@ layout(set = 0, binding = 1) uniform EmitterUBO {
     float speedMax;
     vec3 spawnPosition;
     vec3 force;
-    bool resetPosition;
-} emitter;
+    int resetPosition;
+    vec2 uvOffset;
+    vec2 uvScale;
+    int textureID;
+    int behaviorType;
+};
+
+struct Container {
+    uint64_t lifetimeRef;
+    uint64_t positionsRef;
+    uint64_t scalesRef;
+    uint64_t velocitiesRef;
+    uint64_t colorsRef;
+};
+
+layout(buffer_reference, scalar) buffer EmittersBuffers { Emitter emitters[]; };
+layout(buffer_reference, scalar) buffer ContainerBuffers { Container containers[]; };
+layout(buffer_reference, scalar) buffer Lifetime { float lifetime[]; };
+layout(buffer_reference, scalar) buffer Positions { vec3 positions[]; };
+layout(buffer_reference, scalar) buffer Scales { vec3 scales[]; };
+layout(buffer_reference, scalar) buffer Velocities { vec3 velocities[]; };
+layout(buffer_reference, scalar) buffer Colors { vec4 colors[]; };
+
+layout(push_constant) uniform ParticleContainerRefs {
+    EmittersBuffers emittersRef;
+    ContainerBuffers containersRef;
+    uint containerIdx; // The index for THIS draw call
+    uint particleCount;
+    float deltaTime;
+} pc;
 
 void main() {
     const vec2 localOffsets[6] = vec2[](
         vec2(-0.5, -0.5), vec2(0.5, -0.5), vec2(0.5, 0.5),
         vec2(-0.5, -0.5), vec2(0.5, 0.5),  vec2(-0.5, 0.5)
     );
-    
-    //gl_VertexIndex defined from vkCmdDraw
-    uint particleID = gl_VertexIndex / 6;
+    particleID = gl_VertexIndex / 6;        //gl_VertexIndex defined from vkCmdDraw
     uint vertexInQuad = gl_VertexIndex % 6;
+    fragTexCoord = localOffsets[vertexInQuad] + vec2(0.5);    //shift uv to 0, 1
 
+    Emitter emitter = pc.emittersRef.emitters[pc.containerIdx];
     Container c = pc.containersRef.containers[pc.containerIdx];
     Positions posBuffer = Positions(c.positionsRef);
-    vec2 offset = localOffsets[vertexInQuad] * 0.1;
+    Scales scaleBuffer = Scales(c.scalesRef);
+    
     vec3 particlePos = posBuffer.positions[particleID];
-
+    vec3 particleScale = scaleBuffer.scales[particleID];
+    vec2 offset = localOffsets[vertexInQuad] * particleScale.xy;
+    
     // vec4 worldPos = vec4(particlePos + vec3(offset, 0.0), 1.0);
     // gl_Position = ubo.proj * ubo.view * worldPos;
 

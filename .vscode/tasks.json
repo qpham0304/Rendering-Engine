@@ -9,7 +9,7 @@
             "command": "cmake --build build --target Sandbox --config Debug",
             "group": "build",
             "problemMatcher": {
-                "base": "$msvc",
+                "base": "$ninja",
                 "fileLocation": ["relative", "${workspaceFolder}/build"]
             }
         },
@@ -19,7 +19,7 @@
             "command": "cmake --build build --target Sandbox --config Release",
             "group": "build",
             "problemMatcher": {
-                "base": "$msvc",
+                "base": "$ninja",
                 "fileLocation": ["relative", "${workspaceFolder}/build"]
             }
         },
@@ -29,7 +29,7 @@
             "command": "cmake --build build --target Editor --config Debug",
             "group": "build",
             "problemMatcher": {
-                "base": "$msvc",
+                "base": "$ninja",
                 "fileLocation": ["relative", "${workspaceFolder}/build"]
             }
         },

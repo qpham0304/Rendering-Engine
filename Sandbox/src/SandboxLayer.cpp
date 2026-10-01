@@ -262,6 +262,43 @@ void SandBoxLayer::createParticle()
     Entity particleEntity = activeScene->getEntity(activeScene->addEntity("particleEntity"));
     particleEntity.addComponent<ParticleEmitter>();
     ParticleEmitter& emitter = particleEntity.getComponent<ParticleEmitter>();
-    emitter.force = glm::vec3(5.0);
-    emitter.containerID = particleManager->createContainer(5000, glm::vec3(-1.0), glm::vec3(1.0));    
+    emitter.emitMax = 5000;
+    emitter.emitCount = 5000;
+    emitter.areRecycled = true; // Enable particle recycling so dead particles respawn
+    emitter.emitRate = 1000.0f; // Spawning rate if using rate-based emission
+    emitter.lifetimeMin = 1.5f; // Minimum seconds a particle lives
+    emitter.lifetimeMax = 3.0f; // Maximum seconds a particle lives
+    emitter.speedMin = 4.0f;    // Minimum upward burst speed
+    emitter.speedMax = 8.0f;    // Maximum upward burst speed
+    emitter.spawnPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    emitter.force = glm::vec3(0.0, 0.0, 0.0);
+    emitter.resetPosition = false;
+    emitter.behaviorType = 0;
+    emitter.containerID = particleManager->createContainer(5000, glm::vec3(-1.0), glm::vec3(1.0));
+    
+    particleEntity.addComponent<SpriteComponent>();
+    auto& spriteComponent = particleEntity.getComponent<SpriteComponent>();
+    // spriteComponent.textureID = textureManager->loadTexture("assets/textures/ParticleAtlas.png", 1, false);;
+    spriteComponent.textureID = textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false);;
+    particleEntity.onSpriteComponentAdded();
+
+    Entity particleEntity2 = activeScene->getEntity(activeScene->addEntity("particleEntity2"));
+    particleEntity2.addComponent<ParticleEmitter>();
+    TransformComponent& transform2 = particleEntity2.getComponent<TransformComponent>();
+    transform2.translate(glm::vec3(5.0, 0.0, 0.0));
+    ParticleEmitter& emitter2 = particleEntity2.getComponent<ParticleEmitter>();
+    emitter2.emitMax = 5000;
+    emitter2.emitCount = 5000;
+    emitter2.areRecycled = true; // Enable particle recycling so dead particles respawn
+    emitter2.emitRate = 1000.0f; // Spawning rate if using rate-based emission
+    emitter2.lifetimeMin = 1.5f; // Minimum seconds a particle lives
+    emitter2.lifetimeMax = 3.0f; // Maximum seconds a particle lives
+    emitter2.speedMin = 4.0f;    // Minimum upward burst speed
+    emitter2.speedMax = 8.0f;    // Maximum upward burst speed
+    emitter2.spawnPosition = transform2.translateVec;
+    emitter2.force = glm::vec3(0.0, 0.0, 0.0);
+    emitter2.resetPosition = false;
+    emitter2.behaviorType = 0;
+    emitter2.containerID = particleManager->createContainer(5000, glm::vec3(1.0), glm::vec3(1.0));
+
 }

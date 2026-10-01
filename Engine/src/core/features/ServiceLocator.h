@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/EngineCoreAPI.h"
 #include <unordered_map>
 #include <string>
 #include <stdexcept>
@@ -15,7 +16,7 @@ enum class AvailableServices {
     
 };
 
-class ServiceLocator {
+class MYGRAPHICSENGINE_EXPORT ServiceLocator {
 
 public:
     static void setContext(ServiceLocator* other);

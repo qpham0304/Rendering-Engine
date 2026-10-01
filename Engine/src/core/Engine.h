@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/EngineCoreAPI.h"
 #include <core/features/ServiceLocator.h>
 #include <core/features/PlatformFactory.h>
 #include <services/Service.h>
@@ -11,7 +12,7 @@
 class Layer;
 class EventManager;
 
-class Engine
+class MYGRAPHICSENGINE_EXPORT Engine
 {
 public:
     Engine(WindowConfig config);

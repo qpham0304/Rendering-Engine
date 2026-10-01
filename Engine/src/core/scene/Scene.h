@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Engine/EngineCoreAPI.h"
 #include <iomanip>
 #include <fstream>
 #include "Serializer.h"
 
 class SceneManager;
 class Logger;
-class Scene
+class MYGRAPHICSENGINE_EXPORT Scene
 {
 public:
 	bool isEnabled;

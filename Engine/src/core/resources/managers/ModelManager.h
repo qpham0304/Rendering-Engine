@@ -9,7 +9,7 @@ class TextureManager;
 class MeshManager;
 class MaterialManager;
 
-class ModelManager : public Manager
+class MYGRAPHICSENGINE_EXPORT ModelManager : public Manager
 {
 public:
 	ModelManager();

@@ -61,7 +61,7 @@ void TextureManagerVulkan::destroy(uint32_t id)
 {
 	auto it = m_textures.find(id);
 	if (it == m_textures.end()) {
-		m_logger->warn("Texture not found id:{}", id);
+		m_logger->warn("Texture not found id: {}", id);
 		return;
 	}
 	
@@ -711,8 +711,8 @@ void TextureManagerVulkan::copyBufferToImage(
 
 uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig)
 {
-	std::shared_ptr<TextureVulkan> texture = std::make_shared<TextureVulkan>(m_ids);
-	m_textures[m_ids] = texture;
+	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);;
+	TextureVulkan* texture = dynamic_cast<TextureVulkan*>(m_textures[m_ids].get());
 
 	TextureManagerVulkan::createImage(
 		textureConfig.width,

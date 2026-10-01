@@ -1,9 +1,8 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include "Camera.h"
 
-class OrbitCamera : public Camera
+class MYGRAPHICSENGINE_EXPORT OrbitCamera : public Camera
 {
 protected:
 	float deltaTime = 0.0f;	// Time between current frame and last frame

@@ -5,7 +5,7 @@
 class Mesh;
 class BufferManager;
 
-class MeshManager : public Manager
+class MYGRAPHICSENGINE_EXPORT MeshManager : public Manager
 {
 public:
     struct MeshData {                   // handle to GPU buffers

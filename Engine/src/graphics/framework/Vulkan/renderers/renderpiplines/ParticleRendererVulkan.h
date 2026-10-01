@@ -9,18 +9,22 @@ class ParticleRendererVulkan : public RendererVulkan
 {
 private:
 	struct EmitterUBO{
-		alignas(4) int emitMax{ 100 };
-		alignas(4) int emitCount{ 0 };
-		alignas(4) bool areRecycled{ false };
-		alignas(4) float emitAccumulator{ 0.0f };
-		alignas(4) float emitRate{ 1.0f };
-		alignas(4) float lifetimeMin{ 1.0f };
-		alignas(4) float lifetimeMax{ 1.0f };
-		alignas(4) float speedMin{ 1.0f };
-		alignas(4) float speedMax{ 1.0f };
-		alignas(16) glm::vec3 spawnPosition{ 0.0f, 0.0f, 0.0f };
-		alignas(16) glm::vec3 force{ 0.0f, 0.0f, 0.0f };
-		alignas(4) bool resetPosition{ false };
+		int emitMax{ 100 };
+		int emitCount{ 0 };
+		int areRecycled{ 0 };
+		float emitAccumulator{ 0.0f };
+		float emitRate{ 1.0f };
+		float lifetimeMin{ 1.0f };
+		float lifetimeMax{ 1.0f };
+		float speedMin{ 1.0f };
+		float speedMax{ 1.0f };
+		glm::vec3 spawnPosition{ 0.0f, 0.0f, 0.0f };
+		glm::vec3 force{ 0.0f, 0.0f, 0.0f };
+		int resetPosition{ 0 };
+		glm::vec2 uvOffset { 0.0 };
+		glm::vec2 uvScale { 1.0 };
+		int textureID { 0 };
+		int behaviorType { 0 };
 	};
 
 public:
@@ -33,6 +37,7 @@ public:
 	};
 
 	struct ParticlePushConstant {
+		uint64_t emitterRef;
 		uint64_t containersRef;
 		uint32_t containerIdx;
 		uint32_t particleCount;
@@ -49,11 +54,15 @@ public:
 
 protected:
     const uint32_t MAX_CONTAINERS = 100;
+    const uint32_t MAX_EMITTERS = 100;
 	const int MAX_INSTANCES = 10000;
 	const int numInstances = 1;
+	
 	std::vector<ContainerRefs> containerRefs { {} };	// attribute refs to one container
 	uint32_t containersRefID;
-	uint64_t containersRef;							// one ref to all containers
+	
+	std::vector<std::vector<EmitterUBO>> emittersUBO {};	
+	uint32_t emittersUBORefID;
 	
 	virtual void _recreateResources() override;
 	virtual void _cleanupResources() override;
@@ -72,15 +81,12 @@ protected:
 	ParticlePushConstant pushConstant;
 	
 	TextureVulkan* outTexture { nullptr };
-	TextureVulkan* depthTexture { nullptr };
+	// TextureVulkan* depthTexture { nullptr };
 
 	uint32_t layoutID;
 	uint32_t poolID;
 	uint32_t setsID;
 	std::vector<VkDescriptorSet> descriptorSets;
-
-	std::vector<UniformBufferVulkan*> emitterUniformBuffersList;
-	EmitterUBO emitterUBO {};
 
 	ParticleManager* particleManager { nullptr };
 };
