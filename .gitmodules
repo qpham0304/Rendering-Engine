@@ -1,29 +1,25 @@
-[submodule "Engine/Libraries/include/imgui"]
-	path = Engine/Libraries/include/imgui
+[submodule "Engine/extern/imgui"]
+	path = Engine/extern/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
-[submodule "Engine/Libraries/include/ImGuizmo"]
-	path = Engine/Libraries/include/ImGuizmo
+[submodule "Engine/extern/ImGuizmo"]
+	path = Engine/extern/ImGuizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo.git
-[submodule "Engine/Libraries/include/spdlog"]
-	path = Engine/Libraries/include/spdlog
+[submodule "Engine/extern/spdlog"]
+	path = Engine/extern/spdlog
 	url = https://github.com/gabime/spdlog.git
-[submodule "Engine/Libraries/include/glfw"]
-	path = Engine/Libraries/include/glfw
+[submodule "Engine/extern/glfw"]
+	path = Engine/extern/glfw
 	url = https://github.com/glfw/glfw.git
-[submodule "Engine/Libraries/include/assimp"]
-	path = Engine/Libraries/include/assimp
+[submodule "Engine/extern/assimp"]
+	path = Engine/extern/assimp
 	url = https://github.com/assimp/assimp.git
-[submodule "Engine/Libraries/include/external/json"]
-	path = Engine/Libraries/include/external/json
+[submodule "Engine/extern/external/json"]
+	path = Engine/extern/nlohmann
 	url = https://github.com/nlohmann/json
-[submodule "Engine/ThirdParty/imgui"]
-	path = Engine/ThirdParty/imgui
-	url = https://github.com/ocornut/imgui.git
-	branch = docking
-[submodule "Engine/Libraries/include/lua-cmake"]
-	path = Engine/Libraries/include/lua-cmake
+[submodule "Engine/extern/lua-cmake"]
+	path = Engine/extern/lua-cmake
 	url = https://github.com/lubgr/lua-cmake.git
-[submodule "engine/Libraries/include/box3d"]
-	path = engine/Libraries/include/box3d
+[submodule "Engine/extern/box3d"]
+	path = Engine/extern/box3d
 	url = https://github.com/erincatto/box3d.git

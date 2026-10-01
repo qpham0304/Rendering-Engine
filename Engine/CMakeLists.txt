@@ -25,19 +25,19 @@ file(GLOB_RECURSE ENGINE_SOURCES
 )
 
 set(IMGUI_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/imgui.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/imgui_draw.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/imgui_tables.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/imgui_widgets.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_glfw.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_opengl3.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends/imgui_impl_vulkan.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/misc/cpp/imgui_stdlib.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImGuizmo.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/GraphEditor.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImCurveEdit.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImGradient.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo/ImSequencer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/imgui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/imgui_draw.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/imgui_tables.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/imgui_widgets.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_glfw.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_opengl3.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_vulkan.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/misc/cpp/imgui_stdlib.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/ImGuizmo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/GraphEditor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/ImCurveEdit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/ImGradient.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/ImSequencer.cpp
 )
 
 add_library(${PROJECT_NAME} ${WK_LIB_TYPE}
@@ -105,13 +105,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 add_definitions(-DNOMINMAX)
 
 # Dependencies
-add_subdirectory(Libraries/include/glad)
-add_subdirectory(Libraries/include/spdlog)
-add_subdirectory(Libraries/include/glfw)
-add_subdirectory(Libraries/include/external/json)
-add_subdirectory(Libraries/include/assimp)
-add_subdirectory(Libraries/include/lua-cmake)
-add_subdirectory(Libraries/include/box3d)
+add_subdirectory(extern/single/glad)
+add_subdirectory(extern/spdlog)
+add_subdirectory(extern/glfw)
+add_subdirectory(extern/nlohmann)
+add_subdirectory(extern/assimp)
+add_subdirectory(extern/lua-cmake)
+add_subdirectory(extern/box3d)
 
 find_package(Vulkan REQUIRED)
 
@@ -121,17 +121,17 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     SYSTEM
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/entt
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/FileWatch
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/backends
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/imgui/misc/cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/ImGuizmo
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/stb
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/glm
-    ${CMAKE_CURRENT_SOURCE_DIR}/Libraries/include/sol
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/single
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/single/entt
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/single/FileWatch
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/misc/cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/single/stb
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/single/glm
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/single/sol
     $ENV{VULKAN_SDK}/Include
 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
