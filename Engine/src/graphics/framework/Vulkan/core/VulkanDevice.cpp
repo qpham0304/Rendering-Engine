@@ -319,6 +319,8 @@ void VulkanDevice::createLogicalDevice() {
 
 	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+	vkGetDeviceQueue(device, indices.computeFamily.value(), 0, &computeQueue);
+	vkGetDeviceQueue(device, indices.transferFamily.value(), 0, &transferQueue);
 }
 
 bool VulkanDevice::isDeviceSuitable(VkPhysicalDevice device) {
@@ -364,21 +366,34 @@ VulkanDevice::QueueFamilyIndices VulkanDevice::findQueueFamilies(VkPhysicalDevic
 	for (const auto& queueFamily : queueFamilies) {
 		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			indices.graphicsFamily = i;
+
+			if(!indices.computeFamily.has_value()) {
+				indices.computeFamily = i;	// fall back compute queue to graphics
+			}
 		}
 
 		VkBool32 presentSupport = false;
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
 		if (presentSupport) {
 			indices.presentFamily = i;
 		}
 
-		if (indices.isComplete()) {
-			break;
-		}
+		if ((queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) && !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+            indices.computeFamily = i; // prefer a dedicated compute queue if one exists
+        }
+
+		if ((queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) && 
+            !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && 
+            !(queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
+            indices.transferFamily = i;	// prefer a dedicated transfer queue if one exists
+        }
 
 		i++;
 	}
+
+	if (!indices.transferFamily.has_value() && indices.graphicsFamily.has_value()) {
+        indices.transferFamily = indices.graphicsFamily;
+    }
 
 	return indices;
 }

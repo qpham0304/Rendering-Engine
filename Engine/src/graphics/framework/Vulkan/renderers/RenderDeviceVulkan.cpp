@@ -21,18 +21,14 @@ bool RenderDeviceVulkan::init(WindowConfig config)
 {
 	Service::init(config);
 
-
 	device.create();
 	commandPool.create();
 	transferPool.create();
 	swapchain.create();
 
-    // load_VK_EXTENSIONS(device.getInstance(), vkGetInstanceProcAddr, device, vkGetDeviceProcAddr);
-
 	return true;
 }
 
-// wait for other vulkan resources to be destroyed before device cleanup
 bool RenderDeviceVulkan::onClose()
 {
 	waitIdle();
@@ -73,8 +69,7 @@ void RenderDeviceVulkan::draw(uint32_t numIndicies, uint32_t numInstances, uint3
 
 	if (numInstances == 1) {
 		commandPool.drawIndexed(numIndicies, offset);
-	}
-	else {
+	} else {
 		commandPool.drawInstanced(numIndicies, numInstances, offset);
 	}
 }
