@@ -155,7 +155,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC 
-    IMGUI_DEFINE_MATH_OPERATORS
     IMGUI_IMPL_OPENGL_LOADER_GLAD
 )
 
