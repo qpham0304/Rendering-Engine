@@ -20,7 +20,7 @@ bool MeshManager::init(WindowConfig config)
 
     m_bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
     if (!(m_logger && m_bufferManager)) {
-        return - 1;
+        return false;
     }
     
     return true;
