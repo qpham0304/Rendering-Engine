@@ -33,11 +33,11 @@ set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_opengl3.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_vulkan.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/misc/cpp/imgui_stdlib.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/ImGuizmo.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/GraphEditor.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/ImCurveEdit.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/ImGradient.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/ImSequencer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/src/ImGuizmo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/src/GraphEditor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/src/ImCurveEdit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/src/ImGradient.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/src/ImSequencer.cpp
 )
 
 add_library(${PROJECT_NAME} ${WK_LIB_TYPE}
@@ -110,7 +110,7 @@ add_subdirectory(extern/spdlog)
 add_subdirectory(extern/glfw)
 add_subdirectory(extern/nlohmann)
 add_subdirectory(extern/assimp)
-add_subdirectory(extern/lua-cmake)
+add_subdirectory(extern/lua)
 add_subdirectory(extern/box3d)
 
 find_package(Vulkan REQUIRED)
@@ -125,13 +125,14 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/single
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/single/entt
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/single/FileWatch
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/misc/cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/single/stb
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/single/glm
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/single/sol
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/misc/cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/ImGuizmo/src
+    ${CMAKE_CURRENT_BINARY_DIR}/extern/lua/include
     $ENV{VULKAN_SDK}/Include
 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -153,9 +154,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     box3d::box3d
 )
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC IMGUI_DEFINE_MATH_OPERATORS)
-
-target_compile_definitions(${PROJECT_NAME} PUBLIC
+target_compile_definitions(${PROJECT_NAME} PUBLIC 
+    IMGUI_DEFINE_MATH_OPERATORS
     IMGUI_IMPL_OPENGL_LOADER_GLAD
 )
 

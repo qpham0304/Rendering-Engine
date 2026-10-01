@@ -25,7 +25,7 @@ void DescriptorVulkan::updateDescriptor()
 {
     std::vector<VkWriteDescriptorSet>* writes;
 
-    uint32_t i;
+    uint32_t i = 0;
     for(auto& buffer : buffers) {
         
         i++;
