@@ -112,6 +112,9 @@ add_subdirectory(extern/nlohmann)
 add_subdirectory(extern/assimp)
 add_subdirectory(extern/lua)
 add_subdirectory(extern/box3d)
+add_subdirectory(extern/vma)
+add_subdirectory(extern/volk)
+add_subdirectory(extern/vk-bootstrap)
 
 find_package(Vulkan REQUIRED)
 
@@ -145,6 +148,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME} PUBLIC
     assimp
     Vulkan::Vulkan
+    vk-bootstrap::vk-bootstrap
+    volk::volk
+    GPUOpen::VulkanMemoryAllocator
     glad
     spdlog
     nlohmann_json
@@ -155,6 +161,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC 
+    IMGUI_DEFINE_MATH_OPERATORS
     IMGUI_IMPL_OPENGL_LOADER_GLAD
 )
 

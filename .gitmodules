@@ -26,3 +26,12 @@
 [submodule "Engine/extern/lua"]
 	path = Engine/extern/lua
 	url = https://github.com/lubgr/lua-cmake.git
+[submodule "Engine/extern/volk"]
+	path = Engine/extern/volk
+	url = https://github.com/zeux/volk.git
+[submodule "Engine/extern/vma"]
+	path = Engine/extern/vma
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "Engine/extern/vk-bootstrap"]
+	path = Engine/extern/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap.git
