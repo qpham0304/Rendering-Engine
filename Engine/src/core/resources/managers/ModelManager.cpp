@@ -276,7 +276,7 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
 
         // try find other non compatible materials, if still fail...
         // give up and let material manager use fallback materials
-        if(materialDesc.metallicIDs.empty()) {  //TODO: need adjustment as this is not the correct pbr fallback
+        if(materialDesc.metallicIDs.empty()) {  //TODO: need adjustment since this is not the correct pbr fallback
             materialDesc.metallicIDs = _loadMaterial(material, aiTextureType_SPECULAR, "metallicMap", directory);
         }
         if(materialDesc.albedoIDs.empty()){

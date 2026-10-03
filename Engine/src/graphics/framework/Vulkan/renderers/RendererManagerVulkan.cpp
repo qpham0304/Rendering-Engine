@@ -68,22 +68,8 @@ bool RendererManagerVulkan::init(WindowConfig config)
     // ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
     // //deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
     // //postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererVulkan");
-    particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
+    // particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
 	
-    // applicationRenderer->init(config);
-	// imageBasedRenderer->init(config);
-	// shadowMapPass->init(config);
-    // // // alchemyAORenderer->init(config);
-    // // // hiZPassRenderer->init(config);
-    // forwardRenderer->init(config);
-	// // deferredRenderer->init(config);
-	// raytracingRenderer->init(config);
-    // // SSRGIPassRenderer->init(config);
-    // // bloomRenderer->init(config);
-    // // temporalPassRenderer->init(config);
-    // // ddgiPassRenderer->init(config);
-    // // deferredCombineRenderer->init(config);
-	// // postProcessRenderer->init(config);
 
     for(auto& [name, renderer] : m_renderers) {
         renderer->init(config);
@@ -178,7 +164,7 @@ void RendererManagerVulkan::onUpdate()
         raytracingRenderer->onUpdate();
     }
 
-    particleRenderer->onUpdate();
+    // particleRenderer->onUpdate();
 }
 
 void RendererManagerVulkan::render()
@@ -215,7 +201,7 @@ void RendererManagerVulkan::render()
         raytracingRenderer->render(*camera);
     }
 
-    particleRenderer->render(*camera);
+    // particleRenderer->render(*camera);
 
     applicationRenderer->render(*camera);
     endFrame();

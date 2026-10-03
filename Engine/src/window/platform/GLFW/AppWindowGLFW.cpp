@@ -97,8 +97,6 @@ void AppWindowGLFW::onUpdate()
 void AppWindowGLFW::_getFrameBufferSize(int& width, int& height)
 {
 	glfwGetFramebufferSize(m_windowHandle, &width, &height);
-	// m_width = width;
-	// m_height = height;
 }
 
 void AppWindowGLFW::_waitEvents()
@@ -232,7 +230,7 @@ void AppWindowGLFW::_setEventCallback()
 /*
 	OpenGL specfic implementations
 */
-
+#pragma region OpenGL
 bool AppWindowGLFW::_initOpenGL()
 {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -313,11 +311,12 @@ void AppWindowGLFW::_onUpdateOpenGL()
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 }
+#pragma endregion OpenGL
 
 /*
 	Vulkan specfic implementations
 */
-
+#pragma region VULKAN
 bool AppWindowGLFW::_initVulkan()
 {
 	glfwInit();
@@ -345,6 +344,5 @@ bool AppWindowGLFW::_onCloseVulkan()
 void AppWindowGLFW::_onUpdateVulkan()
 {
 	glfwPollEvents();
-
-	//throw std::runtime_error("Vulkan onUpdate not yet implemented");
 }
+#pragma endregion VULKAN

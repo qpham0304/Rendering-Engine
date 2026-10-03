@@ -277,10 +277,12 @@ void TextureManagerVulkan::_createInspectorDescriptorBind()
 
 void TextureManagerVulkan::_createBindlessDescriptor()
 {
+	const int MAX_NUM_TEXTURES = 10000;
+	
     VkDescriptorSetLayoutBinding bindlessBinding{};
     bindlessBinding.binding = 0;
     bindlessBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    bindlessBinding.descriptorCount = 10000;
+    bindlessBinding.descriptorCount = MAX_NUM_TEXTURES;
     bindlessBinding.stageFlags = VK_SHADER_STAGE_ALL;
 
     globalBindlessLayoutID = descriptorManagerVulkan->createLayout(
@@ -288,7 +290,7 @@ void TextureManagerVulkan::_createBindlessDescriptor()
         VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT
     );
 
-    VkDescriptorPoolSize poolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10000 };
+    VkDescriptorPoolSize poolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_NUM_TEXTURES };
     globalBindlessPoolID = descriptorManagerVulkan->createPool(
         { poolSize }, 
         1,

@@ -55,8 +55,8 @@ public:
 	VkImageView textureImageView;
 	VkSampler textureSampler;
 
-	const VkDescriptorImageInfo& getDescImageInfoGeneral();
-	const VkDescriptorImageInfo& getDescImageInfoReadOnly();
+	VkDescriptorImageInfo getDescImageInfoGeneral();
+	VkDescriptorImageInfo getDescImageInfoReadOnly();
 	const TextureSamplerConfig& getSamplerInfo();
 
 private:
@@ -73,11 +73,6 @@ private:
 	uint32_t layerCount = 1;
 	TextureSamplerConfig samplerInfo;
 
-    VkDescriptorImageInfo imageInfoGeneral{};
-    VkDescriptorImageInfo imageInfoReadOnly{};
-
-	std::vector<BufferVulkan*> buffers;
-	BufferManagerVulkan* bufferManager{ nullptr };
 	DescriptorManagerVulkan* descriptorManager{ nullptr };
 	TextureManagerVulkan* textureManager{ nullptr };
 	RenderDeviceVulkan* renderDevice{ nullptr };

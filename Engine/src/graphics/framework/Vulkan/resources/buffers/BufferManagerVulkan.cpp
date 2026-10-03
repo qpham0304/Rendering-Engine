@@ -311,7 +311,7 @@ uint32_t BufferManagerVulkan::createUniformBuffer(
 	buffers[m_ids] = std::make_shared<UniformBufferVulkan>(m_ids, buffer, buffersMemory);
 	UniformBufferVulkan* ref = static_cast<UniformBufferVulkan*>(buffers[m_ids].get());
 
-	vkMapMemory(renderDeviceVulkan->device, buffersMemory, 0, bufferSize, 0, &ref->uniformBufferMapped);
+	vkMapMemory(renderDeviceVulkan->device, buffersMemory, 0, bufferSize, 0, &ref->mappedBuffer);
 
 	return _assignID();
 }
@@ -344,7 +344,7 @@ uint32_t BufferManagerVulkan::createStorageBuffer(VkBuffer& buffer, VkDeviceMemo
     buffers[m_ids] = std::make_shared<StorageBufferVulkan>(m_ids, buffer, buffersMemory, bufferSize);
 	StorageBufferVulkan* ref = static_cast<StorageBufferVulkan*>(buffers[m_ids].get());
 
-	vkMapMemory(renderDeviceVulkan->device, buffersMemory, 0, bufferSize, 0, &ref->bufferMapped);
+	vkMapMemory(renderDeviceVulkan->device, buffersMemory, 0, bufferSize, 0, &ref->mappedBuffer);
 
 	return _assignID();
 }

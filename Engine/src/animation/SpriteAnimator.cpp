@@ -75,7 +75,7 @@ void SpriteAnimator::onUpdate(float dt)
             
             sprite.uvScale = {1.0 / sprite.numCols, 1.0 / sprite.numRows};
             int currentRow = sprite.frameIndex / sprite.numCols;   // row represents y while col represents x 
-            int currentCol = sprite.frameIndex % sprite.numCols;   // i.e pixel 1, 2 =  arr[2][1] NOT [arr1][2]
+            int currentCol = sprite.frameIndex % sprite.numCols;   // i.e pixel 1, 2 =  arr[2][1] NOT arr[1][2]
             int flippedRow = (sprite.numRows - 1) - currentRow;    // uv offset sampling need to be flipped also
             sprite.uvOffset = {sprite.uvScale.x * currentCol, sprite.uvScale.y * flippedRow};
 

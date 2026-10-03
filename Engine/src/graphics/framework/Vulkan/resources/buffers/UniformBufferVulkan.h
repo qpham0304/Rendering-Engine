@@ -15,12 +15,9 @@ public:
 
 	void update(const void* data, size_t size);
 
-	const VkDescriptorBufferInfo& getDescUniformBufferInfo();
+	VkDescriptorBufferInfo getDescUniformBufferInfo();
 
 private:
-	void* uniformBufferMapped;	// mapped with bufferManager's gpu buffer
-
-	VkDescriptorBufferInfo bufferInfo{};
 
 };
 

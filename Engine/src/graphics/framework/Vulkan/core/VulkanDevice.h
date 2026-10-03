@@ -10,6 +10,11 @@
 #include <array>
 #include <unordered_map>
 
+#define VALIDATE(vkFunc) \
+    if((vkFunc) != VK_SUCCESS) { \
+        throw std::runtime_error(std::format("fail to submit: {}", #vkFunc)); \
+    } \
+	
 #define MAX_BONE_INFLUENCE 4
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(

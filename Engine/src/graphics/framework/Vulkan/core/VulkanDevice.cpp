@@ -216,6 +216,13 @@ void VulkanDevice::createLogicalDevice() {
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+	
+	if(indices.graphicsFamily.value() != indices.computeFamily.value()) {
+		uniqueQueueFamilies.insert(indices.computeFamily.value());
+	}
+	if(indices.transferFamily.has_value()) {
+		uniqueQueueFamilies.insert(indices.transferFamily.value());
+	}
 
 	float queuePriority = 1.0f;
 	for (uint32_t queueFamily : uniqueQueueFamilies) {

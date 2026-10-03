@@ -20,7 +20,6 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <core/scene/SceneManager.h>
-#include <imgui.h>
 
 
 ForwardRendererVulkan::ForwardRendererVulkan(std::string serviceName) 
@@ -195,7 +194,17 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 		int index = 0;
 		int lightIndex = 0;
 
-		materialManager->bindMaterial(cmd, (void*)offscreenPipeline.get());
+		// materialManager->bindMaterial(cmd, (void*)offscreenPipeline.get());
+		vkCmdBindDescriptorSets(
+			cmd,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			offscreenPipeline->pipelineLayout,
+			1,
+			1,
+			&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
+			0,
+			nullptr
+		);
 
 		for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 			TransformComponent& transform = entity.getComponent<TransformComponent>();
@@ -287,7 +296,7 @@ void ForwardRendererVulkan::_createPipeline()
 	offscreenPipeline->createGraphicsPipeline(
 		"assets/shaders/spv/forwardLightPass.vert.spv",
 		"assets/shaders/spv/forwardLightPass.frag.spv",
-		{ descriptorSetLayout, bindlessLayout, materialLayout }, 
+		{ descriptorSetLayout, bindlessLayout }, 
 		renderTarget.renderPass, 
 		sizeof(PushConstantLight)
 	);
