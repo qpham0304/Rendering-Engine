@@ -145,6 +145,7 @@ public:
 	virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture) override;
+	virtual uint32_t loadTextureFromMemory(const void *data, size_t size, std::string_view cacheKey, uint32_t mipLevels, bool isDataTexture) override;
 	virtual uint32_t createTexture() override;
 	virtual uint32_t createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig);
 	virtual TextureVulkan* getTexture(uint32_t id) override;
@@ -157,7 +158,14 @@ public:
 	uint32_t getBindlessSet();
 
 private:
-	void _loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture);
+	void _loadTexture(
+		std::string_view path,
+		uint32_t mipLevels,
+		bool isDataTexture,
+		bool isFromMemory = false,
+		const void* data = nullptr,
+		size_t size = 0
+	);
 
 	// the id of the raw texture, returned back to user the inspectable texture
 	void _createInspectorDescriptorBind();

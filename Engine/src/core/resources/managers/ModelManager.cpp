@@ -264,12 +264,12 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
         
-        materialDesc.albedoIDs = _loadMaterial(material, aiTextureType_BASE_COLOR, "albedoMap", directory);
-        materialDesc.normalIDs = _loadMaterial(material, aiTextureType_NORMALS, "normalMap", directory);
-        materialDesc.metallicIDs = _loadMaterial(material, aiTextureType_METALNESS, "metallicMap", directory);
-        materialDesc.roughnessIDs = _loadMaterial(material, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", directory);
-        materialDesc.aoIDs = _loadMaterial(material, aiTextureType_LIGHTMAP, "aoMap", directory);
-        materialDesc.emissiveIDs = _loadMaterial(material, aiTextureType_EMISSIVE, "emissiveMap", directory);
+        materialDesc.albedoIDs = _loadMaterial(material, scene, aiTextureType_BASE_COLOR, "albedoMap", directory);
+        materialDesc.normalIDs = _loadMaterial(material, scene, aiTextureType_NORMALS, "normalMap", directory);
+        materialDesc.metallicIDs = _loadMaterial(material, scene, aiTextureType_METALNESS, "metallicMap", directory);
+        materialDesc.roughnessIDs = _loadMaterial(material, scene, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", directory);
+        materialDesc.aoIDs = _loadMaterial(material, scene, aiTextureType_LIGHTMAP, "aoMap", directory);
+        materialDesc.emissiveIDs = _loadMaterial(material, scene, aiTextureType_EMISSIVE, "emissiveMap", directory);
         if(!materialDesc.emissiveIDs.empty()){
             materialDesc.emissive  = 1.0f;
         }
@@ -277,16 +277,16 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         // try find other non compatible materials, if still fail...
         // give up and let material manager use fallback materials
         if(materialDesc.metallicIDs.empty()) {  //TODO: need adjustment since this is not the correct pbr fallback
-            materialDesc.metallicIDs = _loadMaterial(material, aiTextureType_SPECULAR, "metallicMap", directory);
+            materialDesc.metallicIDs = _loadMaterial(material, scene, aiTextureType_SPECULAR, "metallicMap", directory);
         }
         if(materialDesc.albedoIDs.empty()){
-            materialDesc.albedoIDs = _loadMaterial(material, aiTextureType_DIFFUSE, "albedoMap", directory);
+            materialDesc.albedoIDs = _loadMaterial(material, scene, aiTextureType_DIFFUSE, "albedoMap", directory);
         }
         if(materialDesc.roughnessIDs.empty()) {
-            materialDesc.roughnessIDs = _loadMaterial(material, aiTextureType_SHININESS, "roughnessMap", directory);
+            materialDesc.roughnessIDs = _loadMaterial(material, scene, aiTextureType_SHININESS, "roughnessMap", directory);
         }
         if(materialDesc.aoIDs.empty()) {
-            materialDesc.aoIDs = _loadMaterial(material, aiTextureType_AMBIENT, "aoMap", directory);
+            materialDesc.aoIDs = _loadMaterial(material, scene, aiTextureType_AMBIENT, "aoMap", directory);
         }
     }
 
@@ -312,7 +312,7 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     return meshManager->loadMesh(m);
 }
 
-std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, aiTextureType type, std::string typeName, std::string_view directory)
+std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, const aiScene* scene, aiTextureType type, std::string typeName, std::string_view directory)
 {
     bool isData = (type == aiTextureType_NORMALS || 
                    type == aiTextureType_METALNESS || 
@@ -322,13 +322,39 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, aiTextureType
                    type == aiTextureType_SHININESS);
                    
     std::vector<uint32_t> textureIDs;
-    for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
-    {
+    for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
+        const int defaultMipLevel = 1;
+
         aiString str;
         mat->GetTexture(type, i, &str);
+        std::string texturePathStr = str.C_Str();
 
-        std::string path = std::string(directory) + '/' + std::string(str.C_Str());
-        uint32_t textureID = textureManager->loadTexture(path.data(), 5, isData);
+        uint32_t textureID = 0;
+        size_t asteriskPos = texturePathStr.find('*');
+
+        if (asteriskPos != std::string::npos) {
+            int textureIndex = std::stoi(texturePathStr.substr(asteriskPos + 1));
+            const aiTexture* embeddedTexture = scene->mTextures[textureIndex];
+
+            if (embeddedTexture->mHeight == 0) {
+                // create a unique cache key for compressed memory bytes (PNG/JPG) 
+                std::string cacheKey = std::string(directory) + "_" + texturePathStr; // e.g., "assets/DamagedHelmet_/*0"
+                
+                textureID = textureManager->loadTextureFromMemory(
+                    embeddedTexture->pcData,
+                    embeddedTexture->mWidth, // Byte size when mHeight == 0
+                    cacheKey,
+                    defaultMipLevel,
+                    isData
+                );
+            } else {
+                throw std::runtime_error("Uncompressed embedded textures (mHeight > 0) not yet supported.");
+            }
+        } else {
+            std::string path = std::string(directory) + '/' + std::string(str.C_Str());
+            textureID = textureManager->loadTexture(path.data(), defaultMipLevel, isData);
+        }
+        
         textureIDs.push_back(textureID);
     }
 

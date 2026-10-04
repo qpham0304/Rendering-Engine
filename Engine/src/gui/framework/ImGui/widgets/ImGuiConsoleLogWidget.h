@@ -16,7 +16,7 @@ public:
 private:
 	bool m_scrollToBottom{ true };
 	ImGuiLogger m_imguiLogger;
-    bool showDebug { true };
+    bool showDebug { false };
     bool showInfo { true };
     bool showWarn { true };
     bool showError { true };

@@ -27,7 +27,7 @@ private:
 	bool _loadModel(std::string_view path);
     void _processNode(aiNode* node, const aiScene* scene, std::vector<uint32_t>& meshes, std::string_view directory);
     uint32_t _processMesh(aiMesh* mesh, const aiScene* scene, std::string_view directory);
-    std::vector<uint32_t> _loadMaterial(aiMaterial* mat, aiTextureType type, std::string typeName, std::string_view directory);
+    std::vector<uint32_t> _loadMaterial(aiMaterial* mat, const aiScene* scene, aiTextureType type, std::string typeName, std::string_view directory);
 	//void _extractBoneWeightForVertices(std::vector<MeshOpenGL::Vertex>& vertices, aiMesh* mesh, const aiScene* scene);
 	//void _setVertexBoneDataToDefault(MeshOpenGL::Vertex& vertex);
 	

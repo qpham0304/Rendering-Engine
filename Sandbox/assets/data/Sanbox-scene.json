@@ -28,29 +28,26 @@
       }
     },
     {
-      "components": {
-        "ModelComponent": {
-          "path": "assets/models/CornellBox/CornellBox-Glossy-Floor.obj"
-        },
-        "NameComponent": {
-          "name": "cube"
-        },
-        "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "translateVec": [
-            0.0,
-            0.0,
-            0.0
-          ]
+      "prefab_ref": "assets/data/prefabs/player.json",
+      "overrides": {
+        "components": {
+          "TransformComponent": {
+            "rotateVec": [
+              0.0,
+              2.75,
+              0.0
+            ],
+            "scaleVec": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "translateVec": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
         }
       }
     }

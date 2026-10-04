@@ -395,6 +395,10 @@ void ParticleRendererVulkan::_renderParticle(VkCommandBuffer cmd, uint32_t curre
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout, 1, 1, &bindlessSet, 0, nullptr);
     
+    renderDeviceVulkan->setViewport();
+    renderDeviceVulkan->setScissor();
+
+
     auto func = std::function<void(Entity)>([&](Entity entity) -> void {
         NameComponent& name = entity.getComponent<NameComponent>();
         ParticleEmitter& emitter = entity.getComponent<ParticleEmitter>();

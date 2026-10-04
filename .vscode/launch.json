@@ -2,40 +2,40 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Sandbox",
+            "name": "Debug Sandbox (MSVC)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/Sandbox/bin/Debug/Sandbox.exe",
-            "cwd": "${workspaceFolder}/Sandbox/bin/Debug",
+            "program": "${workspaceFolder}/Sandbox/bin/windows-msvc/Debug/Sandbox.exe",
+            "cwd": "${workspaceFolder}/Sandbox/bin/windows-msvc/Debug",
             "console": "integratedTerminal",
-            "preLaunchTask": "build Sandbox Debug"
-        },
-    {
-            "name": "Debug Editor",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/Editor/bin/Debug/Editor.exe",
-            "cwd": "${workspaceFolder}/Editor/bin/Debug",
-            "console": "integratedTerminal",
-            "preLaunchTask": "build Editor Debug"
+            "preLaunchTask": "build Sandbox Debug (msvc)"
         },
         {
-            "name": "Release Sandbox",
+            "name": "Release Sandbox (MSVC)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/Sandbox/bin/Release/Sandbox.exe",
-            "cwd": "${workspaceFolder}/Sandbox/bin/Release",
+            "program": "${workspaceFolder}/Sandbox/bin/windows-msvc/Release/Sandbox.exe",
+            "cwd": "${workspaceFolder}/Sandbox/bin/windows-msvc/Release",
             "console": "integratedTerminal",
-            "preLaunchTask": "build Sandbox Release"
+            "preLaunchTask": "build Sandbox Release (msvc)"
         },
         {
-            "name": "Release Editor",
+            "name": "Debug Sandbox (Ninja)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/Editor/bin/Release/Editor.exe",
-            "cwd": "${workspaceFolder}/Editor/bin/Release",
+            "program": "${workspaceFolder}/Sandbox/bin/windows-ninja/Debug/Sandbox.exe",
+            "cwd": "${workspaceFolder}/Sandbox/bin/windows-ninja/Debug",
             "console": "integratedTerminal",
-            "preLaunchTask": "build Editor Release"
+            "preLaunchTask": "build Sandbox Debug (ninja)"
+        },
+        {
+            "name": "Release Sandbox (Ninja)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Sandbox/bin/windows-ninja/Release/Sandbox.exe",
+            "cwd": "${workspaceFolder}/Sandbox/bin/windows-ninja/Release",
+            "console": "integratedTerminal",
+            "preLaunchTask": "build Sandbox Release (ninja)"
         }
     ]
 }

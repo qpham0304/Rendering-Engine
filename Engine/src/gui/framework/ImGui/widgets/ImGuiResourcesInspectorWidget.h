@@ -13,4 +13,7 @@ public:
 
     virtual void render() override;
     
+private:
+    uint32_t selectedTextureID { 0 };
+    uint32_t selectedBufferID { 0 };
 };

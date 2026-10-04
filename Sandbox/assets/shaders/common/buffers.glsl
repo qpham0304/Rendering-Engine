@@ -28,7 +28,10 @@ struct Material {
     float emissiveFactor;
 };
 
+
+const int MAX_BONES = 100;
 const uint MAX_BONE_INFLUENCE =  4;
+
 struct Vertex
 {
     vec3 pos;

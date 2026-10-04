@@ -1,0 +1,58 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-ninja",
+      "displayName": "Windows Ninja",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ninja",
+      "cacheVariables": {
+        "WK_BUILD_SHARED": "OFF",
+        "BUILD_PLATFORM": "windows-ninja"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "displayName": "Windows MSVC",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/msvc",
+      "architecture": "x64",
+      "toolset": "host=x64",
+      "cacheVariables": {
+        "WK_BUILD_SHARED": "OFF",
+        "BUILD_PLATFORM": "windows-msvc"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "window-ninja-debug",
+      "configurePreset": "windows-ninja",
+      "configuration": "Debug",
+      "targets": ["Sandbox"]
+    },
+    {
+      "name": "window-ninja-release",
+      "configurePreset": "windows-ninja",
+      "configuration": "Release",
+      "targets": ["Sandbox"]
+    },
+    {
+      "name": "window-msvc-debug",
+      "configurePreset": "windows-msvc",
+      "configuration": "Debug",
+      "targets": ["Sandbox"]
+    },
+    {
+      "name": "window-msvc-release",
+      "configurePreset": "windows-msvc",
+      "configuration": "Release",
+      "targets": ["Sandbox"]
+    }
+  ]
+}

@@ -475,16 +475,16 @@ void ImGuiRightSidebarWidget::_componentsControl()
         if (ImGui::BeginMenu("Scripts")) {
             if (ImGui::Selectable("LoadOneTimeScript")) { 
                 ScriptManager* scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
-                std::string path = "../../assets/scripts/sandbox.lua";
+                std::string path = "assets/scripts/sandbox.lua";
                 scriptManager->loadScript(path);
                 scriptManager->runScript(path);
             }
             if (ImGui::Selectable("PlayerController")) { 
-                entity.addComponent<ScriptComponent>("../../assets/scripts/Player.lua");
+                entity.addComponent<ScriptComponent>("assets/scripts/Player.lua");
                 entity.onScriptComponentAdded();
             }
             if (ImGui::Selectable("CameraController")) { 
-                entity.addComponent<ScriptComponent>("../../assets/scripts/Camera.lua");
+                entity.addComponent<ScriptComponent>("assets/scripts/Camera.lua");
                 entity.onScriptComponentAdded();
             }
             ImGui::EndMenu();
@@ -865,9 +865,9 @@ void ImGuiRightSidebarWidget::_scenesControl()
     SceneManager& sceneManager = SceneManager::getInstance();
     ImGui::Begin("Scenes Control");
     if(ImGui::Button("Add Scene")) {
-        Scene* scene = SceneManager::getInstance().addScene("Level1");
-        scene->loadScene("assets/data/level2.json");
-        SceneManager::getInstance().setActiveScene(scene->getName());
+        // Scene* scene = SceneManager::getInstance().addScene("Level1");
+        // scene->loadScene("assets/data/level2.json");
+        // SceneManager::getInstance().setActiveScene(scene->getName());
     }
 
     for(uint32_t id : sceneManager.listIDs()) {

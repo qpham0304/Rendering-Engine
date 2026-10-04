@@ -38,22 +38,22 @@ bool SandBoxLayer::init()
     physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
     particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
 
-    
+    Scene* scene = SceneManager::getInstance().addScene("sandbox-scene");
+    scene->loadScene("assets/data/Sanbox-scene.json");
     // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
-    Scene* scene2 = SceneManager::getInstance().addScene("Level2");
-    // Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
-    
     // scene1->loadScene("assets/data/Level1.json");
-    scene2->loadScene("assets/data/Level2.json");
+    // Scene* scene2 = SceneManager::getInstance().addScene("Level2");
+    // scene2->loadScene("assets/data/Level2.json");
+    // Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
     // scene3->loadScene("assets/data/default-scene.json");
 
     EventManager& eventManager = EventManager::getInstance();
-    SceneManager::getInstance().setActiveScene(scene2->getName());
+    SceneManager::getInstance().setActiveScene(scene->getName());
 
-    createScriptableCamera();
-    createLights();
-	createLightProbes();
-    createParticle();
+    // createScriptableCamera();
+    // createLights();
+	// createLightProbes();
+    // createParticle();
 
     // rendererManager->addRenderer();
 

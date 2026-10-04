@@ -14,18 +14,6 @@ class ForwardRendererVulkan : public RendererVulkan
 {
 
 private:
-	struct UniformBufferObject {
-		glm::mat4 invNormal;
-		glm::mat4 view;
-		glm::mat4 proj;
-		glm::vec4 cameraPos;
-		glm::mat4 invView;
-		glm::mat4 invProj;
-		float width;
-		float height;
-		int shadowMapID;
-		int blueNoiseID;
-	};
 
 	struct StorageBufferObject {
 		glm::mat4 model;
@@ -86,12 +74,10 @@ private:
 	bool showGui{ true };
 	PushConstantLight pushConstantLight;
 
-	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
 	std::vector<StorageBufferVulkan*> lightStoragebuffers;
 	std::vector<StorageBufferObject> instanceData;
 	std::vector<LightSSBO> lights;
-	UniformBufferObject ubo{};
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorPool descriptorPool;

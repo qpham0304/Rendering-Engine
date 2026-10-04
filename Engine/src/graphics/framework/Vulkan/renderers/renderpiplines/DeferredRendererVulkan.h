@@ -2,6 +2,7 @@
 
 #include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
+#include "graphics/framework/vulkan/core/CommonStructs.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
@@ -17,29 +18,6 @@ class DeferredRendererVulkan : public RendererVulkan
 {
 
 private:
-	struct PushConstant {
-		uint64_t objectsRef;
-		uint32_t objectIdx;
-	};
-
-	struct ObjectDesc {
-		uint64_t vertexAddress = 0;
-		uint64_t indexAddress = 0;
-		uint64_t materialsRef = 0;
-		uint64_t materialIndicesRef = 0;
-	};
-
-	struct UniformBufferObject {
-		glm::mat4 invNormal;
-		glm::mat4 view;
-		glm::mat4 prevViewProj;
-		glm::mat4 proj;
-		glm::vec4 cameraPos;
-		glm::mat4 invView;
-		glm::mat4 invProj;
-		float width;
-		float height;
-	};
 
 	struct StorageBufferObject {
 		glm::mat4 model;
@@ -90,13 +68,12 @@ public:	//TODO: make private once done testing
 	bool showGui{ true };
 	uint32_t frameCounter = 0;
 	
-	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
 	std::vector<StorageBufferVulkan*> prevStoragebufferList;
 	std::vector<StorageBufferObject> instanceData;
 	std::vector<StorageBufferObject> instanceDataPrev;
 	std::vector<StorageBufferVulkan*> lightStoragebuffers;
-	PushConstant pushConstant;
+	Common::PushBDA pushConstant;
 	std::vector<LightSSBO> lights;
 	PushConstantLight pushConstantLight;
 
@@ -112,14 +89,11 @@ public:	//TODO: make private once done testing
 	uint32_t lightLayoutID_1;
 	uint32_t lightSetsID;
 	uint32_t lightSetsID_1;
-	UniformBufferObject ubo{};
 
 	float sunIntensity { 10.0f };
 	glm::vec4 sunColor { 1.0 };
 
 	Camera* cam;
-	glm::mat4 lastViewProj;
-	bool firstFrame { true };
 
 	bool denoiserOn { true };
 	bool shouldCombine { true };
@@ -135,7 +109,7 @@ public:	//TODO: make private once done testing
 	uint32_t objDeviceAddressBufferID;
 	uint64_t objDeviceAddress;
 	uint64_t materialsAddress;
-	std::vector<ObjectDesc> objects;
+	std::vector<Common::ObjectRefs> objects;
 
 	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);

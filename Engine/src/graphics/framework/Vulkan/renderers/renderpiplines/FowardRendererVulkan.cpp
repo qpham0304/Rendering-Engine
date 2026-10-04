@@ -55,7 +55,6 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	_createDescriptorPool();
 	descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
 	
-	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
 	instanceData.resize(10000);
 	size_t bufferSize = 10000 * sizeof(StorageBufferObject);
@@ -118,18 +117,6 @@ void ForwardRendererVulkan::render(Camera& camera)
 			));
         }
     }
-
-	ubo.view = camera.getViewMatrix();
-	ubo.proj = camera.getProjectionMatrix();
-	ubo.cameraPos = glm::vec4(camera.getPosition(), 1.0);
-	ubo.proj[1][1] *= -1;
-	ubo.invView = camera.getInViewMatrix();
-	ubo.invProj = camera.getInProjectionMatrix();
-	ubo.invProj[1][1] *= -1;
-	ubo.width = renderTarget.width;
-	ubo.height = renderTarget.height;
-	ubo.shadowMapID = shadowMapRenderer->depthMap->id();
-	ubo.blueNoiseID = shadowMapRenderer->blueNoiseImage->id();
 	
 	pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.direction = glm::vec4(shadowMapRenderer->lightDir, 0.0f);
@@ -138,7 +125,6 @@ void ForwardRendererVulkan::render(Camera& camera)
 	pushConstantLight.numLights = lights.size();
 
 	uint32_t frame = renderDeviceVulkan->getCurrentFrameIndex();
-	uniformbuffersList[frame]->update(&ubo, sizeof(ubo));
 
 	StorageBufferVulkan* ssbo = storagebuffersList[frame];
 	ssbo->update(instanceData.data(), instanceData.size() * sizeof(StorageBufferObject));
@@ -296,7 +282,7 @@ void ForwardRendererVulkan::_createPipeline()
 	offscreenPipeline->createGraphicsPipeline(
 		"assets/shaders/spv/forwardLightPass.vert.spv",
 		"assets/shaders/spv/forwardLightPass.frag.spv",
-		{ descriptorSetLayout, bindlessLayout }, 
+		{ descriptorSetLayout, bindlessLayout, materialLayout }, 
 		renderTarget.renderPass, 
 		sizeof(PushConstantLight)
 	);
@@ -473,9 +459,11 @@ void ForwardRendererVulkan::_createDescriptorSets()
 
 void ForwardRendererVulkan::_updateDescriptor()
 {
+    auto uniformBuffersList = rendererManagerVulkan->getBufferUBO();
+
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
 		DescriptorWriter writer{{}, descriptorSets[i] };
-		descriptorManagerVulkan->writeUniform2(writer, uniformbuffersList[i]->getDescUniformBufferInfo());
+		descriptorManagerVulkan->writeUniform2(writer, uniformBuffersList[i]->getDescUniformBufferInfo());
 		descriptorManagerVulkan->writeStorage2(writer, storagebuffersList[i]->getDescStorageBufferInfo());
 		descriptorManagerVulkan->writeStorage2(writer, lightStoragebuffers[i]->getDescStorageBufferInfo());
 		descriptorManagerVulkan->writeImage2(writer, shadowMapRenderer->depthMap->getDescImageInfoReadOnly());

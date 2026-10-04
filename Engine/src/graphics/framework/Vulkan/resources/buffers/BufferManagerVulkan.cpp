@@ -190,9 +190,9 @@ void BufferManagerVulkan::createBuffer(
 	vkBindBufferMemory(renderDeviceVulkan->device, buffer, bufferMemory, 0);
 }
 
-uint32_t BufferManagerVulkan::createVertexBuffer(const Vertex* vertices, int size)
+uint32_t BufferManagerVulkan::createVertexBuffer(const void* vertices, int size)
 {
-	VkDeviceSize bufferSize = sizeof(Vertex) * size;
+	VkDeviceSize bufferSize = size;
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
 

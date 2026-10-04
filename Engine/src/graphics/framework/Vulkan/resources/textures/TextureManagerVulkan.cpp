@@ -95,6 +95,17 @@ uint32_t TextureManagerVulkan::loadTexture(std::string_view path, uint32_t mipLe
 	return _assignID();
 }
 
+uint32_t TextureManagerVulkan::loadTextureFromMemory(const void *data, size_t size, std::string_view cacheKey, uint32_t mipLevels, bool isDataTexture)
+{
+	if (m_textureData.find(cacheKey.data()) != m_textureData.end()) {
+		return m_textureData.at(cacheKey.data());
+	}
+
+	_loadTexture(cacheKey, mipLevels, isDataTexture, true, data, size);
+
+	return _assignID();
+}
+
 uint32_t TextureManagerVulkan::createTexture()
 {
 	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);
@@ -140,31 +151,60 @@ uint32_t TextureManagerVulkan::getInspectorLayout() {
 	return inspectorLayoutID;
 } 
 
-void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture)
-{
+void TextureManagerVulkan::_loadTexture(
+	std::string_view path,
+	uint32_t mipLevels,
+	bool isDataTexture,
+	bool isFromMemory,
+	const void* data,
+	size_t size
+) {
 	stbi_set_flip_vertically_on_load(true);
-	bool isHDR = stbi_is_hdr(path.data());
+	bool isHDR = false;
 	VkFormat format;
 	uint32_t bytesPerChannel;
 	void* pixels;
 
 	int texWidth, texHeight, texChannels;
-
-	if (isHDR) {
-		pixels = stbi_loadf(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		bytesPerChannel = sizeof(float);
+	
+	if(isFromMemory) {
+		isHDR = stbi_is_hdr_from_memory(static_cast<const stbi_uc*>(data), static_cast<int>(size));
+        
+        if (isHDR) {
+            pixels = stbi_loadf_from_memory(
+				static_cast<const stbi_uc*>(data), static_cast<int>(size), 
+				&texWidth, &texHeight, &texChannels, STBI_rgb_alpha
+			);
+            format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            bytesPerChannel = sizeof(float);
+        } else {
+            pixels = stbi_load_from_memory(
+				static_cast<const stbi_uc*>(data), static_cast<int>(size), 
+				&texWidth, &texHeight, &texChannels, STBI_rgb_alpha
+			);
+            format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+            bytesPerChannel = sizeof(uint8_t);
+        }
 	} else {
-		pixels = stbi_load(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
-		bytesPerChannel = sizeof(uint8_t);
+        isHDR = stbi_is_hdr(path.data());
+		if (isHDR) {
+			pixels = stbi_loadf(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+			format = VK_FORMAT_R32G32B32A32_SFLOAT;
+			bytesPerChannel = sizeof(float);
+		} else {
+			pixels = stbi_load(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+			format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+			bytesPerChannel = sizeof(uint8_t);
+		}
 	}
 
 	VkDeviceSize imageSize = texWidth * texHeight * 4 * bytesPerChannel;
 
 	if (!pixels) {
-		std::string message = "TextureManagerVulkan::loadTexture: failed to load texture image ";
-		throw std::runtime_error(message + path.data());
+		m_logger->error("TextureManagerVulkan::loadTexture: failed to load texture image {}", path.data());
+		// std::string message = "TextureManagerVulkan::loadTexture: failed to load texture image ";
+		// throw std::runtime_error(message + path.data());
+		return;
 	}
 
 	VkDeviceMemory stagingBufferMemory;
@@ -178,9 +218,9 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 		stagingBufferMemory
 	);
 
-	void* data;
-	vkMapMemory(renderDeviceVulkan->device, stagingBufferMemory, 0, imageSize, 0, &data);
-	memcpy(data, pixels, static_cast<size_t>(imageSize));
+	void* mappedData;
+	vkMapMemory(renderDeviceVulkan->device, stagingBufferMemory, 0, imageSize, 0, &mappedData);
+	memcpy(mappedData, pixels, static_cast<size_t>(imageSize));
 	vkUnmapMemory(renderDeviceVulkan->device, stagingBufferMemory);
 
 	stbi_image_free(pixels);

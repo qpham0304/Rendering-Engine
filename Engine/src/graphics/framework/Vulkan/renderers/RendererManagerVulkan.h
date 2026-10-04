@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/resources/managers/RendererManager.h"
+#include "graphics/framework/vulkan/core/CommonStructs.h"
 #include "RendererVulkan.h"
 
 class RenderDeviceVulkan;
@@ -8,20 +9,6 @@ class TextureVulkan;
 
 class RendererManagerVulkan : public RendererManager
 {
-public:
-	struct UniformBufferObject {
-		glm::mat4 invNormal;
-		glm::mat4 view;
-		glm::mat4 prevViewProj;
-		glm::mat4 proj;
-		glm::vec4 cameraPos;
-		glm::mat4 invView;
-		glm::mat4 invProj;
-		float width;
-		float height;
-	};
-	
-
 public:
 	RendererManagerVulkan(std::string serviceName = "RendererManagerVulkan");
 	virtual ~RendererManagerVulkan() override;
@@ -35,7 +22,7 @@ public:
 	void endFrame();
 	void setDisplayImage(TextureVulkan* image);
 	TextureVulkan* getDisplayImage();
-	const UniformBufferObject& getUBO() const;
+	const Common::UniformBufferObject& getUBO() const;
 	const std::vector<UniformBufferVulkan*>& getBufferUBO() const;
 
 
@@ -44,7 +31,7 @@ protected:
 	TextureVulkan* displayImage { nullptr };
 
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
-	UniformBufferObject ubo {};
+	Common::UniformBufferObject ubo {};
 	glm::mat4 lastViewProj;
 	bool firstFrame { true };
 

@@ -9,8 +9,6 @@
 
 class ImGuiManager : public GuiManager 
 {
-public:	
-	
 public:
 	ImGuiManager();
 	ImGuiManager(bool darkTheme);
@@ -54,6 +52,7 @@ private:
 	void _onUpdateVulkan();
 
 private:
+	std::unordered_map<VkImageView, VkDescriptorSet> m_images;
 	VkDescriptorPool guiDescriptorPool;
 
 	ImGuizmo::OPERATION GuizmoType = ImGuizmo::OPERATION::TRANSLATE;

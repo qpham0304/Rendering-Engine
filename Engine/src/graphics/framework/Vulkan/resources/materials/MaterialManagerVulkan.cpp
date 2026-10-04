@@ -129,7 +129,6 @@ void MaterialManagerVulkan::bindMaterial(void* cmdBuffer, void* p)
 		0,
 		nullptr
 	);
-
 }
 
 MaterialDesc MaterialManagerVulkan::getMaterial(const uint32_t &id)

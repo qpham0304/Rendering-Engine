@@ -1,5 +1,8 @@
 #include "ImGuiResourcesInspectorWidget.h"
 #include <format>
+#include <typeindex>
+#include "core/features/Texture.h"
+#include "src/graphics/renderers/Buffer.h"
 
 ImGuiResourceInspectorWidget::ImGuiResourceInspectorWidget(std::string name)
     : ImGuiWidget(name)
@@ -20,7 +23,7 @@ void ImGuiResourceInspectorWidget::render()
         if (ImGui::BeginTable("##Textures", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 40.0f);
             ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Preview", ImGuiTableColumnFlags_WidthFixed, 40.0f);
+            ImGui::TableSetupColumn("Preview", ImGuiTableColumnFlags_WidthFixed, 60.0f);
             ImGui::TableHeadersRow();
             
             for (auto id : textureManager->listIDs()) {
@@ -29,15 +32,27 @@ void ImGuiResourceInspectorWidget::render()
                     continue;
                 }
 
+                ImGui::PushID(id);
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
-                ImGui::Text("%d", id);
+                bool selected = selectedTextureID == id;
+                if(ImGui::Selectable(std::to_string(id).c_str(), selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                    selectedTextureID = id;
+                }
                 ImGui::TableSetColumnIndex(1);
                 ImGui::Text("%p", (void*)tex);
-                // ImGui::TableSetColumnIndex(2);  // TODO: not all texture are inspectable yet
-                // ImGui::Image((ImTextureID)textureManager->inspectTexture(id), ImVec2(32, 32));
+
+                ImGui::TableSetColumnIndex(2);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text(tex->path().c_str());
+                    ImGui::Image((ImTextureID)textureManager->inspectTexture(id), ImVec2(128, 128));
+                    ImGui::EndTooltip();
+                }
+                ImGui::PopID();
+
             }
-            ImGui::EndTable(); // Only called if BeginTable returned true
+            ImGui::EndTable();
         }
     }
 
@@ -49,19 +64,30 @@ void ImGuiResourceInspectorWidget::render()
             ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableHeadersRow();
 
-            // printf("bufferManager size: %s\n", std::to_string(bufferManager->listIDs().size()).c_str());
             
             for (auto id : bufferManager->listIDs()) {
                 Buffer* buffer = bufferManager->getBuffer(id);
-                if (!buffer) continue;
+                if (!buffer) {
+                    continue;
+                }
 
+                ImGui::PushID(id);
                 ImGui::TableNextRow();
-                
                 ImGui::TableSetColumnIndex(0);
-                ImGui::Text("%d", id);
+                bool selected = selectedBufferID == id;
+                if(ImGui::Selectable(std::to_string(id).c_str(), selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                    selectedBufferID = id;
+                }
 
                 ImGui::TableSetColumnIndex(1);
                 ImGui::Text("%p", (void*)buffer);
+
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::Text(typeid(*buffer).name());
+                    ImGui::EndTooltip();
+                }
+                ImGui::PopID();
             }
             ImGui::EndTable();
         }
