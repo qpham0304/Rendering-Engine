@@ -222,6 +222,9 @@ void BloomPassVulkan::_createResources() {
         mipCount, 1, renderDeviceVulkan
     );
     renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+
+    std::string name = "bloomPassOut" + std::to_string(outputImage->id()); 
+    rendererManagerVulkan->addRenderTexture(name, outputImage->id());
 }
 
 void BloomPassVulkan::_createDescriptors()

@@ -62,14 +62,14 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	ambientOcclusionPass->init(config);
 	hiZPass->init(config);
 
-	size_t bufferSize = MAX_INSTANCES * sizeof(StorageBufferObject);
-	instanceData.resize(MAX_INSTANCES);
-	instanceDataPrev.resize(MAX_INSTANCES);
+	size_t bufferSize = Common::MAX_INSTANCES * sizeof(StorageBufferObject);
+	instanceData.resize(Common::MAX_INSTANCES);
+	instanceDataPrev.resize(Common::MAX_INSTANCES);
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
 	bufferManagerVulkan->createStorageBuffers(prevStoragebufferList, bufferSize);
 
-	objects.resize(MAX_INSTANCES);
-	size_t objectsBufferSize = MAX_INSTANCES * sizeof(Common::ObjectRefs);
+	objects.resize(Common::MAX_INSTANCES);
+	size_t objectsBufferSize = Common::MAX_INSTANCES * sizeof(Common::ObjectRefs);
 	objDeviceAddressBufferID = bufferManagerVulkan->createBufferDeviceAddress(objectsBufferSize);
 	auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(objDeviceAddressBufferID));
 	objDeviceAddress = deviceAddress->getAddress();
@@ -152,7 +152,7 @@ void DeferredRendererVulkan::render(Camera& camera)
 				if(entity.hasComponent<LightProbeComponent>()) {	//TODO: this couple the probe data to the renderer so it need to be handled better
 					auto& lightProbeComponent = entity.getComponent<LightProbeComponent>();
 					worldMatrix = glm::translate(worldMatrix, glm::vec3(lightProbeComponent.probeGrid[meshIdx]));
-				}
+				} 
 				instanceData.push_back({ worldMatrix });
 
 				Common::ObjectRefs desc{};
@@ -202,7 +202,7 @@ void DeferredRendererVulkan::render(Camera& camera)
 	StorageBufferVulkan* ssboPrev = prevStoragebufferList[currentFrame];
 	ssboPrev->update(instanceDataPrev.data(), instanceDataPrev.size() * sizeof(StorageBufferObject));
 	
-	size_t buffersize = MAX_INSTANCES * sizeof(Common::ObjectRefs);
+	size_t buffersize = Common::MAX_INSTANCES * sizeof(Common::ObjectRefs);
 	bufferManagerVulkan->updateBufferDeviceAddress(objDeviceAddressBufferID, objects.data(), buffersize);
 
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
@@ -725,47 +725,70 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			return texture;
 		};
 
+		uint32_t id = 0;
+		std::string name = "";
 		renderTarget.colorTextures[i] = createTexture(
 			swapchain.swapChainImageFormat, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
+		id = renderTarget.colorTextures[i]->id();
+		name = "deferredColorOut" + std::to_string(id); 
+		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gBufferPos[i] = createTexture(
 			VK_FORMAT_R16G16B16A16_SFLOAT, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
+		id = renderTarget.gBufferPos[i]->id();
+		name = "gBufferPos" + std::to_string(id); 
+		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gBufferNorm[i] = createTexture(
 			VK_FORMAT_R16G16B16A16_SFLOAT,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
+		id = renderTarget.gBufferNorm[i]->id();
+		name = "gBufferNorm" + std::to_string(id); 
+		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gBufferAlbedo[i] = createTexture(
 			VK_FORMAT_R8G8B8A8_UNORM, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
+		id = renderTarget.gBufferAlbedo[i]->id();
+		name = "gBufferAlbedo" + std::to_string(id); 
+		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gPBR[i] = createTexture(
 			VK_FORMAT_R8G8B8A8_UNORM,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
+		id = renderTarget.gPBR[i]->id();
+		name = "gPBR" + std::to_string(id); 
+		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gBufferEmissive[i] = createTexture(
 			VK_FORMAT_R16G16B16A16_SFLOAT, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
+		id = renderTarget.gBufferEmissive[i]->id();
+		name = "gBufferEmissive" + std::to_string(id); 
+		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gBufferMotion[i] = createTexture(
 			VK_FORMAT_R16G16_SFLOAT, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
+		id = renderTarget.gBufferMotion[i]->id();
+		name = "gBufferMotion" + std::to_string(id); 
+		rendererManagerVulkan->addRenderTexture(name, id);
 
 
 		uint32_t depthId = textureManagerVulkan->createTexture();
@@ -810,6 +833,10 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			renderTarget.gBufferMotion[i]->textureImageView,
 			renderTarget.depthTextures[i]->textureImageView
 		};
+
+		id = renderTarget.depthTextures[i]->id();
+		name = "deferredDepth" + std::to_string(id); 
+		rendererManagerVulkan->addRenderTexture(name, id);
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

@@ -7,6 +7,7 @@
 #include "graphics/framework/vulkan/core/VulkanUtils.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/resources/descriptors/DescriptorManagerVulkan.h"
+#include "graphics/framework/vulkan/core/CommonStructs.h"
 #include "logging/Logger.h"
 #include "core/events/EventManager.h"
 
@@ -317,7 +318,7 @@ void TextureManagerVulkan::_createInspectorDescriptorBind()
 
 void TextureManagerVulkan::_createBindlessDescriptor()
 {
-	const int MAX_NUM_TEXTURES = 10000;
+	const int MAX_NUM_TEXTURES = Common::MAX_INSTANCES;
 	
     VkDescriptorSetLayoutBinding bindlessBinding{};
     bindlessBinding.binding = 0;
@@ -357,6 +358,7 @@ void TextureManagerVulkan::registerTextureSampler(uint32_t textureID)
 
 void TextureManagerVulkan::registerTextureStorage(uint32_t textureID)
 {
+	//TODO: do not share with image sampler set, create a storage global sets for storage image
     TextureVulkan* tex = getTexture(textureID);
     VkDescriptorSet globalSet = descriptorManagerVulkan->getDescriptorSet(globalBindlessSetID)[0];
 

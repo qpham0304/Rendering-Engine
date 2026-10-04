@@ -117,8 +117,9 @@ void DeferredCombinePassVulkan::render(Camera &camera)
     //NOTE: only support one probe grid for the entire scene at the moment
     auto entities = scene->getEntitiesWith<LightProbeComponent>();
 
-    if(entities.size() == 0) {
-		m_logger->error("No entity with light probe component");
+    if(entities.empty()) {
+		// m_logger->warn("No entity with light probe component");
+        return;
     } else {
         Entity lightProbeEntity = entities[0];
         auto& lightProbeComponent = lightProbeEntity.getComponent<LightProbeComponent>();
@@ -248,6 +249,8 @@ void DeferredCombinePassVulkan::_createResources()
     };
  
     createTexture(outputImageID, outputImage);
+    std::string name = "deferredCombineOut" + std::to_string(outputImage->id()); 
+    rendererManagerVulkan->addRenderTexture(name, outputImage->id());
 
     auto cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
     TextureManagerVulkan::transitionImageLayout(

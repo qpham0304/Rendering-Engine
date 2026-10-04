@@ -68,8 +68,10 @@ void Engine::pushLayer(Layer* layer)
 
 void Engine::init()
 {
+// #ifdef GAME_RELEASE
 	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 	engineLogger->setLevel(LogLevel::Debug);
+// #endif
 	
 	for (Service*& service : services) {
 		if (!service->init(windowConfig)) {

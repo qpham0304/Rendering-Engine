@@ -27,13 +27,19 @@ public:
 
 
 protected:
-	uint32_t currentRenderMode { 0 };
+	uint32_t currentRenderMode { 1 };
 	TextureVulkan* displayImage { nullptr };
 
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	Common::UniformBufferObject ubo {};
 	glm::mat4 lastViewProj;
 	bool firstFrame { true };
+	
+	Common::PushBDA pushBDA;
+	uint32_t objDeviceAddressBufferID;
+	uint64_t objDeviceAddress;
+	uint64_t materialsAddress;
+	std::vector<Common::ObjectRefs> objects;
 
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	Renderer* applicationRenderer { nullptr };

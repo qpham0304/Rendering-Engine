@@ -16,7 +16,8 @@
 #include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
-#include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
+#include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
+#include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
 #include <volk.h>
@@ -505,6 +506,14 @@ void ShadowMapPassVulkan::_createMomentImage()
 
 	createTexture(momentImage);
 	createTexture(tempMomentImage);
+
+	std::string name = "";
+	name = "shadowMap";
+	rendererManagerVulkan->addRenderTexture(name, depthMap->id());
+
+	name = "momentShadowMap";
+	rendererManagerVulkan->addRenderTexture(name, momentImage->id());
+	
 }
 
 void ShadowMapPassVulkan::_createMomentDescriptor()

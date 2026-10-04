@@ -38,21 +38,21 @@ bool SandBoxLayer::init()
     physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
     particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
 
-    Scene* scene = SceneManager::getInstance().addScene("sandbox-scene");
-    scene->loadScene("assets/data/Sanbox-scene.json");
+    // Scene* scene = SceneManager::getInstance().addScene("sandbox-scene");
+    // scene->loadScene("assets/data/Sanbox-scene.json");
     // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
     // scene1->loadScene("assets/data/Level1.json");
-    // Scene* scene2 = SceneManager::getInstance().addScene("Level2");
-    // scene2->loadScene("assets/data/Level2.json");
+    Scene* scene2 = SceneManager::getInstance().addScene("Level2");
+    scene2->loadScene("assets/data/Level2.json");
     // Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
     // scene3->loadScene("assets/data/default-scene.json");
 
     EventManager& eventManager = EventManager::getInstance();
-    SceneManager::getInstance().setActiveScene(scene->getName());
+    SceneManager::getInstance().setActiveScene(scene2->getName());
 
     // createScriptableCamera();
     // createLights();
-	// createLightProbes();
+	createLightProbes();
     // createParticle();
 
     // rendererManager->addRenderer();
@@ -206,15 +206,15 @@ void SandBoxLayer::createLightProbes()
     }
 
 
-    Model model {};
-    uint32_t meshID = meshManager->loadMesh(mesh);
-    model.meshIDs.push_back(meshID);
-    for(int i = 1; i < lightProbeComponent.probeGrid.size(); i++) {
-        model.meshIDs.push_back(meshID);
-    }
-    ModelComponent modelComponent;
-    modelComponent.modelID = modelManager->addModel(model);
-    lightProbeEntity.addComponent<ModelComponent>(modelComponent);
+    // Model model {};
+    // uint32_t meshID = meshManager->loadMesh(mesh);
+    // model.meshIDs.push_back(meshID);
+    // for(int i = 1; i < lightProbeComponent.probeGrid.size(); i++) {
+    //     model.meshIDs.push_back(meshID);
+    // }
+    // ModelComponent modelComponent;
+    // modelComponent.modelID = modelManager->addModel(model);
+    // lightProbeEntity.addComponent<ModelComponent>(modelComponent);
 }
 
 void SandBoxLayer::createScriptableCamera()

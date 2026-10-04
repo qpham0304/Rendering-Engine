@@ -56,8 +56,8 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
 	
 
-	instanceData.resize(10000);
-	size_t bufferSize = 10000 * sizeof(StorageBufferObject);
+	instanceData.resize(Common::MAX_INSTANCES);
+	size_t bufferSize = Common::MAX_INSTANCES * sizeof(StorageBufferObject);
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
 
 	lights.reserve(numLights);
@@ -397,7 +397,10 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 		);
 
-		textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[i]->id());
+		uint32_t id = renderTarget.colorTextures[i]->id();
+		std::string name = "forwardColorOut" + std::to_string(id); 
+		rendererManagerVulkan->addRenderTexture(name, id);
+		textureManagerVulkan->registerTextureSampler(id);
 
 		std::array<VkImageView, 2> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,
@@ -461,13 +464,23 @@ void ForwardRendererVulkan::_updateDescriptor()
 {
     auto uniformBuffersList = rendererManagerVulkan->getBufferUBO();
 
+	Texture* temp = rendererManagerVulkan->getRenderTexture("shadowMap").get();
+	TextureVulkan* depthMap = dynamic_cast<TextureVulkan*>(temp);
+	assert(depthMap && "failed to retrieve depthMap");
+
+	uint32_t blueNoiseID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
+	temp = textureManagerVulkan->getTexture(blueNoiseID);
+	TextureVulkan* blueNoiseImage = dynamic_cast<TextureVulkan*>(temp);
+	assert(blueNoiseImage && "failed to retrieve depthMap");
+
+
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
 		DescriptorWriter writer{{}, descriptorSets[i] };
 		descriptorManagerVulkan->writeUniform2(writer, uniformBuffersList[i]->getDescUniformBufferInfo());
 		descriptorManagerVulkan->writeStorage2(writer, storagebuffersList[i]->getDescStorageBufferInfo());
 		descriptorManagerVulkan->writeStorage2(writer, lightStoragebuffers[i]->getDescStorageBufferInfo());
-		descriptorManagerVulkan->writeImage2(writer, shadowMapRenderer->depthMap->getDescImageInfoReadOnly());
-		descriptorManagerVulkan->writeImage2(writer, shadowMapRenderer->blueNoiseImage->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeImage2(writer, depthMap->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeImage2(writer, blueNoiseImage->getDescImageInfoReadOnly());
 		descriptorManagerVulkan->writeStorage2(writer, imageBasedRenderer->finalSumBuffers[i]->getDescStorageBufferInfo());
 		descriptorManagerVulkan->writeImage2(writer, imageBasedRenderer->brdfLUT->getDescImageInfoReadOnly());
 		descriptorManagerVulkan->writeImage2(writer, imageBasedRenderer->prefilterMap->getDescImageInfoReadOnly());

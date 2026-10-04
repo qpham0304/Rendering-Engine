@@ -62,7 +62,6 @@ public:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 public:	//TODO: make private once done testing	
-	const int MAX_INSTANCES = 10000;
 	const int numInstances = 1;
 	const int numLights = 1000;
 	bool showGui{ true };

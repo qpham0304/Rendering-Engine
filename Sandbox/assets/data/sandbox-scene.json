@@ -1,0 +1,46 @@
+{
+  "entities": [
+    {
+      "components": {
+        "ModelComponent": {
+          "path": "assets/models/cube/cube-notex.gltf"
+        },
+        "NameComponent": {
+          "name": "plane"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            9.0,
+            1.5,
+            9.0
+          ],
+          "translateVec": [
+            0.0,
+            -2.5,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "overrides": {
+        "components": {
+          "TransformComponent": {
+            "rotateVec": [
+              0.0,
+              2.75,
+              0.0
+            ]
+          }
+        }
+      },
+      "prefab_ref": "assets/data/prefabs/player.json"
+    }
+  ],
+  "scene_name": "sandbox-scene"
+}

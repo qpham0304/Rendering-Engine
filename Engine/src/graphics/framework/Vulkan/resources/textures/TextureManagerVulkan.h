@@ -156,6 +156,8 @@ public:
 	void registerTextureStorage(uint32_t textureID);
 	uint32_t getBindlessTextureLayout();
 	uint32_t getBindlessSet();
+	uint32_t getStorageImageBindlessLayout();
+	uint32_t getStorageImageBindlessSet();
 
 private:
 	void _loadTexture(
@@ -183,5 +185,9 @@ private:
 	uint32_t globalBindlessLayoutID;
 	uint32_t globalBindlessPoolID;
 	uint32_t globalBindlessSetID;
+
+	uint32_t globalStorageImageBindlessLayoutID;
+	uint32_t globalStorageImageBindlessPoolID;
+	uint32_t globalStorageImageBindlessSetID;
 };
 

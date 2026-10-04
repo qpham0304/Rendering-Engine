@@ -2,6 +2,7 @@
 #include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
 #include "graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h"
+#include "graphics/framework/Vulkan/core/CommonStructs.h"
 #include "core/features/ServiceLocator.h"
 #include "core/features/Material.h"
 #include "logging/Logger.h"
@@ -46,7 +47,7 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 	_createMaterialDescriptorSet();
 	
 	//TODO: hard coded the max number of material indices
-	materialsGPU.resize(10000);
+	materialsGPU.resize(Common::MAX_INSTANCES);
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
     auto bufferManagerVulkan = &dynamic_cast<BufferManagerVulkan&>(bufferManager);
 
@@ -240,7 +241,7 @@ void MaterialManagerVulkan::_createMaterialDescriptorSet()
 	materialLayoutID = descriptorManagerVulkan->createLayout(bindings);
 
 	uint32_t frameCount = VulkanUtils::numFrames();
-	uint32_t maxMaterial = 1024 * 8;
+	uint32_t maxMaterial = Common::MAX_INSTANCES;
 	std::vector<VkDescriptorPoolSize> poolSizes = {
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * maxMaterial }
 	};

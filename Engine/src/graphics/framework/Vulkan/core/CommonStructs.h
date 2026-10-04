@@ -3,7 +3,8 @@
 #include <cstdint>
 
 namespace Common {
-    
+    const int MAX_INSTANCES = 1024 * 10;
+
     struct PushBDA {
         uint64_t objectsRef;
         uint32_t objectIdx;
