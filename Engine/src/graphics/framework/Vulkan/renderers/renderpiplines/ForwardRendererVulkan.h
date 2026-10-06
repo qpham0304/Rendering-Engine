@@ -21,7 +21,6 @@ private:
 
 	struct PushConstantLight {
 		uint64_t materialRef;
-		uint64_t boneMatricesRef;
 		float bias;
 		float time;
 		glm::mat4 sunlightMVP;
@@ -30,6 +29,7 @@ private:
 		float numLights;
 		uint32_t materialIdx;
 		uint32_t boneMatricesIdx;
+		uint64_t boneMatricesRef;
 	};
 
 	struct LightSSBO {

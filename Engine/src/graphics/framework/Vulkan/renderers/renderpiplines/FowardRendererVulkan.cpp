@@ -216,11 +216,10 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 				for (uint32_t meshID : model->meshIDs) {
 					const Mesh* mesh = meshManager->getMesh(meshID);
 					
-					pushConstantLight.materialIdx = mesh->materialID;
+					uint32_t bufferID = animationManager->getAnimationBufferAddressID();
+					pushConstantLight.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(bufferID);
 					pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
-					
-					BufferVulkan* buffer = bufferManagerVulkan->getBuffer(animationManager->getAnimationBufferAddressID());
-					pushConstantLight.boneMatricesRef = buffer->getAddress();
+					pushConstantLight.materialIdx = mesh->materialID;
 					
 					if(entity.hasComponent<SkinningComponent>()) {
 						auto& skinningComponent = entity.getComponent<SkinningComponent>();

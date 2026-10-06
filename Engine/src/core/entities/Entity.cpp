@@ -88,16 +88,16 @@ void Entity::onParticleEmitterAdded()
 
 void Entity::onSkinningComponentAdded()
 {
-    // auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
-    // auto skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
-    // auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+    auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
+    auto skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
+    auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
 
-    // SkinningComponent& skinning = getComponent<SkinningComponent>();
-    // ModelComponent& modelComponent = getComponent<ModelComponent>();
-    // Model* model = modelManager->getModel(modelComponent.modelID);
+    SkinningComponent& skinning = getComponent<SkinningComponent>();
+    ModelComponent& modelComponent = getComponent<ModelComponent>();
+    Model* model = modelManager->getModel(modelComponent.modelID);
 
-    // auto skeleton = skeletonManager->getSkeleton(model->skeletonID);
-    // skinning.boneMatricesID = animationManager->addBoneMatrices(skeleton->nodes.size());
+    auto skeleton = skeletonManager->getSkeleton(model->skeletonID);
+    skinning.boneMatricesID = animationManager->addBoneMatrices(skeleton->nodes.size());
 }
 
 void Entity::onModelComponentAdded()

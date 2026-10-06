@@ -26,6 +26,7 @@ public:
     virtual uint32_t createBufferDeviceAddress(size_t bufferSize) override;
     virtual uint32_t createAccelStructureBuffer(uint64_t maxSize, VkAccelerationStructureCreateInfoKHR& accelInfo);
     virtual void updateBufferDeviceAddress(uint32_t id, const void* src, size_t bufferSize) override;
+    virtual uint64_t getVirtualMemoryAddress(uint32_t id) override;
     virtual BufferVulkan* getBuffer(uint32_t id) override;
 
     virtual uint32_t createBufferObject(uint64_t maxSize);

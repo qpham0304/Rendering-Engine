@@ -468,11 +468,21 @@ uint32_t BufferManagerVulkan::createBuffer2(VkDeviceSize size, VkBufferUsageFlag
 
 void BufferManagerVulkan::updateBufferDeviceAddress(uint32_t id, const void *src, size_t bufferSize)
 {
-    BufferVulkan* buffer = buffers.at(id).get();
+	if(id == 0) {
+		m_logger->error("failed to update buffer: buffer id: {} invalid", id);
+		return;
+	}
+	
+    BufferVulkan* buffer = getBuffer(id);
 	auto deviceAddressBuffer = dynamic_cast<DeviceAddressBufferVulkan*>(buffer);
 	if(deviceAddressBuffer) {
 		deviceAddressBuffer->update(src, bufferSize);
 	}
+}
+
+uint64_t BufferManagerVulkan::getVirtualMemoryAddress(uint32_t id)
+{
+	return getBuffer(id)->getAddress();
 }
 
 void BufferManagerVulkan::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)

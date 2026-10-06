@@ -21,15 +21,11 @@ public:
 	const std::vector<glm::mat4>& getFinalBoneMatrices(uint32_t id) const;
 
 private:
-    struct BoneMatricesData {
-        uint32_t gpuBufferID { 0 }; //handle id to a buffer, not the actual direct gpu memory hence not uint64
-        std::vector<glm::mat4> finalBoneMatrices;
-    };
-
 	SpriteAnimator m_spriteAnimator;
 	SkinAnimator m_skinAnimator;
 
-    std::vector<BoneMatricesData> m_boneMatricesBuffers;
+    std::vector<uint64_t> m_boneMatricesBuffers;
+    std::vector<std::vector<glm::mat4>> m_boneMatricesData;
     BufferManager* m_bufferManager{ nullptr };
 
 	uint32_t deviceAdressBufferID { 0 };

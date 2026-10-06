@@ -41,12 +41,18 @@ layout(set = 0, binding = 1, std430) readonly buffer StorageBufferObject {
     mat4 models[];
 } ssbo;
 
-layout(buffer_reference, scalar) buffer BoneMatrices{ mat4 boneMatrices[]; };
+layout(buffer_reference, scalar) buffer BoneModelBuffer {
+    mat4 boneMatrices[];
+};
+
+layout(buffer_reference, scalar) buffer BoneMatrixArrayTable {
+    BoneModelBuffer ptrs[];
+};
+
 layout(buffer_reference, scalar) buffer Materials{  Material m[]; };
 
 layout(push_constant) uniform PushConstant {
     Materials materialsRef;
-    BoneMatrices boneMatricesRef;
     float bias;
     float time;
     mat4 sunlightMVP;
@@ -55,12 +61,16 @@ layout(push_constant) uniform PushConstant {
     float numLights;
     uint materialIdx;
     uint boneMatricesIdx;
+    BoneMatrixArrayTable boneTableRef;
 } pc;
 
 void main() {
-    // if(uint64_t(pc.boneMatricesRef) != 0) {
+    BoneModelBuffer modelBones = pc.boneTableRef.ptrs[pc.boneMatricesIdx];
 
-    // }
+    mat4 skinMatrix = 
+        modelBones.boneMatrices[inBoneIDs.x] * inBoneWeights.x +
+        modelBones.boneMatrices[inBoneIDs.y] * inBoneWeights.y;
+
     mat4 modelMatrix = ssbo.models[gl_InstanceIndex];
     vec4 worldPos = modelMatrix * vec4(inPosition, 1.0);
     gl_Position = ubo.proj * ubo.view * worldPos;
