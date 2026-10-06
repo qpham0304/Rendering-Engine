@@ -55,13 +55,16 @@ public:
 	VkImageView textureImageView;
 	VkSampler textureSampler;
 
-	VkDescriptorImageInfo getDescImageInfoGeneral();
-	VkDescriptorImageInfo getDescImageInfoReadOnly();
+	const VkDescriptorImageInfo& getDescImageInfoGeneral();
+	const VkDescriptorImageInfo& getDescImageInfoReadOnly();
 	const TextureSamplerConfig& getSamplerInfo();
 
 private:
 	void destroy(VkDevice device);
 
+    VkDescriptorImageInfo imageInfoGeneral{};
+    VkDescriptorImageInfo imageInfoReadOnly{};
+	
 	VkImageLayout currentLayout;
 	VkFormat format;
 	VkImageUsageFlags usage;

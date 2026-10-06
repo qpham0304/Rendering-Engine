@@ -3,6 +3,8 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_scalar_block_layout : require
 
 #include "common/buffers.glsl"
 
@@ -52,21 +54,20 @@ layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 // layout(set = 2, binding = 1) uniform image2D storageImages[];
 // layout(set = 2, binding = 2) uniform sampler storageImages[];
 
-
-layout(buffer_reference, scalar) buffer Materials{ 
-    Material m[];
-};
+layout(buffer_reference, scalar) buffer BoneMatrices{ mat4 boneMatrices[]; };
+layout(buffer_reference, scalar) buffer Materials{ Material m[]; };
 
 layout(push_constant) uniform PushConstant {
     Materials materialsRef;
+    BoneMatrices boneMatricesRef;
     float bias;
     float time;
     mat4 sunlightMVP;
     vec4 direction;
-    vec4 color;
+    // vec4 color;
     float numLights;
-    float skyboxDetail;
     uint materialIdx;
+    uint boneMatricesIdx;
 } pc;
 
 
@@ -306,7 +307,9 @@ void main() {
     vec3 kS = F;
     vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
     
-    Lo += (kD * albedo / PI + specular) * pc.color.rgb * NdotL * shadow;
+    // Lo += (kD * albedo / PI + specular) * pc.color.rgb * NdotL * shadow;
+    vec3 tempColor = vec3(1.0);
+    Lo += (kD * albedo / PI + specular) * tempColor * NdotL * shadow;
 
     vec3 R = reflect(-V, N);
     vec3 F_ibl = fresnelSchlickRoughness(NdotV, F0, roughness);

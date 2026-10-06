@@ -100,9 +100,8 @@ void TextureVulkan::copyFrom(VkCommandBuffer cmd, TextureVulkan* src)
     );
 }
 
-VkDescriptorImageInfo TextureVulkan::getDescImageInfoGeneral()
+const VkDescriptorImageInfo& TextureVulkan::getDescImageInfoGeneral()
 {
-    VkDescriptorImageInfo imageInfoGeneral{};
     imageInfoGeneral.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
     imageInfoGeneral.imageView = textureImageView;
     imageInfoGeneral.sampler = textureSampler;
@@ -110,9 +109,8 @@ VkDescriptorImageInfo TextureVulkan::getDescImageInfoGeneral()
     return imageInfoGeneral;
 }
 
-VkDescriptorImageInfo TextureVulkan::getDescImageInfoReadOnly()
+const VkDescriptorImageInfo& TextureVulkan::getDescImageInfoReadOnly()
 {
-    VkDescriptorImageInfo imageInfoReadOnly{};
     imageInfoReadOnly.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfoReadOnly.imageView = textureImageView;
     imageInfoReadOnly.sampler = textureSampler;

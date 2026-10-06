@@ -90,8 +90,8 @@ public:
 		glm::vec3 normal;
 		glm::vec3 tangent;
 		glm::vec3 bitangent;
-		int m_BoneIDs[MAX_BONE_INFLUENCE];		//bone indexes which will influence this vertex
-		float m_Weights[MAX_BONE_INFLUENCE];	//weights from each bone
+		int m_boneIDs[MAX_BONE_INFLUENCE];		//bone indexes which will influence this vertex
+		float m_weights[MAX_BONE_INFLUENCE];	//weights from each bone
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription{};
@@ -136,13 +136,13 @@ public:
 
 			attributeDescriptions[6].binding = 0;
 			attributeDescriptions[6].location = 6;
-			attributeDescriptions[6].format = VK_FORMAT_R32G32B32A32_SINT;
-			attributeDescriptions[6].offset = offsetof(VertexVulkan, m_BoneIDs);
+			attributeDescriptions[6].format = VK_FORMAT_R32G32_SINT;
+			attributeDescriptions[6].offset = offsetof(VertexVulkan, m_boneIDs);
 
 			attributeDescriptions[7].binding = 0;
 			attributeDescriptions[7].location = 7;
-			attributeDescriptions[7].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-			attributeDescriptions[7].offset = offsetof(VertexVulkan, m_Weights);
+			attributeDescriptions[7].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[7].offset = offsetof(VertexVulkan, m_weights);
 
 			return attributeDescriptions;
 		}

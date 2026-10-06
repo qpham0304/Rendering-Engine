@@ -10,5 +10,7 @@ void ImGuiAnimationWidget::render()
 {
     ImGui::Begin("Animation Widget");
 
+    
+
     ImGui::End();
 }

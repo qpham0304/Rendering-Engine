@@ -33,13 +33,11 @@ private:
     std::unordered_map<uint32_t, std::shared_ptr<Mesh>> m_meshes;     // CPU-side mesh data
     std::unordered_map<uint32_t, MeshData> m_meshesData;              // mesh's handle to to GPU buffer data;
     
+    std::vector<uint32_t> meshesTobeDestroyed;
+    BufferManager* m_bufferManager{ nullptr };
     // not supported now but plan to bundle everything together for draw indirect
     // std::vector<Vertex> vertices;
 	// std::vector<uint32_t> indices;
     // std::vector<uint32_t> materialIndices;
-    std::vector<uint32_t> meshesTobeDestroyed;
-
-
-    BufferManager* m_bufferManager{ nullptr };
 };
 

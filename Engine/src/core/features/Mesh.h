@@ -9,15 +9,15 @@
 // use the one mirrored in vulkan device for now until buffer device address is implmented
 // currently working on buffer device address, once that's done this should be supported
 struct Vertex {
-	glm::vec3 positions;
-	glm::vec3 color;
-	glm::vec2 texCoords;
-	glm::vec3 normal;
-	glm::vec3 tangent;
-	glm::vec3 bitangent;
+	glm::vec3 positions{ 0.0f };
+	glm::vec3 color{ 0.0f };
+	glm::vec2 texCoords{ 0.0f };
+	glm::vec3 normal{ 0.0f };
+	glm::vec3 tangent{ 0.0f };
+	glm::vec3 bitangent{ 0.0f };
 
-	int m_BoneIDs[MAX_BONE_INFLUENCE];		//bone indexes which will influence this vertex
-	float m_Weights[MAX_BONE_INFLUENCE];	//weights from each bone
+	int m_boneIDs[MAX_BONE_INFLUENCE];		//bone indexes which will influence this vertex
+	float m_weights[MAX_BONE_INFLUENCE];	//weights from each bone
 };
 
 

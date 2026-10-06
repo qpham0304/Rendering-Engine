@@ -4,6 +4,7 @@
 #include "core/events/EventManager.h"
 #include "core/features/ServiceLocator.h"
 #include "core/resources/managers/TextureManager.h"
+#include "core/resources/managers/SkeletonManager.h"
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
@@ -11,6 +12,7 @@
 #include "scripting/ScriptManager.h"
 #include "window/AppWindow.h"
 #include "particle/ParticleContainer.h"
+#include "animation/AnimationManager.h"
 
 Entity::Entity(const entt::entity& entity, entt::registry& registry)
     : entity(entity), registry(&registry)
@@ -82,8 +84,20 @@ void Entity::onParticleEmitterAdded()
     auto particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
     
     ParticleEmitter& emitter = getComponent<ParticleEmitter>();
+}
 
-    
+void Entity::onSkinningComponentAdded()
+{
+    // auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
+    // auto skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
+    // auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+
+    // SkinningComponent& skinning = getComponent<SkinningComponent>();
+    // ModelComponent& modelComponent = getComponent<ModelComponent>();
+    // Model* model = modelManager->getModel(modelComponent.modelID);
+
+    // auto skeleton = skeletonManager->getSkeleton(model->skeletonID);
+    // skinning.boneMatricesID = animationManager->addBoneMatrices(skeleton->nodes.size());
 }
 
 void Entity::onModelComponentAdded()

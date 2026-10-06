@@ -156,7 +156,12 @@ void PhysicsManagerBox3D::onUpdate()
         scene->forEnitiesWith<ColliderComponent>(func);
     // }
 
-    // uint32_t entityID = rayCastClosest(glm::vec3(1.0));
+    // double x, y;
+    // AppWindow::getCursorPos(&x, &y);
+    // float xNDC = (location.x / AppWindow::getWidth()) * 2.0f - 1.0f;
+    // float yNDC = (location.y / AppWindow::getHeight()) * 2.0f - 1.0f;
+    // float yNDC = 1.0f - (static_cast<float>(y) / AppWindow::getHeight()) * 2.0f;
+    // uint32_t entityID = rayCastClosest(glm::vec2(xNDC, yNDC));
     // if(entityID != 0) {
     //     Entity entity = scene->getEntity(entityID);
     //     m_logger->warn(entity.getComponent<NameComponent>().name);
@@ -396,7 +401,7 @@ void PhysicsManagerBox3D::addForce(uint32_t id, const glm::vec3 &force)
     // b3Body_SetLinearVelocity(bodyId, newPos); // Clear momentum
 }
 
-uint32_t PhysicsManagerBox3D::rayCastClosest(const glm::vec3 &location)
+uint32_t PhysicsManagerBox3D::rayCastClosest(const glm::vec2& coordsNDC)
 {
     SceneManager& sceneManager = SceneManager::getInstance();
     Camera* camera = SceneManager::cameraController;
@@ -404,26 +409,28 @@ uint32_t PhysicsManagerBox3D::rayCastClosest(const glm::vec3 &location)
         return 0;
     }
 
-    double x, y;
-    AppWindow::getCursorPos(&x, &y);
+    glm::vec4 rayClipNear(coordsNDC.x, coordsNDC.y, 0.0f, 1.0f);
+    glm::vec4 rayClipFar(coordsNDC.x, coordsNDC.y, 1.0f, 1.0f);
 
-    float xNDC = (x / AppWindow::getWidth()) * 2.0f - 1.0f;
-    float yNDC = (y / AppWindow::getHeight()) * 2.0f - 1.0f;
-    // float yNDC = 1.0f - (static_cast<float>(y) / AppWindow::getHeight()) * 2.0f;
-
-    glm::vec4 rayClipNear(xNDC, yNDC, 0.0f, 1.0f);
-    glm::vec4 rayClipFar(xNDC, yNDC, 1.0f, 1.0f);
-
-    glm::mat4 view = camera->getViewMatrix();
-	glm::mat4 proj = camera->getProjectionMatrix();
+    // glm::mat4 view = camera->getViewMatrix();
+	// glm::mat4 proj = camera->getProjectionMatrix();
     
-    glm::mat4 inViewProj = glm::inverse(proj * view);
-    glm::vec4 worldNear = inViewProj * rayClipNear;
-    glm::vec4 worldFar = inViewProj * rayClipFar;
+    // glm::mat4 inViewProj = glm::inverse(proj * view);
+    // glm::vec4 worldNear = inViewProj * rayClipNear;
+    // glm::vec4 worldFar = inViewProj * rayClipFar;
     
-    glm::vec3 rayOrigin = worldNear / worldNear.w;
-    glm::vec3 rayEnd = worldFar / worldFar.w;
-    glm::vec3 rayDir = glm::normalize(rayEnd - rayOrigin);
+    // glm::vec3 rayOrigin = worldNear / worldNear.w;
+    // glm::vec3 rayEnd = worldFar / worldFar.w;
+    // glm::vec3 rayDir = glm::normalize(rayEnd - rayOrigin);
+
+    
+    glm::mat4 invView = camera->getInViewMatrix();
+	glm::mat4 invProj = camera->getInProjectionMatrix();
+    glm::vec4 rayClip(coordsNDC.x, coordsNDC.y, 0.0, 1.0);
+    glm::vec4 rayEye = invProj * rayClip;
+    rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+    glm::vec3 rayDir = glm::normalize(glm::vec3(invView * rayEye));
+    glm::vec3 rayOrigin = glm::vec3(invView[3]);
     
     float maxDistance = 100.0f; 
     b3Vec3 translation = { rayDir.x * maxDistance, rayDir.y * maxDistance, rayDir.z * maxDistance };

@@ -15,7 +15,5 @@ public:
 
 	void update(const void* src, size_t size);
 
-private:
-	void* mappedBuffer;
 };
 

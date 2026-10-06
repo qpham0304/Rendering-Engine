@@ -285,6 +285,7 @@ void DDGIBuilderVulkan::_createResources()
 
         uint32_t id = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
         texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
+        auto image = texture->textureImage;
     };
     
     // Width = Rays, Height = Total Probes

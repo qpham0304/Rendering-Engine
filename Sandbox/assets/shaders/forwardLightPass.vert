@@ -3,6 +3,8 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_scalar_block_layout : require
 
 #include "common/buffers.glsl"
 
@@ -12,8 +14,8 @@ layout(location = 2) in vec2 inTexCoord;
 layout(location = 3) in vec3 inNormal;
 layout(location = 4) in vec3 inTangent;
 layout(location = 5) in vec3 inBitangent;
-// layout(location = 6) in vec2 inBoneIDs;
-// layout(location = 7) in vec2 inBoneWeights;
+layout(location = 6) in ivec2 inBoneIDs;
+layout(location = 7) in vec2 inBoneWeights;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
@@ -39,11 +41,26 @@ layout(set = 0, binding = 1, std430) readonly buffer StorageBufferObject {
     mat4 models[];
 } ssbo;
 
+layout(buffer_reference, scalar) buffer BoneMatrices{ mat4 boneMatrices[]; };
+layout(buffer_reference, scalar) buffer Materials{  Material m[]; };
 
-// uniform mat4 finalBonesMatrices[MAX_BONES];
-// layout(set = 0, binding = 1) uniform finalBonesMatrices[MAX_BONES];
+layout(push_constant) uniform PushConstant {
+    Materials materialsRef;
+    BoneMatrices boneMatricesRef;
+    float bias;
+    float time;
+    mat4 sunlightMVP;
+    vec4 direction;
+    // vec4 color;
+    float numLights;
+    uint materialIdx;
+    uint boneMatricesIdx;
+} pc;
 
 void main() {
+    // if(uint64_t(pc.boneMatricesRef) != 0) {
+
+    // }
     mat4 modelMatrix = ssbo.models[gl_InstanceIndex];
     vec4 worldPos = modelMatrix * vec4(inPosition, 1.0);
     gl_Position = ubo.proj * ubo.view * worldPos;

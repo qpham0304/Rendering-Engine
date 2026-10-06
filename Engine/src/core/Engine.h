@@ -8,6 +8,7 @@
 #include <core/scene/SceneManager.h>
 #include <animation/AnimationManager.h>
 #include <particle/ParticleManager.h>
+#include <core/resources/managers/SkeletonManager.h>
 
 class Layer;
 class EventManager;
@@ -42,6 +43,7 @@ private:
     std::unique_ptr<TextureManager> textureManager;
     std::unique_ptr<BufferManager> bufferManager;
     std::unique_ptr<MeshManager> meshManager;
+    std::unique_ptr<SkeletonManager> skeletonManager;
     std::unique_ptr<ModelManager> modelManager;
     std::unique_ptr<DescriptorManager> descriptorManager;
     std::unique_ptr<MaterialManager> materialManager;

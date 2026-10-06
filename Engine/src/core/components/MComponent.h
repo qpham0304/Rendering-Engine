@@ -268,6 +268,16 @@ struct MYGRAPHICSENGINE_EXPORT AnimationStateComponent {
 	)
 };
 
+struct MYGRAPHICSENGINE_EXPORT SkinningComponent {
+	SkinningComponent() = default;
+
+	uint32_t boneMatricesID { 0 }; // for skinning animation to reference the BDA matrices
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+		SkinningComponent
+	);
+};
+
 struct MYGRAPHICSENGINE_EXPORT CameraComponent {
 	CameraComponent() = default;
 	

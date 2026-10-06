@@ -823,6 +823,19 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
 		);
 
+		VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+		TextureManagerVulkan::transitionImageLayout(
+			cmd,
+			renderTarget.depthTextures[i]->textureImage, 
+			depthFormat, 
+			VK_IMAGE_LAYOUT_UNDEFINED, 
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+			1,
+			1,
+			renderDeviceVulkan
+		);
+		renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+
 		std::array<VkImageView, 8> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,
 			renderTarget.gBufferPos[i]->textureImageView,
@@ -1057,8 +1070,8 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo.imageView = shadowMapPass->depthMap->textureImageView;
 		imageInfo.sampler = shadowMapPass->depthMap->textureSampler;
-		// imageInfo.imageView = shadowMapRenderer->momentImage->textureImageView;
-		// imageInfo.sampler = shadowMapRenderer->momentImage->textureSampler;
+		// imageInfo.imageView = shadowMapPass->momentImage->textureImageView;
+		// imageInfo.sampler = shadowMapPass->momentImage->textureSampler;
 
 		VkDescriptorImageInfo noiseImageInfo{};
 		noiseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

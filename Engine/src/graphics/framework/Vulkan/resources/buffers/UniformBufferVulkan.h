@@ -15,9 +15,10 @@ public:
 
 	void update(const void* data, size_t size);
 
-	VkDescriptorBufferInfo getDescUniformBufferInfo();
+	const VkDescriptorBufferInfo& getDescUniformBufferInfo();
 
 private:
+	VkDescriptorBufferInfo bufferInfo{};
 
 };
 

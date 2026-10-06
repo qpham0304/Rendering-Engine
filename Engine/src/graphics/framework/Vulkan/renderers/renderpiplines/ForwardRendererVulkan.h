@@ -21,14 +21,15 @@ private:
 
 	struct PushConstantLight {
 		uint64_t materialRef;
+		uint64_t boneMatricesRef;
 		float bias;
 		float time;
 		glm::mat4 sunlightMVP;
 		glm::vec4 direction;
-		glm::vec4 color;
+		// glm::vec4 color;
 		float numLights;
-		float skyboxDetail;
 		uint32_t materialIdx;
+		uint32_t boneMatricesIdx;
 	};
 
 	struct LightSSBO {
@@ -86,7 +87,7 @@ private:
 	uint32_t poolID;
 	uint32_t setsID;
 
-	uint32_t storageBufferID;
+	// uint32_t storageBufferID;
 
 	VulkanRenderTarget renderTarget;
 	std::unique_ptr<VulkanPipeline> offscreenPipeline;

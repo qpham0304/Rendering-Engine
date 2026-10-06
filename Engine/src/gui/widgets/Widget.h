@@ -4,10 +4,10 @@
 #include "core/features/MathIncludes.h"
 #include "core/features/ServiceLocator.h"
 #include "core/resources/managers/TextureManager.h"
-#include "core/resources/managers/MeshManager.h"
-#include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/MaterialManager.h" 
 #include "core/resources/managers/BufferManager.h" 
+#include "core/resources/managers/MeshManager.h"
+#include "core/resources/managers/ModelManager.h"
 #include "logging/logger.h"
 
 class Widget {
@@ -22,14 +22,13 @@ public:
 
 protected:
     Widget(std::string name = "widget") : m_isVisible(true), m_name(name), m_firstFrame(true) {
-
         //TODO: might be better to move to a cpp file 
         m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
         textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
-        meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-        modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
         materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
         bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
+        meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+        modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
     };
 
     Widget(const Widget& other) = default;

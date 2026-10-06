@@ -1,11 +1,11 @@
 #include "ModelManager.h"
 #include "TextureManager.h"
 #include "MeshManager.h"
+#include "SkeletonManager.h"
 #include "MaterialManager.h"
 #include "logging/Logger.h"
 #include "core/features/ServiceLocator.h"
 #include "core/features/Timer.h"
-#include "core/features/Mesh.h"
 #include "core/features/Material.h"
 
 #include <assimp/Importer.hpp>
@@ -42,6 +42,7 @@ bool ModelManager::init(WindowConfig config)
 
     textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+    skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
     
     if (!(m_logger && textureManager && meshManager && materialManager)) {
@@ -153,10 +154,6 @@ Model* ModelManager::getModel(uint32_t id) const
 
 bool ModelManager::_loadModel(std::string_view path) 
 {
-    // if (m_modelData.find(path.data()) != m_modelData.end()) {
-    //     return;
-    // }
-
     std::string loadTimer = std::string("Model loading ") + path.data();
     Timer timer(loadTimer.c_str(), true);
 
@@ -181,10 +178,17 @@ bool ModelManager::_loadModel(std::string_view path)
         m_logger->error("Model Loading failed: ERROR::ASSIMP::{}", error);
         return false;
     }
-
-    std::vector<uint32_t> meshes = {};
     
-    _processNode(scene->mRootNode, scene, meshes, directory);
+    uint32_t skeletonID = 0;
+    for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
+        if (scene->mMeshes[i]->HasBones()) {
+            skeletonID = skeletonManager->addSkeleton(fileName);
+            break;
+        }
+    }
+    
+    std::vector<uint32_t> meshes = {};
+    _processNode(scene->mRootNode, scene, meshes, directory, skeletonID);
     
     m_modelData[path.data()] = m_ids;
     m_models[m_ids] = std::make_shared<Model>();
@@ -194,22 +198,26 @@ bool ModelManager::_loadModel(std::string_view path)
         m_models[m_ids]->meshIDs.push_back(mesh);
     }
 
+    if(skeletonID != 0) {
+        m_models[m_ids]->skeletonID = skeletonID;
+    }
+
     return true;
 }
 
-void ModelManager::_processNode(aiNode* node, const aiScene* scene, std::vector<uint32_t>& meshes, std::string_view directory)
+void ModelManager::_processNode(aiNode* node, const aiScene* scene, std::vector<uint32_t>& meshes, std::string_view directory, uint32_t skeletonID)
 {
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-        meshes.push_back(_processMesh(mesh, scene, directory));
+        meshes.push_back(_processMesh(mesh, scene, directory, skeletonID));
     }
 
     for (unsigned int i = 0; i < node->mNumChildren; i++) {
-        _processNode(node->mChildren[i], scene, meshes, directory);
+        _processNode(node->mChildren[i], scene, meshes, directory, skeletonID);
     }
 }
 
-uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::string_view directory)
+uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::string_view directory, uint32_t skeletonID)
 {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
@@ -219,12 +227,11 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     // process vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
         Vertex vertex;
-        glm::vec3 vector;
-        //SetVertexBoneDataToDefault(vertex);
+        _setDefaultBone(vertex);
 
         // process vertex positions, normals and texture coordinates
-        vertex.positions = AssimpGLMHelpers::GetGLMVec(mesh->mVertices[i]);
-        vertex.normal = AssimpGLMHelpers::GetGLMVec(mesh->mNormals[i]);
+        vertex.positions = AssimpGLMHelpers::toGlmVec3(mesh->mVertices[i]);
+        vertex.normal = AssimpGLMHelpers::toGlmVec3(mesh->mNormals[i]);
 
         // does the mesh contain texture coordinates?
         // a vertex can contain up to 8 different texture coordinates.
@@ -232,18 +239,14 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         // use models where a vertex can have multiple texture coordinates
         // so we always take the first set (0).
         if (mesh->mTextureCoords[0]) {
-            glm::vec2 vec;
-            vec.x = mesh->mTextureCoords[0][i].x;
-            vec.y = mesh->mTextureCoords[0][i].y;
-            vertex.texCoords = vec;
-            vector.x = mesh->mTangents[i].x;
-            vector.y = mesh->mTangents[i].y;
-            vector.z = mesh->mTangents[i].z;
-            vertex.tangent = vector;
-            vector.x = mesh->mBitangents[i].x;
-            vector.y = mesh->mBitangents[i].y;
-            vector.z = mesh->mBitangents[i].z;
-            vertex.bitangent = vector;
+            vertex.texCoords.x = mesh->mTextureCoords[0][i].x;
+            vertex.texCoords.y = mesh->mTextureCoords[0][i].y;
+            vertex.tangent.x = mesh->mTangents[i].x;
+            vertex.tangent.y = mesh->mTangents[i].y;
+            vertex.tangent.z = mesh->mTangents[i].z;
+            vertex.bitangent.x = mesh->mBitangents[i].x;
+            vertex.bitangent.y = mesh->mBitangents[i].y;
+            vertex.bitangent.z = mesh->mBitangents[i].z;
         } else {
             vertex.texCoords = glm::vec2(0.0f, 0.0f);
         }
@@ -302,7 +305,7 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         }
     }
 
-    //ExtractBoneWeightForVertices(vertices, mesh, scene);
+    _extractBoneWeightForVertices(skeletonID, vertices, mesh, scene);
     
     Mesh m;
     m.vertices = vertices;
@@ -361,37 +364,60 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, const aiScene
     return textureIDs;
 }
 
+void ModelManager::_setDefaultBone(Vertex &vertex)
+{
+    for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
+        vertex.m_boneIDs[i] = -1;
+        vertex.m_weights[i] = 0.0f;
+    }
+}
 
-//void ModelManager::ExtractBoneWeightForVertices(std::vector<MeshOpenGL::Vertex>& vertices, aiMesh* mesh, const aiScene* scene)
-//{
-//    auto& boneInfoMap = m_BoneInfoMap;
-//    int& boneCount = m_BoneCounter;
-//
-//    for (unsigned int boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex) {
-//        int boneID = -1;
-//        std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
-//        if (boneInfoMap.find(boneName) == boneInfoMap.end()) {
-//            BoneInfo newBoneInfo;
-//            newBoneInfo.id = boneCount;
-//            newBoneInfo.offset = AssimpGLMHelpers::ConvertMatrixToGLMFormat(mesh->mBones[boneIndex]->mOffsetMatrix);
-//            boneInfoMap[boneName] = newBoneInfo;
-//            boneID = boneCount;
-//            boneCount++;
-//        }
-//
-//        else {
-//            boneID = boneInfoMap[boneName].id;
-//        }
-//
-//        assert(boneID != -1);
-//        auto weights = mesh->mBones[boneIndex]->mWeights;
-//        int numWeights = mesh->mBones[boneIndex]->mNumWeights;
-//
-//        for (int weightIndex = 0; weightIndex < numWeights; ++weightIndex) {
-//            int vertexId = weights[weightIndex].mVertexId;
-//            float weight = weights[weightIndex].mWeight;
-//            assert(vertexId <= vertices.size());
-//            SetVertexBoneData(vertices[vertexId], boneID, weight);
-//        }
-//    }
-//}
+void ModelManager::_extractBoneWeightForVertices(uint32_t skeletonID, std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene)
+{
+    auto skeleton = skeletonManager->getSkeleton(skeletonID);
+    if(!skeleton) {
+        return;
+    }
+
+    for (unsigned int boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex) {
+        std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
+
+        glm::mat4 offsetMatrix = AssimpGLMHelpers::toGlmMat4(mesh->mBones[boneIndex]->mOffsetMatrix); 
+        auto it = skeleton->boneNameToNodeIndex.find(boneName);
+        int nodeBoneIndex = -1;
+        if (it == skeleton->boneNameToNodeIndex.end()) {
+            SkeletonManager::SkeletonNode node{};
+            node.name = boneName;
+            nodeBoneIndex = skeleton->nodes.size();    // boneindex is the current size before add of nodes
+            node.boneIndex = nodeBoneIndex;
+            node.offsetMatrix = offsetMatrix;
+            node.isBone = true;
+            skeleton->boneNameToNodeIndex[boneName] = node.boneIndex;
+            skeleton->nodes.push_back(node);
+        } else {    // if there's a match, use the existing bone index
+            nodeBoneIndex = it->second;
+            auto& existingNode = skeleton->nodes[nodeBoneIndex];
+            existingNode.isBone = true;
+            existingNode.offsetMatrix = offsetMatrix;
+        }
+
+        auto weights = mesh->mBones[boneIndex]->mWeights;
+        int numWeights = mesh->mBones[boneIndex]->mNumWeights;
+
+        assert(nodeBoneIndex != -1);
+        for (int i = 0; i < numWeights; ++i) {
+            int vertexId = weights[i].mVertexId;
+            float weight = weights[i].mWeight;
+
+            assert(vertexId < vertices.size());
+            for(int j = 0; j < MAX_BONE_INFLUENCE; j++) {
+                Vertex& vertex = vertices[vertexId];
+                if(vertex.m_weights[j] == 0.0f) {
+                    vertex.m_boneIDs[j] = nodeBoneIndex;
+                    vertex.m_weights[j] = weight;
+                    break;
+                }
+            }
+        }
+   }
+}

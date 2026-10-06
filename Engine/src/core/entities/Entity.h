@@ -68,6 +68,7 @@ public:
 	void onColliderComponentAdded();
 	void onCameraComponentAdded();
 	void onParticleEmitterAdded();
+	void onSkinningComponentAdded();
 	
 private:
 	entt::entity entity;

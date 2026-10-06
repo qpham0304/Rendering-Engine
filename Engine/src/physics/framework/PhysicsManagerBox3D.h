@@ -21,7 +21,7 @@ public:
 	virtual uint32_t createConvexBody() override;
 	
 	virtual void addForce(uint32_t id, const glm::vec3& force) override;
-	virtual uint32_t rayCastClosest(const glm::vec3& location) override;
+	virtual uint32_t rayCastClosest(const glm::vec2& coordsNDC) override;
 	virtual void setBullet(uint32_t id, bool flag) override;
 	virtual bool isBullet(uint32_t id) override;
 	virtual void enableSleep(uint32_t id, bool flag) override;

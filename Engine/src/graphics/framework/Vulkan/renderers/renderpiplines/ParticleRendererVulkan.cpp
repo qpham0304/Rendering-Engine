@@ -374,7 +374,6 @@ void ParticleRendererVulkan::_renderParticle(VkCommandBuffer cmd, uint32_t curre
 
     std::vector<VkRenderingAttachmentInfo> colorAttachments = { colorAttachment };
 
-
     auto ubo = rendererManagerVulkan->getUBO();
     uint32_t width = ubo.width;
     uint32_t height = ubo.height;

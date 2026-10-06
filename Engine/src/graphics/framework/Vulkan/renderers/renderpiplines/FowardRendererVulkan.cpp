@@ -9,6 +9,7 @@
 #include <core/resources/managers/MeshManager.h>
 #include <core/resources/managers/ModelManager.h>
 #include <core/resources/managers/DescriptorManager.h>
+#include <animation/AnimationManager.h>
 #include <gui/GuiManager.h>
 #include <core/features/Mesh.h>
 #include <core/features/Camera.h>
@@ -45,8 +46,7 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	
 	assert(shadowMapRenderer && imageBasedRenderer && "failed to retrieve renderer");
 
-	pushConstantLight.skyboxDetail = 0.0f;
-	pushConstantLight.color = sunColor * sunIntensity;
+	// pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.bias = 0.001f;
 
 	_createDescriptorSetLayout();
@@ -118,7 +118,7 @@ void ForwardRendererVulkan::render(Camera& camera)
         }
     }
 	
-	pushConstantLight.color = sunColor * sunIntensity;
+	// pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.direction = glm::vec4(shadowMapRenderer->lightDir, 0.0f);
 	pushConstantLight.sunlightMVP = shadowMapRenderer->lightSpaceMatrix;
     pushConstantLight.time = AppWindow::getTime();
@@ -192,6 +192,8 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 			nullptr
 		);
 
+		auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
+
 		for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 			TransformComponent& transform = entity.getComponent<TransformComponent>();
 			const glm::mat4& entityTransform = transform.getModelMatrix();
@@ -216,13 +218,20 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 					
 					pushConstantLight.materialIdx = mesh->materialID;
 					pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
-
+					
+					BufferVulkan* buffer = bufferManagerVulkan->getBuffer(animationManager->getAnimationBufferAddressID());
+					pushConstantLight.boneMatricesRef = buffer->getAddress();
+					
+					if(entity.hasComponent<SkinningComponent>()) {
+						auto& skinningComponent = entity.getComponent<SkinningComponent>();
+						pushConstantLight.boneMatricesIdx = skinningComponent.boneMatricesID;
+					} 
 					meshManager->bindMesh(meshID);
 
 					vkCmdPushConstants(
 						cmd,
 						offscreenPipeline->pipelineLayout,
-						VK_SHADER_STAGE_FRAGMENT_BIT,
+						VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 						0,
 						sizeof(PushConstantLight),
 						&pushConstantLight
@@ -279,11 +288,32 @@ void ForwardRendererVulkan::_createPipeline()
 	auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
 
 	offscreenPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	// offscreenPipeline->createGraphicsPipeline(
+	// 	"assets/shaders/spv/forwardLightPass.vert.spv",
+	// 	"assets/shaders/spv/forwardLightPass.frag.spv",
+	// 	{ descriptorSetLayout, bindlessLayout, materialLayout }, 
+	// 	renderTarget.renderPass, 
+	// 	sizeof(PushConstantLight)
+	// );
+
+	PipelineConfigInfo config = VulkanPipeline::defaultPipelineConfigInfo(1);
+	config.renderPass = renderTarget.renderPass;
+
+	auto bindingDescription = VulkanDevice::VertexVulkan::getBindingDescription();
+	auto attributeDescriptions = VulkanDevice::VertexVulkan::getAttributeDescriptions();
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
 	offscreenPipeline->createGraphicsPipeline(
 		"assets/shaders/spv/forwardLightPass.vert.spv",
 		"assets/shaders/spv/forwardLightPass.frag.spv",
+		config, 
+		vertexInputInfo, 
 		{ descriptorSetLayout, bindlessLayout, materialLayout }, 
-		renderTarget.renderPass, 
 		sizeof(PushConstantLight)
 	);
 }
@@ -472,7 +502,6 @@ void ForwardRendererVulkan::_updateDescriptor()
 	temp = textureManagerVulkan->getTexture(blueNoiseID);
 	TextureVulkan* blueNoiseImage = dynamic_cast<TextureVulkan*>(temp);
 	assert(blueNoiseImage && "failed to retrieve depthMap");
-
 
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
 		DescriptorWriter writer{{}, descriptorSets[i] };

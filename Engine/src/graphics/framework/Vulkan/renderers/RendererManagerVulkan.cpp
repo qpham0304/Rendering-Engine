@@ -65,10 +65,10 @@ bool RendererManagerVulkan::init(WindowConfig config)
     SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
     bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
     temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
-    ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
-    deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
+    // ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
+    // deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
     //postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererVulkan");
-    // particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
+    particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
 	
 
     for(auto& [name, renderer] : m_renderers) {
@@ -144,8 +144,8 @@ void RendererManagerVulkan::onUpdate()
         if(tmp->denoiserOn) {
             temporalPassRenderer->onUpdate();
         }
-        ddgiPassRenderer->onUpdate();
-        deferredCombineRenderer->onUpdate();
+        // ddgiPassRenderer->onUpdate();
+        // deferredCombineRenderer->onUpdate();
     } else if(currentRenderMode == 2) {
         raytracingRenderer->onUpdate();
     }
@@ -181,8 +181,8 @@ void RendererManagerVulkan::render()
         if(tmp->denoiserOn) {
             temporalPassRenderer->render(*camera);
         }
-        ddgiPassRenderer->render(*camera);
-        deferredCombineRenderer->render(*camera);
+        // ddgiPassRenderer->render(*camera);
+        // deferredCombineRenderer->render(*camera);
     } else if(currentRenderMode == 2) {
         raytracingRenderer->render(*camera);
     }
