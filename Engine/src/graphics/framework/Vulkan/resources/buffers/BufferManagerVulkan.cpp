@@ -105,6 +105,18 @@ uint32_t BufferManagerVulkan::createInstanceBuffer(const VkAccelerationStructure
 	return _assignID();
 }
 
+void BufferManagerVulkan::mapMemory(uint32_t bufferID, size_t size)
+{
+	BufferVulkan* buffer = getBuffer(bufferID);
+	vkMapMemory(renderDeviceVulkan->device, buffer->getMemory(), 0, size, 0, &buffer->mappedBuffer);
+}
+
+void BufferManagerVulkan::unmapMemory(uint32_t bufferID)
+{
+	BufferVulkan* buffer = getBuffer(bufferID);
+	vkUnmapMemory(renderDeviceVulkan->device, buffer->bufferMemory);
+}
+
 bool BufferManagerVulkan::onClose()
 {
 	//TODO: destroy() resizes buffers during iteration, check if this break
@@ -148,7 +160,7 @@ BufferVulkan* BufferManagerVulkan::getBuffer(uint32_t id)
 		return nullptr;
 	}
 	if (buffers.find(id) == buffers.end()) {
-		throw std::runtime_error("buffer not found");
+		throw std::runtime_error("get buffer: buffer not found");
 	}
 	return buffers[id].get();
 }
@@ -474,15 +486,22 @@ void BufferManagerVulkan::updateBufferDeviceAddress(uint32_t id, const void *src
 	}
 	
     BufferVulkan* buffer = getBuffer(id);
-	auto deviceAddressBuffer = dynamic_cast<DeviceAddressBufferVulkan*>(buffer);
-	if(deviceAddressBuffer) {
-		deviceAddressBuffer->update(src, bufferSize);
-	}
+	buffer->update(src, bufferSize);
 }
 
 uint64_t BufferManagerVulkan::getVirtualMemoryAddress(uint32_t id)
 {
 	return getBuffer(id)->getAddress();
+}
+
+uint32_t BufferManagerVulkan::findBufferID(uint64_t virtualAddress)
+{
+	for(auto& [id, buffer] : buffers) {
+		if(buffer->getAddress() == virtualAddress) {
+			return id;
+		}
+	}
+	return 0;
 }
 
 void BufferManagerVulkan::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)

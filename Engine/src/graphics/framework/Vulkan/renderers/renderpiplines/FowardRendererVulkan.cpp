@@ -394,7 +394,9 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 	renderTarget.colorTextures.resize(numFrames);
 	renderTarget.depthTextures.resize(numFrames);
 	renderTarget.framebuffers.resize(numFrames);
-
+	
+	std::vector<uint32_t> colorTextureIDs;
+	
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		auto createTexture = [&] (TextureVulkan*& texture,
 			uint32_t w, uint32_t h,	VkFormat format,
@@ -426,10 +428,8 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 		);
 
-		uint32_t id = renderTarget.colorTextures[i]->id();
-		std::string name = "forwardColorOut" + std::to_string(id); 
-		rendererManagerVulkan->addRenderTexture(name, id);
-		textureManagerVulkan->registerTextureSampler(id);
+		colorTextureIDs.push_back(renderTarget.colorTextures[i]->id());
+		textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[i]->id());
 
 		std::array<VkImageView, 2> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,
@@ -447,9 +447,10 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &renderTarget.framebuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create offscreen framebuffer!");
-		}
-		
+		}	
 	}
+	
+	rendererManagerVulkan->addRenderTexture("forwardColorOut", colorTextureIDs);
 }
 
 void ForwardRendererVulkan::_createDescriptorSetLayout()
@@ -493,7 +494,7 @@ void ForwardRendererVulkan::_updateDescriptor()
 {
     auto uniformBuffersList = rendererManagerVulkan->getBufferUBO();
 
-	Texture* temp = rendererManagerVulkan->getRenderTexture("shadowMap").get();
+	Texture* temp = rendererManagerVulkan->getRenderTextures("shadowMap")[0].get();
 	TextureVulkan* depthMap = dynamic_cast<TextureVulkan*>(temp);
 	assert(depthMap && "failed to retrieve depthMap");
 

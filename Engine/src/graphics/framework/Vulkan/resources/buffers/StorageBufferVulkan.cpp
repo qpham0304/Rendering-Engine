@@ -23,11 +23,6 @@ void StorageBufferVulkan::bind(void* commandBuffer)
 
 }
 
-void StorageBufferVulkan::update(const void *data, size_t size)
-{
-    memcpy(mappedBuffer, data, size);
-}
-
 const VkDescriptorBufferInfo& StorageBufferVulkan::getDescStorageBufferInfo()
 {
 	bufferInfo.buffer = buffer;

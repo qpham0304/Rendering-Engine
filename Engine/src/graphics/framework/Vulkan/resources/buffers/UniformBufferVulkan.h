@@ -13,8 +13,6 @@ public:
 
 	virtual void bind(void* commandBuffer) override;
 
-	void update(const void* data, size_t size);
-
 	const VkDescriptorBufferInfo& getDescUniformBufferInfo();
 
 private:

@@ -58,7 +58,7 @@ protected:
 	Renderer* deferredCombineRenderer { nullptr };
 	Renderer* postProcessRenderer { nullptr };
 	Renderer* particleRenderer { nullptr };
-
+	Renderer* debugRenderer { nullptr };
 
 private:
 	bool needResize{ false };

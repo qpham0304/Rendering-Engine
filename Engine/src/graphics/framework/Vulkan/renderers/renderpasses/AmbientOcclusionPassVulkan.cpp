@@ -260,8 +260,7 @@ void AmbientOcclusionPassVulkan::_createOcclusionMap()
     createTexture(aoMapTempID, aoMapTemp);
     
     outputImage = aoMap;
-    std::string name = "aoMap" + std::to_string(outputImage->id()); 
-    rendererManagerVulkan->addRenderTexture(name, outputImage->id());
+    rendererManagerVulkan->addRenderTexture("aoMap", {outputImage->id()});
 }
 
 void AmbientOcclusionPassVulkan::_createDescriptors()

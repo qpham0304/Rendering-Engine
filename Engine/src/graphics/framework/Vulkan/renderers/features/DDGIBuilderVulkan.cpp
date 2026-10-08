@@ -296,19 +296,12 @@ void DDGIBuilderVulkan::_createResources()
     createTexture(currentVisibilityAtlas, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
     createTexture(lastFrameVisibilityAtlas, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
     
-    std::string name = "";
-    name = "rayColorBuffer" + std::to_string(rayColorBuffer->id()); 
-    rendererManagerVulkan->addRenderTexture(name, rayColorBuffer->id());
-    name = "rayDistanceBuffer" + std::to_string(rayDistanceBuffer->id()); 
-    rendererManagerVulkan->addRenderTexture(name, rayDistanceBuffer->id());
-    name = "currentIrradianceAtlas" + std::to_string(currentIrradianceAtlas->id()); 
-    rendererManagerVulkan->addRenderTexture(name, currentIrradianceAtlas->id());
-    name = "lastframeIrradianceAtlas" + std::to_string(lastframeIrradianceAtlas->id()); 
-    rendererManagerVulkan->addRenderTexture(name, lastframeIrradianceAtlas->id());
-    name = "currentVisibilityAtlas" + std::to_string(currentVisibilityAtlas->id()); 
-    rendererManagerVulkan->addRenderTexture(name, currentVisibilityAtlas->id());
-    name = "lastFrameVisibilityAtlas" + std::to_string(lastFrameVisibilityAtlas->id()); 
-    rendererManagerVulkan->addRenderTexture(name, lastFrameVisibilityAtlas->id());
+    rendererManagerVulkan->addRenderTexture("rayColorBuffer", {rayColorBuffer->id()});
+    rendererManagerVulkan->addRenderTexture("rayDistanceBuffer", {rayDistanceBuffer->id()});
+    rendererManagerVulkan->addRenderTexture("currentIrradianceAtlas", {currentIrradianceAtlas->id()});
+    rendererManagerVulkan->addRenderTexture("lastframeIrradianceAtlas", {lastframeIrradianceAtlas->id()});
+    rendererManagerVulkan->addRenderTexture("currentVisibilityAtlas", {currentVisibilityAtlas->id()});
+    rendererManagerVulkan->addRenderTexture("lastFrameVisibilityAtlas", {lastFrameVisibilityAtlas->id()});
     
     // createTexture(rayColorBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16B16A16_SFLOAT);
     // createTexture(rayDistanceBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16_SFLOAT);

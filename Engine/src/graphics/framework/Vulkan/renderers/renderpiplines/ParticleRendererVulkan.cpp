@@ -253,7 +253,7 @@ void ParticleRendererVulkan::_createResources()
     
 	uint32_t textureID;
 	outTexture = createTexture(textureID);
-	rendererManagerVulkan->addRenderTexture("particleColorOut", textureID);
+	rendererManagerVulkan->addRenderTexture("particleColorOut", {textureID});
 }
 
 void ParticleRendererVulkan::_createPipelines()

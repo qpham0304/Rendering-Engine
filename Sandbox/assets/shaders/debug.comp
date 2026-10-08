@@ -1,0 +1,43 @@
+#version 460
+
+#include "common/buffers.glsl"
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform UniformBufferObject {
+    mat4 invNormal;
+    mat4 view;
+    mat4 prevViewProj;
+    mat4 proj;
+    vec4 cameraPos;
+    mat4 invView;
+    mat4 invProj;
+    float width;
+    float height;
+} ubo;
+
+layout(set = 0, binding = 1, rgba8) uniform image2D outputImage;
+
+layout(set = 1, binding = 0) uniform sampler2D globalTextures[];
+
+
+layout(push_constant) uniform PushConstant {
+    int sceneIndex;
+    int debugSceneIndex;
+} pc;
+
+void main()
+{
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+
+    if (pixelCoord.x >= int(ubo.width) || pixelCoord.y >= int(ubo.height)) {
+        return;
+    }
+
+    vec4 sceneImage = texelFetch(globalTextures[pc.sceneIndex], pixelCoord, 0);
+    vec4 debugImage = texelFetch(globalTextures[pc.debugSceneIndex], pixelCoord, 0);
+
+    vec4 result = sceneImage + debugImage;
+
+    imageStore(outputImage, pixelCoord, result);
+}

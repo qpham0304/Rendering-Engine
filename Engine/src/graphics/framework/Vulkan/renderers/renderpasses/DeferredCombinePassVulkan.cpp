@@ -249,8 +249,7 @@ void DeferredCombinePassVulkan::_createResources()
     };
  
     createTexture(outputImageID, outputImage);
-    std::string name = "deferredCombineOut" + std::to_string(outputImage->id()); 
-    rendererManagerVulkan->addRenderTexture(name, outputImage->id());
+    rendererManagerVulkan->addRenderTexture("deferredCombineOut", {outputImage->id()});
 
     auto cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
     TextureManagerVulkan::transitionImageLayout(

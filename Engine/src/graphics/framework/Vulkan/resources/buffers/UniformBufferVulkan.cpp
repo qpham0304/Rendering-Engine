@@ -17,11 +17,6 @@ void UniformBufferVulkan::bind(void* commandBuffer)
 
 }
 
-void UniformBufferVulkan::update(const void* data, size_t size)
-{
-	memcpy(mappedBuffer, data, size);
-}
-
 const VkDescriptorBufferInfo& UniformBufferVulkan::getDescUniformBufferInfo()
 {
 	bufferInfo.buffer = buffer;

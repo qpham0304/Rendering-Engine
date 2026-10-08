@@ -7,6 +7,7 @@
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/RayTraceRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ParticleRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpiplines/DebugRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
@@ -69,7 +70,11 @@ bool RendererManagerVulkan::init(WindowConfig config)
     // deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
     //postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererVulkan");
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
-	
+	debugRenderer = addRenderer<DebugRendererVulkan>("DebugRendererVulkan");
+
+
+    auto* debugRendererVulkan = dynamic_cast<DebugRendererVulkan*>(debugRenderer);
+    debugRendererVulkan->drawLine(glm::vec3(-5.0), glm::vec3(5.0));
 
     for(auto& [name, renderer] : m_renderers) {
         renderer->init(config);
@@ -151,6 +156,7 @@ void RendererManagerVulkan::onUpdate()
     }
 
     // particleRenderer->onUpdate();
+    debugRenderer->onUpdate();
 }
 
 void RendererManagerVulkan::render()
@@ -188,6 +194,7 @@ void RendererManagerVulkan::render()
     }
 
     // particleRenderer->render(*camera);
+    debugRenderer->render(*camera);
 
     applicationRenderer->render(*camera);
     endFrame();

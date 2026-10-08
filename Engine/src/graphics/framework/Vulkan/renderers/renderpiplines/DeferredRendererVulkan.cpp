@@ -676,6 +676,15 @@ void DeferredRendererVulkan::_createFrameBuffers()
 	renderTarget.depthTextures.resize(numFrames);
 	renderTarget.framebuffers.resize(numFrames);
 
+	std::vector<uint32_t> colorTexturesIds;
+	std::vector<uint32_t> gBufferPosIds;
+	std::vector<uint32_t> gBufferNormIds;
+	std::vector<uint32_t> gBufferAlbedoIds;
+	std::vector<uint32_t> gPBRIds;
+	std::vector<uint32_t> gBufferEmissiveIds;
+	std::vector<uint32_t> gBufferMotionIds;
+	std::vector<uint32_t> depthTexturesIds;
+
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		auto createTexture = [&] (VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) -> TextureVulkan* {
 			uint32_t id = textureManagerVulkan->createTexture();
@@ -732,63 +741,42 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
-		id = renderTarget.colorTextures[i]->id();
-		name = "deferredColorOut" + std::to_string(id); 
-		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gBufferPos[i] = createTexture(
 			VK_FORMAT_R16G16B16A16_SFLOAT, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
-		id = renderTarget.gBufferPos[i]->id();
-		name = "gBufferPos" + std::to_string(id); 
-		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gBufferNorm[i] = createTexture(
 			VK_FORMAT_R16G16B16A16_SFLOAT,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
-		id = renderTarget.gBufferNorm[i]->id();
-		name = "gBufferNorm" + std::to_string(id); 
-		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gBufferAlbedo[i] = createTexture(
 			VK_FORMAT_R8G8B8A8_UNORM, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
-		id = renderTarget.gBufferAlbedo[i]->id();
-		name = "gBufferAlbedo" + std::to_string(id); 
-		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gPBR[i] = createTexture(
 			VK_FORMAT_R8G8B8A8_UNORM,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
-		id = renderTarget.gPBR[i]->id();
-		name = "gPBR" + std::to_string(id); 
-		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gBufferEmissive[i] = createTexture(
 			VK_FORMAT_R16G16B16A16_SFLOAT, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
-		id = renderTarget.gBufferEmissive[i]->id();
-		name = "gBufferEmissive" + std::to_string(id); 
-		rendererManagerVulkan->addRenderTexture(name, id);
 
 		renderTarget.gBufferMotion[i] = createTexture(
 			VK_FORMAT_R16G16_SFLOAT, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
-		id = renderTarget.gBufferMotion[i]->id();
-		name = "gBufferMotion" + std::to_string(id); 
-		rendererManagerVulkan->addRenderTexture(name, id);
 
 
 		uint32_t depthId = textureManagerVulkan->createTexture();
@@ -846,10 +834,15 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			renderTarget.gBufferMotion[i]->textureImageView,
 			renderTarget.depthTextures[i]->textureImageView
 		};
-
-		id = renderTarget.depthTextures[i]->id();
-		name = "deferredDepth" + std::to_string(id); 
-		rendererManagerVulkan->addRenderTexture(name, id);
+		
+		colorTexturesIds.push_back(renderTarget.colorTextures[i]->id());
+		gBufferPosIds.push_back(renderTarget.gBufferPos[i]->id());
+		gBufferNormIds.push_back(renderTarget.gBufferNorm[i]->id());
+		gBufferAlbedoIds.push_back(renderTarget.gBufferAlbedo[i]->id());
+		gPBRIds.push_back(renderTarget.gPBR[i]->id());
+		gBufferEmissiveIds.push_back(renderTarget.gBufferEmissive[i]->id());
+		gBufferMotionIds.push_back(renderTarget.gBufferMotion[i]->id());
+		depthTexturesIds.push_back(renderTarget.depthTextures[i]->id());
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -864,6 +857,15 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			throw std::runtime_error("failed to create framebuffer!");
 		}
 	}
+
+	rendererManagerVulkan->addRenderTexture("deferredColorOut", colorTexturesIds);
+	rendererManagerVulkan->addRenderTexture("gBufferPos", gBufferPosIds);
+	rendererManagerVulkan->addRenderTexture("gBufferNorm", gBufferNormIds);
+	rendererManagerVulkan->addRenderTexture("gBufferAlbedo", gBufferAlbedoIds);
+	rendererManagerVulkan->addRenderTexture("gPBR", gPBRIds);
+	rendererManagerVulkan->addRenderTexture("gBufferEmissive", gBufferEmissiveIds);
+	rendererManagerVulkan->addRenderTexture("gBufferMotion", gBufferMotionIds);
+	rendererManagerVulkan->addRenderTexture("deferredDepth", depthTexturesIds);
 }
 
 void DeferredRendererVulkan::_createDescriptor()

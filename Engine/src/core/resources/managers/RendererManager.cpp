@@ -2,7 +2,7 @@
 #include "core/features/ServiceLocator.h"
 #include "core/resources/managers/TextureManager.h"
 
-void RendererManager::addRenderTexture(std::string_view name, uint32_t textureID)
+void RendererManager::addRenderTexture(std::string_view name, std::vector<uint32_t> textureIDs)
 {
     auto it = m_renderTextures.find(name.data());
     if(it != m_renderTextures.end()) {
@@ -10,10 +10,15 @@ void RendererManager::addRenderTexture(std::string_view name, uint32_t textureID
     }
 
     auto textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
-    m_renderTextures[name.data()] = textureManager->getTextureShare(textureID);
+    m_renderTextures[name.data()].clear();
+    for(auto& id : textureIDs) {
+        auto texture = textureManager->getTextureShare(id);
+        assert(texture && "addRendererTexture: texture not found");
+        m_renderTextures[name.data()].push_back(texture);
+    }
 }
 
-std::shared_ptr<Texture> RendererManager::getRenderTexture(std::string_view name)
+std::vector<std::shared_ptr<Texture>> RendererManager::getRenderTextures(std::string_view name)
 {
     auto it = m_renderTextures.find(name.data());
     
@@ -21,5 +26,5 @@ std::shared_ptr<Texture> RendererManager::getRenderTexture(std::string_view name
         return it->second;
     }
 
-    return nullptr;
+    return {};
 }

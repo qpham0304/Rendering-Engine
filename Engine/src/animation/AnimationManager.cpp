@@ -60,9 +60,12 @@ void AnimationManager::onUpdate()
         if(bufferSize == 0){
             m_logger->warn("boneMatrices id: {} is empty", i);
         } else {
-            uint32_t bufferID = m_boneMatricesBuffers[i];
+            //TODO: brute force search all buffers to find a match because no way to store
+            // m_boneMatricesBuffers as bufferid instead of direct memory address without breaking
+            // review this when have time
+            uint32_t bufferID = m_bufferManager->findBufferID(m_boneMatricesBuffers[i]);
             if(bufferID != 0) {
-                m_bufferManager->updateBufferDeviceAddress(bufferID, m_boneMatricesData.data(), bufferSize);
+                m_bufferManager->updateBufferDeviceAddress(bufferID, m_boneMatricesData[i].data(), bufferSize);
             }
         }
         i++;
@@ -82,21 +85,13 @@ uint32_t AnimationManager::addBoneMatrices(size_t boneCount)
     size_t bufferSize = boneCount * sizeof(glm::mat4);
     uint32_t bufferID = m_bufferManager->createBufferDeviceAddress(bufferSize);
     m_bufferManager->updateBufferDeviceAddress(bufferID, boneMatrices.data(), bufferSize);
-    
-    m_boneMatricesBuffers.push_back(bufferID);
     m_boneMatricesData.push_back(std::move(boneMatrices));
 
-    std::vector<uint64_t> virtualMemoryAddresses;
-    for(const auto& id : m_boneMatricesBuffers) {
-        if(id == 0) {   // skip the first index
-            continue;
-        }
-        virtualMemoryAddresses.push_back(m_bufferManager->getVirtualMemoryAddress(id));
-    }
     
-    //TODO: requires explicit sync when add and remove buffer
-    size_t containerBufferSize = sizeof(uint64_t) * virtualMemoryAddresses.size();
-    m_bufferManager->updateBufferDeviceAddress(deviceAdressBufferID, virtualMemoryAddresses.data(), containerBufferSize);
+    m_boneMatricesBuffers.emplace_back(m_bufferManager->getVirtualMemoryAddress(bufferID));
+    size_t containerBufferSize = sizeof(uint64_t) * m_boneMatricesBuffers.size();
+    deviceAdressBufferID = m_bufferManager->createBufferDeviceAddress(containerBufferSize);
+    m_bufferManager->updateBufferDeviceAddress(deviceAdressBufferID, m_boneMatricesBuffers.data(), containerBufferSize);
 
     return _assignID();
 }

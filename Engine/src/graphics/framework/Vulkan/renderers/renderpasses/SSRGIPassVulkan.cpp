@@ -200,12 +200,13 @@ void SSRGIPassVulkan::_createResources()
     };
  
     outputImages.resize(VulkanUtils::numFrames());
+    std::vector<uint32_t> imagesIDs;
     for(int i = 0; i < outputImages.size(); i++) {
         createTexture(outputImageID, outputImages[i]);
-        std::string name = "SSRGIPassOut" + std::to_string(outputImageID); 
-        rendererManagerVulkan->addRenderTexture(name, outputImageID);
+        imagesIDs.push_back(outputImages[i]->id());
     }
 
+    rendererManagerVulkan->addRenderTexture("SSRGIPassOut", imagesIDs);
     
 }
 

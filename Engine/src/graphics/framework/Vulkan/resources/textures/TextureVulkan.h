@@ -54,6 +54,7 @@ public:
 	VkDeviceMemory textureImageMemory;
 	VkImageView textureImageView;
 	VkSampler textureSampler;
+	VkFormat format;
 
 	const VkDescriptorImageInfo& getDescImageInfoGeneral();
 	const VkDescriptorImageInfo& getDescImageInfoReadOnly();
@@ -66,7 +67,6 @@ private:
     VkDescriptorImageInfo imageInfoReadOnly{};
 	
 	VkImageLayout currentLayout;
-	VkFormat format;
 	VkImageUsageFlags usage;
 	VkMemoryPropertyFlags properties;
 	VkImageAspectFlagBits aspectBits;

@@ -17,6 +17,7 @@ public:
     explicit operator VkBuffer() const;
 
     virtual void bind(void* commandBuffer) override {};
+	virtual void update(const void* data, size_t size) override;
 
     const VkDeviceMemory& getMemory();
 
