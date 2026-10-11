@@ -10,6 +10,7 @@
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/RendererManager.h"
 #include "core/resources/managers/SkeletonManager.h"
+#include "animation/AnimationManager.h"
 #include "logging/logger.h"
 
 class Widget {
@@ -33,6 +34,7 @@ protected:
         modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
         rendererManager = &ServiceLocator::GetService<RendererManager>("RendererManagerVulkan");
         skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
+        animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
     };
 
     Widget(const Widget& other) = default;
@@ -53,4 +55,5 @@ protected:
     BufferManager* bufferManager{ nullptr };
     RendererManager* rendererManager{ nullptr };
     SkeletonManager* skeletonManager{ nullptr };
+    AnimationManager* animationManager{ nullptr };
 };

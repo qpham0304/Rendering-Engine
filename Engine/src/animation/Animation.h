@@ -40,8 +40,8 @@ struct Animation
 struct Animator
 {
     //TODO: hard code getting animation
-    std::string animationPath{ "assets/models/aru/aru.gltf" };
-    std::string animationName{ "Formation_Pickup" };
+    std::string animationPath{ };
+    std::string animationName{ };
     uint32_t skeletonID;
     float currentTime;
 	float deltaTime;

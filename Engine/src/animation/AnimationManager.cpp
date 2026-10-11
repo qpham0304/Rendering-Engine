@@ -23,18 +23,30 @@ bool AnimationManager::init(WindowConfig config)
 {
     Service::init(config);
 
-    m_skinAnimator.init(this);
-    m_spriteAnimator.init(this);
-    
-    m_boneMatricesBuffers.push_back(0);
-    m_boneMatricesData.push_back({glm::mat4(1.0)});
-
-
     m_bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
     assert(m_bufferManager && "failed to retrieve buffermanager");
 
-    size_t bufferSize = sizeof(glm::mat4) * m_boneMatricesBuffers.size();
-	deviceAdressBufferID = m_bufferManager->createBufferDeviceAddress(bufferSize);
+    m_skinAnimator.init(this);
+    m_spriteAnimator.init(this);
+    
+    // m_boneMatricesBuffers.push_back(0);
+    // m_boneMatricesData.push_back({glm::mat4(1.0)});
+    
+    //populate the first array slot for an empty array of one basic bone for debugging
+    const int boneCount = 1;
+    std::vector<glm::mat4> boneMatrices{{glm::mat4(1.0)}};
+    boneMatrices.resize(boneCount, glm::mat4(1.0f));
+
+    size_t bufferSize = boneCount * sizeof(glm::mat4);
+    uint32_t bufferID = m_bufferManager->createBufferDeviceAddress(bufferSize);
+    m_bufferManager->updateBufferDeviceAddress(bufferID, boneMatrices.data(), bufferSize);
+    m_boneMatricesData.push_back(std::move(boneMatrices));
+
+    m_boneMatricesBuffers.emplace_back(m_bufferManager->getVirtualMemoryAddress(bufferID));
+    size_t containerBufferSize = sizeof(uint64_t) * m_boneMatricesBuffers.size();
+    deviceAdressBufferID = m_bufferManager->createBufferDeviceAddress(containerBufferSize);
+    m_bufferManager->updateBufferDeviceAddress(deviceAdressBufferID, m_boneMatricesBuffers.data(), containerBufferSize);
+
 
     return true;
 }
@@ -58,7 +70,6 @@ std::vector<uint32_t> AnimationManager::listIDs() const
 
 void AnimationManager::onUpdate()
 {
-    m_logger->warn("animation manager dt: {}", AppWindow::getDeltaTime());
     m_spriteAnimator.onUpdate(AppWindow::getDeltaTime());
     m_skinAnimator.onUpdate(AppWindow::getDeltaTime());
 
@@ -98,6 +109,9 @@ uint32_t AnimationManager::addBoneMatrices(size_t boneCount)
     
     m_boneMatricesBuffers.emplace_back(m_bufferManager->getVirtualMemoryAddress(bufferID));
     size_t containerBufferSize = sizeof(uint64_t) * m_boneMatricesBuffers.size();
+    if(deviceAdressBufferID != 0) {  // resizeable bda so this need to be recreated every new added bone
+        m_bufferManager->destroy(deviceAdressBufferID);
+    }
     deviceAdressBufferID = m_bufferManager->createBufferDeviceAddress(containerBufferSize);
     m_bufferManager->updateBufferDeviceAddress(deviceAdressBufferID, m_boneMatricesBuffers.data(), containerBufferSize);
 
@@ -192,6 +206,16 @@ std::shared_ptr<Animation> AnimationManager::getAnimation(std::string_view path,
     }
 
     return dataIt->second;
+}
+
+const AnimationData* AnimationManager::getAnimationData(std::string_view path)
+{
+    auto it = m_animations.find(path.data());
+    if(it == m_animations.end()) {
+        return nullptr;
+    }
+
+    return &it->second;
 }
 
 uint32_t AnimationManager::addAnimator(uint32_t skeletonID)

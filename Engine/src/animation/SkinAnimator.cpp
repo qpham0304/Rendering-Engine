@@ -46,14 +46,14 @@ void SkinAnimator::isPlaying()
 
 void SkinAnimator::onUpdate(float dt)
 {
-    m_logger->warn("dt: {}", dt);
     for(uint32_t sceneID : sceneManager.listIDs()) {
         Scene* scene = sceneManager.getScene(sceneID);
 
         auto func = std::function<void(Entity)>([&](Entity entity) -> void {
-            // auto& animation = entity.getComponent<AnimationComponent>();
             auto& skinning = entity.getComponent<SkinningComponent>();
-            
+            if(skinning.boneMatricesID == 0 || skinning.animatorID == 0){
+                return;
+            }
             _calculateBoneTransform(skinning.boneMatricesID, skinning.animatorID, dt);
         });
 
@@ -67,12 +67,13 @@ void SkinAnimator::_calculateBoneTransform(uint32_t boneMatricesID, uint32_t ani
     auto animator = animationManager->getAnimator(animatorID);
     auto skeleton = skeletonManager->getSkeleton(animator->skeletonID);
     auto animation = animationManager->getAnimation(animator->animationPath, animator->animationName);
+    assert(animator && "fail to retrieve animator data to calculate bone transform");
+    assert(skeleton && "fail to retrieve skeleton data to calculate bone transform");
+    assert(animation && "fail to retrieve animation data to calculate bone transform");
 
-    float testDt = 0.016f;
-    animator->currentTime += animation->ticksPerSecond * testDt;
-    animator->deltaTime = testDt;
+    animator->currentTime += animation->ticksPerSecond * dt;
+    animator->deltaTime = dt;
     animator->currentTime = fmod(animator->currentTime, animation->duration);   //loop back
-    m_logger->warn("animator dt: {}", animator->deltaTime);
 
     typedef std::function<void(uint32_t, glm::mat4)> TransformData;
     TransformData calculateTransform = [&] (uint32_t nodeIndex, glm::mat4 parentTransform) {
@@ -105,7 +106,6 @@ void SkinAnimator::_calculateBoneTransform(uint32_t boneMatricesID, uint32_t ani
     };
 
     calculateTransform(skeleton->rootIndex, glm::mat4(1.0));    // shoud probably be entity's transform componentat data
-
 }
 
 glm::vec3 SkinAnimator::_interpolatePosition(float currentTime, const Track &track)

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "core/resources/managers/Manager.h"
 #include "Animation.h"
 #include "SpriteAnimator.h"
@@ -26,11 +28,13 @@ public:
 	
 	bool loadAnimation(std::string_view path, const aiScene* scene);
 	std::shared_ptr<Animation> getAnimation(std::string_view path, std::string_view name) const;
+	const AnimationData* getAnimationData(std::string_view path);
 
 	uint32_t addAnimator(uint32_t skeletonID);
 	std::shared_ptr<Animator> getAnimator(uint32_t animatorID);
 
 private:
+	const int MAX_NUM_ANIMATIONS = 100;
     BufferManager* m_bufferManager{ nullptr };
 
 	SpriteAnimator m_spriteAnimator;

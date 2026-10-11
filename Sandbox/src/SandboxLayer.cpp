@@ -39,7 +39,7 @@ bool SandBoxLayer::init()
     particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
 
     Scene* scene = SceneManager::getInstance().addScene("sandbox-scene");
-    scene->loadScene("assets/data/Sanbox-scene.json");
+    scene->loadScene("assets/data/sandbox-scene.json");
     // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
     // scene1->loadScene("assets/data/Level1.json");
     // Scene* scene2 = SceneManager::getInstance().addScene("Level2");

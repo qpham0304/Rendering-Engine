@@ -7,7 +7,6 @@ ImGuiAnimationWidget::ImGuiAnimationWidget(std::string name)
     : ImGuiWidget(name)
 {
     
-    
 }
 
 void ImGuiAnimationWidget::render()
@@ -15,24 +14,42 @@ void ImGuiAnimationWidget::render()
     ImGui::Begin("Animation Widget");
 
     std::vector<uint32_t> ids = skeletonManager->listIDs();
-    
-    std::vector<std::string> items = { "Apple", "Banana", "Cherry", "Kiwi" };
-    static int selected_index = 0; 
-
-    if (ImGui::BeginCombo("Fruit Selector", items[selected_index].c_str())) {
-        for (int i = 0; i < items.size(); ++i) {
-            const bool is_selected = (selected_index == i);
-            
-            if (ImGui::Selectable(items[i].c_str(), is_selected)) {
-                selected_index = i;
-            }
-
-            if (is_selected) {
-                ImGui::SetItemDefaultFocus(); 
-            }
+    auto func = std::function<void(Entity)>([&](Entity entity) -> void {
+        auto& skinningComponent = entity.getComponent<SkinningComponent>();
+        const AnimationData* data = animationManager->getAnimationData(skinningComponent.animationPath);
+        
+        if(!data) {
+            return;
         }
-        ImGui::EndCombo();
-    }
+
+        if (ImGui::BeginCombo("Animations", selectedAnimation.c_str())) {
+            for(auto& [name, value] : *data) {
+                const bool isSelected = (name == selectedAnimation);
+                
+                if (ImGui::Selectable(name.c_str(), isSelected)) {
+                    selectedAnimation = name;
+                    auto animator = animationManager->getAnimator(skinningComponent.animatorID);
+                    animator->animationName = selectedAnimation;
+                }
+
+                if (isSelected) {
+                    ImGui::SetItemDefaultFocus(); 
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+
+
+    });
+
+    SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	if(!scene){
+		m_logger->error("ImGuiAnimationWidget: No scene to render");
+	}
+
+    scene->forEnitiesWith<SkinningComponent>(func);
 
     drawBone(ids);
     drawTree(ids);
@@ -74,7 +91,9 @@ void ImGuiAnimationWidget::drawBone(const std::vector<uint32_t> ids) const
 
     for (auto& id : ids) {
         auto skeleton = skeletonManager->getSkeleton(id);
-        if (!skeleton) continue;
+        if (!skeleton) {
+            continue;
+        }
 
         std::function<void(uint32_t, const glm::mat4&)> ComputeNodeWorldPositions = [&](uint32_t nodeIndex, const glm::mat4& parentGlobalMatrix) {
             if (nodeIndex >= skeleton->nodes.size()) return;
@@ -126,7 +145,6 @@ void ImGuiAnimationWidget::drawTree(const std::vector<uint32_t> ids) const
         }
 
         if (ImGui::CollapsingHeader(skeleton->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Text("Skeleton ID: %u | Root Index: %u", id, skeleton->rootIndex);
             ImGui::Separator();
 
             std::function<void(uint32_t)> renderNodeTree = [&](uint32_t nodeIndex) {

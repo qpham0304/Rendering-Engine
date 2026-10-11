@@ -99,6 +99,20 @@ void Entity::onSkinningComponentAdded()
     auto skeleton = skeletonManager->getSkeleton(model->skeletonID);
     skinningComponent.boneMatricesID = animationManager->addBoneMatrices(skeleton->nodes.size());
     skinningComponent.animatorID = animationManager->addAnimator(model->skeletonID);
+    skinningComponent.animationPath = model->path;  //For now animation is bound to model load
+    auto animator = animationManager->getAnimator(skinningComponent.animatorID);
+    
+    animator->animationPath = skinningComponent.animationPath;
+
+    if(skinningComponent.initialAnimation == "") {
+        const AnimationData* animationData = animationManager->getAnimationData(skinningComponent.animationPath);
+        if (!animationData->empty()) {
+            auto it = animationData->begin();
+            animator->animationName = it->first;
+        }
+    } else {
+        animator->animationName = skinningComponent.initialAnimation;
+    }
 }
 
 void Entity::onModelComponentAdded()
