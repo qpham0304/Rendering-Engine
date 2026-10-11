@@ -11,4 +11,6 @@ public:
 
     virtual void render() override;
     
+    void drawBone(const std::vector<uint32_t> ids) const;
+    void drawTree(const std::vector<uint32_t> ids) const;
 };

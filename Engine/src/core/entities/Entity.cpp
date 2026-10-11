@@ -92,12 +92,13 @@ void Entity::onSkinningComponentAdded()
     auto skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
     auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
 
-    SkinningComponent& skinning = getComponent<SkinningComponent>();
+    SkinningComponent& skinningComponent = getComponent<SkinningComponent>();
     ModelComponent& modelComponent = getComponent<ModelComponent>();
     Model* model = modelManager->getModel(modelComponent.modelID);
 
     auto skeleton = skeletonManager->getSkeleton(model->skeletonID);
-    skinning.boneMatricesID = animationManager->addBoneMatrices(skeleton->nodes.size());
+    skinningComponent.boneMatricesID = animationManager->addBoneMatrices(skeleton->nodes.size());
+    skinningComponent.animatorID = animationManager->addAnimator(model->skeletonID);
 }
 
 void Entity::onModelComponentAdded()

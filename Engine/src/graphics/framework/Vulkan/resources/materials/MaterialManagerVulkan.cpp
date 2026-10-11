@@ -209,12 +209,12 @@ bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &mate
 	material.ao        = materialDesc.ao       ;
 	material.emissive  = materialDesc.emissive ;
 
-	textureManagerVulkan->registerTextureSampler(material.albedoID);
-	textureManagerVulkan->registerTextureSampler(material.normalID);
-	textureManagerVulkan->registerTextureSampler(material.metallicID);
-	textureManagerVulkan->registerTextureSampler(material.roughnessID);
-	textureManagerVulkan->registerTextureSampler(material.aoID);
-	textureManagerVulkan->registerTextureSampler(material.emissiveID);
+	textureManagerVulkan->registerBindlessTexture(material.albedoID);
+	textureManagerVulkan->registerBindlessTexture(material.normalID);
+	textureManagerVulkan->registerBindlessTexture(material.metallicID);
+	textureManagerVulkan->registerBindlessTexture(material.roughnessID);
+	textureManagerVulkan->registerBindlessTexture(material.aoID);
+	textureManagerVulkan->registerBindlessTexture(material.emissiveID);
 
     return true;
 }

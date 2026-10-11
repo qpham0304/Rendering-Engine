@@ -28,6 +28,7 @@ bool DebugRendererVulkan::init(WindowConfig config)
 
     _createResources();
     _createDescriptors();
+    _updateDescriptors();
     _createPipelines();
 
     return true;
@@ -52,6 +53,12 @@ void DebugRendererVulkan::onUpdate()
 
 void DebugRendererVulkan::render(Camera &camera)
 {
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
     VkRenderingAttachmentInfo colorAttachment{};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
     colorAttachment.imageView = debugImage->textureImageView;
@@ -61,10 +68,6 @@ void DebugRendererVulkan::render(Camera &camera)
     colorAttachment.clearValue = { {0.1f, 0.1f, 0.1f, 1.0f} };
 
     std::vector<VkRenderingAttachmentInfo> colorAttachments = { colorAttachment };
-
-    auto ubo = rendererManagerVulkan->getUBO();
-    uint32_t width = ubo.width;
-    uint32_t height = ubo.height;
 
     VkRenderingInfo renderingInfo{};
     renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -93,8 +96,8 @@ void DebugRendererVulkan::render(Camera &camera)
         m_vertexBuffer->bind(cmd);
         vkCmdDraw(cmd, static_cast<uint32_t>(m_lineVertices.size()), 1, 0, 0);
         
-        renderDeviceVulkan->setViewport();
-        renderDeviceVulkan->setScissor();
+        renderDeviceVulkan->setViewport(width, height);
+        renderDeviceVulkan->setScissor(width, height);
 
         vkCmdEndRendering(cmd);
         debugImage->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -110,7 +113,7 @@ void DebugRendererVulkan::render(Camera &camera)
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, combinePipeline->pipelineLayout, 0, 1, &displaySets[currentFrame], 0, nullptr);
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, combinePipeline->pipelineLayout, 1, 1, &bindlessSet, 0, nullptr);
 
-        vkCmdDispatch(cmd, (ubo.width + 7) / 8, (ubo.height + 7) / 8, 1);
+        vkCmdDispatch(cmd, (width + 7) / 8, (height + 7) / 8, 1);
         displayImage->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
     renderDeviceVulkan->endLabel(cmd);
@@ -129,7 +132,6 @@ void DebugRendererVulkan::_createResources()
 {
     m_lineVertices.reserve(MAX_DEBUG_VERTICES);
     int bufferSize = MAX_DEBUG_VERTICES * sizeof(DebugVertex);
-    // uint32_t bufferID = bufferManagerVulkan->createVertexBuffer(m_lineVertices.data(), bufferSize);
 
     uint32_t bufferID = bufferManagerVulkan->createBuffer2(
         bufferSize,
@@ -142,20 +144,25 @@ void DebugRendererVulkan::_createResources()
     m_vertexBuffer->update(m_lineVertices.data(), bufferSize);
 
     auto ubo = rendererManagerVulkan->getUBO();
+    width = ubo.width;
+    height = ubo.height;
+
     TextureSamplerConfig samplerConfig {};
     TextureConfig imageConfig { 
-        .width = static_cast<uint32_t>(ubo.width),
-        .height = static_cast<uint32_t>(ubo.height),
-        .format = renderDeviceVulkan->swapchain.swapChainImageFormat, 
+        .width = width,
+        .height = height,
+        .format = VK_FORMAT_R16G16B16A16_SFLOAT,
         .aspectBits = VK_IMAGE_ASPECT_COLOR_BIT
     };
+    imageConfig.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     
     uint32_t debugImageID = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
     debugImage = textureManagerVulkan->getTexture(debugImageID);
+    textureManagerVulkan->registerBindlessTexture(debugImageID);
 
-    imageConfig.format = VK_FORMAT_R8G8B8A8_UNORM;
     uint32_t displayImageID = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
     displayImage = textureManagerVulkan->getTexture(displayImageID);
+    textureManagerVulkan->registerBindlessTexture(displayImageID);
 }
 
 void DebugRendererVulkan::_createPipelines()
@@ -175,12 +182,9 @@ void DebugRendererVulkan::_createPipelines()
     // config.setAdditiveBlend();
 
 	AttachmentsInfo attachmentsInfo{};
-    // attachmentsInfo.colorAttachmentFormats = { VK_FORMAT_R16G16B16A16_SFLOAT };
-    attachmentsInfo.colorAttachmentFormats = { renderDeviceVulkan->swapchain.swapChainImageFormat };
+    attachmentsInfo.colorAttachmentFormats = { VK_FORMAT_R16G16B16A16_SFLOAT };
     attachmentsInfo.depthAttachmentFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
     attachmentsInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
-
-
 
 	uint32_t bindlessLayoutID = textureManagerVulkan->getBindlessTextureLayout();
 	auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(bindlessLayoutID);
@@ -205,8 +209,6 @@ void DebugRendererVulkan::_createPipelines()
         { displaySetLayout, bindlessLayout },
         sizeof(CombinePushConstant)
     );
-
-
 }
 
 void DebugRendererVulkan::_createDescriptors()
@@ -235,8 +237,6 @@ void DebugRendererVulkan::_createDescriptors()
 	
 	displayPoolID = descriptorManagerVulkan->createPool(displayPoolSize, frameCount);
 	displaySetsID = descriptorManagerVulkan->createSets(displayLayoutID, displayPoolID, frameCount);
-
-    _updateDescriptors();
 }
 
 void DebugRendererVulkan::_updateDescriptors()
@@ -261,11 +261,19 @@ void DebugRendererVulkan::_updateDescriptors()
 
 void DebugRendererVulkan::_recreateResources()
 {
-
+	renderDeviceVulkan->waitIdle();
+	rendererManagerVulkan->setDisplayImage(nullptr);
+    _cleanupResources();
+    _createResources();
+    _updateDescriptors();
+    _createPipelines();
 }
 
 void DebugRendererVulkan::_cleanupResources()
 {
     pipeline->destroy();
     combinePipeline->destroy();
+
+    textureManagerVulkan->destroy(debugImage->id());
+    textureManagerVulkan->destroy(displayImage->id());
 }

@@ -8,6 +8,8 @@
 #include "core/resources/managers/BufferManager.h" 
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/ModelManager.h"
+#include "core/resources/managers/RendererManager.h"
+#include "core/resources/managers/SkeletonManager.h"
 #include "logging/logger.h"
 
 class Widget {
@@ -29,6 +31,8 @@ protected:
         bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
         meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
         modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+        rendererManager = &ServiceLocator::GetService<RendererManager>("RendererManagerVulkan");
+        skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
     };
 
     Widget(const Widget& other) = default;
@@ -47,4 +51,6 @@ protected:
     ModelManager* modelManager{ nullptr };
     MaterialManager* materialManager{ nullptr };
     BufferManager* bufferManager{ nullptr };
+    RendererManager* rendererManager{ nullptr };
+    SkeletonManager* skeletonManager{ nullptr };
 };

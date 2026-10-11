@@ -146,7 +146,12 @@ void ParticleRendererVulkan::render(Camera &camera)
 {
     Timer timer(m_name, true);
 
-    RendererVulkan::_resize();
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
     rendererManagerVulkan->setDisplayImage(outTexture);
 
 	SceneManager& sceneManager = SceneManager::getInstance();

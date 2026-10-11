@@ -17,6 +17,7 @@ public:
 	virtual void onUpdate() override = 0;
 	virtual std::vector<uint32_t> listIDs() const override = 0;
     virtual void render() = 0;
+	virtual void drawDebug(glm::vec3 start, glm::vec3 end) = 0;
 
 	template<typename T> requires std::derived_from<T, Renderer>
 	Renderer* addRenderer(std::string_view name) {

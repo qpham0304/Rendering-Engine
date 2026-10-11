@@ -3,6 +3,10 @@
 #include "core/features/ServiceLocator.h"
 #include "core/resources/managers/BufferManager.h"
 #include "core/resources/managers/SkeletonManager.h"
+#include <assimp/scene.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp_glm_helpers.h>
 
 AnimationManager::AnimationManager()
     : Manager("AnimationManager")
@@ -18,6 +22,9 @@ AnimationManager::~AnimationManager()
 bool AnimationManager::init(WindowConfig config)
 {
     Service::init(config);
+
+    m_skinAnimator.init(this);
+    m_spriteAnimator.init(this);
     
     m_boneMatricesBuffers.push_back(0);
     m_boneMatricesData.push_back({glm::mat4(1.0)});
@@ -51,6 +58,7 @@ std::vector<uint32_t> AnimationManager::listIDs() const
 
 void AnimationManager::onUpdate()
 {
+    m_logger->warn("animation manager dt: {}", AppWindow::getDeltaTime());
     m_spriteAnimator.onUpdate(AppWindow::getDeltaTime());
     m_skinAnimator.onUpdate(AppWindow::getDeltaTime());
 
@@ -96,7 +104,8 @@ uint32_t AnimationManager::addBoneMatrices(size_t boneCount)
     return _assignID();
 }
 
-const std::vector<glm::mat4> &AnimationManager::getFinalBoneMatrices(uint32_t id) const
+// return modifiable bone matrices per unique entity
+std::vector<glm::mat4> &AnimationManager::getFinalBoneMatrices(uint32_t id)
 {
     if(id <= 0 || id >= m_boneMatricesBuffers.size()) {
         m_logger->warn("bone matrices with id: {} does not exist", id);
@@ -104,4 +113,102 @@ const std::vector<glm::mat4> &AnimationManager::getFinalBoneMatrices(uint32_t id
     }
 
     return m_boneMatricesData[id];
+}
+
+bool AnimationManager::_loadAnimation(std::string_view path)
+{
+    return false;
+}
+
+bool AnimationManager::loadAnimation(std::string_view path, const aiScene* scene)
+{
+    auto it = m_animations.find(path.data());
+    if(it != m_animations.end()) {
+        m_logger->warn("failed ot load animation: animation with the same path {} exists", path.data());
+        return false;
+    }
+    
+    m_animations[path.data()] = {};
+    // m_animations.try_emplace(path.data(), {});
+    auto& animationData = m_animations.at(path.data());
+
+    for(int i = 0; i < scene->mNumAnimations; i++) {
+        aiAnimation* aiAnimation = scene->mAnimations[i];
+        
+        auto animation = std::make_shared<Animation>();
+        animation->ticksPerSecond = aiAnimation->mTicksPerSecond;
+        animation->duration = aiAnimation->mDuration;
+        
+        for(int j = 0; j < aiAnimation->mNumChannels; j++) {
+            aiNodeAnim* aiChannel = aiAnimation->mChannels[j];
+
+            Track track{};
+            track.boneName = aiChannel->mNodeName.C_Str();
+
+            for(int k = 0; k < aiChannel->mNumPositionKeys; k++) {
+                aiVectorKey aiPositionKey = aiChannel->mPositionKeys[k];
+                KeyPosition keyPosition{};
+                keyPosition.timeStamp = aiPositionKey.mTime;
+                keyPosition.position = AssimpGLMHelpers::toGlmVec3(aiPositionKey.mValue);
+                track.keyPositions.push_back(keyPosition);
+            }
+     
+            for(int k = 0; k < aiChannel->mNumRotationKeys; k++) {
+                aiQuatKey aiRotationKey = aiChannel->mRotationKeys[k];
+                aiQuaternion aiQuat = aiRotationKey.mValue;
+                KeyRotation keyRotation{};
+                keyRotation.timeStamp = aiRotationKey.mTime;
+                keyRotation.orientation.fromGlmQuat(glm::quat(aiQuat.w, aiQuat.x, aiQuat.y, aiQuat.z));
+                track.keyRotations.push_back(keyRotation);
+            }
+     
+            for(int k = 0; k < aiChannel->mNumScalingKeys; k++) {
+                aiVectorKey aiScalingKey = aiChannel->mScalingKeys[k];
+                KeyScale keyScale{};
+                keyScale.timeStamp = aiScalingKey.mTime;
+                keyScale.scale = AssimpGLMHelpers::toGlmVec3(aiScalingKey.mValue);
+                track.keyScales.push_back(keyScale);
+            }
+            
+            animation->tracks.push_back(track);
+        }
+        animationData.try_emplace(aiAnimation->mName.C_Str(), animation);
+    }
+    
+    return true;
+}
+
+std::shared_ptr<Animation> AnimationManager::getAnimation(std::string_view path, std::string_view name) const
+{
+    auto it = m_animations.find(path.data());
+    if(it == m_animations.end()) {
+        return nullptr;
+    }
+
+    auto& animationData = it->second;
+    auto dataIt = animationData.find(name.data());
+    if(dataIt == animationData.end()) {
+        return nullptr;
+    }
+
+    return dataIt->second;
+}
+
+uint32_t AnimationManager::addAnimator(uint32_t skeletonID)
+{
+    auto animator = std::make_shared<Animator>();
+    animator->skeletonID = skeletonID;
+    m_animators.try_emplace(m_ids, animator);
+
+    return _assignID();
+}
+
+std::shared_ptr<Animator> AnimationManager::getAnimator(uint32_t animatorID)
+{
+    auto it = m_animators.find(animatorID);
+    if(it == m_animators.end()) {
+        return nullptr;
+    }
+
+    return it->second;
 }

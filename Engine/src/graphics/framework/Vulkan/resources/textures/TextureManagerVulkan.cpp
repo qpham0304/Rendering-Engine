@@ -341,7 +341,7 @@ void TextureManagerVulkan::_createBindlessDescriptor()
     globalBindlessSetID = descriptorManagerVulkan->createSets(globalBindlessLayoutID, globalBindlessPoolID, 1);
 }
 
-void TextureManagerVulkan::registerTextureSampler(uint32_t textureID)
+void TextureManagerVulkan::registerBindlessTexture(uint32_t textureID)
 {
     TextureVulkan* tex = getTexture(textureID);
     VkDescriptorSet globalSet = descriptorManagerVulkan->getDescriptorSet(globalBindlessSetID)[0];

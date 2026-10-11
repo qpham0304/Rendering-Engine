@@ -69,6 +69,7 @@ private:
 	virtual void destroy(uint32_t id) override;
 	virtual void onUpdate() override;
     virtual void render() override;
+	virtual void drawDebug(glm::vec3 start, glm::vec3 end) override;
 	
 	virtual void _cleanupResources();
 	virtual void _recreateResources();

@@ -46,7 +46,6 @@ protected:
 	bool isActive{ false };
 	bool needResize{ false };
 
-	void _resize();
 	virtual void _recreateResources() = 0;
 	virtual void _cleanupResources() = 0;
 };

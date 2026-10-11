@@ -3,28 +3,46 @@
 #include "core/features/Math.h"
 #include <vector>
 
-class KeyFrame 
+struct KeyPosition
 {
-public:
-
-private:
-    float time;
-    Math::VQS toParentFromBone;
+	glm::vec3 position;
+	float timeStamp;
 };
 
-class Track 
+struct KeyRotation
 {
-public:
-
-private:
-    std::vector<KeyFrame> keyFrames;
+	Math::Quat orientation;
+	float timeStamp;
 };
 
-class Animation 
+struct KeyScale
 {
-public:
+	glm::vec3 scale;
+	float timeStamp;
+};
 
-private:
-    float duration;
-    std::vector<Track> tracks;
+
+struct Track // all the keyframe data of a bone at each time stamp
+{
+    std::string boneName;
+    std::vector<KeyPosition> keyPositions;
+    std::vector<KeyRotation> keyRotations;
+    std::vector<KeyScale> keyScales;
+};
+
+struct Animation 
+{
+    float ticksPerSecond{ 0.0f };
+    float duration{ 0.0f };
+    std::vector<Track> tracks;  //animated per bone info at each key frame
+};
+
+struct Animator
+{
+    //TODO: hard code getting animation
+    std::string animationPath{ "assets/models/aru/aru.gltf" };
+    std::string animationName{ "Formation_Pickup" };
+    uint32_t skeletonID;
+    float currentTime;
+	float deltaTime;
 };

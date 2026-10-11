@@ -6,6 +6,7 @@
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
+#include "AnimationManager.h"
 
 
 SpriteAnimator::SpriteAnimator()
@@ -17,6 +18,11 @@ SpriteAnimator::SpriteAnimator()
 SpriteAnimator::~SpriteAnimator()
 {
 
+}
+
+void SpriteAnimator::init(AnimationManager *manager)
+{
+    animationManager = manager;
 }
 
 void SpriteAnimator::play(std::string_view name)

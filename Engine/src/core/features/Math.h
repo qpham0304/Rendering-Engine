@@ -1,3 +1,5 @@
+#pragma once
+
 #include "MathIncludes.h"
 
 namespace Math {
@@ -5,37 +7,21 @@ namespace Math {
     glm::mat4 faceCameraBillboard(const glm::mat4& cameraView, const glm::mat4& model);
     glm::mat4 createRandomTransform(glm::vec3 ranges, glm::vec3 scale);
 
+    
     struct Quat {
         float x{ 0.0f };
         float y{ 0.0f };
         float z{ 0.0f };
         float w{ 1.0f };
-        
-        float dot(const Quat& other) const {
-            return x * other.x + y * other.y + z * other.z + w * other.w;
-        }
 
-        float length() {
-            return std::sqrt(x * x + y * y + z * z + w * w);
-        }
-        
-        void normalize() {
-            float length = this->length();
-            if(length > 0.0f) {
-                float invLength = 1.0f / length;
-                x *= invLength;
-                y *= invLength;
-                z *= invLength;
-                w *= invLength;
+        Quat& operator=(const Quat& other) {
+            if(this != &other) {
+                x = other.x;
+                y = other.y;
+                z = other.z;
+                w = other.w;
             }
-        }
-
-        Quat conjugate() const {
-            return { -x, -y, -z, -w };
-        }
-
-        Quat inverse() const {  // TODO: assume this being a unit quaternion change this if not
-            return this->conjugate();
+            return *this;
         }
 
         Quat operator+(const Quat& other) const {
@@ -50,6 +36,13 @@ namespace Math {
             result.w = w * other.w - x * other.x - y * other.y - z * other.z;
             
             return result;
+        }
+
+        void fromGlmQuat(const glm::quat& other) {
+            x = other.x;
+            y = other.y;
+            z = other.z;
+            w = other.w;
         }
 
         glm::mat4 toMat4() {
@@ -93,8 +86,6 @@ namespace Math {
 
             return m;
         }
-
-        static Quat slerp(const Quat& a, const Quat& b, float t);
     };
     struct VQS {
         glm::vec3 position {};
@@ -116,9 +107,18 @@ namespace Math {
             return T * R * S;
         }
         
-        static VQS interpolate(const VQS& a, const VQS& b, float t);
     };
 
 
+    float dot(const Quat& q1, const Quat& q2);
+    Quat normalize(const Quat& quat);
+    Quat conjugate(Quat quat);
+    Quat inverse(Quat quat);
+    float length(Quat quat);
+    
+    glm::vec3 lerp(const glm::vec3& a, const glm::vec3& b, float t);
+    Quat nlerp(const Quat& a, const Quat& b, float t);
+    Quat slerp(const Quat& a, const Quat& b, float t);
+    VQS interpolate(const VQS& a, const VQS& b, float t);
 
 }

@@ -69,6 +69,9 @@ private:
 	uint32_t displayPoolID { 0 };
 	uint32_t displaySetsID { 0 };
 
+	uint32_t width { 0 };
+	uint32_t height { 0 };
+
 	void _createResources();
 	void _createPipelines();
 	void _createDescriptors();

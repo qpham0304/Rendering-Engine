@@ -9,11 +9,13 @@ public:
     struct SkeletonNode {
 		std::string name = "Unknown";
         int boneIndex = -1;
+        int parentIndex = -1;
         Math::VQS vqs {};   //vec3 of position, scale, rotation
         glm::mat4 offsetMatrix {};
+        glm::vec3 worldPosition { 0.0f };
 
-		std::vector<uint32_t> meshIds{};
-		std::vector<uint32_t> childrenNode{};
+		// std::vector<uint32_t> meshIds{};
+		std::vector<uint32_t> childrenNodes{};
 
         bool isBone { false };
 		bool visibility { false };
@@ -25,7 +27,7 @@ public:
         std::vector<SkeletonNode> nodes;
         uint32_t rootIndex = 0;
 
-        std::unordered_map<std::string, int> boneNameToNodeIndex;
+        std::unordered_map<std::string, int> boneMap;
     };
 
 

@@ -1,7 +1,4 @@
 #include "SkeletonManager.h"
-#include "core/features/ServiceLocator.h"
-#include "BufferManager.h"
-
 
 SkeletonManager::SkeletonManager()
     : Manager("SkeletonManager")
@@ -32,7 +29,11 @@ void SkeletonManager::destroy(uint32_t id)
 
 std::vector<uint32_t> SkeletonManager::listIDs() const
 {
-    return std::vector<uint32_t>();
+    std::vector<uint32_t> list;
+    for(auto& [id, skeleton] : m_skeletons) {
+        list.push_back(id);
+    }
+    return list;
 }
 
 void SkeletonManager::onUpdate()

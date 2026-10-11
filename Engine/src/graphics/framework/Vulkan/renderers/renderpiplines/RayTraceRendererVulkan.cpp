@@ -99,7 +99,7 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
     ubo.frameCount = 0;
 
     uint32_t imageID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
-    textureManagerVulkan->registerTextureSampler(imageID);
+    textureManagerVulkan->registerBindlessTexture(imageID);
     pushConstant.bluenoiseIdx = imageID;
 
 	return true;
@@ -122,7 +122,12 @@ void RayTraceRendererVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 	
-	RendererVulkan::_resize();
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
 
 	instanceDataPrev = std::move(instanceData);
 	// instanceData.clear(); 
@@ -259,8 +264,8 @@ void RayTraceRendererVulkan::_createResources()
 	createTexture(rayTraceImage);
 	createTexture(postProcessImage);
 
-    textureManagerVulkan->registerTextureSampler(rayTraceImage->id());
-    textureManagerVulkan->registerTextureSampler(postProcessImage->id());
+    textureManagerVulkan->registerBindlessTexture(rayTraceImage->id());
+    textureManagerVulkan->registerBindlessTexture(postProcessImage->id());
 }
 
 void RayTraceRendererVulkan::_createPipeline()

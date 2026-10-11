@@ -67,9 +67,9 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	_createResourceLUT();
 	_createResourcePrefilteredMap();
 
-	textureManagerVulkan->registerTextureSampler(brdfLUT->id());
-	textureManagerVulkan->registerTextureSampler(prefilterMap->id());
-	textureManagerVulkan->registerTextureSampler(hdrImage->id());
+	textureManagerVulkan->registerBindlessTexture(brdfLUT->id());
+	textureManagerVulkan->registerBindlessTexture(prefilterMap->id());
+	textureManagerVulkan->registerBindlessTexture(hdrImage->id());
 	
 	writeBRDF();
 

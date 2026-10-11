@@ -4,24 +4,25 @@
 #include "SkeletonManager.h"
 #include "MaterialManager.h"
 #include "logging/Logger.h"
+#include "animation/AnimationManager.h"
 #include "core/features/ServiceLocator.h"
 #include "core/features/Timer.h"
 #include "core/features/Material.h"
+#include "core/events/EventManager.h"
+#include "core/events/Event.h"
+#include "core/features/EngineUtils.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp_glm_helpers.h>
 #include <functional>
-#include "core/events/EventManager.h"
-#include "core/events/Event.h"
-#include "core/features/EngineUtils.h"
 
 const std::unordered_map<std::string, std::function<std::pair<std::string, Mesh>()>> meshPrimitives = {
     { "$prim$Sphere", []() { return std::pair<std::string, Mesh>( "$prim$Sphere", EngineUtils::drawSphere(0.5f, 36, 36) ); }},
     { "$prim$Quad",   []() { return std::pair<std::string, Mesh>( "$prim$Quad", EngineUtils::drawQuad() ); }},
     { "$prim$Cube",   []() { return std::pair<std::string, Mesh>( "$prim$Cube", EngineUtils::drawCube(1.0) ); } }
-    // { "$prim$Capsule",   []() { return std::pair<std::string, Mesh>( "$prim$Capsule", EngineUtils::drawCapsule(1.0) ); } },
-    // { "$prim$Convex",   []() { return std::pair<std::string, Mesh>( "$prim$Convex", EngineUtils::drawConvex(1.0) ); } }
+    // { "$prim$Capsule",[]() { return std::pair<std::string, Mesh>( "$prim$Capsule", EngineUtils::drawCapsule(1.0) ); } },
+    // { "$prim$Convex", []() { return std::pair<std::string, Mesh>( "$prim$Convex", EngineUtils::drawConvex(1.0) ); } }
 };
 
 
@@ -44,6 +45,7 @@ bool ModelManager::init(WindowConfig config)
     meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
     skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
     materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
+    animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
     
     if (!(m_logger && textureManager && meshManager && materialManager)) {
         return false;
@@ -173,6 +175,11 @@ bool ModelManager::_loadModel(std::string_view path)
 
     const aiScene* scene = import.ReadFile(path.data(), flags);
 
+    if(scene->mNumAnimations > 0) {
+        animationManager->loadAnimation(path, scene);
+    }
+
+
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::string error = import.GetErrorString();
         m_logger->error("Model Loading failed: ERROR::ASSIMP::{}", error);
@@ -183,6 +190,7 @@ bool ModelManager::_loadModel(std::string_view path)
     for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
         if (scene->mMeshes[i]->HasBones()) {
             skeletonID = skeletonManager->addSkeleton(fileName);
+            _processSkeletonNodeHierarchy(skeletonID, scene->mRootNode, -1);
             break;
         }
     }
@@ -364,6 +372,43 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, const aiScene
     return textureIDs;
 }
 
+void ModelManager::_processSkeletonNodeHierarchy(uint32_t skeletonID, aiNode* aiNode, int parentIndex)
+{
+    auto skeleton = skeletonManager->getSkeleton(skeletonID);
+    if (!skeleton) {
+        return;
+    }
+
+    std::string nodeName = aiNode->mName.C_Str();
+
+    aiVector3D aiTranslation;
+    aiQuaternion aiRotation;
+    aiVector3D aiScale;
+    aiNode->mTransformation.Decompose(aiScale, aiRotation, aiTranslation);  //local matrix of each node relative to the parent
+
+    SkeletonManager::SkeletonNode node{};
+    node.name = nodeName;
+    int currentIndex = skeleton->nodes.size();
+    node.boneIndex = currentIndex;
+    node.isBone = false;
+    node.vqs.position = glm::vec3(aiTranslation.x, aiTranslation.y, aiTranslation.z);
+    node.vqs.rotation.fromGlmQuat(glm::quat(aiRotation.w, aiRotation.x, aiRotation.y, aiRotation.z));
+    node.vqs.scale = glm::vec3(aiScale.x, aiScale.y, aiScale.z);
+
+    skeleton->boneMap[nodeName] = currentIndex;
+    skeleton->nodes.push_back(node);
+
+    if (parentIndex != -1) {
+        skeleton->nodes[parentIndex].childrenNodes.push_back(currentIndex);
+    } else {
+        skeleton->rootIndex = currentIndex;
+    }
+
+    for (unsigned int i = 0; i < aiNode->mNumChildren; ++i) {
+        _processSkeletonNodeHierarchy(skeletonID, aiNode->mChildren[i], currentIndex);
+    }
+}
+
 void ModelManager::_setDefaultBone(Vertex &vertex)
 {
     for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
@@ -381,43 +426,31 @@ void ModelManager::_extractBoneWeightForVertices(uint32_t skeletonID, std::vecto
 
     for (unsigned int boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex) {
         std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
-
         glm::mat4 offsetMatrix = AssimpGLMHelpers::toGlmMat4(mesh->mBones[boneIndex]->mOffsetMatrix); 
-        auto it = skeleton->boneNameToNodeIndex.find(boneName);
-        int nodeBoneIndex = -1;
-        if (it == skeleton->boneNameToNodeIndex.end()) {
-            SkeletonManager::SkeletonNode node{};
-            node.name = boneName;
-            nodeBoneIndex = skeleton->nodes.size();    // boneindex is the current size before add of nodes
-            node.boneIndex = nodeBoneIndex;
-            node.offsetMatrix = offsetMatrix;
-            node.isBone = true;
-            skeleton->boneNameToNodeIndex[boneName] = node.boneIndex;
-            skeleton->nodes.push_back(node);
-        } else {    // if there's a match, use the existing bone index
-            nodeBoneIndex = it->second;
+
+        auto it = skeleton->boneMap.find(boneName);
+        if (it != skeleton->boneMap.end()) {
+            int nodeBoneIndex = it->second;
             auto& existingNode = skeleton->nodes[nodeBoneIndex];
             existingNode.isBone = true;
             existingNode.offsetMatrix = offsetMatrix;
-        }
 
-        auto weights = mesh->mBones[boneIndex]->mWeights;
-        int numWeights = mesh->mBones[boneIndex]->mNumWeights;
+            auto weights = mesh->mBones[boneIndex]->mWeights;
+            int numWeights = mesh->mBones[boneIndex]->mNumWeights;
 
-        assert(nodeBoneIndex != -1);
-        for (int i = 0; i < numWeights; ++i) {
-            int vertexId = weights[i].mVertexId;
-            float weight = weights[i].mWeight;
+            for (int i = 0; i < numWeights; ++i) {
+                int vertexId = weights[i].mVertexId;
+                float weight = weights[i].mWeight;
 
-            assert(vertexId < vertices.size());
-            for(int j = 0; j < MAX_BONE_INFLUENCE; j++) {
-                Vertex& vertex = vertices[vertexId];
-                if(vertex.m_weights[j] == 0.0f) {
-                    vertex.m_boneIDs[j] = nodeBoneIndex;
-                    vertex.m_weights[j] = weight;
-                    break;
+                for(int j = 0; j < MAX_BONE_INFLUENCE; j++) {
+                    Vertex& vertex = vertices[vertexId];
+                    if(vertex.m_weights[j] == 0.0f) {
+                        vertex.m_boneIDs[j] = nodeBoneIndex;
+                        vertex.m_weights[j] = weight;
+                        break;
+                    }
                 }
             }
         }
-   }
+    }
 }

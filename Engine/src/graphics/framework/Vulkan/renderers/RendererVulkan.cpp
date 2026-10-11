@@ -88,12 +88,3 @@ void RendererVulkan::render(Camera& camera)
 {
 	
 }
-
-void RendererVulkan::_resize()
-{
-	if (needResize) {
-        _recreateResources();
-        needResize = false;
-        return; 
-    }
-}

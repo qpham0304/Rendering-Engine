@@ -92,7 +92,11 @@ void ForwardRendererVulkan::render(Camera& camera)
 {
     Timer timer(m_name, true);
 
-    RendererVulkan::_resize();
+	if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
 
 
 	instanceData.clear(); 
@@ -224,7 +228,9 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 					if(entity.hasComponent<SkinningComponent>()) {
 						auto& skinningComponent = entity.getComponent<SkinningComponent>();
 						pushConstantLight.boneMatricesIdx = skinningComponent.boneMatricesID;
-					} 
+					} else {
+						pushConstantLight.boneMatricesIdx = 0;
+					}
 					meshManager->bindMesh(meshID);
 
 					vkCmdPushConstants(
@@ -396,7 +402,7 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 	renderTarget.framebuffers.resize(numFrames);
 	
 	std::vector<uint32_t> colorTextureIDs;
-	
+
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		auto createTexture = [&] (TextureVulkan*& texture,
 			uint32_t w, uint32_t h,	VkFormat format,
@@ -429,7 +435,7 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 		);
 
 		colorTextureIDs.push_back(renderTarget.colorTextures[i]->id());
-		textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[i]->id());
+		textureManagerVulkan->registerBindlessTexture(renderTarget.colorTextures[i]->id());
 
 		std::array<VkImageView, 2> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,

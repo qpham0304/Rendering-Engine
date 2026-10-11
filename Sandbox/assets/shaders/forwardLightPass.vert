@@ -67,15 +67,15 @@ layout(push_constant) uniform PushConstant {
 void main() {
     BoneModelBuffer modelBones = pc.boneTableRef.ptrs[pc.boneMatricesIdx];
 
-    mat4 skinMatrix = 
-        modelBones.boneMatrices[inBoneIDs.x] * inBoneWeights.x +
-        modelBones.boneMatrices[inBoneIDs.y] * inBoneWeights.y;
+    mat4 skinMatrix = modelBones.boneMatrices[inBoneIDs.x] * inBoneWeights.x 
+                    + modelBones.boneMatrices[inBoneIDs.y] * inBoneWeights.y;
 
+    vec4 localPosition = skinMatrix * vec4(inPosition, 1.0);
     mat4 modelMatrix = ssbo.models[gl_InstanceIndex];
-    vec4 worldPos = modelMatrix * vec4(inPosition, 1.0);
+    vec4 worldPos = modelMatrix * localPosition;
     gl_Position = ubo.proj * ubo.view * worldPos;
 
-    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
+    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix * skinMatrix)));
 
     outNormal = normalize(normalMatrix * inNormal);
     outTangent   = normalize(normalMatrix * inTangent.xyz);

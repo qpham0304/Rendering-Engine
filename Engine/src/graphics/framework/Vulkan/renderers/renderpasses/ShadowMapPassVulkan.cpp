@@ -50,8 +50,8 @@ bool ShadowMapPassVulkan::init(WindowConfig config)
 	_createComputePipeline();
 
 	
-	textureManagerVulkan->registerTextureSampler(depthMap->id());
-	textureManagerVulkan->registerTextureSampler(blueNoiseImage->id());
+	textureManagerVulkan->registerBindlessTexture(depthMap->id());
+	textureManagerVulkan->registerBindlessTexture(blueNoiseImage->id());
 
 	pushconstant.radius = 64;  	// range 1 to 64
     pushconstant.sigma = 15;  	// range 1.0 to 30.0

@@ -152,7 +152,7 @@ public:
 	virtual void* inspectTexture(uint32_t id) override;
 	virtual uint32_t getInspectorLayout();
 
-	void registerTextureSampler(uint32_t textureID);
+	void registerBindlessTexture(uint32_t textureID);
 	void registerTextureStorage(uint32_t textureID);
 	uint32_t getBindlessTextureLayout();
 	uint32_t getBindlessSet();

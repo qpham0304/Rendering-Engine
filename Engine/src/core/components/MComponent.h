@@ -272,6 +272,7 @@ struct MYGRAPHICSENGINE_EXPORT SkinningComponent {
 	SkinningComponent() = default;
 
 	uint32_t boneMatricesID { 0 };
+	uint32_t animatorID { 0 };
 
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
 		SkinningComponent

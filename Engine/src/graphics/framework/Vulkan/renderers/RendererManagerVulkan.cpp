@@ -72,10 +72,6 @@ bool RendererManagerVulkan::init(WindowConfig config)
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
 	debugRenderer = addRenderer<DebugRendererVulkan>("DebugRendererVulkan");
 
-
-    auto* debugRendererVulkan = dynamic_cast<DebugRendererVulkan*>(debugRenderer);
-    debugRendererVulkan->drawLine(glm::vec3(-5.0), glm::vec3(5.0));
-
     for(auto& [name, renderer] : m_renderers) {
         renderer->init(config);
     }
@@ -200,6 +196,18 @@ void RendererManagerVulkan::render()
     endFrame();
 }
 
+void RendererManagerVulkan::drawDebug(glm::vec3 start, glm::vec3 end)
+{
+    if(!debugRenderer) {
+        m_logger->error("Could not request draw debug: Debug Renderer is not present");
+        return;
+    }
+
+    auto* debugRendererVulkan = dynamic_cast<DebugRendererVulkan*>(debugRenderer);
+    assert(debugRendererVulkan && "drawdebug: failed to cast debug renderer");
+
+    debugRendererVulkan->drawLine(start, end);
+}
 
 void RendererManagerVulkan::_cleanupResources()
 {
