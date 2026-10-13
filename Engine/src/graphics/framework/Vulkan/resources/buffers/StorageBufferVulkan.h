@@ -7,7 +7,7 @@ class StorageBufferVulkan : public BufferVulkan
 public:
 	friend class BufferManagerVulkan;
 
-	StorageBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory, size_t size);
+	StorageBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory, size_t size);
 
 	virtual ~StorageBufferVulkan() override;
 

@@ -123,7 +123,7 @@ const TextureSamplerConfig &TextureVulkan::getSamplerInfo()
     return samplerInfo;
 }
 
-void TextureVulkan::destroy(VkDevice device)
+void TextureVulkan::destroy(VkDevice device, VmaAllocator allocator)
 {
 	if (textureSampler != VK_NULL_HANDLE) {
         vkDestroySampler(device, textureSampler, nullptr);
@@ -134,12 +134,14 @@ void TextureVulkan::destroy(VkDevice device)
         textureImageView = VK_NULL_HANDLE;
     }
     if (textureImage != VK_NULL_HANDLE) {
-        vkDestroyImage(device, textureImage, nullptr);
+        if (textureImageMemory != VK_NULL_HANDLE) {
+            // image created through VMA: destroys the image and frees its allocation together
+            vmaDestroyImage(allocator, textureImage, textureImageMemory);
+            textureImageMemory = VK_NULL_HANDLE;
+        } else {
+            vkDestroyImage(device, textureImage, nullptr);
+        }
         textureImage = VK_NULL_HANDLE;
-    }
-    if (textureImageMemory != VK_NULL_HANDLE) {
-        vkFreeMemory(device, textureImageMemory, nullptr);
-        textureImageMemory = VK_NULL_HANDLE;
     }
 }
 

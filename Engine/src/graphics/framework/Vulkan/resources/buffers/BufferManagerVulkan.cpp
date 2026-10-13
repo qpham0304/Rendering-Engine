@@ -40,19 +40,6 @@ bool BufferManagerVulkan::init(WindowConfig config)
 	return true;
 }
 
-uint32_t BufferManagerVulkan::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(renderDeviceVulkan->device.getPhysicalDevice(), &memProperties);
-
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-			return i;
-		}
-	}
-
-	throw std::runtime_error("failed to find suitable memory type!");
-}
-
 //TODO: only support for ray tracing at the moment might want more supports for generic types
 uint32_t BufferManagerVulkan::createInstanceBuffer(const VkAccelerationStructureInstanceKHR* instances, uint32_t numInstnaces)
 {
@@ -60,7 +47,7 @@ uint32_t BufferManagerVulkan::createInstanceBuffer(const VkAccelerationStructure
 
 
 	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
+	VmaAllocation stagingBufferMemory;
 	createBuffer(
 		bufferSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -70,12 +57,12 @@ uint32_t BufferManagerVulkan::createInstanceBuffer(const VkAccelerationStructure
 	);
 
 	void* data;
-	vkMapMemory(renderDeviceVulkan->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	vmaMapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory, &data);
 	memcpy(data, instances, (size_t)bufferSize);
-	vkUnmapMemory(renderDeviceVulkan->device, stagingBufferMemory);
+	vmaUnmapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory);
 
 	VkBuffer buffer;
-    VkDeviceMemory bufferMemory;
+    VmaAllocation bufferMemory;
 	createBuffer(
 		bufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT 
@@ -89,8 +76,7 @@ uint32_t BufferManagerVulkan::createInstanceBuffer(const VkAccelerationStructure
 
 	copyBuffer(stagingBuffer, buffer, bufferSize);
 
-	vkDestroyBuffer(renderDeviceVulkan->device, stagingBuffer, nullptr);
-	vkFreeMemory(renderDeviceVulkan->device, stagingBufferMemory, nullptr);
+	vmaDestroyBuffer(renderDeviceVulkan->device.getAllocator(), stagingBuffer, stagingBufferMemory);
 
 	auto bufferObject = std::make_shared<BufferVulkan>(m_ids, buffer, bufferMemory);
     
@@ -108,20 +94,20 @@ uint32_t BufferManagerVulkan::createInstanceBuffer(const VkAccelerationStructure
 void BufferManagerVulkan::mapMemory(uint32_t bufferID, size_t size)
 {
 	BufferVulkan* buffer = getBuffer(bufferID);
-	vkMapMemory(renderDeviceVulkan->device, buffer->getMemory(), 0, size, 0, &buffer->mappedBuffer);
+	{ VmaAllocationInfo mapInfo{}; vmaGetAllocationInfo(renderDeviceVulkan->device.getAllocator(), buffer->getMemory(), &mapInfo); buffer->mappedBuffer = mapInfo.pMappedData; }
 }
 
 void BufferManagerVulkan::unmapMemory(uint32_t bufferID)
 {
 	BufferVulkan* buffer = getBuffer(bufferID);
-	vkUnmapMemory(renderDeviceVulkan->device, buffer->bufferMemory);
+	(void)buffer; // persistently mapped (MAPPED_BIT): the mapping lives until the buffer is destroyed
 }
 
 bool BufferManagerVulkan::onClose()
 {
 	//TODO: destroy() resizes buffers during iteration, check if this break
 	for (auto& [id, buffer] : buffers) {
-		buffer->destroy(renderDeviceVulkan->device);
+		buffer->destroy(renderDeviceVulkan->device, renderDeviceVulkan->device.getAllocator());
 	}
 	buffers.clear();
 	return true;
@@ -132,7 +118,7 @@ void BufferManagerVulkan::destroy(uint32_t id)
 	if (buffers.find(id) == buffers.end()) {
 		throw std::runtime_error("buffer not found");
 	}
-	buffers[id]->destroy(renderDeviceVulkan->device);
+	buffers[id]->destroy(renderDeviceVulkan->device, renderDeviceVulkan->device.getAllocator());
 	buffers.erase(id);
 }
 
@@ -170,7 +156,7 @@ void BufferManagerVulkan::createBuffer(
 	VkBufferUsageFlags usage,
 	VkMemoryPropertyFlags properties,
 	VkBuffer& buffer,
-	VkDeviceMemory& bufferMemory
+	VmaAllocation& bufferMemory
 ) {
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -178,39 +164,37 @@ void BufferManagerVulkan::createBuffer(
 	bufferInfo.usage = usage;
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	if (vkCreateBuffer(renderDeviceVulkan->device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+	// VMA handles memory type selection, sub-allocation and, because the allocator is created with
+	// BUFFER_DEVICE_ADDRESS_BIT, the device-address allocate flag whenever usage requests it.
+	VmaAllocationCreateInfo allocInfo{};
+	allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+	allocInfo.requiredFlags = properties;
+	if (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+		// VMA (AUTO mode) refuses vmaMapMemory unless CPU access is declared at creation.
+		// Upload-only buffers (staging, uniforms) get sequential-write; anything the CPU may read back gets random access.
+		const bool writeOnly = (usage & (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)) != 0;
+		allocInfo.flags |= writeOnly ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+		                             : VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+		allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT; // pointer is in VmaAllocationInfo::pMappedData; VMA unmaps on destroy
+	}
+
+	VkResult result = vmaCreateBuffer(
+		renderDeviceVulkan->device.getAllocator(), &bufferInfo, &allocInfo, &buffer, &bufferMemory, nullptr
+	);
+	if (result != VK_SUCCESS) {
 		throw std::runtime_error("failed to create buffer!");
 	}
-
-	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(renderDeviceVulkan->device, buffer, &memRequirements);
-
-	VkMemoryAllocateFlagsInfo flagsInfo{};
-	flagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
-	flagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
-
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.pNext = &flagsInfo;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-
-	if (vkAllocateMemory(renderDeviceVulkan->device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate buffer memory!");
-	}
-
-	vkBindBufferMemory(renderDeviceVulkan->device, buffer, bufferMemory, 0);
 }
 
 uint32_t BufferManagerVulkan::createVertexBuffer(const void* vertices, int size)
 {
 	VkDeviceSize bufferSize = size;
 	VkBuffer vertexBuffer;
-	VkDeviceMemory vertexBufferMemory;
+	VmaAllocation vertexBufferMemory;
 
 
 	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
+	VmaAllocation stagingBufferMemory;
 	createBuffer(
 		bufferSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -220,9 +204,9 @@ uint32_t BufferManagerVulkan::createVertexBuffer(const void* vertices, int size)
 	);
 
 	void* data;
-	vkMapMemory(renderDeviceVulkan->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	vmaMapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory, &data);
 	memcpy(data, vertices, (size_t)bufferSize);
-	vkUnmapMemory(renderDeviceVulkan->device, stagingBufferMemory);
+	vmaUnmapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory);
 
 	createBuffer(
 		bufferSize,
@@ -237,8 +221,7 @@ uint32_t BufferManagerVulkan::createVertexBuffer(const void* vertices, int size)
 
 	copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 
-	vkDestroyBuffer(renderDeviceVulkan->device, stagingBuffer, nullptr);
-	vkFreeMemory(renderDeviceVulkan->device, stagingBufferMemory, nullptr);
+	vmaDestroyBuffer(renderDeviceVulkan->device.getAllocator(), stagingBuffer, stagingBufferMemory);
 
 	buffers[m_ids] = std::make_shared<VertexBufferVulkan>(
 		m_ids,
@@ -254,10 +237,10 @@ uint32_t BufferManagerVulkan::createIndexBuffer(const uint32_t* indices, int siz
 {
 	VkDeviceSize bufferSize = sizeof(uint32_t) * size;
 	VkBuffer indexBuffer;
-	VkDeviceMemory indexBufferMemory;
+	VmaAllocation indexBufferMemory;
 
 	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
+	VmaAllocation stagingBufferMemory;
 	createBuffer(
 		bufferSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -267,9 +250,9 @@ uint32_t BufferManagerVulkan::createIndexBuffer(const uint32_t* indices, int siz
 	);
 
 	void* data;
-	vkMapMemory(renderDeviceVulkan->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	vmaMapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory, &data);
 	memcpy(data, indices, (size_t)bufferSize);
-	vkUnmapMemory(renderDeviceVulkan->device, stagingBufferMemory);
+	vmaUnmapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory);
 
 	createBuffer(
 		bufferSize,
@@ -284,8 +267,7 @@ uint32_t BufferManagerVulkan::createIndexBuffer(const uint32_t* indices, int siz
 
 	copyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
-	vkDestroyBuffer(renderDeviceVulkan->device, stagingBuffer, nullptr);
-	vkFreeMemory(renderDeviceVulkan->device, stagingBufferMemory, nullptr);
+	vmaDestroyBuffer(renderDeviceVulkan->device.getAllocator(), stagingBuffer, stagingBufferMemory);
 
 	buffers[m_ids] = std::make_shared<IndexBufferVulkan>(m_ids, indexBuffer, indexBufferMemory);
 
@@ -297,7 +279,7 @@ void BufferManagerVulkan::createUniformBuffers(
 	size_t bufferSize
 ){
 	VkBuffer uniformBuffer;
-	VkDeviceMemory uniformBufferMemory;
+	VmaAllocation uniformBufferMemory;
 
 	uniformBuffers.resize(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT);
 
@@ -309,7 +291,7 @@ void BufferManagerVulkan::createUniformBuffers(
 
 uint32_t BufferManagerVulkan::createUniformBuffer(
 	VkBuffer& buffer, 
-	VkDeviceMemory& buffersMemory, 
+	VmaAllocation& buffersMemory, 
 	size_t bufferSize
 ){
 	createBuffer(
@@ -323,7 +305,7 @@ uint32_t BufferManagerVulkan::createUniformBuffer(
 	buffers[m_ids] = std::make_shared<UniformBufferVulkan>(m_ids, buffer, buffersMemory);
 	UniformBufferVulkan* ref = static_cast<UniformBufferVulkan*>(buffers[m_ids].get());
 
-	vkMapMemory(renderDeviceVulkan->device, buffersMemory, 0, bufferSize, 0, &ref->mappedBuffer);
+	{ VmaAllocationInfo mapInfo{}; vmaGetAllocationInfo(renderDeviceVulkan->device.getAllocator(), buffersMemory, &mapInfo); ref->mappedBuffer = mapInfo.pMappedData; }
 
 	return _assignID();
 }
@@ -332,7 +314,7 @@ uint32_t BufferManagerVulkan::createUniformBuffer(
 void BufferManagerVulkan::createStorageBuffers(std::vector<StorageBufferVulkan*>& storageBuffers, size_t bufferSize)
 {
 	VkBuffer storageBuffer;
-	VkDeviceMemory storageBufferMemory;
+	VmaAllocation storageBufferMemory;
 
 	storageBuffers.resize(VulkanSwapChain::MAX_FRAMES_IN_FLIGHT);
 
@@ -343,7 +325,7 @@ void BufferManagerVulkan::createStorageBuffers(std::vector<StorageBufferVulkan*>
 }
 
 //TODO: allow customizable HOST_VISIBLE OR DEVICE_LOCAL for performance
-uint32_t BufferManagerVulkan::createStorageBuffer(VkBuffer& buffer, VkDeviceMemory& buffersMemory, size_t bufferSize)
+uint32_t BufferManagerVulkan::createStorageBuffer(VkBuffer& buffer, VmaAllocation& buffersMemory, size_t bufferSize)
 {
 	createBuffer(
         bufferSize,
@@ -356,7 +338,7 @@ uint32_t BufferManagerVulkan::createStorageBuffer(VkBuffer& buffer, VkDeviceMemo
     buffers[m_ids] = std::make_shared<StorageBufferVulkan>(m_ids, buffer, buffersMemory, bufferSize);
 	StorageBufferVulkan* ref = static_cast<StorageBufferVulkan*>(buffers[m_ids].get());
 
-	vkMapMemory(renderDeviceVulkan->device, buffersMemory, 0, bufferSize, 0, &ref->mappedBuffer);
+	{ VmaAllocationInfo mapInfo{}; vmaGetAllocationInfo(renderDeviceVulkan->device.getAllocator(), buffersMemory, &mapInfo); ref->mappedBuffer = mapInfo.pMappedData; }
 
 	return _assignID();
 }
@@ -364,7 +346,7 @@ uint32_t BufferManagerVulkan::createStorageBuffer(VkBuffer& buffer, VkDeviceMemo
 uint32_t BufferManagerVulkan::createBufferDeviceAddress(size_t bufferSize)
 {
 	VkBuffer buffer;
-	VkDeviceMemory bufferMemory;
+	VmaAllocation bufferMemory;
 
 	createBuffer(
         bufferSize,
@@ -384,7 +366,7 @@ uint32_t BufferManagerVulkan::createBufferDeviceAddress(size_t bufferSize)
     addressInfo.buffer = buffer;
 	deviceAddressBuffer->deviceAddress = vkGetBufferDeviceAddress(renderDeviceVulkan->device, &addressInfo);
 
-    vkMapMemory(renderDeviceVulkan->device, deviceAddressBuffer->getMemory(), 0, bufferSize, 0, &deviceAddressBuffer->mappedBuffer);
+    { VmaAllocationInfo mapInfo{}; vmaGetAllocationInfo(renderDeviceVulkan->device.getAllocator(), deviceAddressBuffer->getMemory(), &mapInfo); deviceAddressBuffer->mappedBuffer = mapInfo.pMappedData; }
 	
 	buffers[m_ids] = deviceAddressBuffer;
 
@@ -397,7 +379,7 @@ uint32_t BufferManagerVulkan::createAccelStructureBuffer(
 ){
 
 	VkBuffer buffer;
-	VkDeviceMemory bufferMemory;
+	VmaAllocation bufferMemory;
 
 
 	//TODO: check if this fail on machine that does not support acceleration structure
@@ -430,7 +412,7 @@ uint32_t BufferManagerVulkan::createAccelStructureBuffer(
 uint32_t BufferManagerVulkan::createBufferObject(uint64_t maxSize)
 {
 	VkBuffer buffer;
-	VkDeviceMemory bufferMemory;
+	VmaAllocation bufferMemory;
 
 	createBuffer(
         maxSize,
@@ -458,7 +440,7 @@ uint32_t BufferManagerVulkan::createBufferObject(uint64_t maxSize)
 uint32_t BufferManagerVulkan::createBuffer2(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 {
 	VkBuffer buffer;
-	VkDeviceMemory memory;
+	VmaAllocation memory;
 
 	createBuffer(size, usage, properties, buffer, memory);
 	

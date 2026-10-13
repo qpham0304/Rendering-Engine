@@ -1,7 +1,7 @@
 #include "IndexBufferVulkan.h"
 #include <volk.h>
 
-IndexBufferVulkan::IndexBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory)
+IndexBufferVulkan::IndexBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory)
 	: BufferVulkan(id, buffer, bufferMemory)
 {
 }

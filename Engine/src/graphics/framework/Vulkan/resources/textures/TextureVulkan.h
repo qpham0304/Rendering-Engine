@@ -2,6 +2,7 @@
 
 #include "core/features/Texture.h"
 #include <volk.h>
+#include <vk_mem_alloc.h>
 
 class BufferVulkan;
 class BufferManagerVulkan;
@@ -50,8 +51,8 @@ protected:
 	virtual void loadTexture(const char* path, bool flip) {};
 
 public:
-	VkImage textureImage;
-	VkDeviceMemory textureImageMemory;
+	VkImage textureImage { VK_NULL_HANDLE };
+	VmaAllocation textureImageMemory { VK_NULL_HANDLE };
 	VkImageView textureImageView;
 	VkSampler textureSampler;
 	VkFormat format;
@@ -61,7 +62,7 @@ public:
 	const TextureSamplerConfig& getSamplerInfo();
 
 private:
-	void destroy(VkDevice device);
+	void destroy(VkDevice device, VmaAllocator allocator);
 
     VkDescriptorImageInfo imageInfoGeneral{};
     VkDescriptorImageInfo imageInfoReadOnly{};

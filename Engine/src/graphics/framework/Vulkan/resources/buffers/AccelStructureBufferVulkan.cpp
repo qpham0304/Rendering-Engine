@@ -2,7 +2,7 @@
 #include <volk.h>
 #include <cstring>
 
-AccelStructureBufferVulkan::AccelStructureBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory)
+AccelStructureBufferVulkan::AccelStructureBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory)
 	: BufferVulkan(id, buffer, bufferMemory)
 {
 }
@@ -35,8 +35,8 @@ const VkWriteDescriptorSetAccelerationStructureKHR& AccelStructureBufferVulkan::
     return descASInfo;
 }
 
-void AccelStructureBufferVulkan::destroy(VkDevice device)
+void AccelStructureBufferVulkan::destroy(VkDevice device, VmaAllocator allocator)
 {
-    BufferVulkan::destroy(device);
+    BufferVulkan::destroy(device, allocator);
     vkDestroyAccelerationStructureKHR(device, accelStr, nullptr);
 }

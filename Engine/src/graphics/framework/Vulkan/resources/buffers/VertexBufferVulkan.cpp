@@ -1,7 +1,7 @@
 #include "VertexBufferVulkan.h"
 #include <volk.h>
 
-VertexBufferVulkan::VertexBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory)
+VertexBufferVulkan::VertexBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory)
 	: BufferVulkan(id, buffer, bufferMemory)
 {
 }

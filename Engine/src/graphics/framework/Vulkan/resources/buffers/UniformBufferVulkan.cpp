@@ -2,7 +2,7 @@
 #include <volk.h>
 #include <cstring>
 
-UniformBufferVulkan::UniformBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory)
+UniformBufferVulkan::UniformBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory)
 	: BufferVulkan(id, buffer, bufferMemory)
 {
 }

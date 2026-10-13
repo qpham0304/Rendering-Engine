@@ -2,6 +2,7 @@
 
 #include "core/resources/managers/TextureManager.h"
 #include <volk.h>
+#include <vk_mem_alloc.h>
 #include "TextureVulkan.h"
 
 class RenderDeviceVulkan;
@@ -20,7 +21,7 @@ public:
 		VkImageUsageFlags usage,
 		VkMemoryPropertyFlags properties,
 		VkImage& image,
-		VkDeviceMemory& imageMemory,
+		VmaAllocation& imageMemory,
 		uint32_t mipLevels,
 		const VulkanDevice& device
 	);
@@ -33,7 +34,7 @@ public:
 		VkImageUsageFlags usage, 
 		VkMemoryPropertyFlags properties, 
 		VkImage& image, 
-		VkDeviceMemory& imageMemory,
+		VmaAllocation& imageMemory,
 		uint32_t mipLevels,
 		uint32_t arrayLayers,          
 		VkImageCreateFlags flags,      

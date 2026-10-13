@@ -81,10 +81,33 @@ void VulkanDevice::create()
 	createSurface();
 	selectPhysicalDevice();
 	createLogicalDevice();
+	createAllocator();
+}
+
+void VulkanDevice::createAllocator()
+{
+	VmaVulkanFunctions functions{};
+	functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+	functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+
+	VmaAllocatorCreateInfo info{};
+	info.vulkanApiVersion = VK_API_VERSION_1_4;
+	info.instance = instance;
+	info.physicalDevice = physicalDevice;
+	info.device = device;
+	info.pVulkanFunctions = &functions;
+	// required: buffers are queried with vkGetBufferDeviceAddress (features12.bufferDeviceAddress)
+	info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+
+	VALIDATE(vmaCreateAllocator(&info, &allocator));
 }
 
 void VulkanDevice::destroy()
 {
+	if (allocator != VK_NULL_HANDLE) {
+		vmaDestroyAllocator(allocator);
+		allocator = VK_NULL_HANDLE;
+	}
 	vkDestroyDevice(device, nullptr);
 
 	if (enableValidationLayers) {
