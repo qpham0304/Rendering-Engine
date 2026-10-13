@@ -56,7 +56,7 @@ uint32_t MeshManager::loadMesh(Mesh& mesh)
     
     MeshData meshData{};
     meshData.vertexBufferID = m_bufferManager->createVertexBuffer(
-        m_meshes[m_ids]->vertices.data(), m_meshes[m_ids]->vertices.size()
+        m_meshes[m_ids]->vertices.data(), m_meshes[m_ids]->vertices.size() * sizeof(Vertex)
     );
     
     meshData.indexBufferID = m_bufferManager->createIndexBuffer(

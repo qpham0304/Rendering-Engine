@@ -4,7 +4,7 @@
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
-#include <graphics/framework/Vulkan/renderers/renderpasses/ShadowMapPassVulkan.h>
+#include "graphics/framework/Vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
 
 #include <glm/glm.hpp>
@@ -14,19 +14,6 @@ class ForwardRendererVulkan : public RendererVulkan
 {
 
 private:
-	struct UniformBufferObject {
-		glm::mat4 invNormal;
-		glm::mat4 view;
-		glm::mat4 proj;
-		glm::vec4 cameraPos;
-		glm::mat4 invView;
-		glm::mat4 invProj;
-		float width;
-		float height;
-		int shadowMapID;
-		int blueNoiseID;
-	};
-
 	struct StorageBufferObject {
 		glm::mat4 model;
 	};
@@ -37,10 +24,11 @@ private:
 		float time;
 		glm::mat4 sunlightMVP;
 		glm::vec4 direction;
-		glm::vec4 color;
+		// glm::vec4 color;
 		float numLights;
-		float skyboxDetail;
 		uint32_t materialIdx;
+		uint32_t boneMatricesIdx;
+		uint64_t boneMatricesRef;
 	};
 
 	struct LightSSBO {
@@ -86,12 +74,10 @@ private:
 	bool showGui{ true };
 	PushConstantLight pushConstantLight;
 
-	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	std::vector<StorageBufferVulkan*> storagebuffersList;
 	std::vector<StorageBufferVulkan*> lightStoragebuffers;
 	std::vector<StorageBufferObject> instanceData;
 	std::vector<LightSSBO> lights;
-	UniformBufferObject ubo{};
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorPool descriptorPool;
@@ -100,7 +86,7 @@ private:
 	uint32_t poolID;
 	uint32_t setsID;
 
-	uint32_t storageBufferID;
+	// uint32_t storageBufferID;
 
 	VulkanRenderTarget renderTarget;
 	std::unique_ptr<VulkanPipeline> offscreenPipeline;

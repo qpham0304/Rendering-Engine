@@ -15,8 +15,3 @@ void DeviceAddressBufferVulkan::bind(void *commandBuffer)
 {
     
 }
-
-void DeviceAddressBufferVulkan::update(const void *src, size_t size)
-{
-    memcpy(mappedBuffer, src, size);
-}

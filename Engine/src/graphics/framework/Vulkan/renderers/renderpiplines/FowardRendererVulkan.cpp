@@ -9,6 +9,7 @@
 #include <core/resources/managers/MeshManager.h>
 #include <core/resources/managers/ModelManager.h>
 #include <core/resources/managers/DescriptorManager.h>
+#include <animation/AnimationManager.h>
 #include <gui/GuiManager.h>
 #include <core/features/Mesh.h>
 #include <core/features/Camera.h>
@@ -20,7 +21,6 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <core/scene/SceneManager.h>
-#include <imgui.h>
 
 
 ForwardRendererVulkan::ForwardRendererVulkan(std::string serviceName) 
@@ -46,8 +46,7 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	
 	assert(shadowMapRenderer && imageBasedRenderer && "failed to retrieve renderer");
 
-	pushConstantLight.skyboxDetail = 0.0f;
-	pushConstantLight.color = sunColor * sunIntensity;
+	// pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.bias = 0.001f;
 
 	_createDescriptorSetLayout();
@@ -56,10 +55,9 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	_createDescriptorPool();
 	descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
 	
-	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
-	instanceData.resize(10000);
-	size_t bufferSize = 10000 * sizeof(StorageBufferObject);
+	instanceData.resize(Common::MAX_INSTANCES);
+	size_t bufferSize = Common::MAX_INSTANCES * sizeof(StorageBufferObject);
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
 
 	lights.reserve(numLights);
@@ -94,7 +92,11 @@ void ForwardRendererVulkan::render(Camera& camera)
 {
     Timer timer(m_name, true);
 
-    RendererVulkan::_resize();
+	if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
 
 
 	instanceData.clear(); 
@@ -119,27 +121,14 @@ void ForwardRendererVulkan::render(Camera& camera)
 			));
         }
     }
-
-	ubo.view = camera.getViewMatrix();
-	ubo.proj = camera.getProjectionMatrix();
-	ubo.cameraPos = glm::vec4(camera.getPosition(), 1.0);
-	ubo.proj[1][1] *= -1;
-	ubo.invView = camera.getInViewMatrix();
-	ubo.invProj = camera.getInProjectionMatrix();
-	ubo.invProj[1][1] *= -1;
-	ubo.width = renderTarget.width;
-	ubo.height = renderTarget.height;
-	ubo.shadowMapID = shadowMapRenderer->depthMap->id();
-	ubo.blueNoiseID = shadowMapRenderer->blueNoiseImage->id();
 	
-	pushConstantLight.color = sunColor * sunIntensity;
+	// pushConstantLight.color = sunColor * sunIntensity;
 	pushConstantLight.direction = glm::vec4(shadowMapRenderer->lightDir, 0.0f);
 	pushConstantLight.sunlightMVP = shadowMapRenderer->lightSpaceMatrix;
     pushConstantLight.time = AppWindow::getTime();
 	pushConstantLight.numLights = lights.size();
 
 	uint32_t frame = renderDeviceVulkan->getCurrentFrameIndex();
-	uniformbuffersList[frame]->update(&ubo, sizeof(ubo));
 
 	StorageBufferVulkan* ssbo = storagebuffersList[frame];
 	ssbo->update(instanceData.data(), instanceData.size() * sizeof(StorageBufferObject));
@@ -195,7 +184,19 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 		int index = 0;
 		int lightIndex = 0;
 
-		materialManager->bindMaterial(cmd, (void*)offscreenPipeline.get());
+		// materialManager->bindMaterial(cmd, (void*)offscreenPipeline.get());
+		vkCmdBindDescriptorSets(
+			cmd,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			offscreenPipeline->pipelineLayout,
+			1,
+			1,
+			&descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0],
+			0,
+			nullptr
+		);
+
+		auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
 
 		for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 			TransformComponent& transform = entity.getComponent<TransformComponent>();
@@ -219,15 +220,23 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 				for (uint32_t meshID : model->meshIDs) {
 					const Mesh* mesh = meshManager->getMesh(meshID);
 					
-					pushConstantLight.materialIdx = mesh->materialID;
+					uint32_t bufferID = animationManager->getAnimationBufferAddressID();
+					pushConstantLight.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(bufferID);
 					pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
-
+					pushConstantLight.materialIdx = mesh->materialID;
+					
+					if(entity.hasComponent<SkinningComponent>()) {
+						auto& skinningComponent = entity.getComponent<SkinningComponent>();
+						pushConstantLight.boneMatricesIdx = skinningComponent.boneMatricesID;
+					} else {
+						pushConstantLight.boneMatricesIdx = 0;
+					}
 					meshManager->bindMesh(meshID);
 
 					vkCmdPushConstants(
 						cmd,
 						offscreenPipeline->pipelineLayout,
-						VK_SHADER_STAGE_FRAGMENT_BIT,
+						VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 						0,
 						sizeof(PushConstantLight),
 						&pushConstantLight
@@ -284,11 +293,32 @@ void ForwardRendererVulkan::_createPipeline()
 	auto materialLayout = reinterpret_cast<VkDescriptorSetLayout>(handle);
 
 	offscreenPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	// offscreenPipeline->createGraphicsPipeline(
+	// 	"assets/shaders/spv/forwardLightPass.vert.spv",
+	// 	"assets/shaders/spv/forwardLightPass.frag.spv",
+	// 	{ descriptorSetLayout, bindlessLayout, materialLayout }, 
+	// 	renderTarget.renderPass, 
+	// 	sizeof(PushConstantLight)
+	// );
+
+	PipelineConfigInfo config = VulkanPipeline::defaultPipelineConfigInfo(1);
+	config.renderPass = renderTarget.renderPass;
+
+	auto bindingDescription = VulkanDevice::VertexVulkan::getBindingDescription();
+	auto attributeDescriptions = VulkanDevice::VertexVulkan::getAttributeDescriptions();
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
 	offscreenPipeline->createGraphicsPipeline(
 		"assets/shaders/spv/forwardLightPass.vert.spv",
 		"assets/shaders/spv/forwardLightPass.frag.spv",
+		config, 
+		vertexInputInfo, 
 		{ descriptorSetLayout, bindlessLayout, materialLayout }, 
-		renderTarget.renderPass, 
 		sizeof(PushConstantLight)
 	);
 }
@@ -370,6 +400,8 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 	renderTarget.colorTextures.resize(numFrames);
 	renderTarget.depthTextures.resize(numFrames);
 	renderTarget.framebuffers.resize(numFrames);
+	
+	std::vector<uint32_t> colorTextureIDs;
 
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		auto createTexture = [&] (TextureVulkan*& texture,
@@ -402,7 +434,8 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 		);
 
-		textureManagerVulkan->registerTextureSampler(renderTarget.colorTextures[i]->id());
+		colorTextureIDs.push_back(renderTarget.colorTextures[i]->id());
+		textureManagerVulkan->registerBindlessTexture(renderTarget.colorTextures[i]->id());
 
 		std::array<VkImageView, 2> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,
@@ -420,9 +453,10 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &renderTarget.framebuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create offscreen framebuffer!");
-		}
-		
+		}	
 	}
+	
+	rendererManagerVulkan->addRenderTexture("forwardColorOut", colorTextureIDs);
 }
 
 void ForwardRendererVulkan::_createDescriptorSetLayout()
@@ -464,13 +498,24 @@ void ForwardRendererVulkan::_createDescriptorSets()
 
 void ForwardRendererVulkan::_updateDescriptor()
 {
+    auto uniformBuffersList = rendererManagerVulkan->getBufferUBO();
+
+	Texture* temp = rendererManagerVulkan->getRenderTextures("shadowMap")[0].get();
+	TextureVulkan* depthMap = dynamic_cast<TextureVulkan*>(temp);
+	assert(depthMap && "failed to retrieve depthMap");
+
+	uint32_t blueNoiseID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
+	temp = textureManagerVulkan->getTexture(blueNoiseID);
+	TextureVulkan* blueNoiseImage = dynamic_cast<TextureVulkan*>(temp);
+	assert(blueNoiseImage && "failed to retrieve depthMap");
+
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
 		DescriptorWriter writer{{}, descriptorSets[i] };
-		descriptorManagerVulkan->writeUniform2(writer, uniformbuffersList[i]->getDescUniformBufferInfo());
+		descriptorManagerVulkan->writeUniform2(writer, uniformBuffersList[i]->getDescUniformBufferInfo());
 		descriptorManagerVulkan->writeStorage2(writer, storagebuffersList[i]->getDescStorageBufferInfo());
 		descriptorManagerVulkan->writeStorage2(writer, lightStoragebuffers[i]->getDescStorageBufferInfo());
-		descriptorManagerVulkan->writeImage2(writer, shadowMapRenderer->depthMap->getDescImageInfoReadOnly());
-		descriptorManagerVulkan->writeImage2(writer, shadowMapRenderer->blueNoiseImage->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeImage2(writer, depthMap->getDescImageInfoReadOnly());
+		descriptorManagerVulkan->writeImage2(writer, blueNoiseImage->getDescImageInfoReadOnly());
 		descriptorManagerVulkan->writeStorage2(writer, imageBasedRenderer->finalSumBuffers[i]->getDescStorageBufferInfo());
 		descriptorManagerVulkan->writeImage2(writer, imageBasedRenderer->brdfLUT->getDescImageInfoReadOnly());
 		descriptorManagerVulkan->writeImage2(writer, imageBasedRenderer->prefilterMap->getDescImageInfoReadOnly());

@@ -7,7 +7,6 @@
 class RenderDevice : public Service
 {
 public:
-
 	struct CommandBufferHandle {
 		void* commandBuffer;
 	};

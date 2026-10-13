@@ -75,7 +75,6 @@ void AmbientOcclusionPassVulkan::render(Camera& camera)
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
     positionImage = deferredRendererVulkan->renderTarget.gBufferPos[currentFrame];
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
 
@@ -259,7 +258,9 @@ void AmbientOcclusionPassVulkan::_createOcclusionMap()
  
     createTexture(aoMapID, aoMap);
     createTexture(aoMapTempID, aoMapTemp);
+    
     outputImage = aoMap;
+    rendererManagerVulkan->addRenderTexture("aoMap", {outputImage->id()});
 }
 
 void AmbientOcclusionPassVulkan::_createDescriptors()

@@ -25,6 +25,7 @@
 #include <graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h>
 #include <core/scene/SceneManager.h>
 #include "imgui.h" // TODO: remove it once done
+#include "physics/PhysicsManager.h"
 
 ApplicationRendererVulkan::ApplicationRendererVulkan(std::string serviceName) 
 	:	RendererVulkan(serviceName)
@@ -74,7 +75,12 @@ void ApplicationRendererVulkan::render(Camera& camera)
 	// stop rendering as we can't record begin/endRecording because the manager's 
 	// command Buffer recording state is likely corrupted by the destruction inside
 	//  _recreateResources By returning, we let the manager call endFrame on an empty buffer
-    RendererVulkan::_resize();
+	if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
 	
 	if(rendererManagerVulkan->getDisplayImage()) {
 		pushConstantData.index = rendererManagerVulkan->getDisplayImage()->id();
@@ -209,14 +215,37 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 
 	ImGui::Begin("Application");
 	ImGui::BeginChild("Application View");
-	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	ImVec2 size = ImGui::GetContentRegionAvail();
+	ImVec2 imageScreenPos = ImGui::GetCursorScreenPos();
+	ImVec2 mouseScreenPos = ImGui::GetMousePos();
+	ImVec2 localMousePos = ImVec2(mouseScreenPos.x - imageScreenPos.x, mouseScreenPos.y - imageScreenPos.y);
+
+	// m_logger->info("x: {}, y: {}", x, y);
+
+	float xNDC = (localMousePos.x / size.x) * 2.0f - 1.0f;
+    float yNDC = 1.0f - (localMousePos.y / size.y) * 2.0f;
+
 	TextureVulkan* displayImage = rendererManagerVulkan->getDisplayImage();
 	if(displayImage) {
 		ImGui::Image((ImTextureID)textureManagerVulkan->inspectTexture(displayImage->id()), size);
 	} else {
 		ImGui::Dummy(size);
 	}
+
+    SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+	PhysicsManager* physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
+	
+
+	uint32_t entityID = physicsManager->rayCastClosest(glm::vec2(xNDC, yNDC));
+    if(entityID != 0) {
+        Entity entity = scene->getEntity(entityID);
+        m_logger->warn(entity.getComponent<NameComponent>().name);
+    }
+
+	// ImDrawList* drawList = ImGui::GetWindowDrawList();
+	// ImVec2 center = ImVec2(imageScreenPos.x + (size.x * 0.5f), imageScreenPos.y + (size.y * 0.5f));
+	// drawList->AddCircle(center, 20.0f, IM_COL32(0, 255, 0, 255), 12, 2.0f);
 
 	ImVec2 wsize = ImGui::GetWindowSize();
 	int wWidth = static_cast<int>(ImGui::GetWindowWidth());
@@ -236,8 +265,6 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 		EventManager::getInstance().publish(event);
 	}
 
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
 	if(scene){
  		const std::vector<Entity>& entities = scene->getSelectedEntities();
  		if(!entities.empty()) {

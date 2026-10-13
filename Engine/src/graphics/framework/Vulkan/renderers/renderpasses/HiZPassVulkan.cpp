@@ -237,6 +237,9 @@ void HiZPassVulkan::_createResources()
 			renderDeviceVulkan
 		);
 		renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+
+		// std::string name = "hiZPassOut" + std::to_string(outputImage->id()); 
+		// rendererManagerVulkan->addRenderTexture(name, outputImage->id());
 	}
 }
 

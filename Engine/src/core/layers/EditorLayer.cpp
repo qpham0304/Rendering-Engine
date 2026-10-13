@@ -15,6 +15,7 @@
 #include "gui/framework/ImGui/widgets/ImGuiMenuWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiMathWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiResourcesInspectorWidget.h"
+#include "gui/framework/ImGui/widgets/ImGuiAnimationWidget.h"
 
 void EditorLayer::renderGuizmo()
 {
@@ -51,8 +52,8 @@ bool EditorLayer::init()
 	guiController.addWidget<ImGuiRightSidebarWidget>();
 	guiController.addWidget<ImGuiResourceInspectorWidget>();
 	guiController.addWidget<ImGuiConsoleLogWidget>();
+	guiController.addWidget<ImGuiAnimationWidget>();
 	guiController.addWidget<ImGuiMenuWidget>(guiController.getWidgets());
-	// addWidget(std::make_unique<ImGuiMathWidget>());
 
 	
 	eventManager.subscribe(EventType::MouseMoved, [&](Event& event) {

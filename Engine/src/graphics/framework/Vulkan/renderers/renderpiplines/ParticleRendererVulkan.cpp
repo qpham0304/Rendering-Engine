@@ -146,7 +146,12 @@ void ParticleRendererVulkan::render(Camera &camera)
 {
     Timer timer(m_name, true);
 
-    RendererVulkan::_resize();
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
     rendererManagerVulkan->setDisplayImage(outTexture);
 
 	SceneManager& sceneManager = SceneManager::getInstance();
@@ -253,7 +258,7 @@ void ParticleRendererVulkan::_createResources()
     
 	uint32_t textureID;
 	outTexture = createTexture(textureID);
-	rendererManagerVulkan->addRenderTexture("particleColorOut", textureID);
+	rendererManagerVulkan->addRenderTexture("particleColorOut", {textureID});
 }
 
 void ParticleRendererVulkan::_createPipelines()
@@ -374,7 +379,6 @@ void ParticleRendererVulkan::_renderParticle(VkCommandBuffer cmd, uint32_t curre
 
     std::vector<VkRenderingAttachmentInfo> colorAttachments = { colorAttachment };
 
-
     auto ubo = rendererManagerVulkan->getUBO();
     uint32_t width = ubo.width;
     uint32_t height = ubo.height;
@@ -395,6 +399,10 @@ void ParticleRendererVulkan::_renderParticle(VkCommandBuffer cmd, uint32_t curre
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout, 1, 1, &bindlessSet, 0, nullptr);
     
+    renderDeviceVulkan->setViewport();
+    renderDeviceVulkan->setScissor();
+
+
     auto func = std::function<void(Entity)>([&](Entity entity) -> void {
         NameComponent& name = entity.getComponent<NameComponent>();
         ParticleEmitter& emitter = entity.getComponent<ParticleEmitter>();

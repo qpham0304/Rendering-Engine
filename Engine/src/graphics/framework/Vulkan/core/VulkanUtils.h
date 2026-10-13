@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <functional>
 #include <memory>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 namespace VulkanUtils
 {
@@ -19,7 +19,4 @@ namespace VulkanUtils
 	std::vector<char> readFile(const std::string& filename);
 
     uint32_t numFrames();
-
-
 };
-

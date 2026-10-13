@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/features/Texture.h"
-#include "vulkan/vulkan.h"
+#include <volk.h>
 
 class BufferVulkan;
 class BufferManagerVulkan;
@@ -54,6 +54,7 @@ public:
 	VkDeviceMemory textureImageMemory;
 	VkImageView textureImageView;
 	VkSampler textureSampler;
+	VkFormat format;
 
 	const VkDescriptorImageInfo& getDescImageInfoGeneral();
 	const VkDescriptorImageInfo& getDescImageInfoReadOnly();
@@ -62,8 +63,10 @@ public:
 private:
 	void destroy(VkDevice device);
 
+    VkDescriptorImageInfo imageInfoGeneral{};
+    VkDescriptorImageInfo imageInfoReadOnly{};
+	
 	VkImageLayout currentLayout;
-	VkFormat format;
 	VkImageUsageFlags usage;
 	VkMemoryPropertyFlags properties;
 	VkImageAspectFlagBits aspectBits;
@@ -73,11 +76,6 @@ private:
 	uint32_t layerCount = 1;
 	TextureSamplerConfig samplerInfo;
 
-    VkDescriptorImageInfo imageInfoGeneral{};
-    VkDescriptorImageInfo imageInfoReadOnly{};
-
-	std::vector<BufferVulkan*> buffers;
-	BufferManagerVulkan* bufferManager{ nullptr };
 	DescriptorManagerVulkan* descriptorManager{ nullptr };
 	TextureManagerVulkan* textureManager{ nullptr };
 	RenderDeviceVulkan* renderDevice{ nullptr };

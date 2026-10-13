@@ -63,7 +63,6 @@ private:
 	uint32_t poolID;
 	uint32_t setsID;
 
-	uint32_t storageBufferID;
 	std::unique_ptr<VulkanPipeline> appPipeline;
 
 	bool isActive{ false };

@@ -63,7 +63,7 @@ namespace EngineUtils
                 glm::vec3 tangent(-sinf(sectorAngle), cosf(sectorAngle), 0.0f);
                 glm::vec3 bitangent = glm::cross(normal, tangent);
 
-                Vertex v{};
+                Vertex v;
                 v.positions = pos;
                 v.normal = normal;
                 v.texCoords = {s, t};

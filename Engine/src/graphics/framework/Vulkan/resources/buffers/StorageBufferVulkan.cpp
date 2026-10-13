@@ -1,5 +1,5 @@
 #include "StorageBufferVulkan.h"
-#include "vulkan/vulkan.h"
+#include <volk.h>
 #include <cassert>
 #include <cstring>
 
@@ -23,16 +23,7 @@ void StorageBufferVulkan::bind(void* commandBuffer)
 
 }
 
-void StorageBufferVulkan::update(const void *data, size_t size)
-{
-    memcpy(bufferMapped, data, size);
-}
-
-void* StorageBufferVulkan::getMappedBuffer() {
-    return bufferMapped;
-}
-
-const VkDescriptorBufferInfo &StorageBufferVulkan::getDescStorageBufferInfo()
+const VkDescriptorBufferInfo& StorageBufferVulkan::getDescStorageBufferInfo()
 {
 	bufferInfo.buffer = buffer;
 	bufferInfo.offset = 0;

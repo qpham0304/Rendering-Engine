@@ -1,5 +1,5 @@
 #include "AccelStructureBufferVulkan.h"
-#include "vulkan/vulkan.h"
+#include <volk.h>
 #include <cstring>
 
 AccelStructureBufferVulkan::AccelStructureBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory)

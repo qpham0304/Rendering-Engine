@@ -1,6 +1,8 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
+#include <vk_mem_alloc.h>
+#include <VkBootstrap.h>
 #include <glm/glm.hpp>
 #include <iostream>
 #include <vector>
@@ -8,6 +10,11 @@
 #include <array>
 #include <unordered_map>
 
+#define VALIDATE(vkFunc) \
+    if((vkFunc) != VK_SUCCESS) { \
+        throw std::runtime_error(std::format("fail to submit: {}", #vkFunc)); \
+    } \
+	
 #define MAX_BONE_INFLUENCE 4
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -62,6 +69,8 @@ public:
 	struct QueueFamilyIndices {
 		std::optional<uint32_t> graphicsFamily;
 		std::optional<uint32_t> presentFamily;
+		std::optional<uint32_t> computeFamily;
+		std::optional<uint32_t> transferFamily;
 
 		bool isComplete() {
 			return graphicsFamily.has_value() && presentFamily.has_value();
@@ -81,8 +90,8 @@ public:
 		glm::vec3 normal;
 		glm::vec3 tangent;
 		glm::vec3 bitangent;
-		int m_BoneIDs[MAX_BONE_INFLUENCE];		//bone indexes which will influence this vertex
-		float m_Weights[MAX_BONE_INFLUENCE];	//weights from each bone
+		int m_boneIDs[MAX_BONE_INFLUENCE];		//bone indexes which will influence this vertex
+		float m_weights[MAX_BONE_INFLUENCE];	//weights from each bone
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription{};
@@ -128,12 +137,12 @@ public:
 			attributeDescriptions[6].binding = 0;
 			attributeDescriptions[6].location = 6;
 			attributeDescriptions[6].format = VK_FORMAT_R32G32B32A32_SINT;
-			attributeDescriptions[6].offset = offsetof(VertexVulkan, m_BoneIDs);
+			attributeDescriptions[6].offset = offsetof(VertexVulkan, m_boneIDs);
 
 			attributeDescriptions[7].binding = 0;
 			attributeDescriptions[7].location = 7;
 			attributeDescriptions[7].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-			attributeDescriptions[7].offset = offsetof(VertexVulkan, m_Weights);
+			attributeDescriptions[7].offset = offsetof(VertexVulkan, m_weights);
 
 			return attributeDescriptions;
 		}

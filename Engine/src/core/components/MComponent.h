@@ -268,6 +268,21 @@ struct MYGRAPHICSENGINE_EXPORT AnimationStateComponent {
 	)
 };
 
+struct MYGRAPHICSENGINE_EXPORT SkinningComponent {
+	SkinningComponent() = default;
+
+	uint32_t boneMatricesID { 0 };
+	uint32_t animatorID { 0 };
+	std::string animationPath { "None" };
+	std::string initialAnimation { "None" };
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+		SkinningComponent,
+		initialAnimation,
+		animationPath
+	);
+};
+
 struct MYGRAPHICSENGINE_EXPORT CameraComponent {
 	CameraComponent() = default;
 	

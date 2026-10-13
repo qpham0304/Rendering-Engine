@@ -71,7 +71,6 @@ public:
 	void updateTlas();
 
 public:	//TODO: make private once done testing	
-	const int MAX_INSTANCES = 5000;
 	const int numInstances = 1;
 	const int numLights = 1000;
 	bool showGui { true };

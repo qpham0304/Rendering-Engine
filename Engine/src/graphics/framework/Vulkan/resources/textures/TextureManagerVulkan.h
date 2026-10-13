@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/resources/managers/TextureManager.h"
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include "TextureVulkan.h"
 
 class RenderDeviceVulkan;
@@ -145,19 +145,29 @@ public:
 	virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture) override;
+	virtual uint32_t loadTextureFromMemory(const void *data, size_t size, std::string_view cacheKey, uint32_t mipLevels, bool isDataTexture) override;
 	virtual uint32_t createTexture() override;
 	virtual uint32_t createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig);
 	virtual TextureVulkan* getTexture(uint32_t id) override;
 	virtual void* inspectTexture(uint32_t id) override;
 	virtual uint32_t getInspectorLayout();
 
-	void registerTextureSampler(uint32_t textureID);
+	void registerBindlessTexture(uint32_t textureID);
 	void registerTextureStorage(uint32_t textureID);
 	uint32_t getBindlessTextureLayout();
 	uint32_t getBindlessSet();
+	uint32_t getStorageImageBindlessLayout();
+	uint32_t getStorageImageBindlessSet();
 
 private:
-	void _loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture);
+	void _loadTexture(
+		std::string_view path,
+		uint32_t mipLevels,
+		bool isDataTexture,
+		bool isFromMemory = false,
+		const void* data = nullptr,
+		size_t size = 0
+	);
 
 	// the id of the raw texture, returned back to user the inspectable texture
 	void _createInspectorDescriptorBind();
@@ -175,5 +185,9 @@ private:
 	uint32_t globalBindlessLayoutID;
 	uint32_t globalBindlessPoolID;
 	uint32_t globalBindlessSetID;
+
+	uint32_t globalStorageImageBindlessLayoutID;
+	uint32_t globalStorageImageBindlessPoolID;
+	uint32_t globalStorageImageBindlessSetID;
 };
 

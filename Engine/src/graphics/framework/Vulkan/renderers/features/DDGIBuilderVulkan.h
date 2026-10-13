@@ -109,6 +109,7 @@ private:
 	uint32_t rayBufferW { 0 };
 	uint32_t rayBufferH { 0 };
 	int totalProbes { 0 };
+	bool hasProbe = { false };
 	
 	void _createResources();
 	void _createPipeline();

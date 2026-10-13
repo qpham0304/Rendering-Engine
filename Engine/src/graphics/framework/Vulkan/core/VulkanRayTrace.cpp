@@ -440,7 +440,7 @@ void RaytracingBuilderKHR::buildTlas(
     uint32_t countInstance = static_cast<uint32_t>(instances.size());
 
     // Command buffer to create the TLAS
-    VkCommandBuffer    cmdBuf = renderDevice->commandPool.beginSingleTimeCommand();
+    VkCommandBuffer cmdBuf = renderDevice->commandPool.beginSingleTimeCommand();
 
     // Create a buffer holding the actual instance data (matrices++) for use by the AS builder
     // Create a buffer (staged) for the instances

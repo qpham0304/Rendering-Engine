@@ -165,8 +165,8 @@ MeshOpenGL ModelOpenGL::processMesh(aiMesh* mesh, const aiScene* scene)
         SetVertexBoneDataToDefault(vertex);
 
         // process vertex positions, normals and texture coordinates
-        vertex.positions = AssimpGLMHelpers::GetGLMVec(mesh->mVertices[i]);
-        vertex.normal = AssimpGLMHelpers::GetGLMVec(mesh->mNormals[i]);
+        vertex.positions = AssimpGLMHelpers::toGlmVec3(mesh->mVertices[i]);
+        vertex.normal = AssimpGLMHelpers::toGlmVec3(mesh->mNormals[i]);
 
 
         if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
@@ -333,17 +333,17 @@ int& ModelOpenGL::GetBoneCount() {
 void ModelOpenGL::SetVertexBoneDataToDefault(MeshOpenGL::Vertex& vertex)
 {
     for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
-        vertex.m_BoneIDs[i] = -1;
-        vertex.m_Weights[i] = 0.0f;
+        vertex.m_boneIDs[i] = -1;
+        vertex.m_weights[i] = 0.0f;
     }
 }
 
 void ModelOpenGL::SetVertexBoneData(MeshOpenGL::Vertex& vertex, int boneID, float weight)
 {
     for (int i = 0; i < MAX_BONE_INFLUENCE; ++i) {
-        if (vertex.m_BoneIDs[i] < 0) {
-            vertex.m_Weights[i] = weight;
-            vertex.m_BoneIDs[i] = boneID;
+        if (vertex.m_boneIDs[i] < 0) {
+            vertex.m_weights[i] = weight;
+            vertex.m_boneIDs[i] = boneID;
             break;
         }
     }
@@ -361,7 +361,7 @@ void ModelOpenGL::ExtractBoneWeightForVertices(std::vector<MeshOpenGL::Vertex>& 
         if (boneInfoMap.find(boneName) == boneInfoMap.end()) {
             BoneInfo newBoneInfo;
             newBoneInfo.id = boneCount;
-            newBoneInfo.offset = AssimpGLMHelpers::ConvertMatrixToGLMFormat(mesh->mBones[boneIndex]->mOffsetMatrix);
+            newBoneInfo.offset = AssimpGLMHelpers::toGlmMat4(mesh->mBones[boneIndex]->mOffsetMatrix);
             boneInfoMap[boneName] = newBoneInfo;
             boneID = boneCount;
             boneCount++;

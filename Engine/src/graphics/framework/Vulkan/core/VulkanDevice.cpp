@@ -1,9 +1,35 @@
+#if defined(_WIN32)
+    #define VK_USE_PLATFORM_WIN32_KHR
+#elif defined(__ANDROID__)
+    #define VK_USE_PLATFORM_ANDROID_KHR
+#elif defined(__linux__) || defined(__gnu_linux__)
+    #define VK_USE_PLATFORM_WAYLAND_KHR
+    #define VK_USE_PLATFORM_XLIB_KHR
+#elif defined(__APPLE__)
+    #include <TargetConditionals.h>
+    #if TARGET_OS_IPHONE || TARGET_OS_SIMULATOR
+        #define VK_USE_PLATFORM_IOS_MVK
+    #elif TARGET_OS_MAC
+        #define VK_USE_PLATFORM_MACOS_MVK
+    #endif
+#endif
+
+#define VMA_IMPLEMENTATION
+#define VOLK_IMPLEMENTATION
 #include "VulkanDevice.h"
+
+#include <iostream>
+#include <cmath>
+
+#define VALIDATE(vkFunc) \
+    if((vkFunc) != VK_SUCCESS) { \
+        throw std::runtime_error(std::format("fail to submit: {}", #vkFunc)); \
+    } \
+
 #include "core/features/ServiceLocator.h"
-#include "../../../../window/AppWindow.h"
-#include <windows.h>
-#include <vulkan/vulkan_win32.h>
-#include "VulkanExtensions.hpp"
+#include "window/AppWindow.h"
+// #include <vulkan/vulkan_win32.h>
+// #include "VulkanExtensions.hpp"
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, 
 	const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, 
@@ -70,6 +96,11 @@ void VulkanDevice::destroy()
 
 void VulkanDevice::createInstance()
 {
+	if (volkInitialize() != VK_SUCCESS) {
+		throw std::runtime_error("fail to initilize volk");
+		std::cerr << "Failed to initialize Volk loader!\n";
+	}
+
 	if (enableValidationLayers && !checkValidationLayerSupport()) {
 		throw std::runtime_error("validation layers requested, but not available!");
 	}
@@ -107,6 +138,8 @@ void VulkanDevice::createInstance()
 	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create instance!");
 	}
+
+	volkLoadInstance(instance);
 }
 
 void VulkanDevice::setupDebugMessenger() {
@@ -183,6 +216,13 @@ void VulkanDevice::createLogicalDevice() {
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+	
+	if(indices.graphicsFamily.value() != indices.computeFamily.value()) {
+		uniqueQueueFamilies.insert(indices.computeFamily.value());
+	}
+	if(indices.transferFamily.has_value()) {
+		uniqueQueueFamilies.insert(indices.transferFamily.value());
+	}
 
 	float queuePriority = 1.0f;
 	for (uint32_t queueFamily : uniqueQueueFamilies) {
@@ -286,6 +326,8 @@ void VulkanDevice::createLogicalDevice() {
 
 	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+	vkGetDeviceQueue(device, indices.computeFamily.value(), 0, &computeQueue);
+	vkGetDeviceQueue(device, indices.transferFamily.value(), 0, &transferQueue);
 }
 
 bool VulkanDevice::isDeviceSuitable(VkPhysicalDevice device) {
@@ -331,21 +373,34 @@ VulkanDevice::QueueFamilyIndices VulkanDevice::findQueueFamilies(VkPhysicalDevic
 	for (const auto& queueFamily : queueFamilies) {
 		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			indices.graphicsFamily = i;
+
+			if(!indices.computeFamily.has_value()) {
+				indices.computeFamily = i;	// fall back compute queue to graphics
+			}
 		}
 
 		VkBool32 presentSupport = false;
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
 		if (presentSupport) {
 			indices.presentFamily = i;
 		}
 
-		if (indices.isComplete()) {
-			break;
-		}
+		if ((queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) && !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+            indices.computeFamily = i; // prefer a dedicated compute queue if one exists
+        }
+
+		if ((queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) && 
+            !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && 
+            !(queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
+            indices.transferFamily = i;	// prefer a dedicated transfer queue if one exists
+        }
 
 		i++;
 	}
+
+	if (!indices.transferFamily.has_value() && indices.graphicsFamily.has_value()) {
+        indices.transferFamily = indices.graphicsFamily;
+    }
 
 	return indices;
 }

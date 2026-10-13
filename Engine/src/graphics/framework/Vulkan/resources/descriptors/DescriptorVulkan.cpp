@@ -4,7 +4,7 @@
 #include <graphics/framework/Vulkan/resources/buffers/BufferVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <core/events/EventManager.h>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 
 DescriptorVulkan::DescriptorVulkan()
@@ -25,7 +25,7 @@ void DescriptorVulkan::updateDescriptor()
 {
     std::vector<VkWriteDescriptorSet>* writes;
 
-    uint32_t i;
+    uint32_t i = 0;
     for(auto& buffer : buffers) {
         
         i++;

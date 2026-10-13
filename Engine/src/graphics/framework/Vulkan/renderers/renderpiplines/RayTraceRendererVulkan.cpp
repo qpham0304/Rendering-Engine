@@ -42,19 +42,19 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
 	
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 	
-	size_t bufferSize = MAX_INSTANCES * sizeof(StorageBufferObject);
-	instanceData.resize(MAX_INSTANCES);
-	instanceDataPrev.resize(MAX_INSTANCES);
+	size_t bufferSize = Common::MAX_INSTANCES * sizeof(StorageBufferObject);
+	instanceData.resize(Common::MAX_INSTANCES);
+	instanceDataPrev.resize(Common::MAX_INSTANCES);
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
 	bufferManagerVulkan->createStorageBuffers(prevStoragebufferList, bufferSize);
 
-	objects.resize(MAX_INSTANCES);
-	size_t objectsBufferSize = MAX_INSTANCES * sizeof(ObjectDesc);
+	objects.resize(Common::MAX_INSTANCES);
+	size_t objectsBufferSize = Common::MAX_INSTANCES * sizeof(ObjectDesc);
 	objDeviceAddressBufferID = bufferManagerVulkan->createBufferDeviceAddress(objectsBufferSize);
 	auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(objDeviceAddressBufferID));
 	objDeviceAddress = deviceAddress->getAddress();
 
-	lights.reserve(MAX_INSTANCES);
+	lights.reserve(Common::MAX_INSTANCES);
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
@@ -99,7 +99,7 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
     ubo.frameCount = 0;
 
     uint32_t imageID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
-    textureManagerVulkan->registerTextureSampler(imageID);
+    textureManagerVulkan->registerBindlessTexture(imageID);
     pushConstant.bluenoiseIdx = imageID;
 
 	return true;
@@ -122,7 +122,12 @@ void RayTraceRendererVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 	
-	RendererVulkan::_resize();
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
 
 	instanceDataPrev = std::move(instanceData);
 	// instanceData.clear(); 
@@ -166,7 +171,7 @@ void RayTraceRendererVulkan::render(Camera& camera)
 	StorageBufferVulkan* ssboPrev = prevStoragebufferList[currentFrame];
 	ssboPrev->update(instanceDataPrev.data(), instanceDataPrev.size() * sizeof(StorageBufferObject));
 	
-	size_t buffersize = MAX_INSTANCES * sizeof(ObjectDesc);
+	size_t buffersize = Common::MAX_INSTANCES * sizeof(ObjectDesc);
 	bufferManagerVulkan->updateBufferDeviceAddress(objDeviceAddressBufferID, objects.data(), buffersize);
 
 
@@ -259,8 +264,8 @@ void RayTraceRendererVulkan::_createResources()
 	createTexture(rayTraceImage);
 	createTexture(postProcessImage);
 
-    textureManagerVulkan->registerTextureSampler(rayTraceImage->id());
-    textureManagerVulkan->registerTextureSampler(postProcessImage->id());
+    textureManagerVulkan->registerBindlessTexture(rayTraceImage->id());
+    textureManagerVulkan->registerBindlessTexture(postProcessImage->id());
 }
 
 void RayTraceRendererVulkan::_createPipeline()
@@ -503,7 +508,7 @@ void RayTraceRendererVulkan::_createAccelStructure()
 
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
     // tlas.reserve(instanceData.size());
-    tlas.reserve(MAX_INSTANCES);
+    tlas.reserve(Common::MAX_INSTANCES);
 
     lights.clear();
 

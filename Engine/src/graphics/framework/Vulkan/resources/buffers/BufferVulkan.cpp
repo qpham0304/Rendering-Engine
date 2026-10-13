@@ -1,5 +1,5 @@
 #include "BufferVulkan.h"
-#include "vulkan/vulkan.h"
+#include <volk.h>
 #include <stdexcept>
 
 BufferVulkan::BufferVulkan(uint32_t id, VkBuffer vkBuffer, VkDeviceMemory vkBufferMemory) 
@@ -13,7 +13,12 @@ BufferVulkan::~BufferVulkan()
 
 }
 
-const VkDeviceMemory& BufferVulkan::getMemory()
+void BufferVulkan::update(const void *data, size_t size)
+{
+    memcpy(mappedBuffer, data, size);
+}
+
+const VkDeviceMemory &BufferVulkan::getMemory()
 {
     return bufferMemory;
 }

@@ -6,6 +6,10 @@
       "rotateVec": [0.0, 0.0, 0.0],
       "scaleVec": [1.0, 1.0, 1.0]
     },
-    "ModelComponent": { "path": "assets/models/aru/aru.gltf" }
+    "ModelComponent": { "path": "assets/models/aru/aru.gltf" },
+    "SkinningComponent": { 
+      "initialAnimation": "Formation_Pickup",
+      "animationPath": "assets/models/aru/aru.gltf"
+    }
   }
 }

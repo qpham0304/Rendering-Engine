@@ -11,5 +11,7 @@
 const float PI = 3.14159265359;
 const float GRAVITY = 9.18;
 const vec3 G_FORCE = vec3(0.0, -GRAVITY, 0.0); 
+const int MAX_BONES = 100;
+const uint MAX_BONE_INFLUENCE = 4;
 
 #endif

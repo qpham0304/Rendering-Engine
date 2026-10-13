@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/resources/managers/RendererManager.h"
+#include "graphics/framework/vulkan/core/CommonStructs.h"
 #include "RendererVulkan.h"
 
 class RenderDeviceVulkan;
@@ -8,20 +9,6 @@ class TextureVulkan;
 
 class RendererManagerVulkan : public RendererManager
 {
-public:
-	struct UniformBufferObject {
-		glm::mat4 invNormal;
-		glm::mat4 view;
-		glm::mat4 prevViewProj;
-		glm::mat4 proj;
-		glm::vec4 cameraPos;
-		glm::mat4 invView;
-		glm::mat4 invProj;
-		float width;
-		float height;
-	};
-	
-
 public:
 	RendererManagerVulkan(std::string serviceName = "RendererManagerVulkan");
 	virtual ~RendererManagerVulkan() override;
@@ -35,7 +22,7 @@ public:
 	void endFrame();
 	void setDisplayImage(TextureVulkan* image);
 	TextureVulkan* getDisplayImage();
-	const UniformBufferObject& getUBO() const;
+	const Common::UniformBufferObject& getUBO() const;
 	const std::vector<UniformBufferVulkan*>& getBufferUBO() const;
 
 
@@ -43,10 +30,16 @@ protected:
 	uint32_t currentRenderMode { 0 };
 	TextureVulkan* displayImage { nullptr };
 
-	std::vector<UniformBufferVulkan*> uniformbuffersList;
-	UniformBufferObject ubo {};
-	glm::mat4 lastViewProj;
+	std::vector<UniformBufferVulkan*> uniformbuffersList{};
+	Common::UniformBufferObject ubo {};
+	glm::mat4 lastViewProj{};
 	bool firstFrame { true };
+	
+	//Common::PushBDA pushBDA;
+	//uint32_t objDeviceAddressBufferID;
+	//uint64_t objDeviceAddress;
+	//uint64_t materialsAddress;
+	//std::vector<Common::ObjectRefs> objects;
 
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	Renderer* applicationRenderer { nullptr };
@@ -65,7 +58,7 @@ protected:
 	Renderer* deferredCombineRenderer { nullptr };
 	Renderer* postProcessRenderer { nullptr };
 	Renderer* particleRenderer { nullptr };
-
+	Renderer* debugRenderer { nullptr };
 
 private:
 	bool needResize{ false };
@@ -76,6 +69,7 @@ private:
 	virtual void destroy(uint32_t id) override;
 	virtual void onUpdate() override;
     virtual void render() override;
+	virtual void drawDebug(glm::vec3 start, glm::vec3 end) override;
 	
 	virtual void _cleanupResources();
 	virtual void _recreateResources();

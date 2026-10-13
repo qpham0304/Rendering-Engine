@@ -13,16 +13,10 @@ public:
 
 	virtual void bind(void* commandBuffer) override;
 
-	void update(const void* data, size_t size);
-
-	void* getMappedBuffer();
-
 	const VkDescriptorBufferInfo& getDescStorageBufferInfo();
 
-
 private:
-	void* bufferMapped;
-	size_t bufferSize;
 	VkDescriptorBufferInfo bufferInfo{};
+	size_t bufferSize;
 };
 

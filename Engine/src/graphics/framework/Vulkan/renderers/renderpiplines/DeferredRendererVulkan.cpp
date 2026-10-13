@@ -62,16 +62,14 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	ambientOcclusionPass->init(config);
 	hiZPass->init(config);
 
-	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
-	
-	size_t bufferSize = MAX_INSTANCES * sizeof(StorageBufferObject);
-	instanceData.resize(MAX_INSTANCES);
-	instanceDataPrev.resize(MAX_INSTANCES);
+	size_t bufferSize = Common::MAX_INSTANCES * sizeof(StorageBufferObject);
+	instanceData.resize(Common::MAX_INSTANCES);
+	instanceDataPrev.resize(Common::MAX_INSTANCES);
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
 	bufferManagerVulkan->createStorageBuffers(prevStoragebufferList, bufferSize);
 
-	objects.resize(MAX_INSTANCES);
-	size_t objectsBufferSize = MAX_INSTANCES * sizeof(ObjectDesc);
+	objects.resize(Common::MAX_INSTANCES);
+	size_t objectsBufferSize = Common::MAX_INSTANCES * sizeof(Common::ObjectRefs);
 	objDeviceAddressBufferID = bufferManagerVulkan->createBufferDeviceAddress(objectsBufferSize);
 	auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(objDeviceAddressBufferID));
 	objDeviceAddress = deviceAddress->getAddress();
@@ -90,8 +88,6 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 	pushConstantLight.aoOn = 1;
 	pushConstantLight.G = 0.7f;
 	pushConstantLight.scatteringScale = 0.2f;
-
-	lastViewProj = glm::mat4(1.0);
 
 	_createDescriptor();
 	_createPipelines();
@@ -156,10 +152,10 @@ void DeferredRendererVulkan::render(Camera& camera)
 				if(entity.hasComponent<LightProbeComponent>()) {	//TODO: this couple the probe data to the renderer so it need to be handled better
 					auto& lightProbeComponent = entity.getComponent<LightProbeComponent>();
 					worldMatrix = glm::translate(worldMatrix, glm::vec3(lightProbeComponent.probeGrid[meshIdx]));
-				}
+				} 
 				instanceData.push_back({ worldMatrix });
 
-				ObjectDesc desc{};
+				Common::ObjectRefs desc{};
 				desc.materialsRef = materialsAddress;
 				const MeshManager::MeshData& meshData = meshManager->getMeshData(meshID);
 				auto* bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.matIndicesBDA_ID));
@@ -190,22 +186,6 @@ void DeferredRendererVulkan::render(Camera& camera)
 			));
         }
     }
-
-	if (firstFrame) {
-        lastViewProj = camera.getProjectionMatrix() * camera.getViewMatrix();
-        lastViewProj[1][1] *= -1.0; 
-        firstFrame = false;
-    }
-	ubo.view = camera.getViewMatrix();
-	ubo.prevViewProj = lastViewProj;
-	ubo.proj = camera.getProjectionMatrix();
-	ubo.cameraPos = glm::vec4(camera.getPosition(), 1.0);
-	ubo.proj[1][1] *= -1.0;
-	ubo.invView = camera.getInViewMatrix();
-	ubo.invProj = camera.getInProjectionMatrix();
-	ubo.invProj[1][1] *= -1.0;
-	ubo.width = renderTarget.width;
-	ubo.height = renderTarget.height;
 	
 
 	pushConstantLight.color = sunColor * sunIntensity;
@@ -215,7 +195,6 @@ void DeferredRendererVulkan::render(Camera& camera)
 	pushConstantLight.numLights = lights.size();
 	
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
 	StorageBufferVulkan* ssbo = storagebuffersList[currentFrame];
 	ssbo->update(instanceData.data(), instanceData.size() * sizeof(StorageBufferObject));
@@ -223,15 +202,13 @@ void DeferredRendererVulkan::render(Camera& camera)
 	StorageBufferVulkan* ssboPrev = prevStoragebufferList[currentFrame];
 	ssboPrev->update(instanceDataPrev.data(), instanceDataPrev.size() * sizeof(StorageBufferObject));
 	
-	size_t buffersize = MAX_INSTANCES * sizeof(ObjectDesc);
+	size_t buffersize = Common::MAX_INSTANCES * sizeof(Common::ObjectRefs);
 	bufferManagerVulkan->updateBufferDeviceAddress(objDeviceAddressBufferID, objects.data(), buffersize);
 
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 	
 	shadowMapPass->render(camera);
-
-	lastViewProj = ubo.proj * ubo.view;
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	renderDeviceVulkan->beginLabel(cmd, "Deferred Render Pass");
@@ -446,7 +423,7 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 					gPassPipeline->pipelineLayout,
 					VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 					0,
-					sizeof(PushConstant),
+					sizeof(Common::PushBDA),
 					&pushConstant
 				);
 
@@ -699,6 +676,15 @@ void DeferredRendererVulkan::_createFrameBuffers()
 	renderTarget.depthTextures.resize(numFrames);
 	renderTarget.framebuffers.resize(numFrames);
 
+	std::vector<uint32_t> colorTexturesIds;
+	std::vector<uint32_t> gBufferPosIds;
+	std::vector<uint32_t> gBufferNormIds;
+	std::vector<uint32_t> gBufferAlbedoIds;
+	std::vector<uint32_t> gPBRIds;
+	std::vector<uint32_t> gBufferEmissiveIds;
+	std::vector<uint32_t> gBufferMotionIds;
+	std::vector<uint32_t> depthTexturesIds;
+
 	for(size_t i = 0; i < renderTarget.colorTextures.size(); i++) {
 		auto createTexture = [&] (VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) -> TextureVulkan* {
 			uint32_t id = textureManagerVulkan->createTexture();
@@ -748,6 +734,8 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			return texture;
 		};
 
+		uint32_t id = 0;
+		std::string name = "";
 		renderTarget.colorTextures[i] = createTexture(
 			swapchain.swapChainImageFormat, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
@@ -823,6 +811,19 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
 		);
 
+		VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+		TextureManagerVulkan::transitionImageLayout(
+			cmd,
+			renderTarget.depthTextures[i]->textureImage, 
+			depthFormat, 
+			VK_IMAGE_LAYOUT_UNDEFINED, 
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+			1,
+			1,
+			renderDeviceVulkan
+		);
+		renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+
 		std::array<VkImageView, 8> attachments = {
 			renderTarget.colorTextures[i]->textureImageView,
 			renderTarget.gBufferPos[i]->textureImageView,
@@ -833,6 +834,15 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			renderTarget.gBufferMotion[i]->textureImageView,
 			renderTarget.depthTextures[i]->textureImageView
 		};
+		
+		colorTexturesIds.push_back(renderTarget.colorTextures[i]->id());
+		gBufferPosIds.push_back(renderTarget.gBufferPos[i]->id());
+		gBufferNormIds.push_back(renderTarget.gBufferNorm[i]->id());
+		gBufferAlbedoIds.push_back(renderTarget.gBufferAlbedo[i]->id());
+		gPBRIds.push_back(renderTarget.gPBR[i]->id());
+		gBufferEmissiveIds.push_back(renderTarget.gBufferEmissive[i]->id());
+		gBufferMotionIds.push_back(renderTarget.gBufferMotion[i]->id());
+		depthTexturesIds.push_back(renderTarget.depthTextures[i]->id());
 
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -847,6 +857,15 @@ void DeferredRendererVulkan::_createFrameBuffers()
 			throw std::runtime_error("failed to create framebuffer!");
 		}
 	}
+
+	rendererManagerVulkan->addRenderTexture("deferredColorOut", colorTexturesIds);
+	rendererManagerVulkan->addRenderTexture("gBufferPos", gBufferPosIds);
+	rendererManagerVulkan->addRenderTexture("gBufferNorm", gBufferNormIds);
+	rendererManagerVulkan->addRenderTexture("gBufferAlbedo", gBufferAlbedoIds);
+	rendererManagerVulkan->addRenderTexture("gPBR", gPBRIds);
+	rendererManagerVulkan->addRenderTexture("gBufferEmissive", gBufferEmissiveIds);
+	rendererManagerVulkan->addRenderTexture("gBufferMotion", gBufferMotionIds);
+	rendererManagerVulkan->addRenderTexture("deferredDepth", depthTexturesIds);
 }
 
 void DeferredRendererVulkan::_createDescriptor()
@@ -873,6 +892,7 @@ void DeferredRendererVulkan::_createDescriptor()
 void DeferredRendererVulkan::_updateDescriptor()
 {
 	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(setsID);
+	auto uniformbuffersList = rendererManagerVulkan->getBufferUBO();
 
 	for (size_t i = 0; i < VulkanUtils::numFrames(); i++) {
 		VkDescriptorBufferInfo bufferInfo{};
@@ -934,7 +954,7 @@ void DeferredRendererVulkan::_createPipelines()
 		gBufferConfig, 
 		vertexInputInfo, 
 		{ descriptorSetLayout, bindlessLayout, materialLayout }, 
-		sizeof(PushConstant)
+		sizeof(Common::PushBDA)
 	);
 }
 
@@ -1036,6 +1056,7 @@ void DeferredRendererVulkan::_updateLightDescriptor()
     }
 
 	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(lightSetsID_1);
+	auto uniformbuffersList = rendererManagerVulkan->getBufferUBO();
 	for (size_t i = 0; i < VulkanUtils::numFrames(); i++) {
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.buffer = static_cast<VkBuffer>(*uniformbuffersList[i]);
@@ -1051,8 +1072,8 @@ void DeferredRendererVulkan::_updateLightDescriptor()
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo.imageView = shadowMapPass->depthMap->textureImageView;
 		imageInfo.sampler = shadowMapPass->depthMap->textureSampler;
-		// imageInfo.imageView = shadowMapRenderer->momentImage->textureImageView;
-		// imageInfo.sampler = shadowMapRenderer->momentImage->textureSampler;
+		// imageInfo.imageView = shadowMapPass->momentImage->textureImageView;
+		// imageInfo.sampler = shadowMapPass->momentImage->textureSampler;
 
 		VkDescriptorImageInfo noiseImageInfo{};
 		noiseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

@@ -20,7 +20,7 @@
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <imgui.h>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 ImageBasedRendererVulkan::ImageBasedRendererVulkan()
 	: RendererVulkan("ImageBasedRendererVulkan")
@@ -67,9 +67,9 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 	_createResourceLUT();
 	_createResourcePrefilteredMap();
 
-	textureManagerVulkan->registerTextureSampler(brdfLUT->id());
-	textureManagerVulkan->registerTextureSampler(prefilterMap->id());
-	textureManagerVulkan->registerTextureSampler(hdrImage->id());
+	textureManagerVulkan->registerBindlessTexture(brdfLUT->id());
+	textureManagerVulkan->registerBindlessTexture(prefilterMap->id());
+	textureManagerVulkan->registerBindlessTexture(hdrImage->id());
 	
 	writeBRDF();
 

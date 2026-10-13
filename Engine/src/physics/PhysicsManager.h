@@ -39,7 +39,7 @@ public:
 	virtual uint32_t createConvexBody() = 0;
 	
 	virtual void addForce(uint32_t id, const glm::vec3& force) = 0;
-	virtual uint32_t rayCastClosest(const glm::vec3& location) = 0;
+	virtual uint32_t rayCastClosest(const glm::vec2& coordsNDC) = 0;
 	virtual void setBullet(uint32_t id, bool flag) = 0;
 	virtual bool isBullet(uint32_t id) = 0;
 	virtual void enableSleep(uint32_t id, bool flag) = 0;

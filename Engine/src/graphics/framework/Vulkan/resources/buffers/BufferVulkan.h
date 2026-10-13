@@ -1,9 +1,10 @@
 #pragma once
 
+#include <volk.h>
+#include <vk_mem_alloc.h>
 #include "graphics/renderers/Buffer.h"
-#include "graphics/framework/Vulkan/core/WrapperStructs.h"
 
-class BufferVulkan : public Buffer, protected VkWrap
+class BufferVulkan : public Buffer
 {
 public:
     friend class BufferManagerVulkan;
@@ -16,6 +17,7 @@ public:
     explicit operator VkBuffer() const;
 
     virtual void bind(void* commandBuffer) override {};
+	virtual void update(const void* data, size_t size) override;
 
     const VkDeviceMemory& getMemory();
 
@@ -32,8 +34,12 @@ protected:
     VkBuffer buffer;
     VkDeviceMemory bufferMemory;
 	VkDeviceAddress deviceAddress;
+    VmaAllocator m_allocator;
+    VmaAllocation m_allocation { VK_NULL_HANDLE };
 
     virtual void destroy(VkDevice device);
+        
+    void* mappedBuffer { nullptr };
 
 };
 

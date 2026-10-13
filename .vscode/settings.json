@@ -1,4 +1,5 @@
 {
     "dotnet.defaultSolution": "disable",
-    "C_Cpp.default.compilerPath": "cl.exe"
+    "C_Cpp.default.compilerPath": "cl.exe",
+    "cmake.useCMakePresets": "always"
 }

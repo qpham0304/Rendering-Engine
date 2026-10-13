@@ -1,17 +1,16 @@
 #include "Engine.h"
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/glm.hpp>
 #include <ranges>
-#include "window/AppWindow.h"
-#include "core/events/EventManager.h"
 #include <chrono>
 #include <thread>
 
+#include <window/AppWindow.h>
+#include <core/events/EventManager.h>
 #include <core/layers/EditorLayer.h>
 #include <core/scene/SceneManager.h>
 #include <core/resources/managers/TextureManager.h>
 #include <core/resources/managers/BufferManager.h>
 #include <core/resources/managers/MeshManager.h>
+#include <core/resources/managers/SkeletonManager.h>
 #include <core/resources/managers/ModelManager.h>
 #include <core/resources/managers/DescriptorManager.h>
 #include <core/resources/managers/MaterialManager.h>
@@ -36,6 +35,7 @@ Engine::Engine(WindowConfig config)
 	scriptManager = platformFactory.Create<ScriptManager>(windowConfig.scriptingPlatform);
 	physicsManager = platformFactory.Create<PhysicsManager>(windowConfig.physicsFramework);
 	meshManager = platformFactory.Create<MeshManager>();
+	skeletonManager = platformFactory.Create<SkeletonManager>();
 	modelManager = platformFactory.Create<ModelManager>();
 	layerManager = platformFactory.Create<LayerManager>();
 	animationManager = platformFactory.Create<AnimationManager>();
@@ -51,6 +51,7 @@ Engine::Engine(WindowConfig config)
 	services.push_back(textureManager.get());
 	services.push_back(materialManager.get());
 	services.push_back(meshManager.get());
+	services.push_back(skeletonManager.get());
 	services.push_back(modelManager.get());
 	services.push_back(guiManager.get());
 	services.push_back(animationManager.get());
@@ -68,8 +69,10 @@ void Engine::pushLayer(Layer* layer)
 
 void Engine::init()
 {
+// #ifdef GAME_RELEASE
 	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 	engineLogger->setLevel(LogLevel::Debug);
+// #endif
 	
 	for (Service*& service : services) {
 		if (!service->init(windowConfig)) {

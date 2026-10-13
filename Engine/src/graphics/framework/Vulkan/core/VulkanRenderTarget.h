@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include "core/features/ServiceLocator.h"
 #include "core/resources/managers/TextureManager.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureVulkan.h"

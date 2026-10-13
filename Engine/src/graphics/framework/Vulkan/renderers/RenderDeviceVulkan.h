@@ -6,7 +6,6 @@
 #include "graphics/framework/vulkan/core/VulkanPipeline.h"
 #include "graphics/framework/vulkan/core/VulkanCommandPool.h"
 #include "graphics/framework/vulkan/core/VulkanUtils.h"
-#include "graphics/framework/Vulkan/core/VulkanExtensions.hpp"
 
 class Logger;
 

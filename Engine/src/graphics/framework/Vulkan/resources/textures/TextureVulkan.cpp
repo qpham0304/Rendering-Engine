@@ -1,13 +1,10 @@
 #include "TextureVulkan.h"
 #include <core/features/ServiceLocator.h>
-#include <graphics/framework/Vulkan/resources/buffers/BufferManagerVulkan.h>
-#include <graphics/framework/Vulkan/resources/buffers/BufferVulkan.h>
-#include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <logging/Logger.h>
 #include <core/events/EventManager.h>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <stdexcept>
 
 TextureVulkan::TextureVulkan() :
@@ -46,10 +43,6 @@ TextureVulkan::~TextureVulkan()
 
 void TextureVulkan::init(TextureConfig config, TextureSamplerConfig sampler)
 {
-	BufferManager& bufferManagerTemp = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
-	bufferManager = &dynamic_cast<BufferManagerVulkan&>(bufferManagerTemp);
-	DescriptorManager& descriptorManagerTemp = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
-	descriptorManager = &dynamic_cast<DescriptorManagerVulkan&>(descriptorManagerTemp);
 	TextureManager& textureManagerTemp = ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
 	textureManager = &dynamic_cast<TextureManagerVulkan&>(textureManagerTemp);
     RenderDevice& renderDeviceTemp = ServiceLocator::GetService<RenderDeviceVulkan>("RenderDeviceVulkan");
@@ -107,7 +100,7 @@ void TextureVulkan::copyFrom(VkCommandBuffer cmd, TextureVulkan* src)
     );
 }
 
-const VkDescriptorImageInfo &TextureVulkan::getDescImageInfoGeneral()
+const VkDescriptorImageInfo& TextureVulkan::getDescImageInfoGeneral()
 {
     imageInfoGeneral.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
     imageInfoGeneral.imageView = textureImageView;
@@ -116,7 +109,7 @@ const VkDescriptorImageInfo &TextureVulkan::getDescImageInfoGeneral()
     return imageInfoGeneral;
 }
 
-const VkDescriptorImageInfo &TextureVulkan::getDescImageInfoReadOnly()
+const VkDescriptorImageInfo& TextureVulkan::getDescImageInfoReadOnly()
 {
     imageInfoReadOnly.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfoReadOnly.imageView = textureImageView;

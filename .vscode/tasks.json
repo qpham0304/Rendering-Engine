@@ -1,47 +1,40 @@
-// It's better to use cmake task types to build properly instead of hard coded build variants
-// debug and release mode but this is sufficient for now and requires less configuration
 {
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build Sandbox Debug",
-            "type": "shell",
-            "command": "cmake --build build --target Sandbox --config Debug",
+            "type": "cmake",
+            "label": "build Sandbox Debug (ninja)",
+            "command": "build",
+            "preset": "window-ninja-debug",
             "group": "build",
-            "problemMatcher": {
-                "base": "$ninja",
-                "fileLocation": ["relative", "${workspaceFolder}/build"]
-            }
+            "problemMatcher": "$msvc"
         },
         {
-            "label": "build Sandbox Release",
-            "type": "shell",
-            "command": "cmake --build build --target Sandbox --config Release",
+            "type": "cmake",
+            "label": "build Sandbox Release (ninja)",
+            "command": "build",
+            "preset": "window-ninja-release",
             "group": "build",
-            "problemMatcher": {
-                "base": "$ninja",
-                "fileLocation": ["relative", "${workspaceFolder}/build"]
-            }
+            "problemMatcher": "$msvc"
         },
         {
-            "label": "build Editor Debug",
             "type": "shell",
-            "command": "cmake --build build --target Editor --config Debug",
+            "label": "build Sandbox Debug (msvc)",
+            "command": "powershell",
+            "args": [
+                "-Command",
+                "cmake --build --preset window-msvc-debug 2>&1 | Tee-Object -FilePath build.log; exit $LASTEXITCODE"
+            ],
             "group": "build",
-            "problemMatcher": {
-                "base": "$ninja",
-                "fileLocation": ["relative", "${workspaceFolder}/build"]
-            }
+            "problemMatcher": "$msvc"
         },
         {
-            "label": "build Editor Release",
-            "type": "shell",
-            "command": "cmake --build build --target Editor --config Release",
+            "type": "cmake",
+            "label": "build Sandbox Release (msvc)",
+            "command": "build",
+            "preset": "window-msvc-release",
             "group": "build",
-            "problemMatcher": {
-                "base": "$msvc",
-                "fileLocation": ["relative", "${workspaceFolder}/build"]
-            }
+            "problemMatcher": "$msvc"
         }
     ]
 }

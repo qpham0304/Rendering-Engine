@@ -11,6 +11,8 @@ const std::vector<std::string> hookExecutionPriority = {
     "PrefabComponent",
     "ModelComponent",
     "SpriteComponent",
+    "AnimationComponent",
+    "SkinningComponent",
     "AnimationStateComponent",
     "ColliderComponent",
     "CameraComponent",
@@ -31,7 +33,7 @@ Serializer::Serializer()
     REGISTER_COMPONENT(ColliderComponent, "ColliderComponent", [](Entity entity) { entity.onColliderComponentAdded(); });
     REGISTER_COMPONENT(CameraComponent, "CameraComponent", [](Entity entity) { entity.onCameraComponentAdded(); });
     REGISTER_COMPONENT(ParticleEmitter, "ParticleEmitter", [](Entity entity) { entity.onParticleEmitterAdded(); });
-    
+    REGISTER_COMPONENT(SkinningComponent, "SkinningComponent", [](Entity entity) { entity.onSkinningComponentAdded(); });
 }
 	
 

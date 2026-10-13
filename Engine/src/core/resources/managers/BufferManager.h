@@ -15,11 +15,13 @@ public:
     virtual void destroy(uint32_t id) = 0;
     virtual std::vector<uint32_t> listIDs() const = 0;
 
-    virtual uint32_t createVertexBuffer(const Vertex* vertices, int size) = 0;
+    virtual uint32_t createVertexBuffer(const void* vertices, int size) = 0;
     virtual uint32_t createIndexBuffer(const uint32_t* indices, int size) = 0;
     virtual uint32_t createBufferDeviceAddress(size_t bufferSize) = 0;
     virtual void updateBufferDeviceAddress(uint32_t id, const void* src, size_t bufferSize) = 0;
     virtual void bind(uint32_t id) = 0;
+    virtual uint64_t getVirtualMemoryAddress(uint32_t id) = 0;
+    virtual uint32_t findBufferID(uint64_t virtualAddress) = 0;
     virtual Buffer* getBuffer(uint32_t id) = 0;
 
 

@@ -30,8 +30,6 @@ public:
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
 
-	// void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer);
-	// void endRecording(void* cmdBuffer);
 	
 protected:
 	Logger* m_logger { nullptr };
@@ -48,7 +46,6 @@ protected:
 	bool isActive{ false };
 	bool needResize{ false };
 
-	void _resize();
 	virtual void _recreateResources() = 0;
 	virtual void _cleanupResources() = 0;
 };

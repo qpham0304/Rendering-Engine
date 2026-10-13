@@ -35,8 +35,6 @@ DDGIBuilderVulkan::~DDGIBuilderVulkan()
 bool DDGIBuilderVulkan::init(WindowConfig config)
 {
     RendererVulkan::init(config);
-
-    
     
     RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("RayTraceRendererVulkan");
@@ -44,7 +42,6 @@ bool DDGIBuilderVulkan::init(WindowConfig config)
 	renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
 	shadowMapPass = dynamic_cast<ShadowMapPassVulkan*>(renderer);
     assert(raytracer && "failed to retrieve raytracing resource");
-
 
     _createResources();
     _createDescriptor();
@@ -55,6 +52,16 @@ bool DDGIBuilderVulkan::init(WindowConfig config)
 
 void DDGIBuilderVulkan::onUpdate()
 {
+	SceneManager& sceneManager = SceneManager::getInstance();
+	Scene* scene = sceneManager.getActiveScene();
+    if(!scene){
+		m_logger->error("No scene to update");
+	}
+
+    auto entities = scene->getEntitiesWith<LightProbeComponent>();
+    if(entities.empty()) {
+        hasProbe = false;
+    }
 }
 
 void DDGIBuilderVulkan::render(Camera &camera)
@@ -90,7 +97,7 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	ubo.width  = (float)rayBufferW;
     ubo.height = (float)rayBufferH;
     
-    bool shouldClear = false;//camera.isMoving();
+    bool shouldClear = false;   //camera.isMoving();
     ubo.frameSeed = !shouldClear ? rand() % 32768 : ubo.frameSeed;
     ubo.frameCount += 1;
     ubo.clear = shouldClear ? 1 : 0;
@@ -102,13 +109,15 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
     auto entities = scene->getEntitiesWith<LightProbeComponent>();
-    Entity lightProbeEntity = entities[0];
+    if(entities.empty()) {
+        return;
+    }
+    Entity lightProbeEntity = entities[0];  //NOTE: only assume there's only one prob grid
     auto& lightProbeComponent = lightProbeEntity.getComponent<LightProbeComponent>();
     auto& transform = lightProbeEntity.getComponent<TransformComponent>();
     
 	size_t buffersize = MAX_INSTANCES * sizeof(ObjectDesc);
 	bufferManagerVulkan->updateBufferDeviceAddress(raytracer->objDeviceAddressBufferID, raytracer->objects.data(), buffersize);
-
 
 	raytracer->updateTlas();
 
@@ -224,18 +233,18 @@ void DDGIBuilderVulkan::_createResources()
 		m_logger->error("No scene to render");
 	}
 
+    bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
+    
     //TODO: only assume one probe grid for the entire scene at the moment
     auto entities = scene->getEntitiesWith<LightProbeComponent>();
-
-    if(entities.size() == 0) {
-		m_logger->error("No entity with light probe component");
+    if(entities.empty()) {
+        hasProbe = false;
+		m_logger->warn("No entity with light probe component");
     } else {
+        hasProbe = true;
         Entity lightProbeEntity = entities[0];  //NOTE: only assume there's only one prob grid
         auto& lightProbeComponent = lightProbeEntity.getComponent<LightProbeComponent>();
 
-        
-        bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
-            
         uint32_t bufferID = bufferManagerVulkan->createBufferDeviceAddress(lightProbeComponent.bufferSize);
         auto buffer = dynamic_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(bufferID));
         assert(buffer && "failed to retrieve vulkan buffer");
@@ -267,7 +276,6 @@ void DDGIBuilderVulkan::_createResources()
         uint32_t visibilityStride = 16 + 2;
         visAtlasW = probesPerDimension * visibilityStride;
         visAtlasH = probesPerDimension * probesPerDimension * visibilityStride;
-
     }
     
     auto createTexture = [&] (TextureVulkan*& texture, uint32_t w, uint32_t h, VkFormat format, VkImageUsageFlags extraUsage = 0) {
@@ -277,6 +285,7 @@ void DDGIBuilderVulkan::_createResources()
 
         uint32_t id = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
         texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
+        auto image = texture->textureImage;
     };
     
     // Width = Rays, Height = Total Probes
@@ -287,6 +296,12 @@ void DDGIBuilderVulkan::_createResources()
     createTexture(currentVisibilityAtlas, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
     createTexture(lastFrameVisibilityAtlas, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
     
+    rendererManagerVulkan->addRenderTexture("rayColorBuffer", {rayColorBuffer->id()});
+    rendererManagerVulkan->addRenderTexture("rayDistanceBuffer", {rayDistanceBuffer->id()});
+    rendererManagerVulkan->addRenderTexture("currentIrradianceAtlas", {currentIrradianceAtlas->id()});
+    rendererManagerVulkan->addRenderTexture("lastframeIrradianceAtlas", {lastframeIrradianceAtlas->id()});
+    rendererManagerVulkan->addRenderTexture("currentVisibilityAtlas", {currentVisibilityAtlas->id()});
+    rendererManagerVulkan->addRenderTexture("lastFrameVisibilityAtlas", {lastFrameVisibilityAtlas->id()});
     
     // createTexture(rayColorBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16B16A16_SFLOAT);
     // createTexture(rayDistanceBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16_SFLOAT);
@@ -385,6 +400,10 @@ void DDGIBuilderVulkan::_createDescriptor()
     updateVisibilityLayoutID = descriptorManagerVulkan->createLayout(updateVisibilityBindings);
     updateVisibilityPoolID = descriptorManagerVulkan->createPool(updateVisibilityPoolSize, frameCount);
 	updateVisibilitySetID = descriptorManagerVulkan->createSets(updateVisibilityLayoutID, updateVisibilityPoolID, frameCount);
+
+    if(!hasProbe) {
+        return;
+    }
 
     for(int i = 0; i < frameCount; i++) {
         _updateDescriptor(i);

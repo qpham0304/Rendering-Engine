@@ -1,9 +1,12 @@
 #version 460
-// #extension GL_EXT_scalar_block_layout : enable   // scalar align better with C++ side no need for alignas
 
-#extension GL_EXT_nonuniform_qualifier : require
-#extension GL_EXT_buffer_reference2 : require
-#extension GL_EXT_scalar_block_layout : enable
+#extension GL_GOOGLE_include_directive : require
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_scalar_block_layout : require
+
+#include "common/buffers.glsl"
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
@@ -20,26 +23,24 @@ struct Light {
     float intensity;
 };
 
-layout(set = 0, binding = 0)  uniform UniformBufferObject {
+layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 invNormal;
     mat4 view;
+    mat4 prevViewProj;
     mat4 proj;
     vec4 cameraPos;
     mat4 invView;
     mat4 invProj;
     float width;
     float height;
-    int shadowMapID;
-    int blueNoiseID;
-    
 } ubo;
 
 layout(set = 0, binding = 2, std430) readonly buffer LightSSBO {
     Light lights[];
 } lightSSBO;
 
-layout(set = 0, binding = 3) uniform sampler2D shadowMap_1;
-layout(set = 0, binding = 4) uniform sampler2D blueNoise_1;
+layout(set = 0, binding = 3) uniform sampler2D shadowMap;
+layout(set = 0, binding = 4) uniform sampler2D blueNoise;
 
 layout(set = 0, binding = 5) readonly buffer SHData {
     vec4 shCoeffs[9];
@@ -52,29 +53,10 @@ layout(set = 0, binding = 8) uniform sampler2D hdrImage;
 layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 // layout(set = 2, binding = 1) uniform image2D storageImages[];
 // layout(set = 2, binding = 2) uniform sampler storageImages[];
+layout(buffer_reference, scalar) buffer BoneModelBuffer { mat4 boneMatrices[]; };
+layout(buffer_reference, scalar) buffer BoneMatrixArrayTable { BoneModelBuffer ptrs[]; };
 
-
-struct Material {
-    uint albedoIdx;
-    uint normalIdx;
-    uint metalnessIdx;
-    uint roughnessIdx;
-    uint aoIdx;
-    uint emissiveIdx;
-
-    vec2 uvOffset;
-    vec2 uvScale;
-    vec4 albedoFactor;
-    vec4 normalFactor;
-    float metallicFactor;
-    float roughnessFactor;
-    float aoFactor;
-    float emissiveFactor;
-};
-
-layout(buffer_reference, scalar) buffer Materials{ 
-    Material m[];
-};
+layout(buffer_reference, scalar) buffer Materials{ Material m[]; };
 
 layout(push_constant) uniform PushConstant {
     Materials materialsRef;
@@ -82,14 +64,13 @@ layout(push_constant) uniform PushConstant {
     float time;
     mat4 sunlightMVP;
     vec4 direction;
-    vec4 color;
+    // vec4 color;
     float numLights;
-    float skyboxDetail;
     uint materialIdx;
+    uint boneMatricesIdx;
+    BoneMatrixArrayTable boneTableRef;
 } pc;
 
-
-const float PI = 3.14159265359;
 
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness * roughness;
@@ -153,7 +134,7 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm) {
     for(int i = -2; i <= 2; ++i) {
         for(int j = -2; j <= 2; ++j) {
             vec2 offset = vec2(i, j) * (searchRegion / 5.0);
-            float depth = texture(samplerImages[ubo.shadowMapID], projCoords.xy + offset).r;
+            float depth = texture(shadowMap, projCoords.xy + offset).r;
             
             if(depth < currentDepth - searchBias) { 
                 avgBlockerDepth += depth;
@@ -171,8 +152,8 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm) {
     float penumbra = (currentDepth - avgBlockerDepth) * LIGHT_SIZE_UV;
     penumbra = clamp(penumbra, 0.0, 0.02); 
 
-    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(samplerImages[ubo.blueNoiseID], 0));
-    float noiseValue = texture(samplerImages[ubo.blueNoiseID], noiseUV).r;
+    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
+    float noiseValue = texture(blueNoise, noiseUV).r;
 
     float angle = noiseValue * 6.283185;
     float s = sin(angle);
@@ -195,7 +176,7 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm) {
     float shadow = 0.0;
     for (int i = 0; i < 16; i++) {
         vec2 offset = (rotation * poissonDisk32[i]) * penumbra;
-        float pcfDepth = texture(samplerImages[ubo.shadowMapID], projCoords.xy + offset).r;
+        float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
         
         if (currentDepth - pcfBias > pcfDepth) {
             shadow += 1.0;
@@ -327,7 +308,9 @@ void main() {
     vec3 kS = F;
     vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
     
-    Lo += (kD * albedo / PI + specular) * pc.color.rgb * NdotL * shadow;
+    // Lo += (kD * albedo / PI + specular) * pc.color.rgb * NdotL * shadow;
+    vec3 tempColor = vec3(1.0);
+    Lo += (kD * albedo / PI + specular) * tempColor * NdotL * shadow;
 
     vec3 R = reflect(-V, N);
     vec3 F_ibl = fresnelSchlickRoughness(NdotV, F0, roughness);

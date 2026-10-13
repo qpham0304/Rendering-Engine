@@ -4,6 +4,7 @@
 #include "core/events/EventManager.h"
 #include "core/features/ServiceLocator.h"
 #include "core/resources/managers/TextureManager.h"
+#include "core/resources/managers/SkeletonManager.h"
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
@@ -11,6 +12,7 @@
 #include "scripting/ScriptManager.h"
 #include "window/AppWindow.h"
 #include "particle/ParticleContainer.h"
+#include "animation/AnimationManager.h"
 
 Entity::Entity(const entt::entity& entity, entt::registry& registry)
     : entity(entity), registry(&registry)
@@ -82,8 +84,38 @@ void Entity::onParticleEmitterAdded()
     auto particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
     
     ParticleEmitter& emitter = getComponent<ParticleEmitter>();
+}
 
+void Entity::onSkinningComponentAdded()
+{
+    auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
+    auto skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
+    auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+
+    SkinningComponent& skinningComponent = getComponent<SkinningComponent>();
+    ModelComponent& modelComponent = getComponent<ModelComponent>();
+    Model* model = modelManager->getModel(modelComponent.modelID);
+
+    auto skeleton = skeletonManager->getSkeleton(model->skeletonID);
+    skinningComponent.boneMatricesID = animationManager->addBoneMatrices(skeleton->nodes.size());
+    skinningComponent.animatorID = animationManager->addAnimator(model->skeletonID);
+    skinningComponent.animationPath = model->path;  //For now animation is bound to model load
+    auto animator = animationManager->getAnimator(skinningComponent.animatorID);
     
+    animator->animationPath = skinningComponent.animationPath;
+
+    if(skinningComponent.initialAnimation == "") {
+        const AnimationData* animationData = animationManager->getAnimationData(skinningComponent.animationPath);
+        if(!animationData) {
+            return;
+        }
+        if (!animationData->empty()) {
+            auto it = animationData->begin();
+            animator->animationName = it->first;
+        }
+    } else {
+        animator->animationName = skinningComponent.initialAnimation;
+    }
 }
 
 void Entity::onModelComponentAdded()

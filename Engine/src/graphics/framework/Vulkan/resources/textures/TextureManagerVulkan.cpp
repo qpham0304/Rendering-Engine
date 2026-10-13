@@ -1,12 +1,13 @@
 #include "TextureManagerVulkan.h"
 #include <stb/stb_image.h>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include "core/features/ServiceLocator.h"
 #include "graphics/framework/vulkan/renderers/RenderDeviceVulkan.h"
 #include "graphics/framework/vulkan/core/VulkanDevice.h"
 #include "graphics/framework/vulkan/core/VulkanUtils.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/resources/descriptors/DescriptorManagerVulkan.h"
+#include "graphics/framework/vulkan/core/CommonStructs.h"
 #include "logging/Logger.h"
 #include "core/events/EventManager.h"
 
@@ -95,6 +96,17 @@ uint32_t TextureManagerVulkan::loadTexture(std::string_view path, uint32_t mipLe
 	return _assignID();
 }
 
+uint32_t TextureManagerVulkan::loadTextureFromMemory(const void *data, size_t size, std::string_view cacheKey, uint32_t mipLevels, bool isDataTexture)
+{
+	if (m_textureData.find(cacheKey.data()) != m_textureData.end()) {
+		return m_textureData.at(cacheKey.data());
+	}
+
+	_loadTexture(cacheKey, mipLevels, isDataTexture, true, data, size);
+
+	return _assignID();
+}
+
 uint32_t TextureManagerVulkan::createTexture()
 {
 	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);
@@ -140,31 +152,60 @@ uint32_t TextureManagerVulkan::getInspectorLayout() {
 	return inspectorLayoutID;
 } 
 
-void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture)
-{
+void TextureManagerVulkan::_loadTexture(
+	std::string_view path,
+	uint32_t mipLevels,
+	bool isDataTexture,
+	bool isFromMemory,
+	const void* data,
+	size_t size
+) {
 	stbi_set_flip_vertically_on_load(true);
-	bool isHDR = stbi_is_hdr(path.data());
+	bool isHDR = false;
 	VkFormat format;
 	uint32_t bytesPerChannel;
 	void* pixels;
 
 	int texWidth, texHeight, texChannels;
-
-	if (isHDR) {
-		pixels = stbi_loadf(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		bytesPerChannel = sizeof(float);
+	
+	if(isFromMemory) {
+		isHDR = stbi_is_hdr_from_memory(static_cast<const stbi_uc*>(data), static_cast<int>(size));
+        
+        if (isHDR) {
+            pixels = stbi_loadf_from_memory(
+				static_cast<const stbi_uc*>(data), static_cast<int>(size), 
+				&texWidth, &texHeight, &texChannels, STBI_rgb_alpha
+			);
+            format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            bytesPerChannel = sizeof(float);
+        } else {
+            pixels = stbi_load_from_memory(
+				static_cast<const stbi_uc*>(data), static_cast<int>(size), 
+				&texWidth, &texHeight, &texChannels, STBI_rgb_alpha
+			);
+            format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+            bytesPerChannel = sizeof(uint8_t);
+        }
 	} else {
-		pixels = stbi_load(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
-		bytesPerChannel = sizeof(uint8_t);
+        isHDR = stbi_is_hdr(path.data());
+		if (isHDR) {
+			pixels = stbi_loadf(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+			format = VK_FORMAT_R32G32B32A32_SFLOAT;
+			bytesPerChannel = sizeof(float);
+		} else {
+			pixels = stbi_load(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+			format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+			bytesPerChannel = sizeof(uint8_t);
+		}
 	}
 
 	VkDeviceSize imageSize = texWidth * texHeight * 4 * bytesPerChannel;
 
 	if (!pixels) {
-		std::string message = "TextureManagerVulkan::loadTexture: failed to load texture image ";
-		throw std::runtime_error(message + path.data());
+		m_logger->error("TextureManagerVulkan::loadTexture: failed to load texture image {}", path.data());
+		// std::string message = "TextureManagerVulkan::loadTexture: failed to load texture image ";
+		// throw std::runtime_error(message + path.data());
+		return;
 	}
 
 	VkDeviceMemory stagingBufferMemory;
@@ -178,9 +219,9 @@ void TextureManagerVulkan::_loadTexture(std::string_view path, uint32_t mipLevel
 		stagingBufferMemory
 	);
 
-	void* data;
-	vkMapMemory(renderDeviceVulkan->device, stagingBufferMemory, 0, imageSize, 0, &data);
-	memcpy(data, pixels, static_cast<size_t>(imageSize));
+	void* mappedData;
+	vkMapMemory(renderDeviceVulkan->device, stagingBufferMemory, 0, imageSize, 0, &mappedData);
+	memcpy(mappedData, pixels, static_cast<size_t>(imageSize));
 	vkUnmapMemory(renderDeviceVulkan->device, stagingBufferMemory);
 
 	stbi_image_free(pixels);
@@ -277,10 +318,12 @@ void TextureManagerVulkan::_createInspectorDescriptorBind()
 
 void TextureManagerVulkan::_createBindlessDescriptor()
 {
+	const int MAX_NUM_TEXTURES = Common::MAX_INSTANCES;
+	
     VkDescriptorSetLayoutBinding bindlessBinding{};
     bindlessBinding.binding = 0;
     bindlessBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    bindlessBinding.descriptorCount = 10000;
+    bindlessBinding.descriptorCount = MAX_NUM_TEXTURES;
     bindlessBinding.stageFlags = VK_SHADER_STAGE_ALL;
 
     globalBindlessLayoutID = descriptorManagerVulkan->createLayout(
@@ -288,7 +331,7 @@ void TextureManagerVulkan::_createBindlessDescriptor()
         VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT
     );
 
-    VkDescriptorPoolSize poolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10000 };
+    VkDescriptorPoolSize poolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_NUM_TEXTURES };
     globalBindlessPoolID = descriptorManagerVulkan->createPool(
         { poolSize }, 
         1,
@@ -298,7 +341,7 @@ void TextureManagerVulkan::_createBindlessDescriptor()
     globalBindlessSetID = descriptorManagerVulkan->createSets(globalBindlessLayoutID, globalBindlessPoolID, 1);
 }
 
-void TextureManagerVulkan::registerTextureSampler(uint32_t textureID)
+void TextureManagerVulkan::registerBindlessTexture(uint32_t textureID)
 {
     TextureVulkan* tex = getTexture(textureID);
     VkDescriptorSet globalSet = descriptorManagerVulkan->getDescriptorSet(globalBindlessSetID)[0];
@@ -315,6 +358,7 @@ void TextureManagerVulkan::registerTextureSampler(uint32_t textureID)
 
 void TextureManagerVulkan::registerTextureStorage(uint32_t textureID)
 {
+	//TODO: do not share with image sampler set, create a storage global sets for storage image
     TextureVulkan* tex = getTexture(textureID);
     VkDescriptorSet globalSet = descriptorManagerVulkan->getDescriptorSet(globalBindlessSetID)[0];
 

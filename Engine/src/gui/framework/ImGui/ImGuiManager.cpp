@@ -9,6 +9,7 @@
 #include "graphics/renderers/RenderDevice.h"
 #include "core/features/Camera.h"
 #include "core/features/EngineStates.h"
+#include "volk.h"
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
@@ -430,10 +431,15 @@ int ImGuiManager::_initVulkan()
 
 	RenderDevice::DeviceInfo deviceInfo = renderDevice.getDeviceInfo();
 	RenderDevice::PipelineInfo pipelineInfo = renderDevice.getPipelineInfo();
-	VkInstance instance = (VkInstance)renderDevice.getNativeInstance();
-	VkDevice device = (VkDevice)renderDevice.getNativeDevice();
-	VkPhysicalDevice physicalDevice = (VkPhysicalDevice)renderDevice.getPhysicalDevice();
+	VkInstance instance = static_cast<VkInstance>(renderDevice.getNativeInstance());
+	VkDevice device = static_cast<VkDevice>(renderDevice.getNativeDevice());
+	VkPhysicalDevice physicalDevice = static_cast<VkPhysicalDevice>(renderDevice.getPhysicalDevice());
 
+	
+	ImGui_ImplVulkan_LoadFunctions(deviceInfo.apiVersion.value(), [](const char* function_name, void* user_data) {
+		return vkGetInstanceProcAddr(static_cast<VkInstance>(user_data), function_name);
+	}, instance);
+	
 	VkDescriptorPoolSize pool_sizes[] =
 	{
 		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
@@ -452,7 +458,7 @@ int ImGuiManager::_initVulkan()
 	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 	pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
-	pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
+	pool_info.poolSizeCount = static_cast<uint32_t>(IM_ARRAYSIZE(pool_sizes));
 	pool_info.pPoolSizes = pool_sizes;
 
 	VkResult result = vkCreateDescriptorPool(device, &pool_info, nullptr, &guiDescriptorPool);
@@ -461,18 +467,18 @@ int ImGuiManager::_initVulkan()
 	}
 
 	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.ApiVersion = VK_API_VERSION_1_4;	// VkApplicationInfo::apiVersion
+	init_info.ApiVersion = deviceInfo.apiVersion.value();
 	init_info.Instance = instance;
 	init_info.PhysicalDevice = physicalDevice;
 	init_info.Device = device;
 	init_info.QueueFamily = deviceInfo.queueFamilyIndex.value();
-	init_info.Queue = (VkQueue)deviceInfo.queueHandle.value();
+	init_info.Queue = static_cast<VkQueue>(deviceInfo.queueHandle.value());
 	init_info.PipelineCache = VK_NULL_HANDLE;
 	init_info.DescriptorPool = guiDescriptorPool;
 	init_info.MinImageCount = deviceInfo.minImageCount.value();
 	init_info.ImageCount = deviceInfo.imageCount.value();
 	init_info.Allocator = VK_NULL_HANDLE;
-	init_info.PipelineInfoMain.RenderPass = (VkRenderPass)pipelineInfo.renderPass;
+	init_info.PipelineInfoMain.RenderPass = static_cast<VkRenderPass>(pipelineInfo.renderPass);
 	init_info.PipelineInfoMain.Subpass = pipelineInfo.subpass;
 	init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	init_info.CheckVkResultFn = [](VkResult err) { if (err != VK_SUCCESS) abort(); };
@@ -489,6 +495,7 @@ int ImGuiManager::_initVulkan()
 			break;
 		}
 	}
+	
 	ImGui_ImplVulkan_Init(&init_info);
 
 	return 0;

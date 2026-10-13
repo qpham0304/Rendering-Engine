@@ -12,10 +12,5 @@ public:
 	virtual ~DeviceAddressBufferVulkan() override;
 
     virtual void bind(void* commandBuffer) override;
-
-	void update(const void* src, size_t size);
-
-private:
-	void* mappedBuffer;
 };
 
