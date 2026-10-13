@@ -106,6 +106,9 @@ void Entity::onSkinningComponentAdded()
 
     if(skinningComponent.initialAnimation == "") {
         const AnimationData* animationData = animationManager->getAnimationData(skinningComponent.animationPath);
+        if(!animationData) {
+            return;
+        }
         if (!animationData->empty()) {
             auto it = animationData->begin();
             animator->animationName = it->first;

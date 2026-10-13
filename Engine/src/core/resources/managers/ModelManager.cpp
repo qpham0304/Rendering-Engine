@@ -174,17 +174,25 @@ bool ModelManager::_loadModel(std::string_view path)
         | aiProcess_ValidateDataStructure;
 
     const aiScene* scene = import.ReadFile(path.data(), flags);
-
-    if(scene->mNumAnimations > 0) {
-        animationManager->loadAnimation(path, scene);
-    }
-
-
+    
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::string error = import.GetErrorString();
         m_logger->error("Model Loading failed: ERROR::ASSIMP::{}", error);
         return false;
     }
+
+    if(scene->mNumAnimations > 0) {
+        //TODO: remove hard coded setup 
+        // if(path == "assets/models/2b/gltf/2B_Rip_v1_6.gltf") {
+        //     auto p = "assets/models/2b/gltf/2B_Rip_v1_6_R.glb";
+        //     const aiScene* tempScene = import.ReadFile(p, flags);
+        //     animationManager->loadAnimation(p, tempScene);
+        // } else {
+        //     animationManager->loadAnimation(path, scene);
+        // }
+        animationManager->loadAnimation(path, scene);
+    }
+
     
     uint32_t skeletonID = 0;
     for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
@@ -388,13 +396,12 @@ void ModelManager::_processSkeletonNodeHierarchy(uint32_t skeletonID, aiNode* ai
 
     SkeletonManager::SkeletonNode node{};
     node.name = nodeName;
-    int currentIndex = skeleton->nodes.size();
-    node.boneIndex = currentIndex;
     node.isBone = false;
     node.vqs.position = glm::vec3(aiTranslation.x, aiTranslation.y, aiTranslation.z);
     node.vqs.rotation.fromGlmQuat(glm::quat(aiRotation.w, aiRotation.x, aiRotation.y, aiRotation.z));
     node.vqs.scale = glm::vec3(aiScale.x, aiScale.y, aiScale.z);
 
+    int currentIndex = skeleton->nodes.size();
     skeleton->boneMap[nodeName] = currentIndex;
     skeleton->nodes.push_back(node);
 

@@ -115,7 +115,7 @@ uint32_t AnimationManager::addBoneMatrices(size_t boneCount)
     deviceAdressBufferID = m_bufferManager->createBufferDeviceAddress(containerBufferSize);
     m_bufferManager->updateBufferDeviceAddress(deviceAdressBufferID, m_boneMatricesBuffers.data(), containerBufferSize);
 
-    return _assignID();
+    return m_boneMatricesData.size() - 1;   // use array incremental size as access index but not thread friendly
 }
 
 // return modifiable bone matrices per unique entity
@@ -152,6 +152,16 @@ bool AnimationManager::loadAnimation(std::string_view path, const aiScene* scene
         auto animation = std::make_shared<Animation>();
         animation->ticksPerSecond = aiAnimation->mTicksPerSecond;
         animation->duration = aiAnimation->mDuration;
+
+        //TODO: support mesh morph channel
+        for(int j = 0; j < aiAnimation->mNumMorphMeshChannels; j++) {
+            aiMeshMorphAnim* aiMeshMorphChannel = aiAnimation->mMorphMeshChannels[j];
+
+            for(int k = 0; k < aiMeshMorphChannel->mNumKeys; k++) {
+                aiMeshMorphKey morpKey = aiMeshMorphChannel->mKeys[k];
+
+            }
+        }
         
         for(int j = 0; j < aiAnimation->mNumChannels; j++) {
             aiNodeAnim* aiChannel = aiAnimation->mChannels[j];

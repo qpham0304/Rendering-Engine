@@ -15,4 +15,5 @@ public:
     void drawTree(const std::vector<uint32_t> ids) const;
 private:
     std::string selectedAnimation{"select animation"};
+    uint32_t selectedEntityID { 0 };
 };

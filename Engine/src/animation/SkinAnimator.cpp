@@ -88,9 +88,6 @@ void SkinAnimator::_calculateBoneTransform(uint32_t boneMatricesID, uint32_t ani
             }
         }
 
-        animation->duration;
-        animation->ticksPerSecond;
-
         if(selectedTrack) {
             node.vqs.position = _interpolatePosition(animator->currentTime, *selectedTrack);
             node.vqs.rotation = _interpolateRotation(animator->currentTime, *selectedTrack);
@@ -105,7 +102,7 @@ void SkinAnimator::_calculateBoneTransform(uint32_t boneMatricesID, uint32_t ani
         }
     };
 
-    calculateTransform(skeleton->rootIndex, glm::mat4(1.0));    // shoud probably be entity's transform componentat data
+    calculateTransform(skeleton->rootIndex, glm::mat4(1.0));
 }
 
 glm::vec3 SkinAnimator::_interpolatePosition(float currentTime, const Track &track)

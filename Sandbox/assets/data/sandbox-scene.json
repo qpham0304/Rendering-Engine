@@ -17,37 +17,6 @@
     {
       "components": {
         "ModelComponent": {
-          "path": "assets/models/M1911/scene.gltf"
-        },
-        "SkinningComponent": {
-          "initialAnimation": "",
-          "animationPath": "assets/models/M1911/scene.gltf"
-        },
-        "NameComponent": {
-          "name": "plane"
-        },
-        "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "translateVec": [
-            0,
-            -2.5,
-            0
-          ]
-        }
-      }
-    },
-    {
-      "components": {
-        "ModelComponent": {
           "path": "assets/models/cube/cube-notex.gltf"
         },
         "NameComponent": {

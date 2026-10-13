@@ -15,32 +15,49 @@ void ImGuiAnimationWidget::render()
 
     std::vector<uint32_t> ids = skeletonManager->listIDs();
     auto func = std::function<void(Entity)>([&](Entity entity) -> void {
+        auto& nameComponent = entity.getComponent<NameComponent>();
         auto& skinningComponent = entity.getComponent<SkinningComponent>();
         const AnimationData* data = animationManager->getAnimationData(skinningComponent.animationPath);
-        
         if(!data) {
             return;
         }
 
-        if (ImGui::BeginCombo("Animations", selectedAnimation.c_str())) {
-            for(auto& [name, value] : *data) {
-                const bool isSelected = (name == selectedAnimation);
-                
-                if (ImGui::Selectable(name.c_str(), isSelected)) {
-                    selectedAnimation = name;
-                    auto animator = animationManager->getAnimator(skinningComponent.animatorID);
-                    animator->animationName = selectedAnimation;
-                }
+        ImGui::PushID(entity);
 
-                if (isSelected) {
-                    ImGui::SetItemDefaultFocus(); 
+        const bool isEntitySelected = (selectedEntityID == entity);
+        if (ImGui::Selectable(nameComponent.name.c_str(), isEntitySelected)) {
+            selectedEntityID = entity;
+            
+            if (skinningComponent.animatorID != 0) {
+                auto animator = animationManager->getAnimator(skinningComponent.animatorID);
+                if (animator) {
+                    selectedAnimation = animator->animationName;
                 }
             }
-            ImGui::EndCombo();
         }
 
+        if (isEntitySelected) {
+            auto animator = animationManager->getAnimator(skinningComponent.animatorID);
+            
+            if (animator && ImGui::BeginCombo("Animations", selectedAnimation.c_str())) {
+                for (auto& [name, value] : *data) {
+                    const bool isSelected = (name == selectedAnimation);
+                    
+                    if (ImGui::Selectable(name.c_str(), isSelected)) {
+                        selectedAnimation = name;
+                        animator->animationName = selectedAnimation;
+                    }
 
+                    if (isSelected) {
+                        ImGui::SetItemDefaultFocus(); 
+                    }
+                }
+                ImGui::EndCombo();
+            }
+        }
 
+        ImGui::PopID();
+        ImGui::Separator();
     });
 
     SceneManager& sceneManager = SceneManager::getInstance();
@@ -51,7 +68,8 @@ void ImGuiAnimationWidget::render()
 
     scene->forEnitiesWith<SkinningComponent>(func);
 
-    drawBone(ids);
+    ImGui::Separator();
+    // drawBone(ids);
     drawTree(ids);
     
     // if (ImGui::Button("view simple popup")) {
@@ -129,7 +147,7 @@ void ImGuiAnimationWidget::drawBone(const std::vector<uint32_t> ids) const
             }
         };
 
-        if (skeleton->rootIndex < skeleton->nodes.size()) { //TODO: this should probably be entity transform not just identity
+        if (skeleton->rootIndex < skeleton->nodes.size()) {
             ComputeNodeWorldPositions(skeleton->rootIndex, glm::mat4(1.0f));    
             DrawSkeletonTree(skeleton->rootIndex);
         }
@@ -155,7 +173,8 @@ void ImGuiAnimationWidget::drawTree(const std::vector<uint32_t> ids) const
                 auto node = skeleton->nodes[nodeIndex];
                 ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
                 bool nodeOpen = ImGui::TreeNodeEx((void*)(uintptr_t)nodeIndex, flags, "%s", node.name.c_str());
-                
+
+
                 std::string isBone = node.isBone ? "bone" : "";
                 float textWidth = ImGui::CalcTextSize(isBone.c_str()).x;
                 float rightPos = ImGui::GetWindowContentRegionMax().x - textWidth - ImGui::GetStyle().WindowPadding.x;
@@ -166,6 +185,7 @@ void ImGuiAnimationWidget::drawTree(const std::vector<uint32_t> ids) const
                     for(auto& childrenIdx : node.childrenNodes) {
                         renderNodeTree(childrenIdx);
                     }
+
                     ImGui::TreePop();
                 }
             };

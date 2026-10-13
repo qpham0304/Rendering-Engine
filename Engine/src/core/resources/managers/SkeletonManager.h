@@ -7,26 +7,23 @@ class MYGRAPHICSENGINE_EXPORT SkeletonManager : public Manager
 {
 public:
     struct SkeletonNode {
-		std::string name = "Unknown";
-        int boneIndex = -1;
-        int parentIndex = -1;
-        Math::VQS vqs {};   //vec3 of position, scale, rotation
+		std::string name { "Unknown" };
+        int parentIndex { -1 };
+        Math::VQS vqs {};           //vec3 of position, scale, rotation
         glm::mat4 offsetMatrix {};
-        glm::vec3 worldPosition { 0.0f };
+        glm::vec3 worldPosition { 0.0f }; // redundant, only for debug draw atm
 
-		// std::vector<uint32_t> meshIds{};
 		std::vector<uint32_t> childrenNodes{};
 
         bool isBone { false };
-		bool visibility { false };
     };
 
     struct SkeletonAsset {
         uint32_t id { 0 };
         std::string name;
-        std::vector<SkeletonNode> nodes;
         uint32_t rootIndex = 0;
 
+        std::vector<SkeletonNode> nodes;
         std::unordered_map<std::string, int> boneMap;
     };
 

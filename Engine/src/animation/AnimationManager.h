@@ -46,6 +46,5 @@ private:
 
 	std::unordered_map<std::string, AnimationData> m_animations;
     std::unordered_map<uint32_t, std::shared_ptr<Animator>> m_animators;
-	
 	bool _loadAnimation(std::string_view path);
 };
