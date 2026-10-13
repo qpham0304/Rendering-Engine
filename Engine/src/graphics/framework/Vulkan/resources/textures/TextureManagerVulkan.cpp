@@ -49,7 +49,7 @@ bool TextureManagerVulkan::onClose()
 {
     WriteLock lock = _lockWrite();
 	for (auto& [id, texture] : m_textures) {
-		static_cast<TextureVulkan*>(texture.get())->destroy(renderDeviceVulkan->device);
+		static_cast<TextureVulkan*>(texture.get())->destroy(renderDeviceVulkan->device, renderDeviceVulkan->device.getAllocator());
 	}
 	
 	m_textures.clear();
@@ -68,7 +68,7 @@ void TextureManagerVulkan::destroy(uint32_t id)
 	
 	TextureVulkan* texture = getTexture(id);
 	std::string path = texture->m_path;
-	texture->destroy(renderDeviceVulkan->device);
+	texture->destroy(renderDeviceVulkan->device, renderDeviceVulkan->device.getAllocator());
 	m_textures[id] = nullptr;
 
 	auto it2 = m_textureData.find(path);
@@ -208,7 +208,7 @@ void TextureManagerVulkan::_loadTexture(
 		return;
 	}
 
-	VkDeviceMemory stagingBufferMemory;
+	VmaAllocation stagingBufferMemory;
 	VkBuffer stagingBuffer;
 
 	vulkanBufferManager->createBuffer(
@@ -220,9 +220,9 @@ void TextureManagerVulkan::_loadTexture(
 	);
 
 	void* mappedData;
-	vkMapMemory(renderDeviceVulkan->device, stagingBufferMemory, 0, imageSize, 0, &mappedData);
+	vmaMapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory, &mappedData);
 	memcpy(mappedData, pixels, static_cast<size_t>(imageSize));
-	vkUnmapMemory(renderDeviceVulkan->device, stagingBufferMemory);
+	vmaUnmapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory);
 
 	stbi_image_free(pixels);
 
@@ -258,8 +258,7 @@ void TextureManagerVulkan::_loadTexture(
 	copyBufferToImage(stagingBuffer, texture->textureImage, texWidth, texHeight, renderDeviceVulkan);
 	generateMipmaps(texture->textureImage, format, texWidth, texHeight, mipLevels, renderDeviceVulkan);
 
-	vkDestroyBuffer(renderDeviceVulkan->device, stagingBuffer, nullptr);
-	vkFreeMemory(renderDeviceVulkan->device, stagingBufferMemory, nullptr);
+	vmaDestroyBuffer(renderDeviceVulkan->device.getAllocator(), stagingBuffer, stagingBufferMemory);
 
 	createImageView(
 		texture->textureImage,
@@ -390,7 +389,7 @@ void TextureManagerVulkan::createImage(
 	VkImageUsageFlags usage, 
 	VkMemoryPropertyFlags properties, 
 	VkImage& image, 
-	VkDeviceMemory& imageMemory,
+	VmaAllocation& imageMemory,
 	uint32_t mipLevels,
 	const VulkanDevice& device
 ) {
@@ -418,7 +417,7 @@ void TextureManagerVulkan::createImage(
     VkImageUsageFlags usage, 
     VkMemoryPropertyFlags properties, 
     VkImage& image, 
-    VkDeviceMemory& imageMemory,
+    VmaAllocation& imageMemory,
     uint32_t mipLevels,
     uint32_t arrayLayers,          
     VkImageCreateFlags flags,      
@@ -440,24 +439,13 @@ void TextureManagerVulkan::createImage(
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.flags = flags;
 
-    if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create image!");
-    }
-	
+	VmaAllocationCreateInfo allocInfo{};
+	allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+	allocInfo.requiredFlags = properties;
 
-	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(device, image, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = VulkanUtils::findMemoryType(device.getPhysicalDevice(), memRequirements.memoryTypeBits, properties);
-
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate image memory!");
+	if (vmaCreateImage(device.getAllocator(), &imageInfo, &allocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create image!");
 	}
-
-	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
 void TextureManagerVulkan::createImageView(

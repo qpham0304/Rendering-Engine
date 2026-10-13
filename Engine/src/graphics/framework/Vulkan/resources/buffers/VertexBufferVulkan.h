@@ -7,7 +7,7 @@ class VertexBufferVulkan : public BufferVulkan
 public:
 
 public:
-	VertexBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory);
+	VertexBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory);
 
 	virtual ~VertexBufferVulkan() override;
 

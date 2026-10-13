@@ -10,7 +10,7 @@ public:
     friend class BufferManagerVulkan;
 
     BufferVulkan() = default;
-    BufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory);
+    BufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory);
 
     virtual ~BufferVulkan() override;
 
@@ -19,7 +19,7 @@ public:
     virtual void bind(void* commandBuffer) override {};
 	virtual void update(const void* data, size_t size) override;
 
-    const VkDeviceMemory& getMemory();
+    const VmaAllocation& getMemory();
 
 	VkDeviceAddress getAddress();
 
@@ -31,13 +31,11 @@ public:
 
 
 protected:
-    VkBuffer buffer;
-    VkDeviceMemory bufferMemory;
-	VkDeviceAddress deviceAddress;
-    VmaAllocator m_allocator;
-    VmaAllocation m_allocation { VK_NULL_HANDLE };
+    VkBuffer buffer { VK_NULL_HANDLE };
+    VmaAllocation bufferMemory { VK_NULL_HANDLE };
+	VkDeviceAddress deviceAddress { 0 };
 
-    virtual void destroy(VkDevice device);
+    virtual void destroy(VkDevice device, VmaAllocator allocator);
         
     void* mappedBuffer { nullptr };
 

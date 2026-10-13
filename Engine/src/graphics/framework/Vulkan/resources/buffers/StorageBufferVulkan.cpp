@@ -6,7 +6,7 @@
 StorageBufferVulkan::StorageBufferVulkan(
     uint32_t id,
     VkBuffer buffer,
-    VkDeviceMemory bufferMemory,
+    VmaAllocation bufferMemory,
     size_t size
 )
 	: BufferVulkan(id, buffer, bufferMemory), bufferSize(size)

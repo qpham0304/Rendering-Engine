@@ -161,8 +161,11 @@ public:
 	VkQueue getGraphicsQueue() const;
 	VkQueue getPresentQueue() const;
 	bool raytracingSupport() const;
-	
+	VmaAllocator getAllocator() const noexcept { return allocator; }
+
 private:
+	void createAllocator();
+
 	VulkanDevice(const VulkanDevice&) = delete;
 	VulkanDevice& operator=(const VulkanDevice&) = delete;
 	VulkanDevice(VulkanDevice&&) = delete;
@@ -172,6 +175,7 @@ private:
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice;
 	VkDevice device;
+	VmaAllocator allocator { VK_NULL_HANDLE };
 	VkDebugUtilsMessengerEXT debugMessenger;
 
 	VkQueue graphicsQueue;

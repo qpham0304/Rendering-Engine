@@ -2,7 +2,7 @@
 #include <volk.h>
 #include <stdexcept>
 
-BufferVulkan::BufferVulkan(uint32_t id, VkBuffer vkBuffer, VkDeviceMemory vkBufferMemory) 
+BufferVulkan::BufferVulkan(uint32_t id, VkBuffer vkBuffer, VmaAllocation vkBufferMemory) 
 	: Buffer(id), buffer(vkBuffer), bufferMemory(vkBufferMemory)
 {
 
@@ -18,7 +18,7 @@ void BufferVulkan::update(const void *data, size_t size)
     memcpy(mappedBuffer, data, size);
 }
 
-const VkDeviceMemory &BufferVulkan::getMemory()
+const VmaAllocation &BufferVulkan::getMemory()
 {
     return bufferMemory;
 }
@@ -33,7 +33,10 @@ BufferVulkan::operator VkBuffer() const
     return buffer;
 }
 
-void BufferVulkan::destroy(VkDevice device) {
-    vkDestroyBuffer(device, buffer, nullptr);
-    vkFreeMemory(device, bufferMemory, nullptr);
+void BufferVulkan::destroy(VkDevice device, VmaAllocator allocator) {
+    if (buffer != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(allocator, buffer, bufferMemory);
+        buffer = VK_NULL_HANDLE;
+        bufferMemory = VK_NULL_HANDLE;
+    }
 }

@@ -38,7 +38,6 @@ public:
         VkMemoryPropertyFlags properties
     );
 
-    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     
     uint32_t createInstanceBuffer(const VkAccelerationStructureInstanceKHR* instances, uint32_t numInstnaces);
 
@@ -50,7 +49,7 @@ public:
         VkBufferUsageFlags usage,
         VkMemoryPropertyFlags properties,
         VkBuffer& buffer,
-        VkDeviceMemory& bufferMemory
+        VmaAllocation& bufferMemory
     );
 
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
@@ -65,10 +64,10 @@ public:
     //TODO: include these buffer creations in the interface so they can be used
     //TODO: redesign a more consistent api for these instead of require VulkanTypes
     void createUniformBuffers(std::vector<UniformBufferVulkan*>& uniformBuffers, size_t bufferSize);
-    uint32_t createUniformBuffer(VkBuffer& buffer, VkDeviceMemory& buffersMemory, size_t bufferSize);
+    uint32_t createUniformBuffer(VkBuffer& buffer, VmaAllocation& buffersMemory, size_t bufferSize);
 
     void createStorageBuffers(std::vector<StorageBufferVulkan*>& storageBuffers, size_t bufferSize);
-    uint32_t createStorageBuffer(VkBuffer& buffer, VkDeviceMemory& buffersMemory, size_t bufferSize);
+    uint32_t createStorageBuffer(VkBuffer& buffer, VmaAllocation& buffersMemory, size_t bufferSize);
 
 
 private:

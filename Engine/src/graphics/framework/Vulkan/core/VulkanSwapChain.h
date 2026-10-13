@@ -1,6 +1,7 @@
 #pragma once
 
 #include <volk.h>
+#include <vk_mem_alloc.h>
 #include <vector>
 #include "VulkanDevice.h"
 
@@ -21,7 +22,7 @@ public:
     bool framebufferResized = false;
 
 	VkImage depthImage;
-	VkDeviceMemory depthImageMemory;
+	VmaAllocation depthImageMemory;
 	VkImageView depthImageView;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;

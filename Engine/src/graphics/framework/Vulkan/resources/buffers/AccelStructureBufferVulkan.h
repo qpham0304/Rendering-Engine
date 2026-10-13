@@ -8,7 +8,7 @@ class AccelStructureBufferVulkan : public BufferVulkan
 public:
 	friend class BufferManagerVulkan;
 
-	AccelStructureBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory);
+	AccelStructureBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory);
 
 	virtual ~AccelStructureBufferVulkan() override;
 
@@ -21,7 +21,7 @@ public:
 
 
 protected:
-    virtual void destroy(VkDevice device) override;
+    virtual void destroy(VkDevice device, VmaAllocator allocator) override;
 
 
 private:

@@ -615,7 +615,7 @@ void RayTraceRendererVulkan::_createShaderBindingTable()
 
     // Map the SBT buffer and write in the handles.
     uint8_t* mappedMemAddress;
-    vkMapMemory(renderDeviceVulkan->device, stagingBuffer->getMemory(), 0, sbtSize, 0, (void**)&mappedMemAddress);
+    vmaMapMemory(renderDeviceVulkan->device.getAllocator(), stagingBuffer->getMemory(), (void**)&mappedMemAddress);
     uint8_t offset = 0;
 
     // Raygen
@@ -636,7 +636,7 @@ void RayTraceRendererVulkan::_createShaderBindingTable()
         offset += m_hitRegion.stride; 
     }
 
-    vkUnmapMemory(renderDeviceVulkan->device, stagingBuffer->getMemory());
+    vmaUnmapMemory(renderDeviceVulkan->device.getAllocator(), stagingBuffer->getMemory());
     
     bufferManagerVulkan->copyBuffer(static_cast<VkBuffer>(*stagingBuffer), static_cast<VkBuffer>(*shaderBindingTableBuff), sbtSize);
 

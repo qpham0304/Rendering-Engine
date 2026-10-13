@@ -1,6 +1,6 @@
 #include "DeviceAddressBufferVulkan.h"
 
-DeviceAddressBufferVulkan::DeviceAddressBufferVulkan(uint32_t id, VkBuffer buffer, VkDeviceMemory bufferMemory)
+DeviceAddressBufferVulkan::DeviceAddressBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory)
 	: BufferVulkan(id, buffer, bufferMemory)
 {
     
