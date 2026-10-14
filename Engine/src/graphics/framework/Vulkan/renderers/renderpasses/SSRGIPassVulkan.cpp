@@ -92,13 +92,12 @@ void SSRGIPassVulkan::render(Camera &camera)
     outputImage = outputImages[currentFrame];
 
     
-	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
-
     ubo.view = camera.getViewMatrix();
     ubo.projection = camera.getProjectionMatrix();
     ubo.projection[1][1] *= -1.0f; 
     ubo.invProj = glm::inverse(ubo.projection);
     ubo.invView = glm::inverse(ubo.view);
+	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
 	pushConstant.screenRes = { deferredRendererVulkan->renderTarget.width, deferredRendererVulkan->renderTarget.height };
     pushConstant.maxDistance = 500.0f;

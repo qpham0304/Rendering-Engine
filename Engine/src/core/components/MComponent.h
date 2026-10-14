@@ -193,6 +193,7 @@ struct MYGRAPHICSENGINE_EXPORT LightProbeComponent {
 	std::vector<glm::vec4> probeGrid;
 	size_t bufferSize;
 	uint32_t probesPerDimension;
+	glm::uvec3 probeCounts { 0 };	// probes per axis, falls back to probesPerDimension on every axis when left at 0
 	float spacing;
     glm::vec4 gridOrigin;
 

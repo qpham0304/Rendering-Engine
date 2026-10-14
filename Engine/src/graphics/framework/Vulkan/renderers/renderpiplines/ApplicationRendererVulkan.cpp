@@ -23,6 +23,7 @@
 #include <graphics/framework/Vulkan/renderers/renderpiplines/ForwardRendererVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h>
+#include <graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h>
 #include <core/scene/SceneManager.h>
 #include "imgui.h" // TODO: remove it once done
 #include "physics/PhysicsManager.h"
@@ -202,6 +203,8 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
 	auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("DDGIBuilderVulkan");
+	auto ddgiRendererVulkan = dynamic_cast<DDGIBuilderVulkan*>(renderer);
 
 
 	guiManager->start();
@@ -211,6 +214,9 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	if(currentMode == 1) {
 		deferredRendererVulkan->renderGui();
 		bloomPassRendererVulkan->renderGui();
+		if(ddgiRendererVulkan) {
+			ddgiRendererVulkan->renderGui();
+		}
 	}
 
 	ImGui::Begin("Application");

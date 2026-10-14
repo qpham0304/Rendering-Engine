@@ -38,6 +38,7 @@ private:
 		alignas(4)	int aoOn;
 		alignas(4)	float G;
 		alignas(4)	float scatteringScale;
+		alignas(4)	float iblDiffuse;
 	};
 
 	struct LightSSBO {

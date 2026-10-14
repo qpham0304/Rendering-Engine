@@ -168,7 +168,8 @@ void main() {
     float depth = texture(depthImage, uv).r;
 
     if (depth >= 1.0 || depth <= 0.00001) {
-        imageStore(u_ResultImage, pixelCoord, texture(u_SceneColor, uv));
+        // no surface here. the combine pass adds this buffer on top of the scene color, which already has the sky
+        imageStore(u_ResultImage, pixelCoord, vec4(0.0));
         return;
     }
 
@@ -215,7 +216,9 @@ void main() {
     // vec3 marchingPos = viewPos + (normalV * 0.2) + (currentStepVec * bn.b);
 
     const float GOLDEN_RATIO = 0.61803398875;
-    float jitter = fract(float(seed) * GOLDEN_RATIO);   //get more light in from importance sampling
+    // float(seed) is far past 2^24, so fract(float(seed) * GOLDEN_RATIO) was always 0
+    // means every ray started at the same offset and the fixed step size showed up as bands
+    float jitter = rnd(seed);
     float viewDotNormal = clamp(abs(dot(viewDir, normalV)), 0.0, 1.0);
     float bias = 0.05 / max(viewDotNormal, 0.1);
     vec3 marchingPos = viewPos + (normalV * bias) + (currentStepVec * jitter);
@@ -297,7 +300,11 @@ void main() {
     float attenuation = 1.0 / (1.0 + dist * 0.01);
 
     vec3 finalColor = (indirect * boundary.x * boundary.y * distFade * attenuation);
-    finalColor += emissive; 
+    
+    // one bad value would stay in the temporal history
+    if (any(isnan(finalColor)) || any(isinf(finalColor))) {
+        finalColor = vec3(0.0);
+    }
 
     imageStore(u_ResultImage, pixelCoord, vec4(finalColor, 1.0));
 }

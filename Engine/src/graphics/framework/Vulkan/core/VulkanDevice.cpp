@@ -19,6 +19,7 @@
 #include "VulkanDevice.h"
 
 #include <iostream>
+#include <fstream>
 #include <cmath>
 
 #define VALIDATE(vkFunc) \
@@ -105,6 +106,13 @@ void VulkanDevice::createAllocator()
 void VulkanDevice::destroy()
 {
 	if (allocator != VK_NULL_HANDLE) {
+#ifndef NDEBUG
+		// dump out memory leak info from vma
+		char* vmaStats = nullptr;
+		vmaBuildStatsString(allocator, &vmaStats, VK_TRUE);
+		std::ofstream("vma_stats.json") << vmaStats;
+		vmaFreeStatsString(allocator, vmaStats);
+#endif
 		vmaDestroyAllocator(allocator);
 		allocator = VK_NULL_HANDLE;
 	}

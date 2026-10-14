@@ -21,6 +21,11 @@ file(GLOB_RECURSE SHADER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.rchit
 )
 
+# shared includes, a change in one of them has to recompile every shader
+file(GLOB_RECURSE SHADER_INCLUDES
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/common/*.glsl
+)
+
 add_executable(${PROJECT_NAME} ${SANDBOX_SOURCES})
 target_link_libraries(${PROJECT_NAME} PRIVATE MyGraphicsEngine)
 
@@ -40,7 +45,7 @@ foreach(SHADER_SOURCE ${SHADER_SOURCES})
         OUTPUT ${SPIRV_OUT}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${SPV_OUTPUT_DIR}
         COMMAND Vulkan::glslc --target-env=vulkan1.2 ${SHADER_SOURCE} -o ${SPIRV_OUT}
-        DEPENDS ${SHADER_SOURCE}
+        DEPENDS ${SHADER_SOURCE} ${SHADER_INCLUDES}
         COMMENT "Compiling shader: ${FILE_NAME}"
     )
     list(APPEND SPIRV_BINARY_FILES ${SPIRV_OUT})

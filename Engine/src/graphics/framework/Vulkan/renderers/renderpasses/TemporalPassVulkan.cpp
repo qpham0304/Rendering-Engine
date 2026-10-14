@@ -41,6 +41,7 @@ bool TemporalPassVulkan::init(WindowConfig config)
     motionImage = deferredRendererVulkan->renderTarget.gBufferMotion[currentFrame];
     depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
+    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
@@ -87,6 +88,7 @@ void TemporalPassVulkan::render(Camera &camera)
     motionImage = deferredRendererVulkan->renderTarget.gBufferMotion[currentFrame];
     depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
+    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
 
     
     _updateDescriptor(TemporalSetsID, currentFrame, outputImage, ssrgiHistoryImage);
@@ -147,6 +149,13 @@ void TemporalPassVulkan::writeTP(VkCommandBuffer cmd, uint32_t currentFrame)
         VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 
     _copyImageReource(cmd);
+}
+
+// writeTP alternates its target between outputImage and ssrgiHistoryImage,
+// this is whichever one holds the newest result
+TextureVulkan* TemporalPassVulkan::getOutputImage()
+{
+    return flip ? outputImage : ssrgiHistoryImage;
 }
 
 void TemporalPassVulkan::writeTAA(VkCommandBuffer cmd, uint32_t currentFrame)
@@ -268,13 +277,14 @@ void TemporalPassVulkan::_createDescriptors()
 		{ 6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     };
 
 	uint32_t frameCount = VulkanUtils::numFrames();
     uint32_t totalSetsNeeded = frameCount * 2;
     std::vector<VkDescriptorPoolSize> poolSizes {
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1 * totalSetsNeeded},
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 7  * totalSetsNeeded},
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 8  * totalSetsNeeded},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1  * totalSetsNeeded},
 	};
 	
@@ -338,6 +348,11 @@ void TemporalPassVulkan::_updateDescriptor(uint32_t currentSetsID, uint32_t inde
 	prevNormalImageInfo.imageView = prevNormalImage->textureImageView;
 	prevNormalImageInfo.sampler = prevNormalImage->textureSampler;
 
+    VkDescriptorImageInfo pbrImageInfo{};
+	pbrImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	pbrImageInfo.imageView = pbrImage->textureImageView;
+	pbrImageInfo.sampler = pbrImage->textureSampler;
+
 	std::vector<VkWriteDescriptorSet> writes;
 	descriptorManagerVulkan->writeStorageImage(&writes, descriptorSets[index], 0, outputImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 1, ssrgiImageInfo);
@@ -348,6 +363,7 @@ void TemporalPassVulkan::_updateDescriptor(uint32_t currentSetsID, uint32_t inde
 	descriptorManagerVulkan->writeUniform(&writes, descriptorSets[index], 6, bufferInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 7, currNormalImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 8, prevNormalImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 9, pbrImageInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 

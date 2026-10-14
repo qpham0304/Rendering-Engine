@@ -110,26 +110,6 @@ void RendererManagerVulkan::onUpdate()
 		return;
 	}
 
-    Camera& camera = *SceneManager::cameraController;
-
-    if (firstFrame) {
-        lastViewProj = camera.getProjectionMatrix() * camera.getViewMatrix();
-        lastViewProj[1][1] *= -1.0; 
-        firstFrame = false;
-    }
-
-    ubo.view = camera.getViewMatrix();
-	ubo.prevViewProj = lastViewProj;
-	ubo.proj = camera.getProjectionMatrix();
-	ubo.cameraPos = glm::vec4(camera.getPosition(), 1.0);
-	ubo.proj[1][1] *= -1.0;
-	ubo.invView = camera.getInViewMatrix();
-	ubo.invProj = camera.getInProjectionMatrix();
-	ubo.invProj[1][1] *= -1.0;
-
-	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
-
     if(currentRenderMode == 0) {
         forwardRenderer->onUpdate();
     } 
@@ -145,8 +125,8 @@ void RendererManagerVulkan::onUpdate()
         if(tmp->denoiserOn) {
             temporalPassRenderer->onUpdate();
         }
-        // ddgiPassRenderer->onUpdate();
-        // deferredCombineRenderer->onUpdate();
+        ddgiPassRenderer->onUpdate();
+        deferredCombineRenderer->onUpdate();
     } else if(currentRenderMode == 2) {
         raytracingRenderer->onUpdate();
     }
@@ -166,6 +146,28 @@ void RendererManagerVulkan::render()
 	}
 
     beginFrame();
+
+    // the camera ubo is filled per rendered frame, not per update tick: every frame in flight has its own buffer,
+    // and prevViewProj has to be the camera of the frame rendered right before this one or the motion vectors are wrong
+    if (firstFrame) {
+        lastViewProj = camera->getProjectionMatrix() * camera->getViewMatrix();
+        lastViewProj[1][1] *= -1.0; 
+        firstFrame = false;
+    }
+
+    ubo.view = camera->getViewMatrix();
+	ubo.prevViewProj = lastViewProj;
+	ubo.proj = camera->getProjectionMatrix();
+	ubo.cameraPos = glm::vec4(camera->getPosition(), 1.0);
+	ubo.proj[1][1] *= -1.0;
+	ubo.invView = camera->getInViewMatrix();
+	ubo.invProj = camera->getInProjectionMatrix();
+	ubo.invProj[1][1] *= -1.0;
+
+	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
+	lastViewProj = ubo.proj * ubo.view;
+
     // shadowMapRenderer->render(*camera);
     
     if(currentRenderMode == 0) {
@@ -183,8 +185,8 @@ void RendererManagerVulkan::render()
         if(tmp->denoiserOn) {
             temporalPassRenderer->render(*camera);
         }
-        // ddgiPassRenderer->render(*camera);
-        // deferredCombineRenderer->render(*camera);
+        ddgiPassRenderer->render(*camera);
+        deferredCombineRenderer->render(*camera);
     } else if(currentRenderMode == 2) {
         raytracingRenderer->render(*camera);
     }

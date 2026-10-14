@@ -128,6 +128,10 @@ void ShadowMapPassVulkan::render(Camera& camera)
 		}
 	}
 
+	// row 2 of the view is the axis pointing from the scene back to the light.
+	// the light pass and the ddgi probes shade with lightDir, so it has to be the direction the shadow map is rendered from
+	lightDir = glm::normalize(glm::vec3(lightView[0][2], lightView[1][2], lightView[2][2]));
+
 	lightProjection[1][1] *= -1;
 	lightSpaceMatrix = lightProjection * lightView;
 
