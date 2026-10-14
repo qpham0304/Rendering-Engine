@@ -1,9 +1,8 @@
 #version 460
 
-#extension GL_EXT_nonuniform_qualifier : require
-#extension GL_EXT_buffer_reference2 : require
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_GOOGLE_include_directive : require
+
+#include "common/buffers.glsl"
 
 layout(location = 0) in vec3 inNormal;
 layout(location = 1) in vec2 inTexCoord;
@@ -20,56 +19,22 @@ layout(location = 4) out vec4 outEmissive;
 layout(location = 5) out vec4 outMotion;
 
 
-struct Material {
-    uint albedoIdx;
-    uint normalIdx;
-    uint metalnessIdx;
-    uint roughnessIdx;
-    uint aoIdx;
-    uint emissiveIdx;
-
-    vec2 uvOffset;
-    vec2 uvScale;
-    vec4 albedoFactor;
-    vec4 normalFactor;
-    float metallicFactor;
-    float roughnessFactor;
-    float aoFactor;
-    float emissiveFactor;
+layout(buffer_reference, scalar) buffer BoneModelBuffer {
+    mat4 boneMatrices[];
 };
 
-const uint MAX_BONE_INFLUENCE =  4;
-struct Vertex
-{
-    vec3 pos;
-    vec3 col;
-    vec2 uv;
-    vec3 normal;
-    vec3 tangent;
-    vec3 biTangent;
-    int m_BoneIDs[MAX_BONE_INFLUENCE];
-    float m_Weights[MAX_BONE_INFLUENCE];
+layout(buffer_reference, scalar) buffer BoneMatrixArrayTable {
+    BoneModelBuffer ptrs[];
 };
-
-struct Object {
-    uint64_t vertexAddress;
-    uint64_t indexAddress;
-    uint64_t materialsRef;
-    uint64_t materialIndiciesRef;
-};
-
 
 layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 
-layout(buffer_reference, scalar) buffer ObjectsBuffer{ Object objects[]; };
-layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
-layout(buffer_reference, scalar) buffer Indices { uint i[]; };
-layout(buffer_reference, scalar) buffer MaterialsBuffer{ Material m[]; };
-layout(buffer_reference, scalar) readonly buffer MatIndicesBuffer { uint i[]; };
 
 layout(push_constant) uniform PushConstant {
     ObjectsBuffer objRef;
+    BoneMatrixArrayTable boneTableRef;
     uint objIdx;
+    uint boneMatricesIdx;
 } pc;
 
 
@@ -90,7 +55,7 @@ void main() {
     Object obj = pc.objRef.objects[pc.objIdx];
 
     MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
-    MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndiciesRef);
+    MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndicesRef);
     uint matID = matIndices.i[gl_PrimitiveID];
     Material mat = materials.m[matID];
 

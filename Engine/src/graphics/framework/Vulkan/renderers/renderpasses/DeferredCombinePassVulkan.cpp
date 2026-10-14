@@ -69,17 +69,17 @@ void DeferredCombinePassVulkan::onUpdate()
 
 void DeferredCombinePassVulkan::render(Camera &camera)
 {
-    if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
-
     RendererVulkan* renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     _fetchInputImages(currentFrame);
+
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
 
     pushConstant.shouldCombine = deferredRendererVulkan->shouldCombine ? 1 : 0;
 

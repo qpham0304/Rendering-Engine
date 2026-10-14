@@ -69,12 +69,6 @@ void TemporalPassVulkan::onUpdate()
 
 void TemporalPassVulkan::render(Camera &camera)
 {
-    if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
-
     RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
@@ -90,7 +84,13 @@ void TemporalPassVulkan::render(Camera &camera)
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
     pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
 
-    
+    // after the refresh above, the gbuffer and the ssrgi output were recreated earlier this frame
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
     _updateDescriptor(TemporalSetsID, currentFrame, outputImage, ssrgiHistoryImage);
     _updateDescriptor(TemporalSetsHistoryID, currentFrame, ssrgiHistoryImage, outputImage);
     

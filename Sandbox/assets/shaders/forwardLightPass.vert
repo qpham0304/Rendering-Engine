@@ -1,10 +1,6 @@
 #version 460
 
 #extension GL_GOOGLE_include_directive : require
-#extension GL_ARB_separate_shader_objects : enable
-#extension GL_ARB_shading_language_420pack : enable
-#extension GL_EXT_buffer_reference : require
-#extension GL_EXT_scalar_block_layout : require
 
 #include "common/buffers.glsl"
 

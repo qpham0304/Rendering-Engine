@@ -405,6 +405,7 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 	int objectsIndex = 0;
 
 	materialManager->bindMaterial(cmd, (void*)gPassPipeline.get());
+	auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
 	
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 
@@ -416,11 +417,20 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 			const Model* model = modelManager->getModel(modelID);
 
+			uint32_t boneMatricesIdx = 0;
+			if(entity.hasComponent<SkinningComponent>()) {
+				boneMatricesIdx = entity.getComponent<SkinningComponent>().boneMatricesID;
+			}
+
 			uint32_t meshIdx = 0;
 			for (uint32_t meshID : model->meshIDs) {
 
+				uint32_t bufferID = animationManager->getAnimationBufferAddressID();
 				pushConstant.objectsRef = objDeviceAddress; 
 				pushConstant.objectIdx  = objectsIndex;
+				pushConstant.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(bufferID);
+				pushConstant.boneMatricesIdx = boneMatricesIdx;
+
 
 				vkCmdPushConstants(
 					cmd,

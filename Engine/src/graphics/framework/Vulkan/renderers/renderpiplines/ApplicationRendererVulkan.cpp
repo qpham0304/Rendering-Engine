@@ -79,6 +79,12 @@ void ApplicationRendererVulkan::render(Camera& camera)
 	if(needResize) {
 		_recreateResources();
 		needResize = false;
+
+		// still run the swapchain with empty render pass it is what moves the acquired image to PRESENT_SRC
+		// without it this frame presents an image that was never rendered to
+		VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+		beginRecording(cmd, renderDeviceVulkan->swapchain.renderPass, renderDeviceVulkan->swapchain.currentFrameBuffer());
+		endRecording(cmd);
 		return;
 	}
 

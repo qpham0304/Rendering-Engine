@@ -87,11 +87,11 @@ void main() {
 
     vec3 ssgi = texture(giImage, uv).rgb; // * vec3(1.0, 0.2, 1.0);
 
-    vec3 ambient = ssgi;
+    vec3 ambient = ddgi + ssgi;
     vec3 sceneColor = texture(sceneImage, uv).rgb;
     vec3 bloom = texture(bloomImage, uv).rgb;
 
-    vec3 finalColor = sceneColor  * 2.0 + ddgi + ssgi + bloom * 1.0;
+    vec3 finalColor = sceneColor + ambient + bloom * 1.0;
     finalColor = finalColor / (finalColor + vec3(1.0));
     finalColor = pow(finalColor, vec3(1.0/2.2));
 

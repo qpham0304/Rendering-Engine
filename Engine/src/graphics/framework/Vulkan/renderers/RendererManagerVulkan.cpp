@@ -40,6 +40,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     
 	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
 		this->needResize = true;
+		this->swapchainOutdated = true;
 	});
     
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
@@ -145,10 +146,16 @@ void RendererManagerVulkan::render()
 		return;
 	}
 
+    //make sure swapchain need to be resized first before other renderer can rebuild the new size
+    if(swapchainOutdated) {
+        renderDeviceVulkan->swapchain.recreateSwapchain();
+        ubo.width = renderDeviceVulkan->swapchain.swapChainExtent.width;
+        ubo.height = renderDeviceVulkan->swapchain.swapChainExtent.height;
+        swapchainOutdated = false;
+    }
+
     beginFrame();
 
-    // the camera ubo is filled per rendered frame, not per update tick: every frame in flight has its own buffer,
-    // and prevViewProj has to be the camera of the frame rendered right before this one or the motion vectors are wrong
     if (firstFrame) {
         lastViewProj = camera->getProjectionMatrix() * camera->getViewMatrix();
         lastViewProj[1][1] *= -1.0; 

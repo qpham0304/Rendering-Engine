@@ -7,7 +7,9 @@ namespace Common {
 
     struct PushBDA {
         uint64_t objectsRef;
+		uint64_t boneMatricesRef;
         uint32_t objectIdx;
+		uint32_t boneMatricesIdx;
     };
 
     struct ObjectRefs {
