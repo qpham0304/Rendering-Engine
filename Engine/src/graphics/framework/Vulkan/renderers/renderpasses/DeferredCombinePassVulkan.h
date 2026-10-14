@@ -3,6 +3,9 @@
 #include "PostProcessRendererVulkan.h"
 #include <volk.h>
 
+class DDGIBuilderVulkan;
+class ImageBasedRendererVulkan;
+
 class DeferredCombinePassVulkan : public PostProcessRendererVulkan
 {
 public:
@@ -15,6 +18,11 @@ public:
 		alignas(4) uint32_t probesPerDimension;
 		alignas(16) glm::vec4 gridOrigin;
 		alignas(4) uint32_t probesResolution;
+		alignas(4) float normalBias;
+		alignas(4) float ddgiIntensity;
+		alignas(4) int ddgiMode;	// 0: off, 1: on, 2: show the ddgi term only
+		alignas(16) glm::ivec4 probeCounts;
+		alignas(4) float skyIntensity;
 	};
 
 	struct UniformBufferObject {
@@ -39,8 +47,9 @@ private: // TODO: consider make private
 	TextureVulkan* denoisedGIImage;
 	TextureVulkan* sceneImage;
 	TextureVulkan* albedoImage;
-	TextureVulkan* depthImage;
+	TextureVulkan* positionImage;
 	TextureVulkan* normalImage;
+	TextureVulkan* pbrImage;
 	TextureVulkan* bloomImage;
 	TextureVulkan* atlasImageGI;
 	TextureVulkan* visibilityAtlasImageGI;
@@ -52,9 +61,12 @@ protected:
 	void _updateDescriptor(uint32_t index);
 	void _recreateResources();
 	void _cleanupResources();
+	void _fetchInputImages(uint32_t currentFrame);
 
 	UniformBufferObject ubo;
 	PushConstant pushConstant;
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
+	DDGIBuilderVulkan* ddgiRenderer { nullptr };
+	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 
 };

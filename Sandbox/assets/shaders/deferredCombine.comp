@@ -1,5 +1,9 @@
 #version 460
 
+#extension GL_GOOGLE_include_directive : require
+
+#include "common/ddgi.glsl"
+
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform CameraData {
@@ -10,14 +14,33 @@ layout(set = 0, binding = 0) uniform CameraData {
 } camera;
 
 layout(set = 0, binding = 1, rgba16f) writeonly uniform image2D outImage;
-layout(set = 0, binding = 2) uniform sampler2D giImage; 
-layout(set = 0, binding = 3) uniform sampler2D sceneImage; 
-layout(set = 0, binding = 4) uniform sampler2D albedoImage; 
-layout(set = 0, binding = 5) uniform sampler2D bloomImage; 
-layout(set = 0, binding = 6) uniform sampler2D lastFrameIrradianceAtlas; 
-layout(set = 0, binding = 7) uniform sampler2D depthImage;
+layout(set = 0, binding = 2) uniform sampler2D giImage;
+layout(set = 0, binding = 3) uniform sampler2D sceneImage;
+layout(set = 0, binding = 4) uniform sampler2D albedoImage;
+layout(set = 0, binding = 5) uniform sampler2D bloomImage;
+layout(set = 0, binding = 6) uniform sampler2D lastFrameIrradianceAtlas;
+layout(set = 0, binding = 7) uniform sampler2D positionImage;
 layout(set = 0, binding = 8) uniform sampler2D normalImage;
 layout(set = 0, binding = 9) uniform sampler2D lastFrameVisibilityAtlas;
+layout(set = 0, binding = 10) uniform sampler2D pbrImage;
+layout(set = 0, binding = 11) readonly buffer SHData {
+    vec4 shCoeffs[9];
+} sh;
+
+// same SH the light pass uses for its diffuse ibl, already carries the 1 / PI
+vec3 getSkyIrradiance(vec3 N) {
+    return max(vec3(0.0),
+        0.886227 * sh.shCoeffs[0].xyz +
+        1.023328 * sh.shCoeffs[1].xyz * N.y +
+        1.023328 * sh.shCoeffs[2].xyz * N.z +
+        1.023328 * sh.shCoeffs[3].xyz * N.x +
+        0.858086 * sh.shCoeffs[4].xyz * N.x * N.y +
+        0.858086 * sh.shCoeffs[5].xyz * N.y * N.z +
+        0.247708 * sh.shCoeffs[6].xyz * (3.0 * N.z * N.z - 1.0) +
+        0.858086 * sh.shCoeffs[7].xyz * N.x * N.z +
+        0.429043 * sh.shCoeffs[8].xyz * (N.x * N.x - N.y * N.y)
+    );
+}
 
 layout(push_constant) uniform Constants {
     vec2 screenRes;
@@ -28,113 +51,12 @@ layout(push_constant) uniform Constants {
     uint probesPerDimension;
     vec4 gridOrigin;
     uint probesResolution;
+    float normalBias;
+    float ddgiIntensity;
+    int ddgiMode;           // 0: off, 1: on, 2: show the ddgi term only
+    ivec4 probeCounts;      // xyz: probes per axis
+    float skyIntensity;
 } pc;
-
-vec3 getPosWorld(vec2 uv, float depth) {
-    vec4 clip = vec4(uv * 2.0 - 1.0, depth, 1.0);
-    vec4 viewPos = camera.invProj * clip;
-    viewPos /= viewPos.w;
-    vec4 worldPos = camera.invView * viewPos;
-    return worldPos.xyz;
-}
-
-#define PI 3.14159265359
-
-vec2 octEncode(vec3 v) {
-    float l1norm = abs(v.x) + abs(v.y) + abs(v.z);
-    vec2 result = v.xy * (1.0 / (l1norm > 0.0 ? l1norm : 1.0));
-    if (v.z < 0.0) {
-        vec2 signNotZero = vec2(result.x >= 0.0 ? 1.0 : -1.0, result.y >= 0.0 ? 1.0 : -1.0);
-        result = (1.0 - abs(result.yx)) * signNotZero;
-    }
-    return result;
-}
-
-vec2 getAtlasUV(uint probeIdx, vec3 texturingDirection, uint stride, uint coreRes, vec2 totalAtlasSize) {
-    vec2 octCoord = octEncode(normalize(texturingDirection));
-    vec2 localUV = octCoord * 0.5 + 0.5;
-    vec2 pixelCoordInTile = localUV * float(coreRes);
-    uint tilesX = pc.probesPerDimension;
-    ivec2 tileCoord = ivec2(probeIdx % tilesX, probeIdx / tilesX);
-    vec2 finalPixelCoord = (vec2(tileCoord) * float(stride)) + vec2(1.0) + pixelCoordInTile;
-    return finalPixelCoord / totalAtlasSize;
-}
-
-vec3 sampleDDGIIrradiance(vec3 worldPos, vec3 worldNormal) {
-    // Normal bias shifts sample out of geometric surfaces cleanly
-    vec3 biasedWorldPos = worldPos + worldNormal * 0.12;
-    vec3 gridSpacePos = (biasedWorldPos - pc.gridOrigin.xyz) / pc.gridSpacing;
-    
-    if (any(lessThan(gridSpacePos, vec3(0.0))) || any(greaterThan(gridSpacePos, vec3(float(pc.probesPerDimension - 1))))) {
-        return vec3(0.0);
-    }
-    
-    ivec3 baseProbeXYZ = ivec3(floor(gridSpacePos));
-    vec3 trilinearWeights = fract(gridSpacePos); 
-    
-    vec3 accumulatedIrradiance = vec3(0.0);
-    float totalWeight = 0.0;
-    
-    uint totalProbes = pc.probesPerDimension * pc.probesPerDimension * pc.probesPerDimension;
-    uint tilesX = pc.probesPerDimension;
-    uint tilesY = (totalProbes + tilesX - 1) / tilesX;
-    vec2 irrAtlasSize = vec2(tilesX * 10, tilesY * 10);
-    vec2 visAtlasSize = vec2(tilesX * 18, tilesY * 18);
-    
-    for (int i = 0; i < 8; ++i) {
-        ivec3 offset = ivec3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
-        ivec3 probeXYZ = clamp(baseProbeXYZ + offset, ivec3(0), ivec3(int(pc.probesPerDimension - 1)));
-        
-        uint probeIdx = uint(probeXYZ.x + (probeXYZ.z * int(pc.probesPerDimension)) + (probeXYZ.y * int(pc.probesPerDimension * pc.probesPerDimension)));
-        
-        vec3 spatialWeights = mix(1.0 - trilinearWeights, trilinearWeights, vec3(offset));
-        float triWeight = spatialWeights.x * spatialWeights.y * spatialWeights.z;
-        
-        vec3 probePos = pc.gridOrigin.xyz + vec3(probeXYZ) * pc.gridSpacing;
-        vec3 probeToPoint = biasedWorldPos - probePos;
-        float distanceToProbe = length(probeToPoint);
-        if (distanceToProbe < 0.0001) continue;
-        
-        vec3 directionToProbe = probeToPoint / distanceToProbe;
-        
-        // Pure geometric components (Sum up precisely to 1.0 across the 8-cell bounds)
-        float cosineWeight = max(0.0, dot(-directionToProbe, worldNormal));
-        float geometricWeight = triWeight * (cosineWeight + 0.001);
-        
-        // Visibility Occlusion: Used exclusively as a direct radiance scale multiplier, 
-        // preventing near-zero division blowouts.
-        vec2 visUV = getAtlasUV(probeIdx, directionToProbe, 18, 16, visAtlasSize);
-        vec2 visibilityData = texture(lastFrameVisibilityAtlas, visUV).rg;
-        
-        float mean = visibilityData.x;
-        float variance = max(0.0001, visibilityData.y - (mean * mean));
-        
-        float chebyshevWeight = 1.0;
-        if (distanceToProbe > mean) {
-            float d = distanceToProbe - mean;
-            chebyshevWeight = variance / (variance + d * d);
-            chebyshevWeight = pow(max(0.0, chebyshevWeight), 6.0); 
-        }
-        
-        // Anti-flicker proximity blend
-        float proximityFade = smoothstep(0.005, 0.05, abs(distanceToProbe - mean));
-        chebyshevWeight = mix(1.0, chebyshevWeight, proximityFade);
-        
-        if (geometricWeight > 0.0001) {
-            vec2 irrUV = getAtlasUV(probeIdx, worldNormal, 10, 8, irrAtlasSize);
-            vec3 irradianceSample = texture(lastFrameIrradianceAtlas, irrUV).rgb;
-            
-            // Multiply light intensity by chebyshevWeight *outside* the geometric divisor logic
-            accumulatedIrradiance += (irradianceSample * max(0.002, chebyshevWeight)) * geometricWeight;
-            totalWeight += geometricWeight;
-        }
-    }
-    
-    if (totalWeight < 0.0001) {
-        return vec3(0.0);
-    }
-    return (accumulatedIrradiance / totalWeight) * PI;
-}
 
 void main() {
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -145,24 +67,38 @@ void main() {
 
     vec2 uv = (vec2(pixelCoord) + 0.5) / vec2(screenRes);
 
-    float depth = texture(depthImage, uv).r;
     vec3 albedo = texture(albedoImage, uv).rgb;
-    vec3 normal = normalize(texture(normalImage, uv).rgb * 2.0 - 1.0); 
-    vec3 fragPos = getPosWorld(uv, depth);
+    vec3 normal = texture(normalImage, uv).rgb;     // world space, cleared to 0 where there is no geometry
+    vec3 fragPos = texture(positionImage, uv).rgb;
+    vec3 pbr = texture(pbrImage, uv).rgb;           // ao, roughness, metallic
 
-    vec3 ddgi = sampleDDGIIrradiance(fragPos, normal);
+    vec3 ddgi = vec3(0.0);
+    if (pc.ddgiMode != 0 && length(normal) > 0.1) {
+        vec3 N = normalize(normal);
+        vec3 V = normalize(camera.invView[3].xyz - fragPos);
+        DDGIVolume volume = DDGIVolume(pc.gridOrigin.xyz, pc.gridSpacing, pc.probeCounts.xyz, pc.normalBias);
+
+        // this is the whole diffuse ambient: lightPass.frag skips its diffuse ibl while the probes are active.
+        // outside the grid it falls back to the same open sky the light pass would have used
+        vec4 irradiance = ddgiSampleIrradiance(fragPos, N, V, volume, lastFrameIrradianceAtlas, lastFrameVisibilityAtlas);
+        vec3 ambient = mix(getSkyIrradiance(N) * pc.skyIntensity, irradiance.rgb / DDGI_PI * pc.ddgiIntensity, irradiance.a);
+        ddgi = albedo * (1.0 - pbr.b) * pbr.r * ambient;
+    }
+
     vec3 ssgi = texture(giImage, uv).rgb; // * vec3(1.0, 0.2, 1.0);
 
     vec3 ambient = ssgi;
     vec3 sceneColor = texture(sceneImage, uv).rgb;
     vec3 bloom = texture(bloomImage, uv).rgb;
 
-    vec3 finalColor = sceneColor + ambient * 2.0 + bloom * 1.0;
+    vec3 finalColor = sceneColor  * 2.0 + ddgi + ssgi + bloom * 1.0;
     finalColor = finalColor / (finalColor + vec3(1.0));
     finalColor = pow(finalColor, vec3(1.0/2.2));
 
     vec4 outColor;
-    if(pc.shouldCombine == 1) {
+    if(pc.ddgiMode == 2) {
+        outColor = vec4(pow(ddgi / (ddgi + vec3(1.0)), vec3(1.0/2.2)), 1.0);
+    } else if(pc.shouldCombine == 1) {
         outColor = vec4(finalColor, 1.0);
         // outColor = vec4(sceneColor, 1.0);
     } else {
