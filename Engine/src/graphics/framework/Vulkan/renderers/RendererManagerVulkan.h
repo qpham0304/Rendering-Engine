@@ -27,7 +27,7 @@ public:
 
 
 protected:
-	uint32_t currentRenderMode { 0 };
+	uint32_t currentRenderMode { 1 };
 	TextureVulkan* displayImage { nullptr };
 
 	std::vector<UniformBufferVulkan*> uniformbuffersList{};
@@ -62,6 +62,7 @@ protected:
 
 private:
 	bool needResize{ false };
+	bool swapchainOutdated{ false };
 
 	//friend class renderer vulkan should not be able to call these
 	virtual bool init(WindowConfig config) override;

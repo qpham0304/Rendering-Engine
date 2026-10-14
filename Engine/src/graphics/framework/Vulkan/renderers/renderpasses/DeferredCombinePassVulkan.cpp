@@ -12,6 +12,7 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h>
+#include <graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <window/AppWindow.h>
 #include <math.h>
@@ -33,27 +34,14 @@ DeferredCombinePassVulkan::~DeferredCombinePassVulkan()
 bool DeferredCombinePassVulkan::init(WindowConfig config)
 {
     PostProcessRendererVulkan::init(config);
-        
-    RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-    renderer = rendererManagerVulkan->getRenderer("TemporalPassVulkan");
-	auto temporalPassRenderer = dynamic_cast<TemporalPassVulkan*>(renderer);
-    renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
-	auto bloomPassRenderer = dynamic_cast<BloomPassVulkan*>(renderer);
-    renderer = rendererManagerVulkan->getRenderer("DDGIBuilderVulkan");
-	auto DDGIRenderer = dynamic_cast<DDGIBuilderVulkan*>(renderer);
-	
-    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    denoisedGIImage = temporalPassRenderer->getOutputImage();
-    sceneImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
-    albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
-	bloomImage = bloomPassRenderer->getOutputImage();
-    atlasImageGI = DDGIRenderer->getAtlasImage();
-    visibilityAtlasImageGI = DDGIRenderer->getVisibilityAtlasImage();
-    
+
+    // stays null when DDGIBuilderVulkan is not added in RendererManagerVulkan, the pass then combines without it
+    RendererVulkan* renderer = rendererManagerVulkan->getRenderer("DDGIBuilderVulkan");
+	ddgiRenderer = dynamic_cast<DDGIBuilderVulkan*>(renderer);
+    renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
+	imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
+
+    _fetchInputImages(renderDeviceVulkan->getCurrentFrameIndex());
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
@@ -81,70 +69,39 @@ void DeferredCombinePassVulkan::onUpdate()
 
 void DeferredCombinePassVulkan::render(Camera &camera)
 {
+    RendererVulkan* renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
+	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    _fetchInputImages(currentFrame);
+
     if(needResize) {
 		_recreateResources();
 		needResize = false;
 		return;
 	}
 
-    RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-    renderer = rendererManagerVulkan->getRenderer("TemporalPassVulkan");
-	auto temporalPassRenderer = dynamic_cast<TemporalPassVulkan*>(renderer);
-    renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
-	auto SSRGIPassRenderer = dynamic_cast<SSRGIPassVulkan*>(renderer);
-    renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
-	auto bloomPassRenderer = dynamic_cast<BloomPassVulkan*>(renderer);
-    
-	
-    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    if(deferredRendererVulkan->denoiserOn) {
-        denoisedGIImage = temporalPassRenderer->getOutputImage();
-    } else {
-        denoisedGIImage = SSRGIPassRenderer->getOutputImage();
-    }
-
-
     pushConstant.shouldCombine = deferredRendererVulkan->shouldCombine ? 1 : 0;
 
-    SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if(!scene){
-		m_logger->error("No scene to render");
-	}
-
-    //NOTE: only support one probe grid for the entire scene at the moment
-    auto entities = scene->getEntitiesWith<LightProbeComponent>();
-
-    if(entities.empty()) {
-		// m_logger->warn("No entity with light probe component");
-        return;
-    } else {
-        Entity lightProbeEntity = entities[0];
-        auto& lightProbeComponent = lightProbeEntity.getComponent<LightProbeComponent>();
-        pushConstant.gridSpacing = lightProbeComponent.spacing;
-        pushConstant.gridOrigin = lightProbeComponent.gridOrigin;
-        pushConstant.probesPerDimension = lightProbeComponent.probesPerDimension;
+    // the grid values come from the ddgi renderer so they always match what the atlases were built with
+    pushConstant.ddgiMode = 0;
+    if(ddgiRenderer && ddgiRenderer->isReady()) {
+        pushConstant.gridSpacing = ddgiRenderer->getGridSpacing();
+        pushConstant.gridOrigin = ddgiRenderer->getGridOrigin();
+        pushConstant.probeCounts = glm::ivec4(ddgiRenderer->getProbeCounts(), 0);
+        pushConstant.skyIntensity = ddgiRenderer->getSkyIntensity();
         pushConstant.probesResolution = 8;
-        
-        size_t probesPerDimension = lightProbeComponent.probesPerDimension;
-        float w = probesPerDimension * 8;
-        float h = probesPerDimension * probesPerDimension * 8;
+        pushConstant.normalBias = ddgiRenderer->getNormalBias();
+        pushConstant.ddgiIntensity = ddgiRenderer->getIntensity();
+        pushConstant.ddgiMode = ddgiRenderer->getShowIndirectOnly() ? 2 : 1;
     }
-
-
-    sceneImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
-    albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
-	bloomImage = bloomPassRenderer->getOutputImage();
-    
-	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
     ubo.view = camera.getViewMatrix();
     ubo.projection = camera.getProjectionMatrix();
     ubo.projection[1][1] *= -1.0f; 
     ubo.invProj = glm::inverse(ubo.projection);
     ubo.invView = glm::inverse(ubo.view);
+	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
 	pushConstant.screenRes = { deferredRendererVulkan->renderTarget.width, deferredRendererVulkan->renderTarget.height };
     pushConstant.time = AppWindow::getTime();
@@ -157,8 +114,38 @@ void DeferredCombinePassVulkan::render(Camera &camera)
     writeCombinedImage(cmd, currentFrame);
 	renderDeviceVulkan->endLabel(cmd);
 
-    renderDeviceVulkan->waitIdle();
     rendererManagerVulkan->setDisplayImage(outputImage);
+}
+
+// the gbuffer is per frame and the gi / ddgi images can be recreated, so these are looked up again every frame
+void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
+{
+    RendererVulkan* renderer = nullptr;
+    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
+	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+    renderer = rendererManagerVulkan->getRenderer("TemporalPassVulkan");
+	auto temporalPassRenderer = dynamic_cast<TemporalPassVulkan*>(renderer);
+    renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
+	auto SSRGIPassRenderer = dynamic_cast<SSRGIPassVulkan*>(renderer);
+    renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
+	auto bloomPassRenderer = dynamic_cast<BloomPassVulkan*>(renderer);
+
+    if(deferredRendererVulkan->denoiserOn) {
+        denoisedGIImage = temporalPassRenderer->getOutputImage();
+    } else {
+        denoisedGIImage = SSRGIPassRenderer->getOutputImage();
+    }
+
+    sceneImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
+    albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
+    positionImage = deferredRendererVulkan->renderTarget.gBufferPos[currentFrame];
+    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
+    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
+	bloomImage = bloomPassRenderer->getOutputImage();
+
+    // without the ddgi renderer the shader never samples the atlases (ddgiMode 0), the bindings still need an image
+    atlasImageGI = ddgiRenderer ? ddgiRenderer->getAtlasImage() : bloomImage;
+    visibilityAtlasImageGI = ddgiRenderer ? ddgiRenderer->getVisibilityAtlasImage() : bloomImage;
 }
 
 void DeferredCombinePassVulkan::writeCombinedImage(VkCommandBuffer cmd, uint32_t currentFrame)
@@ -250,6 +237,8 @@ void DeferredCombinePassVulkan::_createResources()
  
     createTexture(outputImageID, outputImage);
     rendererManagerVulkan->addRenderTexture("deferredCombineOut", {outputImage->id()});
+    // ApplicationRendererVulkan draws the display image through the bindless set when the gui is hidden
+    textureManagerVulkan->registerBindlessTexture(outputImage->id());
 
     auto cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
     TextureManagerVulkan::transitionImageLayout(
@@ -285,6 +274,8 @@ void DeferredCombinePassVulkan::_createDescriptors()
 		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 10, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 11, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     };
 
 	uint32_t frameCount = VulkanUtils::numFrames();
@@ -292,6 +283,7 @@ void DeferredCombinePassVulkan::_createDescriptors()
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 11},
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 1},
 	};
 	
     layoutID = descriptorManagerVulkan->createLayout(bindings);
@@ -342,10 +334,15 @@ void DeferredCombinePassVulkan::_updateDescriptor(uint32_t index)
 	atlasImageInfo.imageView = atlasImageGI->textureImageView;
 	atlasImageInfo.sampler = atlasImageGI->textureSampler;
 
-    VkDescriptorImageInfo depthImageInfo{};
-	depthImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	depthImageInfo.imageView = depthImage->textureImageView;
-	depthImageInfo.sampler = depthImage->textureSampler;
+    VkDescriptorImageInfo positionImageInfo{};
+	positionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	positionImageInfo.imageView = positionImage->textureImageView;
+	positionImageInfo.sampler = positionImage->textureSampler;
+
+    VkDescriptorImageInfo pbrImageInfo{};
+	pbrImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	pbrImageInfo.imageView = pbrImage->textureImageView;
+	pbrImageInfo.sampler = pbrImage->textureSampler;
 
     VkDescriptorImageInfo normalImageInfo{};
 	normalImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -365,9 +362,11 @@ void DeferredCombinePassVulkan::_updateDescriptor(uint32_t index)
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 4, albedoImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 5, bloomImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 6, atlasImageInfo);
-	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 7, depthImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 7, positionImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 8, normalImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 9, visibilityAtlasImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 10, pbrImageInfo);
+	descriptorManagerVulkan->writeStorage(&writes, descriptorSets[index], 11, imageBasedRenderer->finalSumBuffers[index]->getDescStorageBufferInfo());
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 

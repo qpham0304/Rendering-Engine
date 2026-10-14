@@ -19,6 +19,7 @@
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <core/scene/SceneManager.h>
+#include <animation/AnimationManager.h>
 #include <imgui.h>
 #include <volk.h>
 
@@ -128,6 +129,10 @@ void ShadowMapPassVulkan::render(Camera& camera)
 		}
 	}
 
+	// row 2 of the view is the axis pointing from the scene back to the light.
+	// the light pass and the ddgi probes shade with lightDir, so it has to be the direction the shadow map is rendered from
+	lightDir = glm::normalize(glm::vec3(lightView[0][2], lightView[1][2], lightView[2][2]));
+
 	lightProjection[1][1] *= -1;
 	lightSpaceMatrix = lightProjection * lightView;
 
@@ -192,6 +197,9 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
 
+	auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
+	uint64_t boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID());
+
 	beginRecording(commandBuffer, shadowRenderPass, shadowFramebuffer, shadowPipeline.get());
 	{
 		for (auto& entity : scene->getEntitiesWith<TransformComponent, ModelComponent>()) {
@@ -205,6 +213,11 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 			LightPushConstant push{};
 			push.model = transform.getModelMatrix();
 			push.lightMVP = lightSpaceMatrix;
+			
+			push.boneMatricesRef = boneMatricesRef;
+			if(entity.hasComponent<SkinningComponent>()) {
+				push.boneMatricesIdx = entity.getComponent<SkinningComponent>().boneMatricesID;
+			}
 
 			vkCmdPushConstants(
 				commandBuffer,

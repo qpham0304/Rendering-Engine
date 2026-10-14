@@ -20,6 +20,7 @@
 #include <graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h>
+#include <graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h>
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
 #include <gui/GuiManager.h>
 #include <imgui.h>
@@ -193,6 +194,10 @@ void DeferredRendererVulkan::render(Camera& camera)
 	pushConstantLight.sunlightMVP = shadowMapPass->lightSpaceMatrix;
     pushConstantLight.time = AppWindow::getTime();
 	pushConstantLight.numLights = lights.size();
+
+	// with a probe grid the diffuse ambient comes from ddgi in the combine pass, the light pass only keeps the specular ibl
+	auto ddgiRenderer = dynamic_cast<DDGIBuilderVulkan*>(rendererManagerVulkan->getRenderer("DDGIBuilderVulkan"));
+	pushConstantLight.iblDiffuse = (ddgiRenderer && ddgiRenderer->isReady()) ? 0.0f : 1.0f;
 	
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 
@@ -238,7 +243,6 @@ void DeferredRendererVulkan::renderGui()
 		}
 	}
 	ImGui::SliderFloat("skybox detail", &pushConstantLight.skyboxDetail, 0.0f, 1.0f);
-	ImGui::SliderFloat3("Base Light Dir", &shadowMapPass->lightDir[0], -1.0f, 1.0f);
 	ImGui::SliderFloat("Sun Azimuth", &shadowMapPass->sunAzimuth, 0.0f, 6.28f);
 	ImGui::SliderFloat("Sun Elevation", &shadowMapPass->sunElevation, -3.14f, 3.14f);
 	ImGui::SliderFloat("Sun view Area", &shadowMapPass->s, 1.0f, 25.0f);
@@ -401,6 +405,7 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 	int objectsIndex = 0;
 
 	materialManager->bindMaterial(cmd, (void*)gPassPipeline.get());
+	auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
 	
 	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
 
@@ -412,11 +417,20 @@ void DeferredRendererVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t c
 			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
 			const Model* model = modelManager->getModel(modelID);
 
+			uint32_t boneMatricesIdx = 0;
+			if(entity.hasComponent<SkinningComponent>()) {
+				boneMatricesIdx = entity.getComponent<SkinningComponent>().boneMatricesID;
+			}
+
 			uint32_t meshIdx = 0;
 			for (uint32_t meshID : model->meshIDs) {
 
+				uint32_t bufferID = animationManager->getAnimationBufferAddressID();
 				pushConstant.objectsRef = objDeviceAddress; 
 				pushConstant.objectIdx  = objectsIndex;
+				pushConstant.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(bufferID);
+				pushConstant.boneMatricesIdx = boneMatricesIdx;
+
 
 				vkCmdPushConstants(
 					cmd,
@@ -491,8 +505,8 @@ void DeferredRendererVulkan::_createRenderPasses()
 	renderTarget.height = swapchain.swapChainExtent.height;
 
 	VkAttachmentDescription colorAttachment{};
-	colorAttachment.format = swapchain.swapChainImageFormat;
-	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;	// for hdr, the combine pass tonemaps, using swapchain format
+	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;		// of only 8 bit target clips everything the sun lights to white
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -737,7 +751,7 @@ void DeferredRendererVulkan::_createFrameBuffers()
 		uint32_t id = 0;
 		std::string name = "";
 		renderTarget.colorTextures[i] = createTexture(
-			swapchain.swapChainImageFormat, 
+			VK_FORMAT_R16G16B16A16_SFLOAT, 
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);

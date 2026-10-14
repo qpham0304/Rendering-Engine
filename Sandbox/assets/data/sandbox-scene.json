@@ -17,6 +17,33 @@
     {
       "components": {
         "ModelComponent": {
+          "path": "assets/models/sponza/gLTF/Sponza.gltf"
+        },
+        "NameComponent": {
+          "name": "sponza"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "translateVec": [
+            0,
+            -2.5,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "ModelComponent": {
           "path": "assets/models/cube/cube-notex.gltf"
         },
         "NameComponent": {

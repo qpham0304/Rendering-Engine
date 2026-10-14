@@ -27,6 +27,7 @@ public:
 
     void writeTP(VkCommandBuffer cmd, uint32_t currentFrame);
     void writeTAA(VkCommandBuffer cmd, uint32_t currentFrame);
+	virtual TextureVulkan* getOutputImage() override;
 
 protected:
 	void _createResources();
@@ -44,6 +45,7 @@ protected:
 	TextureVulkan* prevDepthImage;
 	TextureVulkan* normalImage;
 	TextureVulkan* prevNormalImage;
+	TextureVulkan* pbrImage;
 	std::vector<TextureVulkan*> outputImages;
 
 	uint32_t ssrgiHistoryImageID;

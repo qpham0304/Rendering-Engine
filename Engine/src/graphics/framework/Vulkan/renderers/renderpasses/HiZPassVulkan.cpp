@@ -68,12 +68,6 @@ void HiZPassVulkan::onUpdate()
 
 void HiZPassVulkan::render(Camera &camera)
 {
-    if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
-
     RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
@@ -81,6 +75,12 @@ void HiZPassVulkan::render(Camera &camera)
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
+
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	renderDeviceVulkan->beginLabel(cmd, "HiZ Pass");
@@ -275,14 +275,18 @@ void HiZPassVulkan::_createDescriptors()
 		HiZMipSets[i] = descriptorManagerVulkan->getDescriptorSet(hiZSetsID);
 	}
 
+	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(rendererManagerVulkan->getRenderer("DeferredRendererVulkan"));
+
 	for(uint32_t m = 0; m < HiZMipViews.size(); m++) {
+		// chain m is used on frame m, so it has to start from frame m's depth, not whichever frame was current here
+		TextureVulkan* frameDepth = deferredRendererVulkan->renderTarget.depthTextures[m];
 		for (uint32_t i = 0; i < mipLevels; i++) {
 			VkDescriptorImageInfo sourceInfo{};
 			sourceInfo.sampler = outputImages[m]->textureSampler;
 
 			if (i == 0) {   // Mip 0 reads from the actual G-Buffer Depth
 				sourceInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				sourceInfo.imageView = depthImage->textureImageView;
+				sourceInfo.imageView = frameDepth->textureImageView;
 			} else {        // Mips 1+ read from the PREVIOUS Hi-Z mip, which stays in GENERAL
 				sourceInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 				sourceInfo.imageView = HiZMipViews[m][i - 1];

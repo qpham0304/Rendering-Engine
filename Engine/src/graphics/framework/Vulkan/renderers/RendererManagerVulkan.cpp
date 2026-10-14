@@ -40,6 +40,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     
 	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
 		this->needResize = true;
+		this->swapchainOutdated = true;
 	});
     
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
@@ -58,17 +59,17 @@ bool RendererManagerVulkan::init(WindowConfig config)
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
 
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
-    // deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
-    // raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
+    deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
+    raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
     
-    // alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
-    // hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
-    // SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
-    // bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
-    // temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
-    // ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
-    // deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
-    //postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererVulkan");
+    alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
+    hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
+    SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
+    bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
+    temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
+    ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
+    deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
+    ////postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererVulkan");
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
 	debugRenderer = addRenderer<DebugRendererVulkan>("DebugRendererVulkan");
 
@@ -110,46 +111,26 @@ void RendererManagerVulkan::onUpdate()
 		return;
 	}
 
-    Camera& camera = *SceneManager::cameraController;
-
-    if (firstFrame) {
-        lastViewProj = camera.getProjectionMatrix() * camera.getViewMatrix();
-        lastViewProj[1][1] *= -1.0; 
-        firstFrame = false;
-    }
-
-    ubo.view = camera.getViewMatrix();
-	ubo.prevViewProj = lastViewProj;
-	ubo.proj = camera.getProjectionMatrix();
-	ubo.cameraPos = glm::vec4(camera.getPosition(), 1.0);
-	ubo.proj[1][1] *= -1.0;
-	ubo.invView = camera.getInViewMatrix();
-	ubo.invProj = camera.getInProjectionMatrix();
-	ubo.invProj[1][1] *= -1.0;
-
-	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
-
     if(currentRenderMode == 0) {
         forwardRenderer->onUpdate();
     } 
-    // else if(currentRenderMode == 1) {
-    //     auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-    //     if(tmp->pushConstantLight.aoOn) {
-    //         alchemyAORenderer->onUpdate();
-    //     }
-    //     deferredRenderer->onUpdate();
-    //     hiZPassRenderer->onUpdate();
-    //     SSRGIPassRenderer->onUpdate();
-    //     bloomRenderer->onUpdate();
-    //     if(tmp->denoiserOn) {
-    //         temporalPassRenderer->onUpdate();
-    //     }
-    //     // ddgiPassRenderer->onUpdate();
-    //     // deferredCombineRenderer->onUpdate();
-    // } else if(currentRenderMode == 2) {
-    //     raytracingRenderer->onUpdate();
-    // }
+    else if(currentRenderMode == 1) {
+        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
+        if(tmp->pushConstantLight.aoOn) {
+            alchemyAORenderer->onUpdate();
+        }
+        deferredRenderer->onUpdate();
+        hiZPassRenderer->onUpdate();
+        SSRGIPassRenderer->onUpdate();
+        bloomRenderer->onUpdate();
+        if(tmp->denoiserOn) {
+            temporalPassRenderer->onUpdate();
+        }
+        ddgiPassRenderer->onUpdate();
+        deferredCombineRenderer->onUpdate();
+    } else if(currentRenderMode == 2) {
+        raytracingRenderer->onUpdate();
+    }
 
     // particleRenderer->onUpdate();
     // debugRenderer->onUpdate();
@@ -165,29 +146,57 @@ void RendererManagerVulkan::render()
 		return;
 	}
 
+    //make sure swapchain need to be resized first before other renderer can rebuild the new size
+    if(swapchainOutdated) {
+        renderDeviceVulkan->swapchain.recreateSwapchain();
+        ubo.width = renderDeviceVulkan->swapchain.swapChainExtent.width;
+        ubo.height = renderDeviceVulkan->swapchain.swapChainExtent.height;
+        swapchainOutdated = false;
+    }
+
     beginFrame();
+
+    if (firstFrame) {
+        lastViewProj = camera->getProjectionMatrix() * camera->getViewMatrix();
+        lastViewProj[1][1] *= -1.0; 
+        firstFrame = false;
+    }
+
+    ubo.view = camera->getViewMatrix();
+	ubo.prevViewProj = lastViewProj;
+	ubo.proj = camera->getProjectionMatrix();
+	ubo.cameraPos = glm::vec4(camera->getPosition(), 1.0);
+	ubo.proj[1][1] *= -1.0;
+	ubo.invView = camera->getInViewMatrix();
+	ubo.invProj = camera->getInProjectionMatrix();
+	ubo.invProj[1][1] *= -1.0;
+
+	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
+	lastViewProj = ubo.proj * ubo.view;
+
     // shadowMapRenderer->render(*camera);
     
     if(currentRenderMode == 0) {
         forwardRenderer->render(*camera);
     } 
-    // else if(currentRenderMode == 1) {
-    //     auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-    //     if(tmp->pushConstantLight.aoOn) {
-    //         alchemyAORenderer->render(*camera);
-    //     }
-    //     deferredRenderer->render(*camera);
-    //     hiZPassRenderer->render(*camera);
-    //     SSRGIPassRenderer->render(*camera);
-    //     bloomRenderer->render(*camera);
-    //     if(tmp->denoiserOn) {
-    //         temporalPassRenderer->render(*camera);
-    //     }
-    //     // ddgiPassRenderer->render(*camera);
-    //     // deferredCombineRenderer->render(*camera);
-    // } else if(currentRenderMode == 2) {
-    //     raytracingRenderer->render(*camera);
-    // }
+    else if(currentRenderMode == 1) {
+        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
+        if(tmp->pushConstantLight.aoOn) {
+            alchemyAORenderer->render(*camera);
+        }
+        deferredRenderer->render(*camera);
+        hiZPassRenderer->render(*camera);
+        SSRGIPassRenderer->render(*camera);
+        bloomRenderer->render(*camera);
+        if(tmp->denoiserOn) {
+            temporalPassRenderer->render(*camera);
+        }
+        ddgiPassRenderer->render(*camera);
+        deferredCombineRenderer->render(*camera);
+    } else if(currentRenderMode == 2) {
+        raytracingRenderer->render(*camera);
+    }
 
     // particleRenderer->render(*camera);
     // debugRenderer->render(*camera);

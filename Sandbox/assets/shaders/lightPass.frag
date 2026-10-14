@@ -59,6 +59,7 @@ layout (push_constant) uniform LightData {
     int aoOn;
     float G;
     float scatteringScale;
+    float iblDiffuse;       // whether to use ibl 1 or use global illumination 0
 } pcl;
 
 const float PI = 3.14159265359;
@@ -168,68 +169,86 @@ const vec2 poissonDisk16[16] = vec2[](
 );
 
 
-float calcPCSS(vec3 worldPos) {
-    vec3 worldNorm = normalize(subpassLoad(inputNorm).rgb);
-    vec3 L = normalize(pcl.direction.xyz);
-    float NdotL = dot(worldNorm, L);
+// how fast the shadow edge widens with distance from the occluder (tan of the light's angular radius, exaggerated)
+const float SUN_SOFTNESS = 0.04;
+// widest penumbra in world units, also how far the blocker search looks
+const float MAX_PENUMBRA = 0.75;
 
-    float biasScale = max(0.05 * (1.0 - NdotL), 0.005); 
-    vec4 fragPosLightSpace = pcl.sunlightMVP * vec4(worldPos + worldNorm * biasScale, 1.0);
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords.xy = projCoords.xy * 0.5 + 0.5;
-
-    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
-    float noiseValue = texture(blueNoise, noiseUV).r;
-
-    const float LIGHT_SIZE_UV = 0.005; 
-    float avgBlockerDepth = 0.0;
-    int blockers = 0;
-    float searchRegion = LIGHT_SIZE_UV * (projCoords.z); 
-
-    for(int i = -2; i <= 2; ++i) {
-        for(int j = -2; j <= 2; ++j) {
-            vec2 offset = (vec2(i, j) + (noiseValue - 0.5)) * (searchRegion / 5.0);
-            float depth = texture(shadowMap, projCoords.xy + offset).r;
-            float distanceToBlocker = projCoords.z - depth;
-            if(depth < projCoords.z - 0.0005 && distanceToBlocker > 0.001) { 
-                avgBlockerDepth += depth;
-                blockers++;
-            }
-        }
+// compares against the 4 nearest texels and filters the results.
+// sampling the depth with a linear sampler and comparing afterwards filters the wrong thing and gives stair steps
+float shadowTap(vec2 uv, float compareDepth) {
+    if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
+        return 1.0;     // outside the shadow map: lit
     }
-
-    if(blockers < 1) {
-        return 0.0;
-    }
-    avgBlockerDepth /= float(blockers);
-
-    // contact hardening penumbra
-    float penumbra = (projCoords.z - avgBlockerDepth) * LIGHT_SIZE_UV / avgBlockerDepth;
-    penumbra = clamp(penumbra, 0.0, 0.01);
-
-    float texelSize = 1.25 / 1024.0;    // fall back blur for low detail shadow
-    penumbra = max(penumbra, texelSize * 1.25);
-
-    float shadow = 0.0;
-    float angle = noiseValue * 2 * PI;
-    mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
-
-    for (int i = 0; i < 16; i++) {
-        // rotate and jitter the disk to eliminate banding
-        vec2 offset = (rotation * poissonDisk16[i]) * penumbra;
-        float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
-        
-        if (projCoords.z - 0.0005 > pcfDepth) {
-            shadow += 1.0;
-        }
-    }
-
-    return shadow / 16.0;
+    vec2 f = fract(uv * vec2(textureSize(shadowMap, 0)) - 0.5);
+    vec4 lit = step(compareDepth, textureGather(shadowMap, uv, 0));     // texels (0,1) (1,1) (1,0) (0,0)
+    return mix(mix(lit.w, lit.z, f.x), mix(lit.x, lit.y, f.x), f.y);
 }
 
+// evenly spread points on a disk (golden angle spiral). rotated per pixel it covers the disk far more evenly than
+// a fixed poisson set, which is what keeps the penumbra from looking grainy
+vec2 vogelDisk(int i, int count, float phi) {
+    float r = sqrt((float(i) + 0.5) / float(count));
+    float theta = float(i) * 2.39996323 + phi;
+    return r * vec2(cos(theta), sin(theta));
+}
 
+const int BLOCKER_TAPS = 16;
+const int FILTER_TAPS = 32;
 
+// returns how much of the sun is blocked, 0 = lit, 1 = fully in shadow
+float calcPCSS(vec3 worldPos, vec3 worldNorm, mat4 lightMVP, vec3 L) {
+    // the light is orthographic, so world units convert to shadow map units with two constants
+    // read straight from the matrix (they follow the sun view area / zNear / zFar sliders)
+    float uvPerUnit = 0.5 * length(vec3(lightMVP[0][0], lightMVP[1][0], lightMVP[2][0]));
+    float depthPerUnit = length(vec3(lightMVP[0][2], lightMVP[1][2], lightMVP[2][2]));
 
+    float NdotL = dot(worldNorm, L);
+    float normalOffset = max(0.05 * (1.0 - NdotL), 0.005);
+    vec4 fragPosLightSpace = lightMVP * vec4(worldPos + worldNorm * normalOffset, 1.0);
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    if (projCoords.z > 1.0) {
+        return 0.0;
+    }
+
+    float texel = 1.0 / float(textureSize(shadowMap, 0).x);
+    float depthBias = 0.05 * depthPerUnit;
+    float receiverDepth = projCoords.z - depthBias;
+
+    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
+    float angle = texture(blueNoise, noiseUV).r * 2.0 * PI;
+
+    // blocker search: has to cover the widest penumbra, or the soft edge gets cut off where the search stops finding blockers
+    float searchRadius = MAX_PENUMBRA * uvPerUnit;
+    float blockerDepth = 0.0;
+    float blockers = 0.0;
+    for (int i = 0; i < BLOCKER_TAPS; i++) {
+        vec2 uv = projCoords.xy + vogelDisk(i, BLOCKER_TAPS, angle) * searchRadius;
+        float depth = textureLod(shadowMap, uv, 0.0).r;
+        if (depth < receiverDepth) {
+            blockerDepth += depth;
+            blockers += 1.0;
+        }
+    }
+    if (blockers < 1.0) {
+        return 0.0;
+    }
+    blockerDepth /= blockers;
+
+    // contact hardening: the further the occluder is from the receiver, the wider the edge.
+    // for an orthographic light that is just distance * softness, there is no divide by the blocker depth
+    float occluderDistance = (receiverDepth - blockerDepth) / depthPerUnit;
+    float penumbra = clamp(occluderDistance * SUN_SOFTNESS, 0.0, MAX_PENUMBRA) * uvPerUnit;
+    penumbra = max(penumbra, texel * 1.5);
+
+    float lit = 0.0;
+    for (int i = 0; i < FILTER_TAPS; i++) {
+        lit += shadowTap(projCoords.xy + vogelDisk(i, FILTER_TAPS, angle) * penumbra, receiverDepth);
+    }
+
+    return 1.0 - lit / float(FILTER_TAPS);
+}
 const mat4 DITHER_PATTERN = mat4(
     vec4(0.0, 0.5, 0.125, 0.625),
     vec4(0.75, 0.22, 0.875, 0.375),
@@ -463,7 +482,8 @@ void main() {
     }
     
     float ao        = pbr.r;
-    float roughness = pbr.g;
+    // roughness 0 makes the GGX term 0 / 0 on the exact highlight pixel
+    float roughness = max(pbr.g, 0.045);
     float metallic  = pbr.b;
     
     vec3 V = normalize(ubo.cameraPos.xyz - worldPos);
@@ -500,7 +520,7 @@ void main() {
     
     // float shadow = 1.0 - calcShadow(worldPos);
     // float shadow = 1.0 - calcMSMShadow(worldPos + N * pcl.bias);
-    float shadow = 1.0 - calcPCSS(worldPos);
+    float shadow = 1.0 - calcPCSS(worldPos, normalize(worldNorm), pcl.sunlightMVP, normalize(pcl.direction.xyz));
     vec3 L_sun = normalize(pcl.direction.xyz); 
     vec3 sunRadiance = pcl.color.rgb * shadow;
 
@@ -533,7 +553,8 @@ void main() {
         ao *= ssao;
     }
     
-    vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
+    //use IBL or not... if ddgi and ssgi enabled then  pcl.iblDiffuse = 0
+    vec3 ambient = (kD * diffuseIBL * pcl.iblDiffuse + specularIBL) * ao;
     vec3 finalColor = ambient + Lo + sunlight + emissive.rgb;
 
     // if(pcl.aoOn != 0) {
@@ -587,5 +608,11 @@ void main() {
     // finalColor = finalColor / (finalColor + vec3(1.0));
     // finalColor = pow(finalColor, vec3(1.0/2.2));
     
+    // the target is float now: one nan / inf pixel survives, and bloom smears it into a black block
+    if (any(isnan(finalColor)) || any(isinf(finalColor))) {
+        finalColor = vec3(0.0);
+    }
+    finalColor = min(finalColor, vec3(1000.0));
+
     outColor = vec4(finalColor, albedo.a);
 }

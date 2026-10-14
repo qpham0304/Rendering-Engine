@@ -37,8 +37,9 @@ bool BloomPassVulkan::init(WindowConfig config)
 
     assert(giPassVulkan && "failed to retrieve GI Pass data");
 
-    uint32_t width = AppWindow::getWidth();
-    uint32_t height = AppWindow::getHeight();
+    //use swapchain size not a potential 0x0 minimized appwindow size, also to match render image
+    uint32_t width = renderDeviceVulkan->swapchain.swapChainExtent.width;
+    uint32_t height = renderDeviceVulkan->swapchain.swapChainExtent.height;
     uint32_t maxMips = std::floor(std::log2(std::max(width, height))) - 2;
     mipCount = std::clamp(maxMips, 5u, 10u);
 
@@ -76,15 +77,15 @@ void BloomPassVulkan::onUpdate()
 }
 
 void BloomPassVulkan::render(Camera& camera) {
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    auto deferred = dynamic_cast<DeferredRendererVulkan*>(rendererManagerVulkan->getRenderer("DeferredRendererVulkan"));
+    inputImage = deferred->renderTarget.colorTextures[currentFrame];
+
     if (needResize) {
         _recreateResources();
         needResize = false;
         return;
     }
-
-    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    auto deferred = dynamic_cast<DeferredRendererVulkan*>(rendererManagerVulkan->getRenderer("DeferredRendererVulkan"));
-    inputImage = deferred->renderTarget.colorTextures[currentFrame];
 
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     renderDeviceVulkan->beginLabel(cmd, "Bloom Pass");
@@ -181,8 +182,8 @@ void BloomPassVulkan::_createResources() {
     outputImage = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
     outputImageID = id;
 
-    uint32_t width = AppWindow::getWidth();
-    uint32_t height = AppWindow::getHeight();
+    uint32_t width = renderDeviceVulkan->swapchain.swapChainExtent.width;
+    uint32_t height = renderDeviceVulkan->swapchain.swapChainExtent.height;
 
     TextureManagerVulkan::createImage(
         width, height, VK_FORMAT_R16G16B16A16_SFLOAT,
@@ -303,6 +304,7 @@ void BloomPassVulkan::_updateBloomProcessDesciptors()
 {
     auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(bloomDecriptorsetsID);
     TextureVulkan* dirtTex = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(lensDirtTextureID));
+    auto deferred = dynamic_cast<DeferredRendererVulkan*>(rendererManagerVulkan->getRenderer("DeferredRendererVulkan"));
 
     for(int i = 0; i < VulkanUtils::numFrames(); i++) {
         std::vector<VkWriteDescriptorSet> writes;
@@ -310,7 +312,9 @@ void BloomPassVulkan::_updateBloomProcessDesciptors()
         VkDescriptorImageInfo bloomInfo{ outputImage->textureSampler, mipChain[1], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
         VkDescriptorImageInfo outInfo{ VK_NULL_HANDLE, mipChain[0], VK_IMAGE_LAYOUT_GENERAL };
         VkDescriptorImageInfo dirtInfo{ dirtTex->textureSampler, dirtTex->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-        VkDescriptorImageInfo sceneInfo{ inputImage->textureSampler, inputImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+        // set i is bound on frame i, so it reads frame i's scene color
+        TextureVulkan* sceneImage = deferred->renderTarget.colorTextures[i];
+        VkDescriptorImageInfo sceneInfo{ sceneImage->textureSampler, sceneImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
         descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 0, bloomInfo);
         descriptorManagerVulkan->writeStorageImage(&writes, descriptorSets[i], 1, outInfo);

@@ -16,6 +16,7 @@
 #include "core/features/EngineUtils.h"
 #include "core/features/EngineStates.h"
 #include <random>
+#include <cfloat>
 
 SandBoxLayer::SandBoxLayer(const std::string& name)
     : Layer(name)
@@ -52,7 +53,7 @@ bool SandBoxLayer::init()
 
     // createScriptableCamera();
     // createLights();
-	// createLightProbes();
+	createLightProbes();
     // createParticle();
 
     // rendererManager->addRenderer();
@@ -146,66 +147,76 @@ void SandBoxLayer::createLights()
 
 void SandBoxLayer::createLightProbes()
 {
-    const uint32_t probesPerDimension = 8;
+    // maximum number of probes defined by the ddgi pass
+    const uint32_t maxProbesPerAxis = 24;
 	float spacing = 2.0f;
 
     Scene* activeScene = SceneManager::getInstance().getActiveScene();
+
+    // fit the grid to everything in the scene: a surface outside the grid only gets the open sky, not the probes
+    glm::vec3 sceneMin(FLT_MAX);
+    glm::vec3 sceneMax(-FLT_MAX);
+    for (auto& entity : activeScene->getEntitiesWith<TransformComponent, ModelComponent>()) {
+        glm::mat4 modelMatrix = entity.getComponent<TransformComponent>().getModelMatrix();
+        const Model* model = modelManager->getModel(entity.getComponent<ModelComponent>().modelID);
+        if (!model) {
+            continue;
+        }
+        for (uint32_t meshID : model->meshIDs) {
+            for (const auto& vertex : meshManager->getMesh(meshID)->vertices) {
+                glm::vec3 worldPos = glm::vec3(modelMatrix * glm::vec4(vertex.positions, 1.0f));
+                sceneMin = (glm::min)(sceneMin, worldPos);
+                sceneMax = (glm::max)(sceneMax, worldPos);
+            }
+        }
+    }
+    if (sceneMin.x > sceneMax.x) {
+        sceneMin = glm::vec3(-7.0f);
+        sceneMax = glm::vec3(7.0f);
+    }
+
+    // widen the spacing instead of cutting the grid short when the scene is too big for the probe limit
+    glm::vec3 extent = sceneMax - sceneMin;
+    float largestExtent = (glm::max)(extent.x, (glm::max)(extent.y, extent.z));
+    spacing = (glm::max)(spacing, largestExtent / (float)(maxProbesPerAxis - 1));
+    glm::uvec3 probeCounts = glm::clamp(glm::uvec3(glm::ceil(extent / spacing)) + 1u, glm::uvec3(2), glm::uvec3(maxProbesPerAxis));
+
     uint32_t lightProbeEntityID = activeScene->addEntity("probe manager");
     Entity lightProbeEntity = activeScene->getEntity(lightProbeEntityID);
-    
+
+    // the grid is centered on the entity
     TransformComponent& transform = lightProbeEntity.getComponent<TransformComponent>();
-    transform.translate(glm::vec3(0.0f, 0.0f, 0.0f));
+    transform.translate((sceneMin + sceneMax) * 0.5f);
 
-    MaterialDesc materialDesc;
-    materialDesc.albedoIDs.push_back(
-        textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
-    );
-
-    Mesh mesh = EngineUtils::drawSphere(0.25f, 18, 18);
-    mesh.materialID = materialManager->createMaterial(materialDesc);
-
-    
-    float offset = (probesPerDimension - 1) * spacing * 0.5f;
+    glm::vec3 offset = glm::vec3(probeCounts - 1u) * spacing * 0.5f;
     auto& lightProbeComponent = lightProbeEntity.addComponent<LightProbeComponent>();
-    lightProbeComponent.probeGrid.resize(probesPerDimension * probesPerDimension * probesPerDimension);
+    lightProbeComponent.probeGrid.resize(probeCounts.x * probeCounts.y * probeCounts.z);
     lightProbeComponent.bufferSize = lightProbeComponent.probeGrid.size() * sizeof(glm::vec4);  //NOTE: assuming probe is glm::vec4
-    lightProbeComponent.probesPerDimension = probesPerDimension;
+    lightProbeComponent.probesPerDimension = probeCounts.x;
+    lightProbeComponent.probeCounts = probeCounts;
     lightProbeComponent.spacing = spacing;
-    lightProbeComponent.gridOrigin = glm::vec4(-offset, -offset, -offset, 1.0);
+    // world position of probe (0, 0, 0), the ddgi shaders rebuild every probe position from this and the spacing
+    lightProbeComponent.gridOrigin = glm::vec4(transform.translateVec - offset, 1.0);
     
-    // Offset to center the grid (so 0,0,0 is the middle the volume)
-    for (uint32_t z = 0; z < probesPerDimension; z++) {
-        for (uint32_t y = 0; y < probesPerDimension; y++) {
-            for (uint32_t x = 0; x < probesPerDimension; x++) {
-                uint32_t index = x + (y * probesPerDimension) + (z * probesPerDimension * probesPerDimension);
+    // local positions (relative to the entity) for drawing the probes
+    // index order has to match ddgiProbeIndex in assets/shaders/common/ddgi.glsl
+    for (uint32_t y = 0; y < probeCounts.y; y++) {
+        for (uint32_t z = 0; z < probeCounts.z; z++) {
+            for (uint32_t x = 0; x < probeCounts.x; x++) {
+                uint32_t index = x + (z * probeCounts.x) + (y * probeCounts.x * probeCounts.z);
                 
-                lightProbeComponent.probeGrid[index] = glm::vec4(
-                    (float)x * spacing - offset,
-                    (float)y * spacing - offset,
-                    (float)z * spacing - offset,
-                    1.0
-                );
-            }
-        }
-    }
-    for (uint32_t y = 0; y < probesPerDimension; y++) {
-        for (uint32_t z = 0; z < probesPerDimension; z++) {
-            for (uint32_t x = 0; x < probesPerDimension; x++) {
-                
-                // Re-map the index calculation to match this layout
-                uint32_t index = x + (z * probesPerDimension) + (y * probesPerDimension * probesPerDimension);
-                
-                lightProbeComponent.probeGrid[index] = glm::vec4(
-                    (float)x * spacing - offset,
-                    (float)y * spacing - offset,
-                    (float)z * spacing - offset,
-                    1.0
-                );
+                lightProbeComponent.probeGrid[index] = glm::vec4(glm::vec3(x, y, z) * spacing - offset, 1.0);
             }
         }
     }
 
-
+    // debug spheres, one mesh per probe
+    // MaterialDesc materialDesc;
+    // materialDesc.albedoIDs.push_back(
+    //     textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
+    // );
+    // Mesh mesh = EngineUtils::drawSphere(0.25f, 18, 18);
+    // mesh.materialID = materialManager->createMaterial(materialDesc);
     // Model model {};
     // uint32_t meshID = meshManager->loadMesh(mesh);
     // model.meshIDs.push_back(meshID);
@@ -216,7 +227,6 @@ void SandBoxLayer::createLightProbes()
     // modelComponent.modelID = modelManager->addModel(model);
     // lightProbeEntity.addComponent<ModelComponent>(modelComponent);
 }
-
 void SandBoxLayer::createScriptableCamera()
 {
     // camera = std::make_unique<Camera>();

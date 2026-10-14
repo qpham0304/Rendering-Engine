@@ -1,49 +1,46 @@
 #pragma once
- 
+
 #include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/RendererVulkan.h"
- 
+
 
 class RayTraceRendererVulkan;
 class ShadowMapPassVulkan;
+class DeferredRendererVulkan;
+class ImageBasedRendererVulkan;
 
-class DDGIBuilderVulkan : public RendererVulkan 
+// Dynamic diffuse global illumination, one probe grid (LightProbeComponent) per scene.
+// Every frame:
+//   writeTrace             every probe shoots raysPerProbe rays, radiance + hit distance land in the ray buffers
+//   writeUpdateIrradiance  ray buffers are blended into the irradiance atlas
+//   writeUpdateVisibility  ray buffers are blended into the visibility (distance) atlas
+// The passes write the current atlases and copy them to the lastFrame ones,
+// everything that samples the probes (the trace pass itself and DeferredCombinePassVulkan) reads lastFrame.
+// The grid indexing and the atlas layout are documented in assets/shaders/common/ddgi.glsl
+class DDGIBuilderVulkan : public RendererVulkan
 {
 private:
 	struct PushConstant {
 		uint64_t objectsRef;
-		uint64_t probRef;
+		uint64_t padding;
 		glm::vec4 gridOrigin;    // vec4 for alignment but this can be vec3
-		uint32_t probesPerDimension;
-		uint32_t probesResolution;
+		glm::ivec4 probeCounts;  // xyz: probes per axis, w: total
 		float gridSpacing;
-		uint32_t padding;
-		glm::vec4 lightDir;
+		uint32_t probesResolution;
 	};
 
-	
 	struct UniformBufferObject {
-		glm::mat4 view;
-		glm::mat4 prevViewProj;
-		glm::mat4 proj;
-		glm::vec4 cameraPos;
-		glm::mat4 invView;
-		glm::mat4 invProj;
-		float width;
-		float height;
-		float frameSeed;
-		uint32_t frameCount;
-		uint32_t clear;
-		// glm::vec4 color;
-	};
-
-	struct ObjectDesc {
-		uint64_t vertexAddress = 0;
-		uint64_t indexAddress = 0;
-		uint64_t materialsRef = 0;
-		uint64_t materialIndicesRef = 0;
+		glm::mat4 randomRotation;	// rotates the ray directions, the update passes need the same one the trace pass used
+		glm::vec4 sunDirection;		// xyz: toward the sun
+		glm::vec4 sunColor;			// rgb: color * intensity
+		float hysteresis;			// how much of the previous frame the atlases keep
+		float maxRayDistance;
+		float normalBias;
+		uint32_t clear;				// 1 = ignore the history
+		float skyIntensity;			// scales the environment light the probes receive
+		float padding[3];
 	};
 
 public:
@@ -62,59 +59,78 @@ public:
 	TextureVulkan* getAtlasImage();
 	TextureVulkan* getVisibilityAtlasImage();
 
+	// data required to sample the atlases
+	bool isReady() const;
+	glm::vec4 getGridOrigin() const;
+	float getGridSpacing() const;
+	glm::uvec3 getProbeCounts() const;
+	float getSkyIntensity() const;
+	float getNormalBias() const;
+	float getIntensity() const;
+	bool getShowIndirectOnly() const;
+
 private:
-	TextureVulkan* rayColorBuffer;
-	TextureVulkan* rayDistanceBuffer;
-	TextureVulkan* currentIrradianceAtlas;
-	TextureVulkan* lastframeIrradianceAtlas;
-	TextureVulkan* currentVisibilityAtlas;
-	TextureVulkan* lastFrameVisibilityAtlas;
-	
+	TextureVulkan* rayColorBuffer { nullptr };
+	TextureVulkan* rayDistanceBuffer { nullptr };
+	TextureVulkan* currentIrradianceAtlas { nullptr };
+	TextureVulkan* lastframeIrradianceAtlas { nullptr };
+	TextureVulkan* currentVisibilityAtlas { nullptr };
+	TextureVulkan* lastFrameVisibilityAtlas { nullptr };
+
 	uint32_t probTracePipelineLayoutID;
 	uint32_t probTracePipelinePoolID;
 	uint32_t probTracePipelineSetID;
 	std::unique_ptr<VulkanPipeline> probTracePipeline;
-    std::vector<VkDescriptorSetLayoutBinding> postBindings;
+    std::vector<VkDescriptorSetLayoutBinding> probTraceBindings;
 
 	uint32_t updateIrradianceLayoutID;
 	uint32_t updateIrradiancePoolID;
 	uint32_t updateIrradianceSetID;
 	std::unique_ptr<VulkanPipeline> updateIrradiancePipeline;
-    std::vector<VkDescriptorSetLayoutBinding> updateIrradianceBindings;
-	
+
 	uint32_t updateVisibilityLayoutID;
 	uint32_t updateVisibilityPoolID;
 	uint32_t updateVisibilitySetID;
 	std::unique_ptr<VulkanPipeline> updateVisibilityPipeline;
-    std::vector<VkDescriptorSetLayoutBinding> updateVisibilityBindings;
 
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 	UniformBufferObject ubo{};
-	PushConstant pushConstant;
+	PushConstant pushConstant{};
     RayTraceRendererVulkan* raytracer { nullptr };
 	ShadowMapPassVulkan* shadowMapPass { nullptr };
-	glm::mat4 lastViewProj;
-	bool firstFrame { true };
+	DeferredRendererVulkan* deferredRenderer { nullptr };
+	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 
-    const int raysPerProbe = 64;
-	const int PROBE_RES = 10;
-	const int numLights = 1000;
-	const int MAX_INSTANCES = 5000;
-	float atlasW { 0.0f };
-	float atlasH { 0.0f };
-	float irrAtlasW { 0.0f };
-	float irrAtlasH { 0.0f };
+	// these three must match the constants in assets/shaders/common/ddgi.glsl
+    const uint32_t raysPerProbe = 64;
+	const uint32_t IRRADIANCE_RES = 8;
+	const uint32_t VISIBILITY_RES = 16;
+	// the atlas is Cx tiles wide and Cy * Cz tiles tall, this keeps it inside the max image size
+	const uint32_t MAX_PROBES_PER_DIMENSION = 24;
+
+	glm::uvec3 probeCounts { 1 };
+	uint32_t irrAtlasW { 0 };
+	uint32_t irrAtlasH { 0 };
 	uint32_t visAtlasW { 0 };
 	uint32_t visAtlasH { 0 };
 	uint32_t rayBufferW { 0 };
 	uint32_t rayBufferH { 0 };
-	int totalProbes { 0 };
-	bool hasProbe = { false };
-	
+	uint32_t totalProbes { 0 };
+	bool hasProbe { false };
+	bool resetHistory { true };
+
+	bool enabled { true };
+	bool showIndirectOnly { false };
+	float intensity { 1.0f };
+
 	void _createResources();
 	void _createPipeline();
 	void _createDescriptor();
 	void _updateDescriptor(uint32_t index);
 	void _recreateResources() override;
 	void _cleanupResources() override;
+
+	void _beginWrite(VkCommandBuffer cmd, TextureVulkan* texture);
+	void _endWrite(VkCommandBuffer cmd, TextureVulkan* texture);
+	void _copyToLastFrame(VkCommandBuffer cmd, TextureVulkan* current, TextureVulkan* lastFrame);
 };
