@@ -59,6 +59,7 @@ layout (push_constant) uniform LightData {
     int aoOn;
     float G;
     float scatteringScale;
+    float iblDiffuse;       // whether to use ibl 1 or use global illumination 0
 } pcl;
 
 const float PI = 3.14159265359;
@@ -463,7 +464,8 @@ void main() {
     }
     
     float ao        = pbr.r;
-    float roughness = pbr.g;
+    // roughness 0 makes the GGX term 0 / 0 on the exact highlight pixel
+    float roughness = max(pbr.g, 0.045);
     float metallic  = pbr.b;
     
     vec3 V = normalize(ubo.cameraPos.xyz - worldPos);
@@ -533,7 +535,8 @@ void main() {
         ao *= ssao;
     }
     
-    vec3 ambient = (kD * diffuseIBL + specularIBL) * ao;
+    //use IBL or not... if ddgi and ssgi enabled then  pcl.iblDiffuse = 0
+    vec3 ambient = (kD * diffuseIBL * pcl.iblDiffuse + specularIBL) * ao;
     vec3 finalColor = ambient + Lo + sunlight + emissive.rgb;
 
     // if(pcl.aoOn != 0) {
@@ -587,5 +590,11 @@ void main() {
     // finalColor = finalColor / (finalColor + vec3(1.0));
     // finalColor = pow(finalColor, vec3(1.0/2.2));
     
+    // the target is float now: one nan / inf pixel survives, and bloom smears it into a black block
+    if (any(isnan(finalColor)) || any(isinf(finalColor))) {
+        finalColor = vec3(0.0);
+    }
+    finalColor = min(finalColor, vec3(1000.0));
+
     outColor = vec4(finalColor, albedo.a);
 }

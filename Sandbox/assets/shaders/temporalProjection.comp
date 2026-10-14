@@ -20,6 +20,7 @@ layout(set = 0, binding = 6) uniform CameraData {
 
 layout(set = 0, binding = 7) uniform sampler2D u_CurrNormal;
 layout(set = 0, binding = 8) uniform sampler2D u_PrevNormal;
+layout(set = 0, binding = 9) uniform sampler2D u_PBR;         // ao, roughness, metallic
 
 layout(push_constant) uniform Constants {
     vec2 screenRes;
@@ -109,6 +110,7 @@ void main() {
 
             vec2 sampleUV = (vec2(coord) + 0.5) / pc.screenRes;
             vec4 hData = texture(u_HistoryGI, sampleUV);
+            if (any(isnan(hData)) || any(isinf(hData))) continue;
             vec3 hNormal = texture(u_PrevNormal, sampleUV).xyz;
             float hDepth = texture(u_PrevDepth, sampleUV).r;
 
@@ -154,8 +156,13 @@ void main() {
         // questionable physical accuracy
         currentYCoCg = clamp(currentYCoCg, minColor, maxColor);
         
+        // sharp reflections barely have noise to average
+        // have shorter history for smooth surface and longer history on rough surface
+        float roughness = texture(u_PBR, uv).g;
+        float maxAccum = mix(2.0, 32.0, smoothstep(0.05, 0.6, roughness));
+
         // lowest possble before noise become noticable, TODO: try 16 on laptop
-        nextAccum = min(n + 1.0, 32.0); 
+        nextAccum = min(n + 1.0, maxAccum); 
         float alpha = 1.0 / nextAccum;
 
         // Karis weights
