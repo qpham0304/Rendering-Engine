@@ -24,6 +24,13 @@ AmbientOcclusionPassVulkan::~AmbientOcclusionPassVulkan()
 
 bool AmbientOcclusionPassVulkan::init(WindowConfig config) 
 {
+    // hack to preven double initilization by the deferred renderer and dependency cycle
+	// a depth prepass before gbuffer pass which will resolve the issue
+    if (m_initialized) {
+        return true;
+    }
+    m_initialized = true;
+
     PostProcessRendererVulkan::init(config);
     
     RendererVulkan* renderer = nullptr;
@@ -64,19 +71,19 @@ void AmbientOcclusionPassVulkan::onUpdate()
 
 void AmbientOcclusionPassVulkan::render(Camera& camera) 
 {
-    if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
-
-	RendererVulkan* renderer = nullptr;
+    RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     positionImage = deferredRendererVulkan->renderTarget.gBufferPos[currentFrame];
     normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
+
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
 
 
 	pushConstant.view = camera.getViewMatrix();

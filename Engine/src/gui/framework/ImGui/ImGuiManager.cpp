@@ -68,6 +68,15 @@ bool ImGuiManager::init(WindowConfig config)
 			return false;
 		}
 	}
+	else if (m_config.windowPlatform == WindowPlatform::SDL) {
+		if (m_config.renderPlatform == RenderPlatform::VULKAN) {
+			_initVulkan();
+		}
+		else {
+			throw std::runtime_error("ImGuiManager: Unsupported render platform for ImGui initialization with SDL");
+			return false;
+		}
+	}
 	else {
 		throw std::runtime_error("ImGuiManager: Unsupported window platform for ImGui initialization");
 		return false;
@@ -114,6 +123,8 @@ void ImGuiManager::start(void* handle)
 
 	if (m_config.windowPlatform == WindowPlatform::GLFW) {
 		ImGui_ImplGlfw_NewFrame();
+	} else if (m_config.windowPlatform == WindowPlatform::SDL) {
+		ImGui_ImplSDL3_NewFrame();
 	} else {
 		throw std::runtime_error("unsupported window platform");
 	}
@@ -252,6 +263,8 @@ void ImGuiManager::end(void* handle)
 				AppWindow::setContextCurrent();
 				break;
 			}
+			case WindowPlatform::SDL:
+				break;	// no gl context to restore
 			default:
 				assert(false && "Unknown render platform");
 				break;
@@ -276,6 +289,10 @@ bool ImGuiManager::onClose()
 	switch (m_config.windowPlatform) {
 		case WindowPlatform::GLFW:
 			ImGui_ImplGlfw_Shutdown();
+			break;
+		case WindowPlatform::SDL:
+			AppWindow::setNativeEventCallback(nullptr);
+			ImGui_ImplSDL3_Shutdown();
 			break;
 		default:
 			assert(false && "Unknown window platform");
@@ -488,6 +505,15 @@ int ImGuiManager::_initVulkan()
 	case WindowPlatform::GLFW: {
 			GLFWwindow* windowHandle = static_cast<GLFWwindow*>(AppWindow::getWindowHandle());
 			ImGui_ImplGlfw_InitForVulkan(windowHandle, true);
+			break;
+		}
+		case WindowPlatform::SDL: {
+			SDL_Window* windowHandle = static_cast<SDL_Window*>(AppWindow::getWindowHandle());
+			ImGui_ImplSDL3_InitForVulkan(windowHandle);
+			// GLFW's backend installs its own callbacks, SDL's has to be handed every event
+			AppWindow::setNativeEventCallback([](void* nativeEvent) {
+				ImGui_ImplSDL3_ProcessEvent(static_cast<const SDL_Event*>(nativeEvent));
+			});
 			break;
 		}
 		default: {

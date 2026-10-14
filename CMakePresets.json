@@ -9,9 +9,13 @@
     {
       "name": "windows-ninja",
       "displayName": "Windows Ninja",
-      "generator": "Ninja",
+      "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/build/ninja",
+      "architecture": { "value": "x64", "strategy": "external" },
+      "toolset": { "value": "host=x64", "strategy": "external" },
       "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
         "WK_BUILD_SHARED": "OFF",
         "BUILD_PLATFORM": "windows-ninja"
       }

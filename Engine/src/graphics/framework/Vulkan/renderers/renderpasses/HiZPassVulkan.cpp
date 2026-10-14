@@ -23,6 +23,13 @@ HiZPassVulkan::~HiZPassVulkan()
 
 bool HiZPassVulkan::init(WindowConfig config)
 {
+    // hack to preven double initilization by the deferred renderer and dependency cycle
+	// a depth prepass before gbuffer pass which will resolve the issue
+    if (m_initialized) {
+        return true;
+    }
+    m_initialized = true;
+
     PostProcessRendererVulkan::init(config);
         
     RendererVulkan* renderer = nullptr;

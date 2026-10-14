@@ -99,3 +99,9 @@ void AppWindow::setFullscreen(bool fullscreen, bool borderless)
 {
 	window->_setFullscreen(fullscreen, borderless);
 }
+
+// receives every raw platform event (an SDL_Event* with SDL). GLFW backends install their own callbacks and never call it
+void AppWindow::setNativeEventCallback(std::function<void(void* nativeEvent)> callback)
+{
+	window->m_nativeEventCallback = std::move(callback);
+}

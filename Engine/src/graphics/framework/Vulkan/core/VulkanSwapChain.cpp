@@ -238,10 +238,16 @@ void VulkanSwapChain::recreateSwapchain()
 	int width = 0;
 	int height = 0;
 
+	// wait out a minimized window. the surface's own extent is checked too: the window layer can still report
+	// its old size for a moment after the OS minimized it (SDL caches it), and a 0 x 0 swapchain is invalid
+	auto surfaceExtent = [this]() {
+		return device.querySwapChainSupport(device.getPhysicalDevice()).capabilities.currentExtent;
+	};
+
 	AppWindow::getFrameBufferSize(&width, &height);
-	while (width == 0 || height == 0) {
-		AppWindow::getFrameBufferSize(&width, &height);
+	while (width == 0 || height == 0 || surfaceExtent().width == 0 || surfaceExtent().height == 0) {
 		AppWindow::waitEvents();
+		AppWindow::getFrameBufferSize(&width, &height);
 	}
 
 	vkDeviceWaitIdle(device);

@@ -30,6 +30,7 @@ set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/imgui_tables.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/imgui_widgets.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_glfw.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_sdl3.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_opengl3.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/backends/imgui_impl_vulkan.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/misc/cpp/imgui_stdlib.cpp
@@ -63,6 +64,14 @@ add_definitions(-DNOMINMAX)
 add_subdirectory(extern/single/glad)
 add_subdirectory(extern/spdlog)
 add_subdirectory(extern/glfw)
+
+# SDL3 linked statically like the rest, no SDL3.dll to ship. its tests and examples are not needed
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+add_subdirectory(extern/SDL)
 add_subdirectory(extern/nlohmann)
 add_subdirectory(extern/assimp)
 add_subdirectory(extern/lua)
@@ -122,6 +131,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     spdlog
     nlohmann_json
     glfw
+    SDL3::SDL3-static
     opengl32
     lua::lib
     box3d::box3d

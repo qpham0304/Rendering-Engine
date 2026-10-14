@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <set>
 #include <string>
@@ -39,6 +40,7 @@ public:
 	static void waitEvents();
 	static void setContextCurrent();
 	static void setFullscreen(bool fullscreen, bool borderless);
+	static void setNativeEventCallback(std::function<void(void* nativeEvent)> callback);
 
 protected:
 	AppWindow(std::string serviceName = "AppWindow");
@@ -58,6 +60,7 @@ protected:
 	static AppWindow* window;
 
 	std::unique_ptr<Input> m_input;
+	std::function<void(void* nativeEvent)> m_nativeEventCallback;
 	unsigned int m_width;
 	unsigned int m_height;
 	double m_lastTime;

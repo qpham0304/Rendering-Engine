@@ -36,6 +36,7 @@ public:
 	BlurPushConstantInfo blurrPushConstant;
 
 protected:	
+	bool m_initialized { false };
 	void _createOcclusionMap();
 	void _createPipelines();
 	void _createDescriptors();

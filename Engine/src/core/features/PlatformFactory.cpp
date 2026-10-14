@@ -1,5 +1,6 @@
 #include "PlatformFactory.h"
 #include "window/platform/GLFW/AppWindowGLFW.h"
+#include "window/platform/SDL/AppWindowSDL.h"
 #include "gui/framework/ImGui/ImGuiManager.h"
 #include "logging/framework/LoggerSpd.h"
 #include "graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h"
@@ -20,6 +21,11 @@ PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     GetFactory<AppWindow, WindowPlatform>().Register(
         WindowPlatform::GLFW,
         RegisterConstructor<AppWindow, AppWindowGLFW>()
+    );
+
+    GetFactory<AppWindow, WindowPlatform>().Register(
+        WindowPlatform::SDL,
+        RegisterConstructor<AppWindow, AppWindowSDL>()
     );
 
     GetFactory<GuiManager, GuiPlatform>().Register(
