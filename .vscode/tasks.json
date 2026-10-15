@@ -2,18 +2,18 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "type": "cmake",
+            "type": "shell",
             "label": "build Sandbox Debug (ninja)",
-            "command": "build",
-            "preset": "window-ninja-debug",
+            "command": "${workspaceFolder}/scripts/ninja-build.cmd",
+            "args": ["window-ninja-debug"],
             "group": "build",
             "problemMatcher": "$msvc"
         },
         {
-            "type": "cmake",
+            "type": "shell",
             "label": "build Sandbox Release (ninja)",
-            "command": "build",
-            "preset": "window-ninja-release",
+            "command": "${workspaceFolder}/scripts/ninja-build.cmd",
+            "args": ["window-ninja-release"],
             "group": "build",
             "problemMatcher": "$msvc"
         },

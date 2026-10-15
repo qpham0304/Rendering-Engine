@@ -35,3 +35,6 @@
 [submodule "Engine/extern/vk-bootstrap"]
 	path = Engine/extern/vk-bootstrap
 	url = https://github.com/charles-lunarg/vk-bootstrap.git
+[submodule "Engine/extern/SDL"]
+	path = Engine/extern/SDL
+	url = https://github.com/libsdl-org/SDL.git

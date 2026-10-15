@@ -26,6 +26,7 @@ public:
 	std::vector<TextureVulkan*> outputImages;
 
 protected:
+	bool m_initialized { false };
 	void _createResources();
 	void _createPipelines();
 	void _createDescriptors();

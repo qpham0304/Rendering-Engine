@@ -6,7 +6,7 @@ int main()
     try {
         WindowConfig windowConfig{};
         windowConfig.title = "Vulkan Sandbox";
-        windowConfig.windowPlatform = WindowPlatform::GLFW;
+        windowConfig.windowPlatform = WindowPlatform::SDL;
         windowConfig.renderPlatform = RenderPlatform::VULKAN;
         windowConfig.guiPlatform = GuiPlatform::IMGUI;
         windowConfig.os = OperatingSystem::WINDOW;
