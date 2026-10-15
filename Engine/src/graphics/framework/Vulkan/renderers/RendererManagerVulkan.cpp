@@ -132,8 +132,8 @@ void RendererManagerVulkan::onUpdate()
         raytracingRenderer->onUpdate();
     }
 
-    // particleRenderer->onUpdate();
-    // debugRenderer->onUpdate();
+    particleRenderer->onUpdate();
+    debugRenderer->onUpdate();
 }
 
 void RendererManagerVulkan::render()
@@ -187,6 +187,7 @@ void RendererManagerVulkan::render()
         }
         deferredRenderer->render(*camera);
         hiZPassRenderer->render(*camera);
+        particleRenderer->render(*camera);
         SSRGIPassRenderer->render(*camera);
         bloomRenderer->render(*camera);
         if(tmp->denoiserOn) {
@@ -198,7 +199,6 @@ void RendererManagerVulkan::render()
         raytracingRenderer->render(*camera);
     }
 
-    // particleRenderer->render(*camera);
     debugRenderer->render(*camera);
 
     applicationRenderer->render(*camera);

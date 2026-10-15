@@ -54,7 +54,7 @@ bool SandBoxLayer::init()
     // createScriptableCamera();
     // createLights();
 	createLightProbes();
-    // createParticle();
+    createParticle();
 
     // rendererManager->addRenderer();
 
