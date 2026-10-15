@@ -1,5 +1,11 @@
 {
     "dotnet.defaultSolution": "disable",
     "C_Cpp.default.compilerPath": "cl.exe",
-    "cmake.useCMakePresets": "always"
+    "cmake.useCMakePresets": "always",
+
+    "search.exclude": {
+        "**/extern/**": true,
+        "build/**": true,
+        "out/**": true
+    }
 }
