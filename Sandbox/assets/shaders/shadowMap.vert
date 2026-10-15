@@ -8,14 +8,6 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 6) in ivec4 inBoneIDs;
 layout(location = 7) in vec4 inBoneWeights;
 
-layout(buffer_reference, scalar) buffer BoneModelBuffer {
-    mat4 boneMatrices[];
-};
-
-layout(buffer_reference, scalar) buffer BoneMatrixArrayTable {
-    BoneModelBuffer ptrs[];
-};
-
 layout(push_constant) uniform MeshData {
     mat4 model;
     mat4 lightMVP;

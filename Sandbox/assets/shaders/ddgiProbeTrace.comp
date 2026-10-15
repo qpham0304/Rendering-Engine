@@ -101,7 +101,7 @@ void main() {
         Vertices vertices = Vertices(obj.vertexAddress);
         Indices indices = Indices(obj.indexAddress);
         MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
-        MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndicesRef);
+        MaterialIndicesBuffer matIndices = MaterialIndicesBuffer(obj.materialIndicesRef);
 
         Vertex v0 = vertices.v[indices.i[primitiveID * 3 + 0]];
         Vertex v1 = vertices.v[indices.i[primitiveID * 3 + 1]];

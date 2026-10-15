@@ -18,17 +18,7 @@ layout(location = 3) out vec4 outPBR;
 layout(location = 4) out vec4 outEmissive;
 layout(location = 5) out vec4 outMotion;
 
-
-layout(buffer_reference, scalar) buffer BoneModelBuffer {
-    mat4 boneMatrices[];
-};
-
-layout(buffer_reference, scalar) buffer BoneMatrixArrayTable {
-    BoneModelBuffer ptrs[];
-};
-
 layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
-
 
 layout(push_constant) uniform PushConstant {
     ObjectsBuffer objRef;
@@ -55,7 +45,7 @@ void main() {
     Object obj = pc.objRef.objects[pc.objIdx];
 
     MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
-    MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndicesRef);
+    MaterialIndicesBuffer matIndices = MaterialIndicesBuffer(obj.materialIndicesRef);
     uint matID = matIndices.i[gl_PrimitiveID];
     Material mat = materials.m[matID];
 

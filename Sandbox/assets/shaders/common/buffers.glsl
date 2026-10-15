@@ -52,7 +52,11 @@ layout(buffer_reference, scalar) buffer ObjectsBuffer{ Object objects[]; };
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
 layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 layout(buffer_reference, scalar) buffer MaterialsBuffer{ Material m[]; };
-layout(buffer_reference, scalar) readonly buffer MatIndicesBuffer { uint i[]; };
+layout(buffer_reference, scalar) readonly buffer MaterialIndicesBuffer { uint i[]; };
+
+
+layout(buffer_reference, scalar) buffer BoneModelBuffer { mat4 boneMatrices[]; };
+layout(buffer_reference, scalar) buffer BoneMatrixArrayTable { BoneModelBuffer ptrs[]; };
 
 // Push constant to get the pointer to our object list
 // layout(push_constant) uniform ObjectRefsPushConstants {
