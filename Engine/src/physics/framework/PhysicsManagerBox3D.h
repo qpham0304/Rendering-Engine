@@ -22,6 +22,8 @@ public:
 	
 	virtual void addForce(uint32_t id, const glm::vec3& force) override;
 	virtual uint32_t rayCastClosest(const glm::vec2& coordsNDC) override;
+	virtual std::vector<glm::vec3> getColliderTriangles(uint32_t id) override;
+	virtual glm::mat4 getColliderTransform(uint32_t id) override;
 	virtual void setBullet(uint32_t id, bool flag) override;
 	virtual bool isBullet(uint32_t id) override;
 	virtual void enableSleep(uint32_t id, bool flag) override;

@@ -201,7 +201,8 @@ void Entity::onColliderComponentAdded()
     
     ModelComponent& modelComponent = getComponent<ModelComponent>();
     Model* model = modelManager->getModel(modelComponent.modelID);
-    Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+    Mesh combinedMesh = meshManager->combineMeshes(model->meshIDs);
+    Mesh* mesh = &combinedMesh;
 
     auto shapeID = physicsManager->createBoxBody(*this, *mesh, transformComponent.translateVec, transformComponent.scaleVec, colliderComponent.colliderType);
     colliderComponent.shapeID = shapeID;

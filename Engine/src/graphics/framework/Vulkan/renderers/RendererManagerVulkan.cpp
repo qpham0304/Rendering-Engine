@@ -199,7 +199,7 @@ void RendererManagerVulkan::render()
     }
 
     // particleRenderer->render(*camera);
-    // debugRenderer->render(*camera);
+    debugRenderer->render(*camera);
 
     applicationRenderer->render(*camera);
     endFrame();

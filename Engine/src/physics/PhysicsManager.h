@@ -40,6 +40,8 @@ public:
 	
 	virtual void addForce(uint32_t id, const glm::vec3& force) = 0;
 	virtual uint32_t rayCastClosest(const glm::vec2& coordsNDC) = 0;
+	virtual std::vector<glm::vec3> getColliderTriangles(uint32_t id) = 0;	// body space triangle list of the collider shape
+	virtual glm::mat4 getColliderTransform(uint32_t id) = 0;				// body to world, pairs with getColliderTriangles
 	virtual void setBullet(uint32_t id, bool flag) = 0;
 	virtual bool isBullet(uint32_t id) = 0;
 	virtual void enableSleep(uint32_t id, bool flag) = 0;

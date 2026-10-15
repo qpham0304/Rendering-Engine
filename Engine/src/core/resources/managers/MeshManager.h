@@ -26,6 +26,7 @@ public:
     virtual void onUpdate() override;
     virtual uint32_t loadMesh(Mesh& mesh);
     Mesh* getMesh(uint32_t id) const;
+    Mesh combineMeshes(const std::vector<uint32_t>& meshIDs) const;   // merged vertices with offset indices, for building colliders over a whole model
     MeshData getMeshData(uint32_t id) const;
     void bindMesh(uint32_t id);
 

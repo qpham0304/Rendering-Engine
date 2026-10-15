@@ -6,6 +6,7 @@
 #include "core/entities/Entity.h"
 #include "window/AppWindow.h"
 #include "core/features/camera.h"
+#include <glm/gtc/constants.hpp>
 
 b3Vec3 toB3Vec3(glm::vec3 v) {
     return b3Vec3({ v.x, v.y, v.z });
@@ -117,55 +118,42 @@ void PhysicsManagerBox3D::onUpdate()
     int subStepCount = 4;
     b3World_Step(m_worldId, timeStep, subStepCount);
 
-    // for(uint32_t sceneID : sceneManager.listIDs()) {
-        // Scene* scene = sceneManager.getScene(sceneID);
-        Scene* scene = sceneManager.getActiveScene();
+    Scene* scene = sceneManager.getActiveScene();
 
-        auto func = std::function<void(Entity)>([&](Entity entity) -> void {
-            auto& collider = entity.getComponent<ColliderComponent>();
-            auto& transform = entity.getComponent<TransformComponent>();
+    auto func = std::function<void(Entity)>([&](Entity entity) -> void {
+        auto& collider = entity.getComponent<ColliderComponent>();
+        auto& transform = entity.getComponent<TransformComponent>();
 
-            if(collider.shapeID == 0) {
-                return;
-            }
+        if(collider.shapeID == 0) {
+            return;
+        }
 
-            b3ShapeId shapeId = m_shapeIDs.at(collider.shapeID);
-            b3BodyId bodyId = b3Shape_GetBody(shapeId);
-            b3BodyType bodyType = b3Body_GetType(bodyId);
-            ColliderType colliderType = static_cast<ColliderType>(collider.colliderType);
+        b3ShapeId shapeId = m_shapeIDs.at(collider.shapeID);
+        b3BodyId bodyId = b3Shape_GetBody(shapeId);
+        b3BodyType bodyType = b3Body_GetType(bodyId);
+        ColliderType colliderType = static_cast<ColliderType>(collider.colliderType);
 
-            if(colliderType == ColliderType::Static && bodyType != b3_staticBody){
-                b3Body_SetType(bodyId, b3_staticBody);
-            } else if(colliderType == ColliderType::Dynamic && bodyType != b3_dynamicBody) {
-                b3Body_SetType(bodyId, b3_dynamicBody);
-                b3Body_ApplyMassFromShapes(bodyId);
-            } else if (colliderType == ColliderType::Kinematic && bodyType != b3_kinematicBody) {
-                b3Body_SetType(bodyId, b3_kinematicBody);
-                b3Body_SetLinearVelocity(bodyId, {0.0f, 0.0f, 0.0f}); // Clear momentum
-            }
+        if(colliderType == ColliderType::Static && bodyType != b3_staticBody){
+            b3Body_SetType(bodyId, b3_staticBody);
+        } else if(colliderType == ColliderType::Dynamic && bodyType != b3_dynamicBody) {
+            b3Body_SetType(bodyId, b3_dynamicBody);
+            b3Body_ApplyMassFromShapes(bodyId);
+        } else if (colliderType == ColliderType::Kinematic && bodyType != b3_kinematicBody) {
+            b3Body_SetType(bodyId, b3_kinematicBody);
+            b3Body_SetLinearVelocity(bodyId, {0.0f, 0.0f, 0.0f}); // Clear momentum
+        }
 
-            b3Vec3 physicsPos = b3Body_GetPosition(bodyId);
-            transform.translate({physicsPos.x, physicsPos.y, physicsPos.z});
+        b3Vec3 physicsPos = b3Body_GetPosition(bodyId);
+        transform.translate({physicsPos.x, physicsPos.y, physicsPos.z});
 
-            b3Quat physicsRot = b3Body_GetRotation(bodyId);
-            glm::quat glmRotation(physicsRot.s, physicsRot.v.x, physicsRot.v.y, physicsRot.v.z);
-            glm::vec3 eulerAngles = glm::eulerAngles(glmRotation);
-            transform.rotate({eulerAngles.x, eulerAngles.y, eulerAngles.z});
-        });
+        b3Quat physicsRot = b3Body_GetRotation(bodyId);
+        glm::quat glmRotation(physicsRot.s, physicsRot.v.x, physicsRot.v.y, physicsRot.v.z);
+        glm::vec3 eulerAngles = glm::eulerAngles(glmRotation);
+        transform.rotate({eulerAngles.x, eulerAngles.y, eulerAngles.z});
+    });
 
-        scene->forEnitiesWith<ColliderComponent>(func);
-    // }
+    scene->forEnitiesWith<ColliderComponent>(func);
 
-    // double x, y;
-    // AppWindow::getCursorPos(&x, &y);
-    // float xNDC = (location.x / AppWindow::getWidth()) * 2.0f - 1.0f;
-    // float yNDC = (location.y / AppWindow::getHeight()) * 2.0f - 1.0f;
-    // float yNDC = 1.0f - (static_cast<float>(y) / AppWindow::getHeight()) * 2.0f;
-    // uint32_t entityID = rayCastClosest(glm::vec2(xNDC, yNDC));
-    // if(entityID != 0) {
-    //     Entity entity = scene->getEntity(entityID);
-    //     m_logger->warn(entity.getComponent<NameComponent>().name);
-    // }
 }
 
 uint32_t PhysicsManagerBox3D::createMeshBody(
@@ -444,6 +432,108 @@ uint32_t PhysicsManagerBox3D::rayCastClosest(const glm::vec2& coordsNDC)
     }
 
     return 0;
+}
+
+// convert collider into triangles for draw debug or select highlight
+std::vector<glm::vec3> PhysicsManagerBox3D::getColliderTriangles(uint32_t id)
+{
+    std::vector<glm::vec3> triangles;
+
+    auto it = m_shapeIDs.find(id);
+    if(it == m_shapeIDs.end() || !b3Shape_IsValid(it->second)) {
+        return triangles;
+    }
+
+    b3ShapeId shapeId = it->second;
+    auto toBody = [](b3Vec3 local) -> glm::vec3 {
+        return b3ToGlmVec3(local);
+    };
+
+    switch(b3Shape_GetType(shapeId)) {
+        case b3_hullShape: {
+            // faces are convex polygons stored as half-edge loops, fan triangulate each one
+            const b3HullData* hull = b3Shape_GetHull(shapeId);
+            const b3Vec3* points = b3GetHullPoints(hull);
+            const b3HullHalfEdge* edges = b3GetHullEdges(hull);
+            const b3HullFace* faces = b3GetHullFaces(hull);
+
+            for(int i = 0; i < hull->faceCount; i++) {
+                int first = faces[i].edge;
+                glm::vec3 v0 = toBody(points[edges[first].origin]);
+                int edge = edges[first].next;
+                while(edges[edge].next != first) {
+                    int next = edges[edge].next;
+                    triangles.push_back(v0);
+                    triangles.push_back(toBody(points[edges[edge].origin]));
+                    triangles.push_back(toBody(points[edges[next].origin]));
+                    edge = next;
+                }
+            }
+            break;
+        }
+        case b3_sphereShape: {
+            b3Sphere sphere = b3Shape_GetSphere(shapeId);
+            const int stacks = 12;
+            const int slices = 16;
+            auto spherePoint = [&](int stack, int slice) -> glm::vec3 {
+                float theta = glm::pi<float>() * stack / stacks;
+                float phi = glm::two_pi<float>() * slice / slices;
+                b3Vec3 p = {
+                    sphere.center.x + sphere.radius * std::sin(theta) * std::cos(phi),
+                    sphere.center.y + sphere.radius * std::cos(theta),
+                    sphere.center.z + sphere.radius * std::sin(theta) * std::sin(phi),
+                };
+                return toBody(p);
+            };
+
+            for(int i = 0; i < stacks; i++) {
+                for(int j = 0; j < slices; j++) {
+                    glm::vec3 a = spherePoint(i, j);
+                    glm::vec3 b = spherePoint(i + 1, j);
+                    glm::vec3 c = spherePoint(i + 1, j + 1);
+                    glm::vec3 d = spherePoint(i, j + 1);
+                    triangles.insert(triangles.end(), { a, b, c, a, c, d });
+                }
+            }
+            break;
+        }
+        case b3_meshShape: {
+            b3Mesh mesh = b3Shape_GetMesh(shapeId);
+            const b3Vec3* vertices = b3GetMeshVertices(mesh.data);
+            const b3MeshTriangle* tris = b3GetMeshTriangles(mesh.data);
+
+            auto scaled = [&](int index) -> glm::vec3 {
+                b3Vec3 v = vertices[index];
+                return toBody({ v.x * mesh.scale.x, v.y * mesh.scale.y, v.z * mesh.scale.z });
+            };
+
+            triangles.reserve(mesh.data->triangleCount * 3);
+            for(int i = 0; i < mesh.data->triangleCount; i++) {
+                triangles.push_back(scaled(tris[i].index1));
+                triangles.push_back(scaled(tris[i].index2));
+                triangles.push_back(scaled(tris[i].index3));
+            }
+            break;
+        }
+        default:
+            break;
+    }
+
+    return triangles;
+}
+
+glm::mat4 PhysicsManagerBox3D::getColliderTransform(uint32_t id)
+{
+    auto it = m_shapeIDs.find(id);
+    if(it == m_shapeIDs.end() || !b3Shape_IsValid(it->second)) {
+        return glm::mat4(1.0f);
+    }
+
+    b3WorldTransform transform = b3Body_GetTransform(b3Shape_GetBody(it->second));
+    glm::quat rotation(transform.q.s, transform.q.v.x, transform.q.v.y, transform.q.v.z);
+    glm::mat4 model = glm::mat4_cast(rotation);
+    model[3] = glm::vec4((float)transform.p.x, (float)transform.p.y, (float)transform.p.z, 1.0f);
+    return model;
 }
 
 void PhysicsManagerBox3D::setBullet(uint32_t id, bool flag)
