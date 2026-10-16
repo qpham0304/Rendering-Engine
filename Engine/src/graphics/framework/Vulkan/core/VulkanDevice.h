@@ -154,6 +154,8 @@ public:
 	bool isDeviceSuitable(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) const;
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+	bool checkRayTracingExtensionSupport(VkPhysicalDevice device);
+	static bool envFlag(const char* name);
 	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 	VkSurfaceKHR getSurface() const;
 	VkInstance getInstance() const;

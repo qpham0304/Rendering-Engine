@@ -53,21 +53,30 @@ bool RendererManagerVulkan::init(WindowConfig config)
 	ubo.width = swapchain.swapChainExtent.width;    //TODO: check if this update properly
 	ubo.height = swapchain.swapChainExtent.height;
 
+    const bool rtSupported = renderDeviceVulkan->device.raytracingSupport();
+    if(!rtSupported) {
+        m_logger->warn("Ray tracing is not supported on this gpu, ray tracing render mode and DDGI are disabled");
+    }
+
     applicationRenderer = addRenderer<ApplicationRendererVulkan>("ApplicationRendererVulkan");
-    
+
     shadowMapPass = addRenderer<ShadowMapPassVulkan>("ShadowMapPassVulkan");
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
 
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
-    raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
-    
+    if(rtSupported) {
+        raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
+    }
+
     alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
     hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
     SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
     bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
     temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
-    ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
+    if(rtSupported) {
+        ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
+    }
     deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
     ////postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererVulkan");
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
@@ -126,9 +135,11 @@ void RendererManagerVulkan::onUpdate()
         if(tmp->denoiserOn) {
             temporalPassRenderer->onUpdate();
         }
-        ddgiPassRenderer->onUpdate();
+        if(ddgiPassRenderer) {
+            ddgiPassRenderer->onUpdate();
+        }
         deferredCombineRenderer->onUpdate();
-    } else if(currentRenderMode == 2) {
+    } else if(currentRenderMode == 2 && raytracingRenderer) {
         raytracingRenderer->onUpdate();
     }
 
@@ -193,9 +204,11 @@ void RendererManagerVulkan::render()
         if(tmp->denoiserOn) {
             temporalPassRenderer->render(*camera);
         }
-        ddgiPassRenderer->render(*camera);
+        if(ddgiPassRenderer) {
+            ddgiPassRenderer->render(*camera);
+        }
         deferredCombineRenderer->render(*camera);
-    } else if(currentRenderMode == 2) {
+    } else if(currentRenderMode == 2 && raytracingRenderer) {
         raytracingRenderer->render(*camera);
     }
 
@@ -244,6 +257,10 @@ RendererVulkan* RendererManagerVulkan::getRenderer(std::string_view name)
 
 void RendererManagerVulkan::setRenderMode(uint32_t mode)
 {
+    if(mode == 2 && !raytracingRenderer) {
+        m_logger->warn("Ray tracing render mode is not available on this gpu");
+        return;
+    }
     currentRenderMode = mode;
 }
 

@@ -19,9 +19,6 @@ public:
 	Layer& operator[](const int index);
 	const Layer& operator[](const int index) const;
 
-	static bool addFrameBuffer(const std::string& name, FrameBuffer& FBO);	// TODO: move it's own manager
-	static std::shared_ptr<FrameBuffer> getFrameBuffer(const std::string name);
-
 	bool addLayer(Layer* layer);
 	bool removeLayer(const int& index);
 	void enableLayer(const int& index);
@@ -36,11 +33,6 @@ public:
 	
 	virtual void onUpdate();
 	void onGuiUpdate();
-
-	//std::vector<Layer*>::iterator begin();
-	//std::vector<Layer*>::iterator end();
-	//std::vector<Layer*>::reverse_iterator rbegin();
-	//std::vector<Layer*>::reverse_iterator rend();
 
 	const std::vector<Layer*>::const_iterator begin() const;
 	const std::vector<Layer*>::const_iterator end() const;

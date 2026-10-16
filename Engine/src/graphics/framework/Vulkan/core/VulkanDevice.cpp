@@ -91,14 +91,17 @@ void VulkanDevice::createAllocator()
 	functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
 	functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
 
+	// VMA must not be told a newer version than the device has, older onboard gpu drivers stop at 1.3
+	VkPhysicalDeviceProperties properties{};
+	vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
 	VmaAllocatorCreateInfo info{};
-	info.vulkanApiVersion = VK_API_VERSION_1_4;
+	info.vulkanApiVersion = (std::min)(properties.apiVersion, static_cast<uint32_t>(VK_API_VERSION_1_4));
 	info.instance = instance;
 	info.physicalDevice = physicalDevice;
 	info.device = device;
 	info.pVulkanFunctions = &functions;
-	// required: buffers are queried with vkGetBufferDeviceAddress (features12.bufferDeviceAddress)
-	info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+	info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;	// required for bda support
 
 	VALIDATE(vmaCreateAllocator(&info, &allocator));
 }
@@ -319,7 +322,7 @@ void VulkanDevice::createLogicalDevice() {
 
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	createInfo.pNext = &rtPipelineFeature;
+	createInfo.pNext = this->rtSupported ? static_cast<void*>(&rtPipelineFeature) : static_cast<void*>(&features13);
 
 	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 	createInfo.pQueueCreateInfos = queueCreateInfos.data();
@@ -377,12 +380,21 @@ bool VulkanDevice::isDeviceSuitable(VkPhysicalDevice device) {
 	VkPhysicalDeviceVulkan13Features supported13{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
     VkPhysicalDeviceAccelerationStructureFeaturesKHR supportedAccel{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
     supportedAccel.pNext = &supported13;
-    
+	VkPhysicalDeviceRayQueryFeaturesKHR supportedRayQuery{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
+	supportedRayQuery.pNext = &supportedAccel;
+	VkPhysicalDeviceRayTracingPipelineFeaturesKHR supportedRtPipeline{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
+	supportedRtPipeline.pNext = &supportedRayQuery;
+
     VkPhysicalDeviceFeatures2 deviceFeatures2{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
-    deviceFeatures2.pNext = &supportedAccel;
+    deviceFeatures2.pNext = &supportedRtPipeline;
 
     vkGetPhysicalDeviceFeatures2(device, &deviceFeatures2);
-	this->rtSupported = supportedAccel.accelerationStructure; 
+
+	this->rtSupported = checkRayTracingExtensionSupport(device)
+		&& supportedAccel.accelerationStructure
+		&& supportedRayQuery.rayQuery
+		&& supportedRtPipeline.rayTracingPipeline
+		&& !envFlag("ENGINE_DISABLE_RAYTRACING");
     this->dynamicRenderingSupported = supported13.dynamicRendering;
 
 	return indices.isComplete() 
@@ -450,6 +462,41 @@ bool VulkanDevice::checkDeviceExtensionSupport(VkPhysicalDevice device) {
 	}
 
 	return requiredExtensions.empty();
+}
+
+bool VulkanDevice::checkRayTracingExtensionSupport(VkPhysicalDevice device) {
+	uint32_t extensionCount;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+	std::set<std::string> requiredExtensions = {
+		VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+		VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+		VK_KHR_RAY_QUERY_EXTENSION_NAME,
+		VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
+	};
+
+	for (const auto& extension : availableExtensions) {
+		requiredExtensions.erase(extension.extensionName);
+	}
+
+	return requiredExtensions.empty();
+}
+
+// a way to conditinoally disable/enable ray tracing from the env
+bool VulkanDevice::envFlag(const char* name) {
+#if defined(_WIN32)
+	char* value = nullptr;
+	size_t length = 0;
+	bool set = _dupenv_s(&value, &length, name) == 0 && value && value[0] != '\0' && value[0] != '0';
+	free(value);
+	return set;
+#else
+	const char* value = std::getenv(name);
+	return value && value[0] != '\0' && value[0] != '0';
+#endif
 }
 
 VulkanDevice::SwapChainSupportDetails VulkanDevice::querySwapChainSupport(VkPhysicalDevice device) {

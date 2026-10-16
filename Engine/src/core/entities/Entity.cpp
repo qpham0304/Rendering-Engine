@@ -93,10 +93,20 @@ void Entity::onSkinningComponentAdded()
     auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
 
     SkinningComponent& skinningComponent = getComponent<SkinningComponent>();
+
+    if (!hasComponent<ModelComponent>()) {
+        return;
+    }
     ModelComponent& modelComponent = getComponent<ModelComponent>();
     Model* model = modelManager->getModel(modelComponent.modelID);
+    if (!model) {
+        return;
+    }
 
     auto skeleton = skeletonManager->getSkeleton(model->skeletonID);
+    if (!skeleton) {
+        return;
+    }
     skinningComponent.boneMatricesID = animationManager->addBoneMatrices(skeleton->nodes.size());
     skinningComponent.animatorID = animationManager->addAnimator(model->skeletonID);
     skinningComponent.animationPath = model->path;  //For now animation is bound to model load
