@@ -259,6 +259,13 @@ uint32_t PhysicsManagerBox3D::createBoxBody(
     float hy = (maxBounds.y - minBounds.y) * 0.5 * scale.y;
     float hz = (maxBounds.z - minBounds.z) * 0.5 * scale.z;
 
+    // flat meshes like quad of sprites give zero thickness box 
+    // with no volume and no mass that makes impulse go crazy
+    const float minHalfExtent = 0.05f;
+    hx = std::max(hx, minHalfExtent);
+    hy = std::max(hy, minHalfExtent);
+    hz = std::max(hz, minHalfExtent);
+
     b3ShapeDef shapeDef = b3DefaultShapeDef();
     shapeDef.userData = (void*)(uintptr_t)entityID;
 
@@ -398,21 +405,6 @@ uint32_t PhysicsManagerBox3D::rayCastClosest(const glm::vec2& coordsNDC)
         return 0;
     }
 
-    glm::vec4 rayClipNear(coordsNDC.x, coordsNDC.y, 0.0f, 1.0f);
-    glm::vec4 rayClipFar(coordsNDC.x, coordsNDC.y, 1.0f, 1.0f);
-
-    // glm::mat4 view = camera->getViewMatrix();
-	// glm::mat4 proj = camera->getProjectionMatrix();
-    
-    // glm::mat4 inViewProj = glm::inverse(proj * view);
-    // glm::vec4 worldNear = inViewProj * rayClipNear;
-    // glm::vec4 worldFar = inViewProj * rayClipFar;
-    
-    // glm::vec3 rayOrigin = worldNear / worldNear.w;
-    // glm::vec3 rayEnd = worldFar / worldFar.w;
-    // glm::vec3 rayDir = glm::normalize(rayEnd - rayOrigin);
-
-    
     glm::mat4 invView = camera->getInViewMatrix();
 	glm::mat4 invProj = camera->getInProjectionMatrix();
     glm::vec4 rayClip(coordsNDC.x, coordsNDC.y, 0.0, 1.0);
@@ -421,7 +413,7 @@ uint32_t PhysicsManagerBox3D::rayCastClosest(const glm::vec2& coordsNDC)
     glm::vec3 rayDir = glm::normalize(glm::vec3(invView * rayEye));
     glm::vec3 rayOrigin = glm::vec3(invView[3]);
     
-    float maxDistance = 100.0f; 
+    const float maxDistance = 100.0f;
     b3Vec3 translation = { rayDir.x * maxDistance, rayDir.y * maxDistance, rayDir.z * maxDistance };
     b3Pos origin = { rayOrigin.x, rayOrigin.y, rayOrigin.z };
     b3QueryFilter filter = b3DefaultQueryFilter();
@@ -429,7 +421,7 @@ uint32_t PhysicsManagerBox3D::rayCastClosest(const glm::vec2& coordsNDC)
 
     if(result.hit) {
         void* userData = b3Shape_GetUserData(result.shapeId);
-        return (uint32_t)(uintptr_t)userData;   // cast like this to prevent 4 byte uint32_t with 8 bytes pointer
+        return (uint32_t)(uintptr_t)userData;   // type cast like this to prevent 4 byte uint32_t with 8 bytes pointer
     }
 
     return 0;
@@ -616,21 +608,50 @@ void PhysicsManagerBox3D::addImpulse(uint32_t id, const glm::vec3 &impulse)
     b3Body_ApplyLinearImpulseToCenter(bodyId, pushImpulse, true);
 }
 
-// void PhysicsManagerBox3D::setMotionLocks(uint32_t id, b3MotionLocks locks)
-// {
-//     b3Body_SetMotionLocks(_getBody(id), locks);
-// }
+void PhysicsManagerBox3D::setLinearVelocity(uint32_t id, const glm::vec3& velocity)
+{
+    b3BodyId bodyId = _getBody(id);
+    b3Body_SetLinearVelocity(bodyId, { velocity.x, velocity.y, velocity.z });
+    b3Body_SetAwake(bodyId, true);
+}
 
-// void PhysicsManagerBox3D::getMotionLocks(uint32_t id)
-// {
-//     b3Body_GetMotionLocks   
-// }
+glm::vec3 PhysicsManagerBox3D::getLinearVelocity(uint32_t id)
+{
+    return b3ToGlmVec3(b3Body_GetLinearVelocity(_getBody(id)));
+}
+
+void PhysicsManagerBox3D::setAngularVelocity(uint32_t id, const glm::vec3& velocity)
+{
+    b3BodyId bodyId = _getBody(id);
+    b3Body_SetAngularVelocity(bodyId, { velocity.x, velocity.y, velocity.z });
+    b3Body_SetAwake(bodyId, true);
+}
+
+glm::vec3 PhysicsManagerBox3D::getAngularVelocity(uint32_t id)
+{
+    return b3ToGlmVec3(b3Body_GetAngularVelocity(_getBody(id)));
+}
+
+void PhysicsManagerBox3D::setMotionLocks(uint32_t id, const MotionLocks& locks)
+{
+    b3MotionLocks b3Locks {
+        locks.linearX, locks.linearY, locks.linearZ,
+        locks.angularX, locks.angularY, locks.angularZ
+    };
+    b3Body_SetMotionLocks(_getBody(id), b3Locks);
+}
+
+MotionLocks PhysicsManagerBox3D::getMotionLocks(uint32_t id)
+{
+    b3MotionLocks locks = b3Body_GetMotionLocks(_getBody(id));
+    return { locks.linearX, locks.linearY, locks.linearZ, locks.angularX, locks.angularY, locks.angularZ };
+}
 
 b3BodyId PhysicsManagerBox3D::_getBody(uint32_t id)
 {
     auto it = m_shapeIDs.find(id);
     if(it == m_shapeIDs.end()) {
-        m_logger->error("failed to setMass on body id: {}", id);
+        m_logger->error("no physics body with id: {}", id);
         throw std::runtime_error("could not find body with given id");
     }
     

@@ -7,6 +7,9 @@
 #include "window/AppWindow.h"
 #include "SharedFunctionsLua.h"
 #include "EventToLuaBindings.h"
+#include "MathToLuaBindings.h"
+#include "PhysicsToLuaBindings.h"
+#include "physics/PhysicsManager.h"
 
 using namespace entt::literals;
 
@@ -103,16 +106,16 @@ bool ScriptManagerLua::init(WindowConfig config)
 
 	m_luaState.open_libraries(sol::lib::base, sol::lib::package, sol::lib::math);
 
+    MathToLuaBindings::exportMath(m_luaState);
     EventToLuaBindings::exportEvent(m_luaState, m_logger.get());
+    PhysicsToLuaBindings::exportPhysics(m_luaState, &ServiceLocator::GetService<PhysicsManager>("PhysicsManager"));
     
     SharedFunctionsLua shareToLua(m_logger.get()); 
     
-    shareToLua.math(m_luaState);
-    shareToLua.input(m_luaState);
-    shareToLua.component(m_luaState);
-    shareToLua.scene(m_luaState);
-    shareToLua.logging(m_luaState);
-    shareToLua.physics(m_luaState);
+    SharedFunctionsLua::input(m_luaState);
+    SharedFunctionsLua::component(m_luaState);
+    SharedFunctionsLua::scene(m_luaState);
+    SharedFunctionsLua::logging(m_luaState);
 
     
     Serializer serializer;

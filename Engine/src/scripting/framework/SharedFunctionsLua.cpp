@@ -15,158 +15,6 @@ SharedFunctionsLua::SharedFunctionsLua(Logger* logger)
 
 }
 
-void SharedFunctionsLua::math(sol::state &luaState)
-{
-    luaState.new_usertype<glm::vec4>("vec4",
-        "x", &glm::vec4::x,
-        "y", &glm::vec4::y,
-        "z", &glm::vec4::z,
-        "w", &glm::vec4::w
-    );
-    luaState["vec4"] = sol::overload(
-        []() { return glm::vec4(0.0f); },
-        [](float x, float y, float z, float w) { return glm::vec4(x, y, z, w); }
-    );
-
-    luaState.new_usertype<glm::vec3>("vec3",
-        "x", &glm::vec3::x,
-        "y", &glm::vec3::y,
-        "z", &glm::vec3::z
-    );
-    luaState["vec3"] = sol::overload(
-        []() { return glm::vec3(0.0f); },
-        [](float x, float y, float z) { return glm::vec3(x, y, z); }
-    );
-
-    luaState.new_usertype<glm::vec2>("vec2",
-        "x", &glm::vec2::x,
-        "y", &glm::vec2::y
-    );
-    luaState["vec2"] = sol::overload(
-        []() { return glm::vec2(0.0f); },
-        [](float x, float y) { return glm::vec2(x, y); }
-    );
-
-    // luaState.new_usertype<glm::vec4>("vec4",
-    //     sol::constructors<glm::vec4(), glm::vec4(double, double, double, double)>(),
-    //     "x", &glm::vec4::x,
-    //     "y", &glm::vec4::y,
-    //     "z", &glm::vec4::z,
-    //     "w", &glm::vec4::w,
-    //     sol::meta_function::index, [](glm::vec4& v, int idx) -> float {
-    //         if (idx == 1) return v.x;
-    //         if (idx == 2) return v.y;
-    //         if (idx == 3) return v.z;
-    //         if (idx == 4) return v.w;
-    //         throw std::out_of_range("Vector index out of bounds");
-    //     },
-    //     sol::meta_function::new_index, [](glm::vec4& v, int idx, float val) {
-    //         if (idx == 1) v.x = val;
-    //         else if (idx == 2) v.y = val;
-    //         else if (idx == 3) v.z = val;
-    //         else if (idx == 4) v.w = val;
-    //         else throw std::out_of_range("Vector index out of bounds");
-    //     },
-    //     sol::meta_function::addition, [](const glm::vec4& a, const glm::vec4& b) { return a + b; },
-    //     sol::meta_function::subtraction, [](const glm::vec4& a, const glm::vec4& b) { return a - b; },
-    //     sol::meta_function::multiplication, [](const glm::vec4& a, float scalar) { return a * scalar; },
-    //     sol::meta_function::division, [](const glm::vec4& a, sol::object b) {
-    //         if(b.is<float>() || b.is<double>()) {
-    //             float scalar = b.as<float>();
-    //             if((scalar == 0.0f)) {
-    //                 throw::std::runtime_error("Error: division by zero");
-    //             }
-    //             return a / scalar;
-    //         } else if(b.is<glm::vec4>()) {
-    //             glm::vec4 o = b.as<glm::vec4>();
-    //             return glm::vec4(
-    //                 o.x != 0.0f ? a.x / o.x : 0.0f,
-    //                 o.y != 0.0f ? a.y / o.y : 0.0f,
-    //                 o.z != 0.0f ? a.z / o.z : 0.0f,
-    //                 o.w != 0.0f ? a.w / o.w : 0.0f
-    //             );
-    //         }
-    //         throw std::runtime_error("Error: invalid argument type for division");
-    //     }
-    // );
-
-    // luaState.new_usertype<glm::vec3>("vec3",
-    //     sol::constructors<glm::vec3(), glm::vec3(double, double, double)>(),
-    //     "x", &glm::vec3::x,
-    //     "y", &glm::vec3::y,
-    //     "z", &glm::vec3::z,
-    //     sol::meta_function::index, [](glm::vec3& v, int idx) -> float {
-    //         if (idx == 1) return v.x;
-    //         if (idx == 2) return v.y;
-    //         if (idx == 3) return v.z;
-    //         throw std::out_of_range("Vector index out of bounds");
-    //     },
-    //     sol::meta_function::new_index, [](glm::vec3& v, int idx, float val) {
-    //         if (idx == 1) v.x = val;
-    //         else if (idx == 2) v.y = val;
-    //         else if (idx == 3) v.z = val;
-    //         else throw std::out_of_range("Vector index out of bounds");
-    //     },
-    //     sol::meta_function::addition, [](const glm::vec3& a, const glm::vec3& b) { return a + b; },
-    //     sol::meta_function::subtraction, [](const glm::vec3& a, const glm::vec3& b) { return a - b; },
-    //     sol::meta_function::multiplication, [](const glm::vec3& a, float scalar) { return a * scalar; },
-    //     sol::meta_function::division, [](const glm::vec3& a, sol::object b) {
-    //         if(b.is<float>() || b.is<double>()) {
-    //             float scalar = b.as<float>();
-    //             if((scalar == 0.0f)) {
-    //                 throw::std::runtime_error("Error: division by zero");
-    //             }
-    //             return a / scalar;
-    //         } else if(b.is<glm::vec3>()) {
-    //             glm::vec3 o = b.as<glm::vec3>();
-    //             return glm::vec3(
-    //                 o.x != 0.0f ? a.x / o.x : 0.0f,
-    //                 o.y != 0.0f ? a.y / o.y : 0.0f,
-    //                 o.z != 0.0f ? a.z / o.z : 0.0f
-    //             );
-    //         }
-    //         throw std::runtime_error("Error: invalid argument type for division");
-    //     }
-    // );
-
-    // luaState.new_usertype<glm::vec2>("vec2",
-    //     sol::constructors<glm::vec2(), glm::vec2(double, double)>(),
-    //     "x", &glm::vec2::x,
-    //     "y", &glm::vec2::y,
-    //     sol::meta_function::index, [](glm::vec2& v, int idx) -> float {
-    //         if (idx == 1) return v.x;
-    //         if (idx == 2) return v.y;
-    //         throw std::out_of_range("Vector index out of bounds");
-    //     },
-    //     sol::meta_function::new_index, [](glm::vec2& v, int idx, float val) {
-    //         if (idx == 1) v.x = val;
-    //         else if (idx == 2) v.y = val;
-    //         else throw std::out_of_range("Vector index out of bounds");
-    //     },
-    //     sol::meta_function::addition, [](const glm::vec2& a, const glm::vec2& b) { return a + b; },
-    //     sol::meta_function::subtraction, [](const glm::vec2& a, const glm::vec2& b) { return a - b; },
-    //     sol::meta_function::multiplication, [](const glm::vec2& a, float scalar) { return a * scalar; },
-    //     sol::meta_function::division, [](const glm::vec2& a, sol::object b) {
-    //         if(b.is<float>() || b.is<double>()) {
-    //             float scalar = b.as<float>();
-    //             if((scalar == 0.0f)) {
-    //                 throw::std::runtime_error("Error: division by zero");
-    //             }
-    //             return a / scalar;
-    //         } else if(b.is<glm::vec2>()) {
-    //             glm::vec2 o = b.as<glm::vec2>();
-    //             return glm::vec2(
-    //                 o.x != 0.0f ? a.x / o.x : 0.0f,
-    //                 o.y != 0.0f ? a.y / o.y : 0.0f
-    //             );
-    //         }
-    //         throw std::runtime_error("Error: invalid argument type for division");
-    //     }
-    // );
-
-    
-}
-
 void SharedFunctionsLua::input(sol::state &luaState)
 {
     luaState["isMousePressed"] = [](MouseCodes mouseCode) { return AppWindow::isMousePressed(mouseCode); };
@@ -360,7 +208,7 @@ void SharedFunctionsLua::scene(sol::state& luaState )
 
 }
 
-void SharedFunctionsLua::logging(sol::state& luaState )
+void SharedFunctionsLua::logging(sol::state& luaState)
 {
     Logger& clientLogger = ServiceLocator::GetService<Logger>("Client_LoggerSPD");
 
@@ -370,17 +218,3 @@ void SharedFunctionsLua::logging(sol::state& luaState )
     luaState["log_critical"] = [&](const std::string& msg) { clientLogger.critical(msg); };
 }
 
-void SharedFunctionsLua::physics(sol::state &luaState)
-{
-    PhysicsManager* physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
-
-    luaState["addForce"] = [physicsManager] (uint32_t id, glm::vec3 force) { 
-        physicsManager->addForce(id, force); 
-    };
-    luaState["rayCastClosest"] = [physicsManager] (glm::vec3 position) -> uint32_t { 
-        return physicsManager->rayCastClosest(position); 
-    };    
-    luaState["addImpulse"] = [physicsManager] (uint32_t id, glm::vec3 impulse) { 
-        physicsManager->addImpulse(id, impulse); 
-    };
-}

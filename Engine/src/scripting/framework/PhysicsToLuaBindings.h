@@ -1,14 +1,17 @@
 #pragma once
 
 #include <sol/sol.hpp>
-#include "core/events/Event.h"
 
-class PhysicsToLuaBindings 
+class PhysicsManager;
+
+class PhysicsToLuaBindings
 {
 public:
-    static void exportPhysics(sol::state& luaState);
+    static void exportPhysics(sol::state& luaState, PhysicsManager* physicsManager);
 
 
 private:
+    static void _exportTypes(sol::state& luaState);
+    static void _exportBodyFunctions(sol::state& luaState, PhysicsManager* physicsManager);
 
 };

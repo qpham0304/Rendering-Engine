@@ -36,9 +36,13 @@ public:
 	virtual void disable(uint32_t id) override;
 	virtual void enable(uint32_t id) override;
 	virtual bool isEnabled(uint32_t id) override;
-	// virtual void setMotionLocks(uint32_t id, b3MotionLocks locks) override;
-	// virtual void getMotionLocks(uint32_t id) override;
 	virtual void addImpulse(uint32_t id, const glm::vec3& impulse) override;
+	virtual void setLinearVelocity(uint32_t id, const glm::vec3& velocity) override;
+	virtual glm::vec3 getLinearVelocity(uint32_t id) override;
+	virtual void setAngularVelocity(uint32_t id, const glm::vec3& velocity) override;
+	virtual glm::vec3 getAngularVelocity(uint32_t id) override;
+	virtual void setMotionLocks(uint32_t id, const MotionLocks& locks) override;
+	virtual MotionLocks getMotionLocks(uint32_t id) override;
 
 
 private:
