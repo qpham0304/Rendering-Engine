@@ -89,11 +89,11 @@ void Engine::init()
 
 void Engine::start()
 {
-	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		isRunning = false;
-	});
+	}));
 
-	eventManager.subscribe(EventType::KeyPressed, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_ESCAPE) {
 			isRunning = false;
@@ -103,7 +103,7 @@ void Engine::start()
 			isFullScreen = !isFullScreen;
 			AppWindow::setFullscreen(isFullScreen, true);
 		}
-	});
+	}));
 }
 
 void Engine::run() {

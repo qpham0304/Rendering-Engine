@@ -21,11 +21,11 @@
 SandBoxLayer::SandBoxLayer(const std::string& name)
     : Layer(name)
 {
-    EventManager::getInstance().subscribe(EventType::CameraUpdateEvent, [this](Event& event) {
+    m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::CameraUpdateEvent, [this](Event& event) {
         auto& cameraUpdateEvent = static_cast<CameraUpdateEvent&>(event);
         auto& cameraComponent = cameraUpdateEvent.entity.getComponent<CameraComponent>();
         camera->setCamera(&cameraComponent);
-    });
+    }));
 }
 
 bool SandBoxLayer::init()

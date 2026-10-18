@@ -10,6 +10,7 @@
 #include <atomic>
 #include "Event.h"
 #include "EventListener.h"
+#include "EventSubscription.h"
 #include "core/features/Timer.h"
 #include "core/resources/managers/Manager.h"
 
@@ -19,28 +20,12 @@ public:
 	using EventCallback = std::function<void(Event&)>;
 	using AsyncCallback = std::function<void(AsyncEvent&)>;
 
-	~EventManager() = default;
+	~EventManager();
 	
 	static EventManager& getInstance();
+	static bool isAlive();
 	
-
-	// void subscribe(const std::string& event, EventListener& listener);
-	
-	// template<typename... Args>
-	// void publish(const std::string& event, Args... args) {
-	// 	if (listeners.find(event) != listeners.end()) {
-	// 		std::vector<EventListener>& events = listeners[event];
-	// 		for (EventListener& e : events) {
-	// 			e.onEvent(args...);
-	// 		}
-	// 	}
-	// 	else {
-	// 		Console::error("Event not found\n");
-	// 	}
-	// }
-	
-	uint32_t subscribe(EventType eventType, EventCallback callback);
-	void unsubscribe(EventType eventType, uint32_t cbID);
+	[[nodiscard]] EventSubscription subscribe(EventType eventType, EventCallback callback);
 	void publish(Event& event);
 	void queue(AsyncEvent event, AsyncCallback callback);
 	
@@ -49,8 +34,17 @@ public:
 	void onUpdate(const FrameTime& frameTime) override;
 
 private:
-	EventManager() : Manager("EventManager") {};
-	void publishAsync(EventListener& eventListener);
+	friend class EventSubscription;
+
+	struct Listener {
+		uint32_t id;
+		EventCallback callback;
+		bool removed { false };
+	};
+
+	EventManager();
+	void unsubscribe(EventType eventType, uint32_t id);
+	void _flushPendingChanges();
 	void cleanUpThread();
 
 	virtual std::vector<uint32_t> listIDs() const { return {}; };
@@ -58,9 +52,14 @@ private:
 
 private:
 	std::atomic<int> runningTasks{ 0 };
-	std::atomic<uint32_t> callbackID{ 0 };
+	std::atomic<uint32_t> callbackID{ 1 };
 	std::unordered_map<std::string, std::vector<EventListener>> listeners;
-	std::unordered_map<EventType, std::vector<std::pair<uint32_t, EventCallback>>> callbacks;
+	std::unordered_map<EventType, std::vector<Listener>> callbacks;
+
+
+	int publishDepth { 0 };	// publish inside another publish, unsubscribe register to be removed but only removed at depth = 0
+	bool hasRemovedListeners { false };
+	std::vector<std::pair<EventType, Listener>> pendingListeners;
 
 	std::queue<std::pair<AsyncEvent, AsyncCallback>> eventQueue;
 	std::mutex queueMutex;

@@ -4,6 +4,7 @@
 #include "core/features/Configs.h"
 #include "Logging/Logger.h"
 #include "core/features/FrameTime.h"
+#include "core/events/EventSubscription.h"
 
 class Engine;
 class Service
@@ -25,6 +26,7 @@ protected:
 	std::string m_serviceName;
 	WindowConfig m_config;
 	std::unique_ptr<Logger> m_logger;
+	std::vector<EventSubscription> m_eventSubscriptions;
 
 private:
 	friend class Engine;

@@ -52,7 +52,7 @@ bool ModelManager::init(WindowConfig config)
     }
 
     EventManager& eventManager = EventManager::getInstance();
-    eventManager.subscribe(EventType::ModelLoadEvent, [&] (Event& event) {
+    m_eventSubscriptions.push_back(eventManager.subscribe(EventType::ModelLoadEvent, [&] (Event& event) {
         ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
 
         if (!e.entity.hasComponent<ModelComponent>()) {
@@ -95,7 +95,7 @@ bool ModelManager::init(WindowConfig config)
                 e.entity.removeComponent<ModelComponent>();
             }
         }
-    });
+    }));
 
     return true;
 }

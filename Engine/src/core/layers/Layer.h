@@ -4,6 +4,8 @@
 #include "core/events/Event.h"
 #include "Logging/Logger.h"
 #include "core/features/FrameTime.h"
+#include "core/events/EventSubscription.h"
+#include <vector>
 
 class LayerManager;
 
@@ -28,6 +30,7 @@ protected:
 
 	std::string m_LayerName;
 	LayerManager* m_Manager;
+	std::vector<EventSubscription> m_eventSubscriptions;
 
 
 protected:

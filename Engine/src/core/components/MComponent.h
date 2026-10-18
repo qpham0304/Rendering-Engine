@@ -80,8 +80,6 @@ public:
 		updateTransform();
 	}
 
-	// NLOHMANN_DEFINE_TYPE_INTRUSIVE(TransformComponent, translateVec, rotateVec, scaleVec);
-
 	friend void to_json(nlohmann::json& j, const TransformComponent& t) {
 		j = nlohmann::json{
 			{"translateVec", {t.translateVec.x, t.translateVec.y, t.translateVec.z}},

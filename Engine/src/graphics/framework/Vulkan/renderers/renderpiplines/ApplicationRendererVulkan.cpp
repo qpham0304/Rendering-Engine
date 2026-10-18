@@ -44,7 +44,7 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 {
 	RendererVulkan::init(config);
 
-	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
+	m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_F11) {
 			showGui = !showGui;
@@ -54,7 +54,7 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 				guiManager->setActive(showGui);
 			}
 		}
-	});
+	}));
 
 	_createPipeline();
 

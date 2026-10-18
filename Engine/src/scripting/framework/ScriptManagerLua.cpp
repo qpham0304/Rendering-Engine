@@ -6,6 +6,7 @@
 #include "core/entities/Entity.h"
 #include "window/AppWindow.h"
 #include "SharedFunctionsLua.h"
+#include "EventToLuaBindings.h"
 
 using namespace entt::literals;
 
@@ -98,19 +99,21 @@ bool ScriptManagerLua::init(WindowConfig config)
     Service::init(config);
     
     //TODO: this won't work on dynamically defined components by the script
-    // the serializer must be aware of the changes to deal with the new component
+    // the serializer must be awared of the changes to deal with the new component
 
 	m_luaState.open_libraries(sol::lib::base, sol::lib::package, sol::lib::math);
 
+    EventToLuaBindings::exportEvent(m_luaState, m_logger.get());
+    
     SharedFunctionsLua shareToLua(m_logger.get()); 
     
     shareToLua.math(m_luaState);
     shareToLua.input(m_luaState);
-    shareToLua.event(m_luaState);
     shareToLua.component(m_luaState);
     shareToLua.scene(m_luaState);
     shareToLua.logging(m_luaState);
     shareToLua.physics(m_luaState);
+
     
     Serializer serializer;
     auto componentFactory = serializer.getComponentFactory();
@@ -472,4 +475,7 @@ void ScriptManagerLua::_reloadScript(const std::string& filePath)
 
         scene->forEnitiesWith<ScriptComponent>(func);
     }
+
+    // the reloaded instances are unreachable now, garbage collect so the subscriptions end before the next event
+    m_luaState.collect_garbage();
 }

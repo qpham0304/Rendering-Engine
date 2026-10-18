@@ -33,6 +33,7 @@ public:
 	
 protected:
 	Logger* m_logger { nullptr };
+	std::vector<EventSubscription> m_eventSubscriptions;
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
 	TextureManagerVulkan* textureManagerVulkan{ nullptr };
 	BufferManagerVulkan* bufferManagerVulkan{ nullptr };

@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <fstream>
 #include "Serializer.h"
+#include "core/events/EventSubscription.h"
 
 class SceneManager;
 class Logger;
@@ -89,6 +90,7 @@ private:
 	std::vector<uint32_t> frameDeletedEntities;
 	Logger& m_logger;
 	Serializer m_serializer;
+	std::vector<EventSubscription> m_eventSubscriptions;
 
 	bool controlPressed = false;
 	bool shiftPressed = false;

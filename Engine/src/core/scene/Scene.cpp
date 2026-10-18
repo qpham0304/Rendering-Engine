@@ -21,7 +21,7 @@ Scene::Scene(std::string name)
 		m_logger(ServiceLocator::GetService<Logger>("Engine_LoggerSPD"))
 {
 	EventManager& eventManager = EventManager::getInstance();
-	eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		int keyCode = keyPressedEvent.keyCode;
 		
@@ -51,7 +51,7 @@ Scene::Scene(std::string name)
 				controlPressed = false;
 			}
 		}
-	});
+	}));
 
 	// entities.reserve(1000);
 }

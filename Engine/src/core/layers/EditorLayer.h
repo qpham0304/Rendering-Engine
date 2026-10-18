@@ -20,7 +20,7 @@ private:
 	bool editorActive = false;
 	bool flipUV = true;
 	bool faceCamera = false;
-	uint32_t keyEventID;
+	EventSubscription keyEventSubscription;
 
 	void mockThreadTasks();
 	void renderGuizmo();

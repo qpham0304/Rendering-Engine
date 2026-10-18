@@ -38,10 +38,10 @@ bool RendererManagerVulkan::init(WindowConfig config)
 	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
     
-	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
+	m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
 		this->needResize = true;
 		this->swapchainOutdated = true;
-	});
+	}));
     
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
 	BufferManagerVulkan* bufferManagerVulkan = &dynamic_cast<BufferManagerVulkan&>(bufferManager);
