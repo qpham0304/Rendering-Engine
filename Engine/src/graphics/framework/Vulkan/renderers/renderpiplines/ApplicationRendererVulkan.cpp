@@ -229,6 +229,7 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	}
 
 	ImGui::Begin("Application");
+	guiManager->applicationWindow();
 	ImGui::BeginChild("Application View");
 	ImVec2 size = ImGui::GetContentRegionAvail();
 	ImVec2 imageScreenPos = ImGui::GetCursorScreenPos();

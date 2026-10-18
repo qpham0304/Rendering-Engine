@@ -63,6 +63,11 @@
         "NameComponent": {
           "name": "plane"
         },
+        "ColliderComponent": {
+          "shapeID": 0,
+          "colliderType": 0,
+          "bodyType": "Cube"
+        },
         "TransformComponent": {
           "rotateVec": [
             0.0,
