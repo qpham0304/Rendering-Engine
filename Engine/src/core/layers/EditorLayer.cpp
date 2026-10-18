@@ -111,7 +111,7 @@ void EditorLayer::onDetach()
 {
 }
 
-void EditorLayer::onUpdate()
+void EditorLayer::onUpdate(const FrameTime& frameTime)
 {
     if(EngineState::isStopped()) {
         SceneManager::cameraController = editorCamera.get();

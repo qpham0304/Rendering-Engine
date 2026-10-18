@@ -45,7 +45,7 @@ std::vector<uint32_t> ParticleManager::listIDs() const
     return std::vector<uint32_t>();
 }
 
-void ParticleManager::onUpdate()
+void ParticleManager::onUpdate(const FrameTime& frameTime)
 {
     if(!m_toBeDestroyed.empty()) {
         for(auto& containerID : m_toBeDestroyed) {

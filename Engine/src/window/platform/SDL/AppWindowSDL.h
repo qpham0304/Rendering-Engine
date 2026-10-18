@@ -17,7 +17,7 @@ public:
 
 
 	virtual bool init(WindowConfig platform) override;
-	virtual void onUpdate() override;
+	virtual void onUpdate(const FrameTime& frameTime) override;
 	virtual bool onClose() override;
 
 protected:
@@ -25,7 +25,7 @@ protected:
 	void* _getSharedWindow() override;
 	virtual void* _getNativeWindowHandle() override;
 	virtual double _getTime() const override;
-	virtual double _getDeltaTime() const override;
+	virtual void _sleepUntil(double time) override;
 	virtual void _setEventCallback() override;
 	void _getFrameBufferSize(int& width, int& height) override;
 	void _waitEvents() override;

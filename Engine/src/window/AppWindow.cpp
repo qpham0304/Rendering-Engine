@@ -4,6 +4,8 @@
 #include "core/events/EventManager.h"
 #include "core/scene/SceneManager.h"
 #include "window/Input.h"
+#include <chrono>
+#include <thread>
 
 const std::set<RenderPlatform> AppWindow::supportRenderPlatform = { RenderPlatform::OPENGL, RenderPlatform::VULKAN };
 AppWindow* AppWindow::window = nullptr;
@@ -55,10 +57,25 @@ double AppWindow::getTime()
 	return window->_getTime();
 }
 
-double AppWindow::getDeltaTime()
+void AppWindow::sleepUntil(double time)
 {
-	return window->_getDeltaTime();
+	window->_sleepUntil(time);
 }
+
+// portable fallback for backends without a precise delay, sleep most of the wait and spin the rest
+// since a plain sleep can overshoot by a whole scheduler tick on some platforms
+void AppWindow::_sleepUntil(double time)
+{
+	const double spinWindow = 0.0015;
+	double remaining = time - _getTime();
+	if (remaining > spinWindow) {
+		std::this_thread::sleep_for(std::chrono::duration<double>(remaining - spinWindow));
+	}
+	while (_getTime() < time) {
+		std::this_thread::yield();
+	}
+}
+
 
 unsigned int AppWindow::getWidth()
 {

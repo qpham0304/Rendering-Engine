@@ -30,7 +30,7 @@ protected:
 public:
 	virtual bool init(WindowConfig config) override = 0;
 	virtual bool onClose() override = 0;
-	virtual void onUpdate() override = 0;
+	virtual void onUpdate(const FrameTime& frameTime) override = 0;
 	
 	virtual void start(void* handle = nullptr) = 0;
 	virtual void render(void* handle = nullptr) = 0;

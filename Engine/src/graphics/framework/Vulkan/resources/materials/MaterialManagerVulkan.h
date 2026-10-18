@@ -38,7 +38,7 @@ public:
 	~MaterialManagerVulkan();
 
 	virtual bool init(WindowConfig config) override;
-	virtual void onUpdate() override;
+	virtual void onUpdate(const FrameTime& frameTime) override;
 	virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;

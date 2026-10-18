@@ -110,10 +110,11 @@ std::vector<uint32_t> RendererManagerVulkan::listIDs() const
     return std::vector<uint32_t>();
 }
 
-void RendererManagerVulkan::onUpdate()
+void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
 {
-    Service::onUpdate();
-    
+    Service::onUpdate(frameTime);
+    static_cast<ParticleRendererVulkan*>(particleRenderer)->setSimDeltaTime(frameTime.gameDeltaTime);
+
     if(needResize) {
 		_recreateResources();
 		needResize = false;

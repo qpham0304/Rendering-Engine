@@ -99,7 +99,7 @@ bool EventManager::init(WindowConfig config)
 //TODO: use semaphore instead for running tasks instead of manual primitive
 //instead of joining threads per completed task, just keep them alive then clean all up on close
 //tldr: just use async instead
-void EventManager::onUpdate()
+void EventManager::onUpdate(const FrameTime& frameTime)
 {
 	Timer timer("thread queue", true);
 

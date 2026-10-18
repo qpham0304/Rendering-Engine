@@ -71,13 +71,13 @@ bool SceneManager::onClose()
 	return true;
 }
 
-void SceneManager::onUpdate()
+void SceneManager::onUpdate(const FrameTime& frameTime)
 {
 	for (auto& [name, scene] : scenes) {
 		if (!scene->isEnabled) {
 			continue;
 		}
-		scene->onUpdate(AppWindow::getTime());
+		scene->onUpdate(frameTime.gameDeltaTime);
 	}
 
 	if(!cameraController){

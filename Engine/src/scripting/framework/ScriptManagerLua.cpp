@@ -227,7 +227,7 @@ std::vector<uint32_t> ScriptManagerLua::listIDs() const
     return list;
 }
 
-void ScriptManagerLua::onUpdate()
+void ScriptManagerLua::onUpdate(const FrameTime& frameTime)
 {
     std::vector<std::string> localReloadQueue;
     {
@@ -245,27 +245,46 @@ void ScriptManagerLua::onUpdate()
     }
 
     SceneManager& sceneManager = SceneManager::getInstance();
-    // for(uint32_t sceneID : sceneManager.listIDs()) {
-        // Scene* scene = sceneManager.getScene(sceneID);
-        Scene* scene = sceneManager.getActiveScene();
+    Scene* scene = sceneManager.getActiveScene();
 
-        auto func = std::function<void(Entity)>([&](Entity entity) -> void {
-            auto& scriptComponent = entity.getComponent<ScriptComponent>();
-            
-            if(!scriptComponent.initilized) {
-                scriptComponent.onInit();
-                scriptComponent.initilized = true;
-            }
+    auto func = std::function<void(Entity)>([&](Entity entity) -> void {
+        auto& scriptComponent = entity.getComponent<ScriptComponent>();
+        _initScript(scriptComponent);
 
-            float dt = AppWindow::getDeltaTime();
-            if(scriptComponent.onUpdate) {
-                scriptComponent.onUpdate(dt);
-            }
-        });
+        if(scriptComponent.onUpdate) {
+            scriptComponent.onUpdate(frameTime.gameDeltaTime);
+        }
+    });
 
-        scene->forEnitiesWith<ScriptComponent>(func);
-    // }
+    scene->forEnitiesWith<ScriptComponent>(func);
 
+}
+
+void ScriptManagerLua::onFixedUpdate(float fixedDeltaTime)
+{
+    Scene* scene = SceneManager::getInstance().getActiveScene();
+    if(!scene) {
+        return;
+    }
+
+    auto func = std::function<void(Entity)>([&](Entity entity) -> void {
+        auto& scriptComponent = entity.getComponent<ScriptComponent>();
+        _initScript(scriptComponent);
+
+        if(scriptComponent.onFixedUpdate) {
+            scriptComponent.onFixedUpdate(fixedDeltaTime);
+        }
+    });
+
+    scene->forEnitiesWith<ScriptComponent>(func);
+}
+
+void ScriptManagerLua::_initScript(ScriptComponent& scriptComponent)
+{
+    if(!scriptComponent.initilized) {
+        scriptComponent.onInit();
+        scriptComponent.initilized = true;
+    }
 }
 
 void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
@@ -355,6 +374,19 @@ void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
             };
         } else {
             scriptComponent.onUpdate = [](double){};
+        }
+
+        sol::protected_function fixedUpdateFunc = luaInstance["onFixedUpdate"];
+        if(fixedUpdateFunc.valid()) {
+            scriptComponent.onFixedUpdate = [luaInstance, fixedUpdateFunc, this](double dt) mutable {
+                auto result = fixedUpdateFunc(luaInstance, dt);
+                if (!result.valid()) {
+                    sol::error err = result;
+                    m_logger->error("Lua script fixed update error: {}", err.what());
+                }
+            };
+        } else {
+            scriptComponent.onFixedUpdate = [](double){};
         }
 
         sol::protected_function destroyFunc = luaInstance["onDestroy"];

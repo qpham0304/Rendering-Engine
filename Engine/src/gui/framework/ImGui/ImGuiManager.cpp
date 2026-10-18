@@ -100,7 +100,7 @@ bool ImGuiManager::init(WindowConfig config)
 	return true;
 }
 
-void ImGuiManager::onUpdate()
+void ImGuiManager::onUpdate(const FrameTime& frameTime)
 {
 	for (const auto& widget : widgets) {
 		widget->update();

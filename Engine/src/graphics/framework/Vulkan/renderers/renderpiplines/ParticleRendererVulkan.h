@@ -53,6 +53,8 @@ public:
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
 
+	void setSimDeltaTime(float deltaTime) { simDeltaTime = deltaTime; }
+
 protected:
     const uint32_t MAX_CONTAINERS = 100;
     const uint32_t MAX_EMITTERS = 100;
@@ -66,7 +68,7 @@ protected:
 	std::vector<uint32_t> emittersUBORefIDs {};
 
 	// update ticks and rendered frames are not the same, the sim time is summed per tick and consumed once per render
-	float pendingDeltaTime { 0.0f };
+	float simDeltaTime { 0.0f };
 	const float MAX_SIM_STEP = 0.1f;
 	
 	virtual void _recreateResources() override;

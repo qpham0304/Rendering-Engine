@@ -31,7 +31,8 @@ public:
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
 	
-	virtual void onUpdate();
+	virtual void onFixedUpdate(float fixedDeltaTime) override;
+	virtual void onUpdate(const FrameTime& frameTime) override;
 	void onGuiUpdate();
 
 	const std::vector<Layer*>::const_iterator begin() const;

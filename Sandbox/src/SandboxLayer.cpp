@@ -71,7 +71,7 @@ void SandBoxLayer::onDetach()
 
 }
 
-void SandBoxLayer::onUpdate()
+void SandBoxLayer::onUpdate(const FrameTime& frameTime)
 {
     if(EngineState::isPlaying()) {
         // SceneManager::cameraController = camera.get();

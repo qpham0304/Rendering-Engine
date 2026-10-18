@@ -68,10 +68,10 @@ std::vector<uint32_t> AnimationManager::listIDs() const
     return std::vector<uint32_t>();
 }
 
-void AnimationManager::onUpdate()
+void AnimationManager::onUpdate(const FrameTime& frameTime)
 {
-    m_spriteAnimator.onUpdate(AppWindow::getDeltaTime());
-    m_skinAnimator.onUpdate(AppWindow::getDeltaTime());
+    m_spriteAnimator.onUpdate(frameTime.gameDeltaTime);
+    m_skinAnimator.onUpdate(frameTime.gameDeltaTime);
 
     int i = 0;
     for(auto& boneMatrices : m_boneMatricesData) {

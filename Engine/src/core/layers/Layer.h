@@ -3,6 +3,7 @@
 #include "Engine/EngineCoreAPI.h"
 #include "core/events/Event.h"
 #include "Logging/Logger.h"
+#include "core/features/FrameTime.h"
 
 class LayerManager;
 
@@ -15,7 +16,8 @@ public:
 	virtual bool init() = 0;
 	virtual void onAttach(LayerManager* manager);
 	virtual void onDetach() = 0;
-	virtual void onUpdate() = 0;
+	virtual void onFixedUpdate(float fixedDeltaTime) {}
+	virtual void onUpdate(const FrameTime& frameTime) = 0;
 	virtual void onGuiUpdate() = 0;
 	virtual void onEvent(Event& event) = 0;
 

@@ -12,7 +12,8 @@ public:
     virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
-    virtual void onUpdate() override;
+    virtual void onFixedUpdate(float fixedDeltaTime) override;
+    virtual void onUpdate(const FrameTime& frameTime) override;
 
 	virtual uint32_t createMeshBody(uint32_t entityID, const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, uint32_t colliderType) override;
 	virtual uint32_t createBoxBody(uint32_t entityID, const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, uint32_t colliderType) override;

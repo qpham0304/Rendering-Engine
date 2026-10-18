@@ -104,9 +104,6 @@ void ParticleRendererVulkan::onUpdate()
 		return;
 	}
 
-    // TODO: until the engine loop is fixed
-    // the window delta is the time since the previous update tick, summing it gives the real time since the last render
-    pendingDeltaTime += static_cast<float>(AppWindow::getDeltaTime());
 
     auto func = std::function<void(Entity)>([&](Entity entity) -> void {
         TransformComponent& transform = entity.getComponent<TransformComponent>();
@@ -172,9 +169,7 @@ void ParticleRendererVulkan::render(Camera &camera)
     _uploadEmitters(currentFrame);
     pushConstant.emitterRef = bufferManagerVulkan->getBuffer(emittersUBORefIDs[currentFrame])->getAddress();
 
-    // step by exactly the time the update ticks covered, 0 when no tick ran since the last render or while paused
-    pushConstant.deltaTime = std::min(pendingDeltaTime, MAX_SIM_STEP);
-    pendingDeltaTime = 0.0f;
+    pushConstant.deltaTime = std::min(simDeltaTime, MAX_SIM_STEP);  // 0 while paused or stopped
 
     renderDeviceVulkan->beginLabel(cmd, "Particle Compute Pass", {1.0, 1.0, 0.5, 1.0});
     _computeParticle(cmd, currentFrame, scene);

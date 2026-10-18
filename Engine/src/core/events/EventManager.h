@@ -46,7 +46,7 @@ public:
 	
 	bool init(WindowConfig config) override;
 	bool onClose() override;
-	void onUpdate() override;
+	void onUpdate(const FrameTime& frameTime) override;
 
 private:
 	EventManager() : Manager("EventManager") {};

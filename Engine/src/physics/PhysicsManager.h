@@ -30,7 +30,8 @@ public:
     virtual bool onClose() = 0;
 	virtual void destroy(uint32_t id) = 0;
 	virtual std::vector<uint32_t> listIDs() const = 0;
-    virtual void onUpdate() = 0;
+    virtual void onFixedUpdate(float fixedDeltaTime) override = 0;
+    virtual void onUpdate(const FrameTime& frameTime) override = 0;
 
 	virtual uint32_t createMeshBody(uint32_t entityID, const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, uint32_t colliderType) = 0;
 	virtual uint32_t createBoxBody(uint32_t entityID, const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, uint32_t colliderType) = 0;

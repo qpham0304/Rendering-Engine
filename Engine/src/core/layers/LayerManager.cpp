@@ -125,13 +125,23 @@ std::vector<uint32_t> LayerManager::listIDs() const
 }
 
 
-void LayerManager::onUpdate()
+void LayerManager::onFixedUpdate(float fixedDeltaTime)
 {
 	for (const auto& layer : m_Layers) {
 		if (!layer->m_Enabled) {
 			continue;
 		}
-		layer->onUpdate();
+		layer->onFixedUpdate(fixedDeltaTime);
+	}
+}
+
+void LayerManager::onUpdate(const FrameTime& frameTime)
+{
+	for (const auto& layer : m_Layers) {
+		if (!layer->m_Enabled) {
+			continue;
+		}
+		layer->onUpdate(frameTime);
 	}
 }
 

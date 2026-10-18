@@ -112,7 +112,7 @@ uint32_t MeshManager::loadMesh(Mesh& mesh)
     return _assignID();
 }
 
-void MeshManager::onUpdate()
+void MeshManager::onUpdate(const FrameTime& frameTime)
 {
     for(auto& id: meshesTobeDestroyed) {
         MeshData meshData = m_meshesData[id];

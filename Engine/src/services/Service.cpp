@@ -38,7 +38,12 @@ bool Service::onClose()
     return true;
 }
 
-void Service::onUpdate()
+void Service::onFixedUpdate(float fixedDeltaTime)
+{
+
+}
+
+void Service::onUpdate(const FrameTime& frameTime)
 {
 
 }

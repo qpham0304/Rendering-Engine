@@ -3,6 +3,8 @@
 #include "scripting/ScriptManager.h"
 #include <sol/sol.hpp>
 
+struct ScriptComponent;
+
 class ScriptManagerLua : public ScriptManager
 {
 public:
@@ -13,7 +15,8 @@ public:
     virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
-    virtual void onUpdate() override;
+    virtual void onFixedUpdate(float fixedDeltaTime) override;
+    virtual void onUpdate(const FrameTime& frameTime) override;
 	virtual void loadScript(Entity& entity, std::string_view path) override;
 	virtual void loadScript(std::string_view path) override;
 	virtual void reloadScript(std::string_view path) override;
@@ -25,4 +28,5 @@ protected:
 	std::unordered_map<std::string, sol::table> m_scriptCache;
 	
 	virtual void _reloadScript(const std::string& path) override;
+	void _initScript(ScriptComponent& scriptComponent);
 };

@@ -135,7 +135,7 @@ void AppLayer::onDetach()
 	SceneManager::cameraController = nullptr;
 }
 
-void AppLayer::onUpdate()
+void AppLayer::onUpdate(const FrameTime& frameTime)
 {
 	camera->onUpdate();
 }

@@ -323,7 +323,7 @@ void SharedFunctionsLua::input(sol::state &luaState)
     );
 }
 
-void SharedFunctionsLua::event(sol::state& luaState )
+void SharedFunctionsLua::event(sol::state& luaState)
 {
     luaState.new_enum("EventType",
         "None", EventType::None,

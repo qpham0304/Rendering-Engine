@@ -3,6 +3,7 @@
 #include <string>
 #include "core/features/Configs.h"
 #include "Logging/Logger.h"
+#include "core/features/FrameTime.h"
 
 class Engine;
 class Service
@@ -17,7 +18,8 @@ protected:
 	Service(std::string_view name = "untitled");
 	
 	virtual bool init(WindowConfig config);
-	virtual void onUpdate();
+	virtual void onFixedUpdate(float fixedDeltaTime);	//on fixed update simulation, i.e: frame update 144 while fixed update 60
+	virtual void onUpdate(const FrameTime& frameTime);	//on frame update, blame unity for confusing name
 	virtual bool onClose();
 
 	std::string m_serviceName;

@@ -68,7 +68,7 @@ private:
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
-	virtual void onUpdate() override;
+	virtual void onUpdate(const FrameTime& frameTime) override;
     virtual void render() override;
 	virtual void drawDebug(glm::vec3 start, glm::vec3 end) override;
 	

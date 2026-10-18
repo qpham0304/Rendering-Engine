@@ -128,6 +128,11 @@ void ParticleGeometry::render(ShaderOpenGL& shader, Camera* camera, int& numRend
     shader.setMat4("mvp", camera->getMVP());
     shader.setVec3("lightColor", glm::vec3(0.7, 0.8, 1.0));
 
+    // no frame time reaches this legacy path, keep a local clock
+    double currentTime = AppWindow::getTime();
+    float deltaTime = lastRenderTime < 0.0 ? 0.0f : static_cast<float>(currentTime - lastRenderTime);
+    lastRenderTime = currentTime;
+
     if (!matrixModels.empty()) {
         glm::mat4 viewMatrix = camera->getViewMatrix();
         glm::vec3 camRight = glm::vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
@@ -145,7 +150,7 @@ void ParticleGeometry::render(ShaderOpenGL& shader, Camera* camera, int& numRend
 
         for (unsigned int i = 0; i < numRender; i++) {
             if (!pause) {
-                float velocity = speed * AppWindow::getDeltaTime();
+                float velocity = speed * deltaTime;
                 //flyDirections[i].x -= weights[i] * velocity;
                 flyDirections[i].y -= weights[i] * velocity;
                 //flyDirections[i].z -= weights[i] * velocity;

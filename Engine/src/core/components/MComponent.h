@@ -310,6 +310,7 @@ struct MYGRAPHICSENGINE_EXPORT ScriptComponent {
 	std::string path { "None" };
 	std::function<void()> onInit = []() {};
     std::function<void(double)> onUpdate = [](double) {};
+    std::function<void(double)> onFixedUpdate = [](double) {};
     std::function<void()> onDestroy = []() {};
 	bool initilized { false };
 

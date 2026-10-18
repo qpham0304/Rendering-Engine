@@ -5,6 +5,7 @@
 #include "core/components/MComponent.h"
 #include "core/entities/Entity.h"
 #include "window/AppWindow.h"
+#include "core/features/EngineStates.h"
 #include "core/features/camera.h"
 #include <glm/gtc/constants.hpp>
 
@@ -75,12 +76,10 @@ std::vector<uint32_t> PhysicsManagerBox3D::listIDs() const
     return std::vector<uint32_t>();
 }
 
-void PhysicsManagerBox3D::onUpdate()
+void PhysicsManagerBox3D::onUpdate(const FrameTime& frameTime)
 {
-    SceneManager& sceneManager = SceneManager::getInstance();
-    float deltaTime = AppWindow::getDeltaTime();
-    
-    if(deltaTime <= 0) {
+    if(!EngineState::isPlaying()) {
+        SceneManager& sceneManager = SceneManager::getInstance();
         for(uint32_t sceneID : sceneManager.listIDs()) {
             Scene* scene = sceneManager.getScene(sceneID);
 
@@ -96,7 +95,8 @@ void PhysicsManagerBox3D::onUpdate()
                 b3BodyId bodyId = b3Shape_GetBody(shapeId);
         
                 b3Body_SetType(bodyId, b3_kinematicBody);
-
+    
+                // bodies follow the transforms edited in the editor while not simulating
                 b3Vec3 newPosition = { transform.translateVec.x, transform.translateVec.y, transform.translateVec.z };
                 
                 glm::vec3 eulerAngles(transform.rotateVec.x, transform.rotateVec.y, transform.rotateVec.z);
@@ -111,14 +111,15 @@ void PhysicsManagerBox3D::onUpdate()
 
             scene->forEnitiesWith<ColliderComponent>(func);
         }
-        return;
     }
+}
 
-	float timeStep = 1.0f / 60.0f;
-    int subStepCount = 4;
-    b3World_Step(m_worldId, timeStep, subStepCount);
+void PhysicsManagerBox3D::onFixedUpdate(float fixedDeltaTime)
+{
+    const int subStepCount = 4;
+    b3World_Step(m_worldId, fixedDeltaTime, subStepCount);
 
-    Scene* scene = sceneManager.getActiveScene();
+    Scene* scene = SceneManager::getInstance().getActiveScene();
 
     auto func = std::function<void(Entity)>([&](Entity entity) -> void {
         auto& collider = entity.getComponent<ColliderComponent>();
