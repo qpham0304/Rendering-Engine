@@ -384,3 +384,7 @@ void DeferredCombinePassVulkan::_cleanupResources()
     textureManagerVulkan->destroy(outputImage->id());
     pipeline->destroy();
 }
+
+void DeferredCombinePassVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

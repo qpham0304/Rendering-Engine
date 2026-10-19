@@ -16,6 +16,7 @@ class ModelManager;
 class GuiManager;
 class BufferManager;
 class RendererManagerVulkan;
+class RenderGraphVulkan;
 class Camera;
 
 class RendererVulkan : public Renderer
@@ -29,6 +30,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) = 0;
 
 	
 protected:

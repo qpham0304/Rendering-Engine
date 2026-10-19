@@ -334,3 +334,7 @@ void HiZPassVulkan::_cleanupResources()
 	}
     pipeline->destroy();
 }
+
+void HiZPassVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

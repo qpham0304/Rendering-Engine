@@ -613,3 +613,7 @@ void ShadowMapPassVulkan::_cleanupResources()
 {
 	m_logger->warn("recource cleanup unimlemented");
 }
+
+void ShadowMapPassVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

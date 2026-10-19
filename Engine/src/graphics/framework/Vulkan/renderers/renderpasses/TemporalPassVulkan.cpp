@@ -386,3 +386,7 @@ void TemporalPassVulkan::_copyImageReource(VkCommandBuffer cmd) {
     TextureManagerVulkan::copyImage(cmd, depthImage, prevDepthImage, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT, renderDeviceVulkan);
     TextureManagerVulkan::copyImage(cmd, normalImage, prevNormalImage, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, renderDeviceVulkan);
 }
+
+void TemporalPassVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

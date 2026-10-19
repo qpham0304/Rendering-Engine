@@ -1158,3 +1158,7 @@ void DeferredRendererVulkan::_cleanupResources()
 	lightingPipeline->destroy();
 }
 #pragma endregion setup
+
+void DeferredRendererVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

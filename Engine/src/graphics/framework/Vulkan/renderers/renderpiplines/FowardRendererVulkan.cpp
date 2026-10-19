@@ -540,3 +540,7 @@ void ForwardRendererVulkan::_cleanupResources()
 	renderTarget.destroy(renderDeviceVulkan->device);
 	offscreenPipeline->destroy();
 }
+
+void ForwardRendererVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

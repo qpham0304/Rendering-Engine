@@ -19,11 +19,13 @@ struct RenderPassNode {
     virtual ~RenderPassNode() = default;
 };
 
-class RenderGraph {
+class RenderGraphVulkan {
 public:
+    RenderGraphVulkan();
     void addPass(std::shared_ptr<RenderPassNode> pass);
     bool compile();
     const std::vector<std::shared_ptr<RenderPassNode>>& getExecutionOrder() const;
+    void execute();
 
 private:
     bool dfs(

@@ -372,3 +372,7 @@ void BloomPassVulkan::_cleanupResources()
 
     outputImage->textureImageView = VK_NULL_HANDLE;
 }
+
+void BloomPassVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

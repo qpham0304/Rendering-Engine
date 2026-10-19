@@ -352,3 +352,7 @@ void SSRGIPassVulkan::_cleanupResources()
     }
     pipeline->destroy();
 }
+
+void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

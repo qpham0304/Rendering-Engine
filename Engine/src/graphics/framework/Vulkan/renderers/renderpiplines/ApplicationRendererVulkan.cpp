@@ -399,3 +399,7 @@ void ApplicationRendererVulkan::_cleanupResources()
 {
 	appPipeline->destroy();
 }
+
+void ApplicationRendererVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

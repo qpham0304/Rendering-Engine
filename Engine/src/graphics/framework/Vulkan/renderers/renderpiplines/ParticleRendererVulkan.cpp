@@ -410,3 +410,7 @@ bool ParticleRendererVulkan::_isValidContainer(uint32_t containerID) const
 {
     return containerID != 0 && containerID < containerRefs.size() && containerID < emittersUBO.size();
 }
+
+void ParticleRendererVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

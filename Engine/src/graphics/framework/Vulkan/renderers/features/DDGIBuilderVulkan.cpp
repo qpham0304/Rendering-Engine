@@ -613,3 +613,7 @@ bool DDGIBuilderVulkan::onClose()
 
     return true;
 }
+
+void DDGIBuilderVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

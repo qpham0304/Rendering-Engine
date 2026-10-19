@@ -3,6 +3,7 @@
 #include "Core/resources/managers/RendererManager.h"
 #include "graphics/framework/vulkan/core/CommonStructs.h"
 #include "RendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/RenderGraphVulkan.h"
 
 class RenderDeviceVulkan;
 class TextureVulkan;
@@ -61,6 +62,7 @@ protected:
 	Renderer* debugRenderer { nullptr };
 
 private:
+	RenderGraphVulkan m_renderGraph;
 	bool needResize{ false };
 	bool swapchainOutdated{ false };
 

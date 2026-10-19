@@ -204,3 +204,7 @@ void BilateralBlurPassVulkan::_cleanupResources()
 {
     occlusionPipeline->destroy();
 }
+
+void BilateralBlurPassVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

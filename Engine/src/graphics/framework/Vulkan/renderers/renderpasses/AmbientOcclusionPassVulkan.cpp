@@ -397,3 +397,7 @@ void AmbientOcclusionPassVulkan::_cleanupResources()
     occlusionPipeline->destroy();
     blurPipeline->destroy();
 }
+
+void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

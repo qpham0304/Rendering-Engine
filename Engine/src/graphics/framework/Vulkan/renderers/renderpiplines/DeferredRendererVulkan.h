@@ -56,6 +56,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 	void renderGui();
 
 	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer);

@@ -693,3 +693,7 @@ void ImageBasedRendererVulkan::_cleanupResources()
 {
 	m_logger->warn("recource cleanup unimlemented");
 }
+
+void ImageBasedRendererVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}
