@@ -5,11 +5,11 @@
 #include "core/events/EventManager.h"
 #include "core/entities/Entity.h"
 #include "window/AppWindow.h"
-#include "SharedFunctionsLua.h"
-#include "EventToLuaBindings.h"
-#include "MathToLuaBindings.h"
-#include "PhysicsToLuaBindings.h"
-#include "ComponentToLuaBindings.h"
+#include "bindings/SharedFunctionsLua.h"
+#include "bindings/EventToLuaBindings.h"
+#include "bindings/MathToLuaBindings.h"
+#include "bindings/PhysicsToLuaBindings.h"
+#include "bindings/ComponentToLuaBindings.h"
 #include "physics/PhysicsManager.h"
 
 

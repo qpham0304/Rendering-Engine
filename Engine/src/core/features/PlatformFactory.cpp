@@ -12,7 +12,7 @@
 #include "graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h"
 #include "graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h"
 #include "graphics/framework/Vulkan/renderers/RendererManagerVulkan.h"
-#include "scripting/framework/ScriptManagerLua.h"
+#include "scripting/framework/lua/ScriptManagerLua.h"
 #include "physics/framework/PhysicsManagerBox3D.h"
 
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)

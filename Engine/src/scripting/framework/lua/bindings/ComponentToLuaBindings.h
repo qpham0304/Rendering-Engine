@@ -24,7 +24,7 @@ private:
     static inline std::unordered_map<std::string, ComponentGetter> componentGetters{};
     static inline std::unordered_map<std::string, ComponentAdder> componentAdders{};
 
-    // automatically resolve cpp component types to export to lua, the fields come from REFLECT_TYPE
+    // automatically resolve cpp component types to export to lua, the fields come from DEFINE_TYPE
     template<typename T>
     static sol::usertype<T> _registerComponent(sol::state& luaState)
     {

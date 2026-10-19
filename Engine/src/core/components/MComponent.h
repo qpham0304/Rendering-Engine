@@ -86,7 +86,7 @@ public:
 		updateTransform();
 	}
 
-	REFLECT_TYPE(TransformComponent,
+	DEFINE_TYPE(TransformComponent,
 		member("translateVec", &TransformComponent::translateVec),
 		member("rotateVec", &TransformComponent::rotateVec),
 		member("scaleVec", &TransformComponent::scaleVec)
@@ -107,7 +107,7 @@ public:
 		return name;
 	}
 
-	REFLECT_TYPE(NameComponent,
+	DEFINE_TYPE(NameComponent,
 		member("name", &NameComponent::name)
 	);
 };
@@ -126,7 +126,7 @@ public:
 		modelID = 0;
 	}
 	
-	REFLECT_TYPE(ModelComponent,
+	DEFINE_TYPE(ModelComponent,
 		member("path", &ModelComponent::path)
 	);
 
@@ -162,7 +162,7 @@ struct MYGRAPHICSENGINE_EXPORT RelationshipComponent {
 struct MYGRAPHICSENGINE_EXPORT PrefabComponent {
     std::string prefabPath;
 
-	REFLECT_TYPE(PrefabComponent,
+	DEFINE_TYPE(PrefabComponent,
 		member("prefabPath", &PrefabComponent::prefabPath)
 	);
 };
@@ -207,7 +207,7 @@ struct MYGRAPHICSENGINE_EXPORT SpriteComponent {
 		}
 	}
 
-    REFLECT_TYPE(SpriteComponent,
+    DEFINE_TYPE(SpriteComponent,
 		member("path", &SpriteComponent::path),
 		member("targetRenderer", &SpriteComponent::targetRenderer),
 		member("numRows", &SpriteComponent::numRows),
@@ -226,7 +226,7 @@ struct MYGRAPHICSENGINE_EXPORT AnimationComponent {
 	bool isRunning{ true };
 	bool isLooping{ true };
 
-	REFLECT_TYPE(AnimationComponent,
+	DEFINE_TYPE(AnimationComponent,
 		member("frameCount", &AnimationComponent::frameCount),
 		member("frameDuration", &AnimationComponent::frameDuration),
 		member("frameDelay", &AnimationComponent::frameDelay),
@@ -243,7 +243,7 @@ struct MYGRAPHICSENGINE_EXPORT AnimationStateComponent {
 	float frameDuration{ 0.0f };
 	bool isLooping{ true };
 
-	REFLECT_TYPE(AnimationStateComponent,
+	DEFINE_TYPE(AnimationStateComponent,
 		member("texturePath", &AnimationStateComponent::texturePath),
 		member("startFrame", &AnimationStateComponent::startFrame),
 		member("frameCount", &AnimationStateComponent::frameCount),
@@ -260,7 +260,7 @@ struct MYGRAPHICSENGINE_EXPORT SkinningComponent {
 	std::string animationPath { "None" };
 	std::string initialAnimation { "None" };
 
-	REFLECT_TYPE(SkinningComponent,
+	DEFINE_TYPE(SkinningComponent,
 		member("initialAnimation", &SkinningComponent::initialAnimation),
 		member("animationPath", &SkinningComponent::animationPath)
 	);
@@ -275,7 +275,7 @@ struct MYGRAPHICSENGINE_EXPORT CameraComponent {
 	glm::mat4 view;
 	glm::vec3 orientation;
 
-	REFLECT_TYPE(CameraComponent,
+	DEFINE_TYPE(CameraComponent,
 		member("view", &CameraComponent::view),
 		member("orientation", &CameraComponent::orientation)
 	);
@@ -292,7 +292,7 @@ struct MYGRAPHICSENGINE_EXPORT ScriptComponent {
     std::function<void()> onDestroy = []() {};
 	bool initilized { false };
 
-	REFLECT_TYPE(ScriptComponent,
+	DEFINE_TYPE(ScriptComponent,
 		member("path", &ScriptComponent::path)
 	);
 };
@@ -311,7 +311,7 @@ struct MYGRAPHICSENGINE_EXPORT ColliderComponent {
 	glm::vec3 center{ glm::vec3(0.0) };
 	glm::mat3 inertia{ glm::mat3(1.0) };
 
-	REFLECT_TYPE(ColliderComponent,
+	DEFINE_TYPE(ColliderComponent,
 		member("shapeID", &ColliderComponent::shapeID),
 		member("colliderType", &ColliderComponent::colliderType),
 		member("bodyType", &ColliderComponent::bodyType)
@@ -337,7 +337,7 @@ struct MYGRAPHICSENGINE_EXPORT ParticleEmitter {
 	glm::vec3 force{ 0.0f, 0.0f, 0.0f };
 	bool resetPosition{ false };
 
-	REFLECT_TYPE(ParticleEmitter,
+	DEFINE_TYPE(ParticleEmitter,
 		member("behaviorType", &ParticleEmitter::behaviorType),
 		member("emitMax", &ParticleEmitter::emitMax),
 		member("emitCount", &ParticleEmitter::emitCount),

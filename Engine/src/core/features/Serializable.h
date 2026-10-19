@@ -18,7 +18,7 @@ void CallOnDeserialized(T& obj)
 	}
 }
 
-#define REFLECT_TYPE(ClassName, ...)                                            \
+#define DEFINE_TYPE(ClassName, ...)                                            \
 	static const char* GetStaticType() { return #ClassName; }                   \
 	template<typename Member>                                                   \
 	static void VisitFields(Member&& member) {                                  \

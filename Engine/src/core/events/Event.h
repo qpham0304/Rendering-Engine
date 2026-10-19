@@ -40,7 +40,7 @@ public:
     EventType GetEventType() const override { return EventType::KeyPressed; }
     const char* GetName() const override { return "KeyPressedEvent"; }
     
-    REFLECT_TYPE(KeyPressedEvent,
+    DEFINE_TYPE(KeyPressedEvent,
         member("keyCode", &KeyPressedEvent::keyCode),
         member("isRepeat", &KeyPressedEvent::isRepeat)
     );
@@ -57,7 +57,7 @@ public:
 	EventType GetEventType() const override { return EventType::MouseMoved; }
 	const char* GetName() const override { return "MouseMoveEvent"; };
 	
-	REFLECT_TYPE(MouseMoveEvent,
+	DEFINE_TYPE(MouseMoveEvent,
         member("m_x", &MouseMoveEvent::m_x),
         member("m_y", &MouseMoveEvent::m_y)
     );
@@ -74,7 +74,7 @@ public:
 	EventType GetEventType() const override { return EventType::MouseScrolled; }
 	const char* GetName() const override { return "MouseScrollEvent"; };
 	
-	REFLECT_TYPE(MouseScrollEvent,
+	DEFINE_TYPE(MouseScrollEvent,
         member("m_x", &MouseScrollEvent::m_x),
         member("m_y", &MouseScrollEvent::m_y)
     );
@@ -90,7 +90,7 @@ public:
 	EventType GetEventType() const override { return EventType::KeyCombined; }
 	const char* GetName() const override { return "KeyCombinedEvent"; };
 	
-	REFLECT_TYPE(KeyCombinedEvent,
+	DEFINE_TYPE(KeyCombinedEvent,
         member("keyCodes", &KeyCombinedEvent::keyCodes)
     );
 };
@@ -232,7 +232,7 @@ public:
 	EventType GetEventType() const override { return EventType::CameraUpdateEvent; }
 	const char* GetName() const override { return "CameraUpdateEvent"; };
 
-	REFLECT_TYPE(CameraUpdateEvent,
+	DEFINE_TYPE(CameraUpdateEvent,
 		member("entity", &CameraUpdateEvent::entity)
 	);
 };
