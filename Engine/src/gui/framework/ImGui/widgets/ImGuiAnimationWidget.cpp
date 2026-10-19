@@ -11,81 +11,9 @@ ImGuiAnimationWidget::ImGuiAnimationWidget(std::string name)
 
 void ImGuiAnimationWidget::render()
 {
-    ImGui::Begin("Animation Widget");
-
-    std::vector<uint32_t> ids = skeletonManager->listIDs();
-    auto func = std::function<void(Entity)>([&](Entity entity) -> void {
-        auto& nameComponent = entity.getComponent<NameComponent>();
-        auto& skinningComponent = entity.getComponent<SkinningComponent>();
-        const AnimationData* data = animationManager->getAnimationData(skinningComponent.animationPath);
-        if(!data) {
-            return;
-        }
-
-        ImGui::PushID(entity);
-
-        const bool isEntitySelected = (selectedEntityID == entity);
-        if (ImGui::Selectable(nameComponent.name.c_str(), isEntitySelected)) {
-            selectedEntityID = entity;
-            
-            if (skinningComponent.animatorID != 0) {
-                auto animator = animationManager->getAnimator(skinningComponent.animatorID);
-                if (animator) {
-                    selectedAnimation = animator->animationName;
-                }
-            }
-        }
-
-        if (isEntitySelected) {
-            auto animator = animationManager->getAnimator(skinningComponent.animatorID);
-            
-            if (animator && ImGui::BeginCombo("Animations", selectedAnimation.c_str())) {
-                for (auto& [name, value] : *data) {
-                    const bool isSelected = (name == selectedAnimation);
-                    
-                    if (ImGui::Selectable(name.c_str(), isSelected)) {
-                        selectedAnimation = name;
-                        animator->animationName = selectedAnimation;
-                    }
-
-                    if (isSelected) {
-                        ImGui::SetItemDefaultFocus(); 
-                    }
-                }
-                ImGui::EndCombo();
-            }
-        }
-
-        ImGui::PopID();
-        ImGui::Separator();
-    });
-
-    SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if(!scene){
-		m_logger->error("ImGuiAnimationWidget: No scene to render");
-	}
-
-    scene->forEnitiesWith<SkinningComponent>(func);
-
-    ImGui::Separator();
-    // drawBone(ids);
-    drawTree(ids);
-    
-    // if (ImGui::Button("view simple popup")) {
-    //     ImGui::OpenPopup("simple popup");
-    // }
-
-    // if (ImGui::BeginPopupModal("simple popup", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-
-    //     ImGui::Separator();
-    //     if (ImGui::Button("Close", ImVec2(120, 0))) {
-    //         ImGui::CloseCurrentPopup();
-    //     }
-    //     ImGui::EndPopup();
-    // }
-
-    ImGui::End();
+    // the node hierarchy and animation selection moved to the left sidebar entity tree
+    // this widget only keeps the debug bone overlay
+    // drawBone(skeletonManager->listIDs());
 }
 
 void ImGuiAnimationWidget::drawBone(const std::vector<uint32_t> ids) const
@@ -150,49 +78,6 @@ void ImGuiAnimationWidget::drawBone(const std::vector<uint32_t> ids) const
         if (skeleton->rootIndex < skeleton->nodes.size()) {
             ComputeNodeWorldPositions(skeleton->rootIndex, glm::mat4(1.0f));    
             DrawSkeletonTree(skeleton->rootIndex);
-        }
-    }
-}
-
-void ImGuiAnimationWidget::drawTree(const std::vector<uint32_t> ids) const
-{
-    for (auto& id : ids) {
-        auto skeleton = skeletonManager->getSkeleton(id);
-        if (!skeleton || skeleton->nodes.empty()) {
-            continue;
-        }
-
-        if (ImGui::CollapsingHeader(skeleton->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Separator();
-
-            std::function<void(uint32_t)> renderNodeTree = [&](uint32_t nodeIndex) {
-                if(nodeIndex >= skeleton->nodes.size()) {
-                    return;
-                }
-
-                auto node = skeleton->nodes[nodeIndex];
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
-                bool nodeOpen = ImGui::TreeNodeEx((void*)(uintptr_t)nodeIndex, flags, "%s", node.name.c_str());
-
-
-                std::string isBone = node.isBone ? "bone" : "";
-                float textWidth = ImGui::CalcTextSize(isBone.c_str()).x;
-                float rightPos = ImGui::GetWindowContentRegionMax().x - textWidth - ImGui::GetStyle().WindowPadding.x;
-                ImGui::SameLine(rightPos);
-                ImGui::TextDisabled("%s", isBone.c_str());
-
-                if(nodeOpen) {
-                    for(auto& childrenIdx : node.childrenNodes) {
-                        renderNodeTree(childrenIdx);
-                    }
-
-                    ImGui::TreePop();
-                }
-            };
-
-            if (skeleton->rootIndex < skeleton->nodes.size()) {
-                renderNodeTree(skeleton->rootIndex);
-            }
         }
     }
 }

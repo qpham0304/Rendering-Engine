@@ -69,8 +69,24 @@ bool ModelManager::init(WindowConfig config)
             mesh.materialID = materialManager->createMaterial(materialDesc);
 
             Model model {};
-            model.meshIDs.push_back(meshManager->loadMesh(mesh));
+            uint32_t meshID = meshManager->loadMesh(mesh);
+            model.meshIDs.push_back(meshID);
             model.path = pair.first;
+
+            // single root node skeleton, each primitive instance owns its own mesh so the name must be unique
+            // otherwise addSkeleton returns the existing one by name
+            std::string skeletonName = pair.first + "_" + std::to_string(m_ids);
+            model.skeletonID = skeletonManager->addSkeleton(skeletonName);
+            auto skeleton = skeletonManager->getSkeleton(model.skeletonID);
+            if (skeleton) {
+                SkeletonManager::SkeletonNode node{};
+                node.name = pair.first;
+                node.meshIDs.push_back(meshID);
+                skeleton->rootIndex = 0;
+                skeleton->boneMap[node.name] = 0;
+                skeleton->nodes.push_back(node);
+            }
+
             modelComponent.modelID = addModel(model);
         }
 
@@ -182,29 +198,16 @@ bool ModelManager::_loadModel(std::string_view path)
     }
 
     if(scene->mNumAnimations > 0) {
-        //TODO: remove hard coded setup 
-        // if(path == "assets/models/2b/gltf/2B_Rip_v1_6.gltf") {
-        //     auto p = "assets/models/2b/gltf/2B_Rip_v1_6_R.glb";
-        //     const aiScene* tempScene = import.ReadFile(p, flags);
-        //     animationManager->loadAnimation(p, tempScene);
-        // } else {
-        //     animationManager->loadAnimation(path, scene);
-        // }
         animationManager->loadAnimation(path, scene);
     }
-
     
-    uint32_t skeletonID = 0;
-    for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
-        if (scene->mMeshes[i]->HasBones()) {
-            skeletonID = skeletonManager->addSkeleton(fileName);
-            _processSkeletonNodeHierarchy(skeletonID, scene->mRootNode, -1);
-            break;
-        }
-    }
+    uint32_t skeletonID = skeletonManager->addSkeleton(fileName);
+    _processSkeletonNodeHierarchy(skeletonID, scene->mRootNode, -1);
     
     std::vector<uint32_t> meshes = {};
-    _processNode(scene->mRootNode, scene, meshes, directory, skeletonID);
+    std::unordered_map<uint32_t, uint32_t> meshCache; //assimp mesh index to engine meshID
+    auto skeleton = skeletonManager->getSkeleton(skeletonID);
+    _processNode(scene->mRootNode, scene, meshes, meshCache, directory, skeletonID, skeleton->rootIndex);
     
     m_modelData[path.data()] = m_ids;
     m_models[m_ids] = std::make_shared<Model>();
@@ -221,15 +224,38 @@ bool ModelManager::_loadModel(std::string_view path)
     return true;
 }
 
-void ModelManager::_processNode(aiNode* node, const aiScene* scene, std::vector<uint32_t>& meshes, std::string_view directory, uint32_t skeletonID)
-{
+void ModelManager::_processNode(aiNode* node,
+		const aiScene* scene,
+		std::vector<uint32_t>& meshes,
+        std::unordered_map<uint32_t, uint32_t>& meshCache,
+		std::string_view directory,
+		uint32_t skeletonID,
+		uint32_t skeletonNodeIndex
+){
+    auto skeleton = skeletonManager->getSkeleton(skeletonID);
+
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
-        aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-        meshes.push_back(_processMesh(mesh, scene, directory, skeletonID));
+        uint32_t aiMeshIndex = node->mMeshes[i];
+        uint32_t meshID = 0;
+        
+        auto it = meshCache.find(aiMeshIndex);
+        if(it != meshCache.end()) {
+            meshID = it->second;
+        } else {
+            aiMesh* mesh = scene->mMeshes[aiMeshIndex];
+            meshID = _processMesh(mesh, scene, directory, skeletonID);
+            meshCache[aiMeshIndex] = meshID;
+            meshes.push_back(meshID);
+        }
+
+        if(skeleton) {
+            skeleton->nodes[skeletonNodeIndex].meshIDs.push_back(meshID);
+        }
     }
 
     for (unsigned int i = 0; i < node->mNumChildren; i++) {
-        _processNode(node->mChildren[i], scene, meshes, directory, skeletonID);
+        uint32_t childIndex = skeleton ? skeleton->nodes[skeletonNodeIndex].childrenNodes[i] : 0;
+        _processNode(node->mChildren[i], scene, meshes, meshCache, directory, skeletonID, childIndex);
     }
 }
 
@@ -400,6 +426,7 @@ void ModelManager::_processSkeletonNodeHierarchy(uint32_t skeletonID, aiNode* ai
     node.vqs.position = glm::vec3(aiTranslation.x, aiTranslation.y, aiTranslation.z);
     node.vqs.rotation.fromGlmQuat(glm::quat(aiRotation.w, aiRotation.x, aiRotation.y, aiRotation.z));
     node.vqs.scale = glm::vec3(aiScale.x, aiScale.y, aiScale.z);
+    node.parentIndex = parentIndex;
 
     int currentIndex = skeleton->nodes.size();
     skeleton->boneMap[nodeName] = currentIndex;

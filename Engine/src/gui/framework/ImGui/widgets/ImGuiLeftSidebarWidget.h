@@ -3,8 +3,6 @@
 #include "../../../widgets/LeftSidebarWidget.h"
 #include <imgui.h>
 
-class Logger;
-class ModelManager;
 class Scene;
 
 class ImGuiLeftSidebarWidget : public LeftSidebarWidget
@@ -23,12 +21,20 @@ public:
 	virtual void render() override;
 
 private:
-	Logger* m_logger;
-	ModelManager* modelManager;
+	enum class HierarchyFilter { All, Meshes, Bones };
+	HierarchyFilter m_hierarchyFilter { HierarchyFilter::All };
 
 	void _EntityTabMenu();
 	void _EntityContent();
 	void _SearchFilter();
+
+	void _ModelDetails(Entity& entity, Scene* scene);
+	void _AnimationControls(Entity& entity);
+	void _HierarchyFilterBar();
+	void _HierarchyNode(Entity& entity, Scene* scene, const SkeletonManager::SkeletonAsset& skeleton, uint32_t nodeIndex, const std::vector<uint8_t>& subtreeFlags);
+	void _MeshRow(Entity& entity, Scene* scene, uint32_t meshID);
+	void _SelectMesh(Entity& entity, Scene* scene, uint32_t meshID);
+	bool _IsEntitySelected(Scene* scene, Entity& entity);
 
 	void _RenameMenuItem(Entity& entity);
 	void _DuplicateMenuItem(Entity& entity);
@@ -38,4 +44,3 @@ private:
 	void _LoadAnimationMenuItem(Entity& entity);
 	void _DeleteEntityMenuItem(Entity &entity, Scene* scene);
 };
-
