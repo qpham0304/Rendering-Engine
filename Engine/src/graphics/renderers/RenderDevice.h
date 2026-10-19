@@ -37,7 +37,7 @@ public:
 
 	virtual bool init(WindowConfig platform) override = 0;
 	virtual bool onClose() override = 0;
-	virtual void onUpdate() override = 0;
+	virtual void onUpdate(const FrameTime& frameTime) override = 0;
 	virtual void beginFrame() = 0;
 	virtual void endFrame() = 0;
 	virtual void render() = 0;

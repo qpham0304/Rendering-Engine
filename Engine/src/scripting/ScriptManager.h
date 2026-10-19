@@ -14,7 +14,8 @@ public:
     virtual bool onClose() = 0;
 	virtual void destroy(uint32_t id) = 0;
 	virtual std::vector<uint32_t> listIDs() const = 0;
-    virtual void onUpdate() = 0;
+    virtual void onFixedUpdate(float fixedDeltaTime) override = 0;
+    virtual void onUpdate(const FrameTime& frameTime) override = 0;
 	virtual void loadScript(Entity& entity, std::string_view path) = 0;
 	virtual void loadScript(std::string_view path) = 0;
 	virtual void reloadScript(std::string_view path) = 0;

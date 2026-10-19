@@ -26,16 +26,16 @@ bool SceneManager::init(WindowConfig config)
 	Service::init(config);
 	
 	EventManager& eventManager = EventManager::getInstance();
-	eventManager.subscribe(EventType::WindowResize, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::WindowResize, [this](Event& event) {
 		WindowResizeEvent& windowResizeEvent = static_cast<WindowResizeEvent&>(event);
 		if(!cameraController) {
 			return;
 		}
 
 		cameraController->updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
-	});
+	}));
 
-	eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
 		if(!cameraController) {
 			return;
@@ -44,9 +44,9 @@ bool SceneManager::init(WindowConfig config)
 		if(areaFocused) {
 			cameraController->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
 		}
-	});
+	}));
 
-	eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 		if(!cameraController) {
 			return;
@@ -56,12 +56,12 @@ bool SceneManager::init(WindowConfig config)
 		if(areaFocused) {
 			cameraController->processMouse();
 		}
-	});
+	}));
 
-	eventManager.subscribe(EventType::GuiFocusedEvent, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::GuiFocusedEvent, [this](Event& event) {
 		GuiFocusEvent& focusEvent = static_cast<GuiFocusEvent&>(event);
 		areaFocused = focusEvent.isFocused;
-	});
+	}));
 
 	return true;
 }
@@ -71,13 +71,13 @@ bool SceneManager::onClose()
 	return true;
 }
 
-void SceneManager::onUpdate()
+void SceneManager::onUpdate(const FrameTime& frameTime)
 {
 	for (auto& [name, scene] : scenes) {
 		if (!scene->isEnabled) {
 			continue;
 		}
-		scene->onUpdate(AppWindow::getTime());
+		scene->onUpdate(frameTime.gameDeltaTime);
 	}
 
 	if(!cameraController){

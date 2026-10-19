@@ -158,6 +158,10 @@ void BufferManagerVulkan::createBuffer(
 	VkBuffer& buffer,
 	VmaAllocation& bufferMemory
 ) {
+	if (!renderDeviceVulkan->device.raytracingSupport()) {
+		usage &= ~(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
+	}
+
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = size;

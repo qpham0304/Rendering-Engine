@@ -100,7 +100,7 @@ bool ImGuiManager::init(WindowConfig config)
 	return true;
 }
 
-void ImGuiManager::onUpdate()
+void ImGuiManager::onUpdate(const FrameTime& frameTime)
 {
 	for (const auto& widget : widgets) {
 		widget->update();
@@ -162,72 +162,36 @@ void ImGuiManager::start(void* handle)
 
 }
 
-void ImGuiManager::debugWindow(ImTextureID texture)
-{
-	Camera* camera =  SceneManager::cameraController;
-	glm::vec3 camPos = camera ? camera->getPosition() : glm::vec3(0.0); 
-	std::string x = "x: " + std::to_string(camPos.x).substr(0, 4);
-	std::string y = "y: " + std::to_string(camPos.y).substr(0, 4);
-	std::string z = "z: " + std::to_string(camPos.z).substr(0, 4);
-
-	if (ImGui::Begin("Debug Window"))
-	{
-		//std::string countVertices = "Vertices: " + std::to_string(SceneManager::getNumVertices() * 3);
-		//ImGui::Text(countVertices.c_str());
-		//countVertices = "Triangles: " + std::to_string(SceneManager::getNumVertices());
-		ImGui::SameLine();
-		//ImGui::Text(countVertices.c_str());
-		ImGui::Text("Camera positon");
-		ImGui::SameLine();
-		ImGui::Text("%s", x.c_str());
-		ImGui::SameLine();
-		ImGui::Text("%s", y.c_str());
-		ImGui::SameLine();
-		ImGui::Text("%s", z.c_str());
-		// Using a Child allow to fill all the space of the window.
-		// It also alows customization
-		ImGui::BeginChild("Debug shadow window");
-		// Get the size of the child (i.e. the whole draw size of the windows).
-		ImVec2 wsize = ImGui::GetWindowSize();
-		ImGui::Image(texture, wsize, ImVec2(0, 1), ImVec2(1, 0));
-		ImGui::EndChild();
-	}
-	ImGui::End();
-}
-
+// toolbar row drawn and centered above the viewport image
 void ImGuiManager::applicationWindow()
 {
-	// ImGuiIO& io = ImGui::GetIO();
+	const ImVec2 buttonSize = ImVec2(28.0f, 28.0f);
+	const ImVec4 playingColor = ImVec4(0.20f, 0.60f, 0.28f, 1.0f);
+	const ImVec4 playingHoveredColor = ImVec4(0.25f, 0.70f, 0.33f, 1.0f);
+	const ImVec4 idleColor = ImVec4(0.30f, 0.30f, 0.30f, 1.0f);
+	const ImVec4 idleHoveredColor = ImVec4(0.38f, 0.38f, 0.38f, 1.0f);
 
-	//start group
-	ImGui::SetCursorPos(ImVec2(10.0f, 10.0f));
-	ImGui::BeginGroup();
-	ImGui::Button("A");
-	ImGui::SameLine();
-	ImGui::Button("B");
-	ImGui::SameLine();
-	ImGui::Button("C");
-	ImGui::EndGroup();
+	const bool isPlaying = EngineState::isPlaying();
+	const float groupWidth = buttonSize.x * 2.0f + ImGui::GetStyle().ItemSpacing.x;
+	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - groupWidth) * 0.5f);
 
-	//center group
-	ImVec4 buttonActiveColor = ImVec4{ 0.0f, (float)140 / 255, (float)184 / 255, 0.8 };
-	ImVec2 buttonSize = ImVec2(36.0f, 36.0f);
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonActiveColor);
-	ImGui::SetCursorPos(ImVec2(ImGui::GetWindowContentRegionMax().x / 2, 10.0f));
-	ImGui::BeginGroup();
-	if(ImGui::Button(ICON_FA_PAUSE, buttonSize)) {
-		EngineState::pause();
+	ImGui::PushStyleColor(ImGuiCol_Button, isPlaying ? playingColor : idleColor);
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, isPlaying ? playingHoveredColor : idleHoveredColor);
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, isPlaying ? idleColor : playingColor);
+	if (ImGui::Button(isPlaying ? ICON_FA_PAUSE : ICON_FA_PLAY, buttonSize)) {
+		isPlaying ? EngineState::pause() : EngineState::play();
 	}
-	ImGui::SameLine();
-	if(ImGui::Button(ICON_FA_PLAY, buttonSize)) {
-		EngineState::play();
+	ImGui::PopStyleColor(3);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip(isPlaying ? "Pause" : "Play");
 	}
+
 	ImGui::SameLine();
-	if(ImGui::Button(ICON_FA_STOP, buttonSize)) {
+	ImGui::BeginDisabled(EngineState::isStopped());
+	if (ImGui::Button(ICON_FA_STOP, buttonSize)) {
 		EngineState::stop();
 	}
-	ImGui::EndGroup();
-	ImGui::PopStyleColor();
+	ImGui::EndDisabled();
 }
 
 void ImGuiManager::render(void* handle)
@@ -318,36 +282,10 @@ void ImGuiManager::useLightTheme()
 void ImGuiManager::useDarkTheme()
 {
 	ImGuiThemes::darkTheme();
-/*
-	auto& colors = ImGui::GetStyle().Colors;
-	colors[ImGuiCol_Tab] = ImVec4(1.000f, 0.684f, 0.000f, 0.208f);
-	colors[ImGuiCol_TabHovered] = ImVec4(1.000f, 0.682f, 0.000f, 0.549f);
-	colors[ImGuiCol_TabActive] = ImVec4(1.000f, 0.682f, 0.000f, 0.549f);
-	colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.853f, 0.567f, 0.000f, 0.668f);
-	colors[ImGuiCol_TabUnfocused] = ImVec4(0.506f, 0.337f, 0.000f, 0.522f);
-	colors[ImGuiCol_CheckMark] = ImVec4(1.000f, 0.782f, 0.000f, 1.000f);
-	colors[ImGuiCol_Header] = ImVec4(0.267f, 0.267f, 0.267f, 0.681f);
-	colors[ImGuiCol_HeaderHovered] = ImVec4(0.316f, 0.316f, 0.316f, 0.360f);
-	colors[ImGuiCol_WindowBg] = ImVec4(0.184f, 0.184f, 0.184f, 1.000f);
-	colors[ImGuiCol_ChildBg] = ImVec4(0.163f, 0.163f, 0.163f, 0.000f);
-	colors[ImGuiCol_FrameBg] = ImVec4(0.338f, 0.338f, 0.338f, 0.540f);
-	colors[ImGuiCol_FrameBgHovered] = ImVec4(0.281f, 0.281f, 0.281f, 0.540f);
-	colors[ImGuiCol_ScrollbarBg] = ImVec4(0.078f, 0.078f, 0.078f, 0.540f);
-	colors[ImGuiCol_Border] = ImVec4(0.212f, 0.212f, 0.212f, 1.000f);
-	colors[ImGuiCol_TitleBg] = ImVec4(0.137f, 0.137f, 0.137f, 1.000f);
-	//colors[ImGuiCol_TitleBgActive] = ImVec4(1.000f, 0.682f, 0.000f, 0.100f);
-	colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.137f, 0.137f, 0.137f, 1.000f);
-	colors[ImGuiCol_Button] = ImVec4(0.303f, 0.303f, 0.303f, 0.540f);
-	colors[ImGuiCol_ButtonHovered] = ImVec4(0.379f, 0.379f, 0.379f, 0.540f);
-	colors[ImGuiCol_ButtonActive] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
-	colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
-*/
 }
 
 void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 {
-	applicationWindow();
-
 	ImGuizmo::BeginFrame();
 	glm::vec3 translateVector(0.0f, 0.0f, 0.0f);
 	glm::vec3 scaleVector(1.0f, 1.0f, 1.0f);

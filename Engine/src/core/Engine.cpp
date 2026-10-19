@@ -2,9 +2,11 @@
 #include <ranges>
 #include <chrono>
 #include <thread>
+#include <cmath>
 
 #include <window/AppWindow.h>
 #include <core/events/EventManager.h>
+#include <core/features/EngineStates.h>
 #include <core/layers/EditorLayer.h>
 #include <core/scene/SceneManager.h>
 #include <core/resources/managers/TextureManager.h>
@@ -87,11 +89,11 @@ void Engine::init()
 
 void Engine::start()
 {
-	eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::WindowClose, [this](Event& event) {
 		isRunning = false;
-	});
+	}));
 
-	eventManager.subscribe(EventType::KeyPressed, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_ESCAPE) {
 			isRunning = false;
@@ -101,43 +103,80 @@ void Engine::start()
 			isFullScreen = !isFullScreen;
 			AppWindow::setFullscreen(isFullScreen, true);
 		}
-	});
+	}));
 }
 
 void Engine::run() {
-    const int maxUpdates = 5;
-    const double targetUpdateTime = 1.0 / windowConfig.targetUpdateFPS;
-    const double targetRenderTime = 1.0 / windowConfig.targetRenderFPS;
+	const int maxFixedSteps = 5;
+	const double maxFrameTime = 0.25;
+	const double fixedDeltaTime = 1.0 / windowConfig.targetUpdateFPS;
 
-    double accumulator = 0.0;
-    double lastTime = AppWindow::getTime();
-    double lastRenderTime = lastTime;
-	int updatesThisFrame = 0;
+	// limit frame when vsync is off and target render isnt zero, if vsync on ignore targetfps
+	const bool limitFrameRate = !windowConfig.vsync && windowConfig.targetRenderFPS > 0.0f;
+	const double targetFrameTime = limitFrameRate ? 1.0 / windowConfig.targetRenderFPS : 0.0;
 
-	// fixed timestep update and variable rendering
-    while (isRunning) {
-        double currentTime = AppWindow::getTime();
-        double deltaTime = currentTime - lastTime;
-        lastTime = currentTime;
-		deltaTime = deltaTime > 0.25 ? 0.25 : deltaTime;
-        accumulator += deltaTime;
-		updatesThisFrame = 0;
-		
-        while(accumulator >= targetUpdateTime && updatesThisFrame < maxUpdates) {
-            for (Service* service : services) {
-				// engineLogger->error("service: {}", service->getServiceName());
-                service->onUpdate();
-            }
-            accumulator -= targetUpdateTime;
-            updatesThisFrame++;
-        }
+	double accumulator = 0.0;
+	double lastTime = AppWindow::getTime();
+	bool wasPlaying = false;
+	double nextFrameStart = lastTime;
 
-        double timeSinceLastRender = currentTime - lastRenderTime;
-        if(timeSinceLastRender >= targetRenderTime) {
-            rendererManager->render();
-            lastRenderTime = currentTime;
-        }
-    }
+	while (isRunning) {
+		double currentTime = AppWindow::getTime();
+		double deltaTime = std::min(currentTime - lastTime, maxFrameTime);
+		lastTime = currentTime;
+
+		bool isPlaying = EngineState::isPlaying();
+		if (isPlaying && !wasPlaying) {
+			accumulator = 0.0;	// starting or resuming should not replay the time spent stopped
+		}
+		wasPlaying = isPlaying;
+
+		FrameTime frameTime;
+		frameTime.time = currentTime;
+		frameTime.deltaTime = static_cast<float>(deltaTime);
+		frameTime.gameDeltaTime = isPlaying ? static_cast<float>(deltaTime) : 0.0f;
+		frameTime.fixedDeltaTime = static_cast<float>(fixedDeltaTime);
+
+		appWindow->onUpdate(frameTime);	// poll input first for current frame's fixed steps
+
+		if (isPlaying) {
+			accumulator += deltaTime;
+			int fixedSteps = 0;
+			while (accumulator >= fixedDeltaTime && fixedSteps < maxFixedSteps) {
+				for (Service* service : services) {
+					service->onFixedUpdate(frameTime.fixedDeltaTime);
+				}
+				accumulator -= fixedDeltaTime;
+				fixedSteps++;
+			}
+
+			// hit the catch up cap, drop the backlog instead of spiraling further behind every frame
+			if (accumulator >= fixedDeltaTime) {
+				accumulator = std::fmod(accumulator, fixedDeltaTime);
+			}
+			frameTime.alpha = static_cast<float>(accumulator / fixedDeltaTime);
+		}
+
+		for (Service* service : services) {
+			if (service == appWindow.get()) {
+				continue;
+			}
+			service->onUpdate(frameTime);
+		}
+
+		rendererManager->render();
+
+		if (limitFrameRate) {
+			nextFrameStart += targetFrameTime;
+			double now = AppWindow::getTime();
+			if (nextFrameStart < now) {
+				nextFrameStart = now;	// fell behind, don't rush the next frames to make it up
+			}
+			else {
+				AppWindow::sleepUntil(nextFrameStart);
+			}
+		}
+	}
 }
 
 void Engine::close()

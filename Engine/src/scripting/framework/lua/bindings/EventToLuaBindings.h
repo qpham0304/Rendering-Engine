@@ -5,25 +5,15 @@
 
 class Logger;
 
-// engine functions that will be shared down to lua runtime scripting
-class SharedFunctionsLua
+class EventToLuaBindings 
 {
 public:
-    SharedFunctionsLua(Logger* logger);
+    static void exportEvent(sol::state& luaState, Logger* logger);
 
-    void math(sol::state& luaState);
-    void input(sol::state& luaState);
-    void event(sol::state& luaState);
-    void component(sol::state& luaState);
-    void scene(sol::state& luaState);
-    void logging(sol::state& luaState);
-    void physics(sol::state& luaState);
-    
+
 private:
-    Logger* m_logger;
-
     template<typename T>
-    void _registerEvent(sol::state& luaState) {
+    static void _registerEvent(sol::state& luaState) {
         auto ut = luaState.new_usertype<T>(T::GetStaticType(), 
             sol::base_classes, sol::bases<Event>()
         );

@@ -3,6 +3,9 @@
 #include "Engine/EngineCoreAPI.h"
 #include "core/events/Event.h"
 #include "Logging/Logger.h"
+#include "core/features/FrameTime.h"
+#include "core/events/EventSubscription.h"
+#include <vector>
 
 class LayerManager;
 
@@ -15,7 +18,8 @@ public:
 	virtual bool init() = 0;
 	virtual void onAttach(LayerManager* manager);
 	virtual void onDetach() = 0;
-	virtual void onUpdate() = 0;
+	virtual void onFixedUpdate(float fixedDeltaTime) {}
+	virtual void onUpdate(const FrameTime& frameTime) = 0;
 	virtual void onGuiUpdate() = 0;
 	virtual void onEvent(Event& event) = 0;
 
@@ -26,6 +30,7 @@ protected:
 
 	std::string m_LayerName;
 	LayerManager* m_Manager;
+	std::vector<EventSubscription> m_eventSubscriptions;
 
 
 protected:

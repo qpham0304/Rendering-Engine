@@ -439,6 +439,36 @@ void TextureManagerVulkan::createImage(
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.flags = flags;
 
+	// only nvidia allows depth formats as storage images while intel and amd integrated gpus do not
+	if (!(flags & (VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT))) {
+		VkFormatProperties props;
+		vkGetPhysicalDeviceFormatProperties(device.getPhysicalDevice(), format, &props);
+		VkFormatFeatureFlags supported = tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
+
+		// drop the default storage image bit if it's not supported
+		if ((imageInfo.usage & VK_IMAGE_USAGE_STORAGE_BIT) && !(supported & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
+			imageInfo.usage &= ~VK_IMAGE_USAGE_STORAGE_BIT;
+			ServiceLocator::GetService<Logger>("Engine_LoggerSPD").warn(
+				"createImage: format {} does not support storage on this gpu, storage usage dropped", static_cast<int>(format)
+			);
+		}
+
+		const std::pair<VkImageUsageFlags, VkFormatFeatureFlags> requirements[] = {
+			{ VK_IMAGE_USAGE_SAMPLED_BIT, VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT },
+			{ VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT },
+			{ VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT },
+			{ VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_FORMAT_FEATURE_TRANSFER_SRC_BIT },
+			{ VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_FORMAT_FEATURE_TRANSFER_DST_BIT },
+		};
+		for (const auto& [usageBit, featureBit] : requirements) {
+			if ((imageInfo.usage & usageBit) && !(supported & featureBit)) {
+				throw std::runtime_error(
+					"failed to create image: format " + std::to_string(format) + " does not support usage " + std::to_string(usageBit) + " on this gpu"
+				);
+			}
+		}
+	}
+
 	VmaAllocationCreateInfo allocInfo{};
 	allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 	allocInfo.requiredFlags = properties;
@@ -545,8 +575,17 @@ void TextureManagerVulkan::transitionImageLayout(
 	RenderDeviceVulkan* renderDeviceVulkan	//TODO: this is not used
 ){
 	VkImageAspectFlags aspect = 0;
-	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL || format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D16_UNORM) {
+	bool hasStencil = format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D16_UNORM_S8_UINT;
+	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL 
+		|| newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+		|| oldLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+		|| format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D16_UNORM || hasStencil
+	) {
 		aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+		
+		if (hasStencil) {
+			aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;	// formats with stencil need both aspects in the barrier
+		}
 	} else {
 		aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
@@ -690,6 +729,34 @@ void TextureManagerVulkan::transitionImageLayout(
 		destinationStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 		
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		destinationStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+		sourceStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		sourceStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		destinationStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 	}
 	else {
 		throw std::invalid_argument("unsupported layout transition!");

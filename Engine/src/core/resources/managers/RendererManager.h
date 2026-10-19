@@ -14,7 +14,7 @@ public:
 	virtual bool init(WindowConfig config) override = 0;
 	virtual bool onClose() override = 0;
 	virtual void destroy(uint32_t id) override = 0;
-	virtual void onUpdate() override = 0;
+	virtual void onUpdate(const FrameTime& frameTime) override = 0;
 	virtual std::vector<uint32_t> listIDs() const override = 0;
     virtual void render() = 0;
 	virtual void drawDebug(glm::vec3 start, glm::vec3 end) = 0;

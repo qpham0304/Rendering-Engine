@@ -45,7 +45,7 @@ std::vector<uint32_t> ParticleManager::listIDs() const
     return std::vector<uint32_t>();
 }
 
-void ParticleManager::onUpdate()
+void ParticleManager::onUpdate(const FrameTime& frameTime)
 {
     if(!m_toBeDestroyed.empty()) {
         for(auto& containerID : m_toBeDestroyed) {
@@ -57,8 +57,9 @@ void ParticleManager::onUpdate()
 
 const ParticleManager::ContainerData& ParticleManager::getContainerData(uint32_t id) const
 {
-    if(id >= m_containers.size() || id < 0) {
+    if(id >= m_containerData.size()) {
         m_logger->error("particle container id: {} does not exist", id);
+        return m_containerData[0];
     }
     return m_containerData[id];
 }
@@ -70,8 +71,9 @@ const std::vector<ParticleManager::ContainerData>& ParticleManager::getAllContai
 
 ParticleContainer ParticleManager::getContainer(uint32_t id)
 {
-    if(id >= m_containers.size() || id < 0) {
+    if(id >= m_containers.size()) {
         m_logger->error("particle container id: {} does not exist", id);
+        return m_containers[0];
     }
     return m_containers[id];
 }

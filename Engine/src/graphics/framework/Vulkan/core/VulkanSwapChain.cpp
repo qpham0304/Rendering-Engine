@@ -281,9 +281,13 @@ VkSurfaceFormatKHR VulkanSwapChain::chooseSwapSurfaceFormat(const std::vector<Vk
 
 VkPresentModeKHR VulkanSwapChain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availMode)
 {
-	for (const auto& availablePresentMode : availMode) {
-		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-			return availablePresentMode;
+	if (AppWindow::getWindowConfig().vsync) {	// vsync support or default fallback mode
+		return VK_PRESENT_MODE_FIFO_KHR;
+	}
+
+	for (VkPresentModeKHR preferred : { VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR }) {
+		if (std::find(availMode.begin(), availMode.end(), preferred) != availMode.end()) {
+			return preferred;
 		}
 	}
 

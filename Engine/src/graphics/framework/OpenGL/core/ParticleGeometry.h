@@ -57,6 +57,7 @@ private:
 	unsigned int cubeVBO;
 	unsigned int instanceVBO;
 	bool firstInit = true;
+	double lastRenderTime = -1.0;
 
 public:
 	std::vector<glm::mat4> matrixModels;	// temporary leave public

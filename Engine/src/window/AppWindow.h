@@ -19,7 +19,7 @@ public:
 	virtual ~AppWindow() = default;
 
 	virtual bool init(WindowConfig config) = 0;
-	virtual void onUpdate() = 0;
+	virtual void onUpdate(const FrameTime& frameTime) override = 0;
 	virtual bool onClose() = 0;
 
 	static const WindowConfig& getWindowConfig();
@@ -31,7 +31,7 @@ public:
 	static void disableCursor();
 	static int getKey(KeyCodes keyCode);
 	static double getTime();
-	static double getDeltaTime();
+	static void sleepUntil(double time);
 	static unsigned int getWidth();
 	static unsigned int getHeight();
 	static void* getWindowHandle();
@@ -50,7 +50,7 @@ protected:
 	virtual void* _getNativeWindowHandle() = 0;
 	virtual void _setEventCallback() = 0;
 	virtual double _getTime() const = 0;
-	virtual double _getDeltaTime() const = 0;
+	virtual void _sleepUntil(double time);
 	virtual void _getFrameBufferSize(int& width, int& height) = 0;
 	virtual void _waitEvents() = 0;
 	virtual void _setContextCurrent() = 0;
@@ -63,6 +63,4 @@ protected:
 	std::function<void(void* nativeEvent)> m_nativeEventCallback;
 	unsigned int m_width;
 	unsigned int m_height;
-	double m_lastTime;
-	double m_deltaTime;
 };

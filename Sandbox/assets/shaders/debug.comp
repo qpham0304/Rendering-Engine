@@ -22,9 +22,65 @@ layout(set = 1, binding = 0) uniform sampler2D globalTextures[];
 
 
 layout(push_constant) uniform PushConstant {
+    vec4 hoverColor;
+    vec4 selectColor;
     int sceneIndex;
     int debugSceneIndex;
+    int maskIndex;
+    int hoverThickness;
+    int selectThickness;
 } pc;
+
+// mask encodes 0.0 = not selected, 0.5 = hover, 1.0 = select
+// cant use exact value because color output and read are not exact (look up quantization error)
+const float KIND_EMPTY_THRESHOLD = 0.25;
+const float KIND_SELECT_THRESHOLD = 0.75;
+
+// render the outline, select takes priority over hover
+vec4 outlineColor(ivec2 px)
+{
+    float center = texelFetch(globalTextures[pc.maskIndex], px, 0).x;
+    if (center > KIND_EMPTY_THRESHOLD) {
+        return vec4(0.0);
+    }
+
+    int hoverR = clamp(pc.hoverThickness, 1, 4);
+    int selectR = clamp(pc.selectThickness, 1, 4);
+    int maxR = max(hoverR, selectR);
+    ivec2 size = ivec2(ubo.width, ubo.height);
+
+    bool sawSelect = false;
+    bool sawHover = false;
+    const ivec2 dirs[4] = ivec2[](ivec2(1, 0), ivec2(-1, 0), ivec2(0, 1), ivec2(0, -1));
+
+    for (int r = 1; r <= maxR; ++r) {
+        for (int i = 0; i < 4; ++i) {
+            ivec2 q = px + dirs[i] * r;
+            if (q.x < 0 || q.y < 0 || q.x >= size.x || q.y >= size.y) {
+                continue;
+            }
+
+            float k = texelFetch(globalTextures[pc.maskIndex], q, 0).x;
+            if (k <= KIND_EMPTY_THRESHOLD) {
+                continue;
+            }
+
+            if (k >= KIND_SELECT_THRESHOLD) {
+                sawSelect = sawSelect || r <= selectR;
+            } else {
+                sawHover = sawHover || r <= maxR;
+            }
+        }
+    }
+
+    if (sawSelect) {
+        return pc.selectColor;
+    }
+    if (sawHover) {
+        return pc.hoverColor;
+    }
+    return vec4(0.0);
+}
 
 void main()
 {
@@ -36,8 +92,10 @@ void main()
 
     vec4 sceneImage = texelFetch(globalTextures[pc.sceneIndex], pixelCoord, 0);
     vec4 debugImage = texelFetch(globalTextures[pc.debugSceneIndex], pixelCoord, 0);
+    vec4 outline = outlineColor(pixelCoord);
 
-    vec4 result = sceneImage + debugImage;
+    vec4 result = vec4(mix(sceneImage.rgb, debugImage.rgb, debugImage.a), sceneImage.a);
+    result.rgb = mix(result.rgb, outline.rgb, outline.a);
 
     imageStore(outputImage, pixelCoord, result);
 }

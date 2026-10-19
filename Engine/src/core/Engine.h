@@ -55,5 +55,6 @@ private:
 
 private:
     std::vector<Service*> services;
+    std::vector<EventSubscription> m_eventSubscriptions;
 
 };

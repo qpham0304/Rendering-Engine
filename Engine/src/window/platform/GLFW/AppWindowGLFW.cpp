@@ -66,27 +66,12 @@ bool AppWindowGLFW::onClose() {
 }
 
 
-void AppWindowGLFW::onUpdate()
+void AppWindowGLFW::onUpdate(const FrameTime& frameTime)
 {
 	if(m_width != m_config.width || m_height != m_config.height) {
 		m_width = m_config.width;
 		m_height = m_config.height;
 	}
-	
-	//TODO: deltatime ideally should be passed through system's update not from AppWindow
-	double currentTime = _getTime();
-	m_deltaTime = 0.0;
-	
-	if(EngineState::isPlaying()) {
-		if(EngineState::didJustResume()) {
-			m_deltaTime = 0.0;
-		} else {
-			m_deltaTime = currentTime - m_lastTime;
-		}
-	} else {
-		m_deltaTime = 0.0;
-	}
-	m_lastTime = currentTime;
 
 	switch (m_config.renderPlatform) {
 		case RenderPlatform::OPENGL: _onUpdateOpenGL(); break;
@@ -172,11 +157,6 @@ double AppWindowGLFW::_getTime() const
 	return glfwGetTime();
 }
 
-double AppWindowGLFW::_getDeltaTime() const
-{
-	return m_deltaTime;
-
-}
 
 void AppWindowGLFW::_setEventCallback()
 {

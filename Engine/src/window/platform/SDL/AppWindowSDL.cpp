@@ -57,23 +57,8 @@ bool AppWindowSDL::onClose() {
 }
 
 
-void AppWindowSDL::onUpdate()
+void AppWindowSDL::onUpdate(const FrameTime& frameTime)
 {
-	//TODO: deltatime ideally should be passed through system's update not from AppWindow
-	double currentTime = _getTime();
-	m_deltaTime = 0.0;
-
-	if(EngineState::isPlaying()) {
-		if(EngineState::didJustResume()) {
-			m_deltaTime = 0.0;
-		} else {
-			m_deltaTime = currentTime - m_lastTime;
-		}
-	} else {
-		m_deltaTime = 0.0;
-	}
-	m_lastTime = currentTime;
-
 	switch (m_config.renderPlatform) {
 		case RenderPlatform::VULKAN: _onUpdateVulkan(); break;
 		default: throw std::runtime_error("Platform not supported for onUpdate"); break;
@@ -161,9 +146,13 @@ double AppWindowSDL::_getTime() const
 	return static_cast<double>(SDL_GetTicksNS()) / 1e9;
 }
 
-double AppWindowSDL::_getDeltaTime() const
+void AppWindowSDL::_sleepUntil(double time)
 {
-	return m_deltaTime;
+	// SDL picks the high resolution timer for each platform
+	double remaining = time - _getTime();
+	if (remaining > 0.0) {
+		SDL_DelayPrecise(static_cast<Uint64>(remaining * 1e9));
+	}
 }
 
 // nothing to register: SDL delivers events through the poll loop, _handleEvent publishes them

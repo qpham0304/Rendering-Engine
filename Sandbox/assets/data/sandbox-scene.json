@@ -15,6 +15,20 @@
       "prefab_ref": "assets/data/prefabs/player.json"
     },
     {
+      "overrides": {
+        "components": {
+          "TransformComponent": {
+            "rotateVec": [
+              0.0,
+              2.75,
+              0.0
+            ]
+          }
+        }
+      },
+      "prefab_ref": "assets/data/prefabs/player-sprite.json"
+    },
+    {
       "components": {
         "ModelComponent": {
           "path": "assets/models/sponza/gLTF/Sponza.gltf"
@@ -49,6 +63,11 @@
         "NameComponent": {
           "name": "plane"
         },
+        "ColliderComponent": {
+          "shapeID": 0,
+          "colliderType": 0,
+          "bodyType": "Cube"
+        },
         "TransformComponent": {
           "rotateVec": [
             0.0,
@@ -59,6 +78,33 @@
             9.0,
             1.5,
             9.0
+          ],
+          "translateVec": [
+            0,
+            -2.5,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "ModelComponent": {
+          "path": "assets/models/cube/cube-notex.gltf"
+        },
+        "NameComponent": {
+          "name": "cube"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
           ],
           "translateVec": [
             0,

@@ -4,6 +4,7 @@
 
 class TextureVulkan;
 class ParticleManager;
+class DeferredRendererVulkan;
 
 class ParticleRendererVulkan : public RendererVulkan
 {
@@ -52,6 +53,8 @@ public:
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
 
+	void setSimDeltaTime(float deltaTime) { simDeltaTime = deltaTime; }
+
 protected:
     const uint32_t MAX_CONTAINERS = 100;
     const uint32_t MAX_EMITTERS = 100;
@@ -61,27 +64,32 @@ protected:
 	std::vector<ContainerRefs> containerRefs { {} };	// attribute refs to one container
 	uint32_t containersRefID;
 	
-	std::vector<std::vector<EmitterUBO>> emittersUBO {};	
-	uint32_t emittersUBORefID;
+	std::vector<EmitterUBO> emittersUBO {};
+	std::vector<uint32_t> emittersUBORefIDs {};
+
+	// update ticks and rendered frames are not the same, the sim time is summed per tick and consumed once per render
+	float simDeltaTime { 0.0f };
+	const float MAX_SIM_STEP = 0.1f;
 	
 	virtual void _recreateResources() override;
 	virtual void _cleanupResources() override;
 	
-	void _createResources();
 	void _createPipelines();
 	void _createDescriptor();
 	void _updateDescriptor();
 
 	void _computeParticle(VkCommandBuffer cmd, uint32_t currentFrame, Scene* scene);
 	void _renderParticle(VkCommandBuffer cmd, uint32_t currentFrame, Scene* scene);
-	void _createBarrier(VkCommandBuffer cmd, uint32_t bufferID);
+	void _uploadContainerRefs();
+	void _uploadEmitters(uint32_t frame);
+	bool _isValidContainer(uint32_t containerID) const;
 
 	std::unique_ptr<VulkanPipeline> pipeline;
 	std::unique_ptr<VulkanPipeline> computePipeline;
 	ParticlePushConstant pushConstant;
-	
-	TextureVulkan* outTexture { nullptr };
-	// TextureVulkan* depthTexture { nullptr };
+
+	DeferredRendererVulkan* deferredRenderer { nullptr };
+	VkFormat depthFormat { VK_FORMAT_UNDEFINED };
 
 	uint32_t layoutID;
 	uint32_t poolID;

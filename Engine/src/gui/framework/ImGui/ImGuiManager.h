@@ -22,7 +22,7 @@ public:
 	~ImGuiManager();
 
 	virtual bool init(WindowConfig config) override;
-	virtual void onUpdate() override;
+	virtual void onUpdate(const FrameTime& frameTime) override;
 	virtual bool onClose() override;
 	void start(void* handle = nullptr) override;
 	void render(void* handle = nullptr) override;
@@ -37,8 +37,7 @@ public:
 	void guizmoRotate() override;
 	void guizmoScale() override;
 
-	void debugWindow(ImTextureID texture);
-	void applicationWindow();
+	void applicationWindow() override;
 
 
 	// TODO: add closable tab, ability to on/off open close tab

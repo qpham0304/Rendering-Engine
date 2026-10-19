@@ -30,7 +30,7 @@ protected:
 public:
 	virtual bool init(WindowConfig config) override = 0;
 	virtual bool onClose() override = 0;
-	virtual void onUpdate() override = 0;
+	virtual void onUpdate(const FrameTime& frameTime) override = 0;
 	
 	virtual void start(void* handle = nullptr) = 0;
 	virtual void render(void* handle = nullptr) = 0;
@@ -40,6 +40,7 @@ public:
 	virtual void useLightTheme() = 0;
 	virtual void useDarkTheme() = 0;
 	
+	virtual void applicationWindow() = 0;
 	virtual void renderGuizmo(TransformComponent& transformComponent) = 0;
 	virtual void guizmoTranslate() = 0;
 	virtual void guizmoRotate() = 0;

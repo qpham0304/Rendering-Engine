@@ -53,9 +53,6 @@ layout(set = 0, binding = 8) uniform sampler2D hdrImage;
 layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 // layout(set = 2, binding = 1) uniform image2D storageImages[];
 // layout(set = 2, binding = 2) uniform sampler storageImages[];
-layout(buffer_reference, scalar) buffer BoneModelBuffer { mat4 boneMatrices[]; };
-layout(buffer_reference, scalar) buffer BoneMatrixArrayTable { BoneModelBuffer ptrs[]; };
-
 layout(buffer_reference, scalar) buffer Materials{ Material m[]; };
 
 layout(push_constant) uniform PushConstant {

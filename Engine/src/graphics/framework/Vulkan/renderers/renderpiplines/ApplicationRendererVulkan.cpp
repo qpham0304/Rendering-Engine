@@ -24,6 +24,7 @@
 #include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h>
 #include <graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h>
+#include <graphics/framework/Vulkan/renderers/renderpiplines/DebugRendererVulkan.h>
 #include <core/scene/SceneManager.h>
 #include "imgui.h" // TODO: remove it once done
 #include "physics/PhysicsManager.h"
@@ -43,7 +44,7 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 {
 	RendererVulkan::init(config);
 
-	EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
+	m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_F11) {
 			showGui = !showGui;
@@ -53,7 +54,7 @@ bool ApplicationRendererVulkan::init(WindowConfig config)
 				guiManager->setActive(showGui);
 			}
 		}
-	});
+	}));
 
 	_createPipeline();
 
@@ -211,6 +212,8 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("DDGIBuilderVulkan");
 	auto ddgiRendererVulkan = dynamic_cast<DDGIBuilderVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("DebugRendererVulkan");
+	auto debugRendererVulkan = dynamic_cast<DebugRendererVulkan*>(renderer);
 
 
 	guiManager->start();
@@ -226,13 +229,12 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	}
 
 	ImGui::Begin("Application");
+	guiManager->applicationWindow();
 	ImGui::BeginChild("Application View");
 	ImVec2 size = ImGui::GetContentRegionAvail();
 	ImVec2 imageScreenPos = ImGui::GetCursorScreenPos();
 	ImVec2 mouseScreenPos = ImGui::GetMousePos();
 	ImVec2 localMousePos = ImVec2(mouseScreenPos.x - imageScreenPos.x, mouseScreenPos.y - imageScreenPos.y);
-
-	// m_logger->info("x: {}, y: {}", x, y);
 
 	float xNDC = (localMousePos.x / size.x) * 2.0f - 1.0f;
     float yNDC = 1.0f - (localMousePos.y / size.y) * 2.0f;
@@ -248,12 +250,51 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 	Scene* scene = sceneManager.getActiveScene();
 	PhysicsManager* physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
 	
+	bool viewHovered = ImGui::IsItemHovered();
+	uint32_t hoveredID = 0;
+	if(scene && viewHovered) {
+		hoveredID = physicsManager->rayCastClosest(glm::vec2(xNDC, yNDC));
 
-	uint32_t entityID = physicsManager->rayCastClosest(glm::vec2(xNDC, yNDC));
-    if(entityID != 0) {
-        Entity entity = scene->getEntity(entityID);
-        m_logger->warn(entity.getComponent<NameComponent>().name);
-    }
+		
+		// detect mouse click on select versus camera mouse drag
+		const float clickDragThreshold = 3.0f;	// less than this means most likely is a click
+		float dragX = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0f).x;
+		float dragY = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0f).y;
+		bool clicked = ImGui::IsMouseReleased(ImGuiMouseButton_Left) && glm::length(glm::vec2(dragX, dragY)) < clickDragThreshold;
+		if(clicked && !guiManager->isGuizmoFocus()) {
+			if(hoveredID != 0) {
+				scene->selectEntities({ scene->getEntity(hoveredID) });
+			} else {
+				scene->selectEntities({});
+			}
+		}
+	}
+
+	if(scene) {
+		auto outlineCollider = [&](const Entity& entity, bool selected) {
+			if(!entity.hasComponent<ColliderComponent>()) {
+				return;
+			}
+			const ColliderComponent& collider = entity.getComponent<ColliderComponent>();
+			if(collider.shapeID == 0 || !debugRendererVulkan) {
+				return;
+			}
+			if(!debugRendererVulkan->hasOutlineMesh(collider.shapeID)) {
+				debugRendererVulkan->uploadOutlineMesh(collider.shapeID, physicsManager->getColliderTriangles(collider.shapeID));
+			}
+			debugRendererVulkan->drawOutline(collider.shapeID, physicsManager->getColliderTransform(collider.shapeID), selected);
+		};
+
+		bool hoveredIsSelected = false;
+		for(const Entity& entity : scene->getSelectedEntities()) {
+			outlineCollider(entity, true);
+			hoveredIsSelected = hoveredIsSelected || entity.getID() == hoveredID;
+		}
+
+		if(hoveredID != 0 && !hoveredIsSelected) {
+			outlineCollider(scene->getEntity(hoveredID), false);
+		}
+	}
 
 	// ImDrawList* drawList = ImGui::GetWindowDrawList();
 	// ImVec2 center = ImVec2(imageScreenPos.x + (size.x * 0.5f), imageScreenPos.y + (size.y * 0.5f));

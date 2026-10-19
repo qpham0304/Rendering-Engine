@@ -16,6 +16,7 @@
 #include "gui/framework/ImGui/widgets/ImGuiMathWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiResourcesInspectorWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiAnimationWidget.h"
+#include "gui/framework/ImGui/widgets/ImGuiAssetBrowserWidget.h"
 
 void EditorLayer::renderGuizmo()
 {
@@ -53,25 +54,26 @@ bool EditorLayer::init()
 	guiController.addWidget<ImGuiResourceInspectorWidget>();
 	guiController.addWidget<ImGuiConsoleLogWidget>();
 	guiController.addWidget<ImGuiAnimationWidget>();
+	guiController.addWidget<ImGuiAssetBrowserWidget>();
 	guiController.addWidget<ImGuiMenuWidget>(guiController.getWidgets());
 
 	
-	eventManager.subscribe(EventType::MouseMoved, [&](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::MouseMoved, [&](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 
 		if (guiController.isGuizmoFocus()) {
 			mouseEvent.Handled = true;	// block mouse event from other layers
 		}
-	});
+	}));
 
-	eventManager.subscribe(EventType::MouseScrolled, [&](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::MouseScrolled, [&](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
 		if (guiController.isGuizmoFocus()) {
 			mouseEvent.Handled = true;	// block mouse event from other layers
 		}
-	});
+	}));
 
-	keyEventID = eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {
+	keyEventSubscription = eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (guiController.isGuizmoFocus() || guiController.isEditorFocus()) {
 			handleKeyPressed(keyPressedEvent.keyCode);
@@ -111,7 +113,7 @@ void EditorLayer::onDetach()
 {
 }
 
-void EditorLayer::onUpdate()
+void EditorLayer::onUpdate(const FrameTime& frameTime)
 {
     if(EngineState::isStopped()) {
         SceneManager::cameraController = editorCamera.get();
@@ -142,6 +144,6 @@ void EditorLayer::handleKeyPressed(int keycode)
 			}
 			break;
 		}
-		case KEY_G:	eventManager.unsubscribe(EventType::KeyPressed, keyEventID); break;
+		case KEY_G:	keyEventSubscription.reset(); break;
 	}
 }

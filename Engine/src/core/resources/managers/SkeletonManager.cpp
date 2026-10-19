@@ -36,7 +36,7 @@ std::vector<uint32_t> SkeletonManager::listIDs() const
     return list;
 }
 
-void SkeletonManager::onUpdate()
+void SkeletonManager::onUpdate(const FrameTime& frameTime)
 {
     
 }

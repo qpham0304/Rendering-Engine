@@ -35,13 +35,6 @@ layout(set = 0, binding = 2, std430) readonly buffer PreviousModels {
 } prevSsbo;
 
 
-layout(buffer_reference, scalar) buffer BoneModelBuffer {
-    mat4 boneMatrices[];
-};
-
-layout(buffer_reference, scalar) buffer BoneMatrixArrayTable {
-    BoneModelBuffer ptrs[];
-};
 
 layout(location = 0) out vec3 outNormal;
 layout(location = 1) out vec2 outTexCoord;

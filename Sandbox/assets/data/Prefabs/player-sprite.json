@@ -25,7 +25,7 @@
         "bodyType": "Cube"
     },
     "ScriptComponent": {
-      "path": "../../assets/scripts/Player.lua"
+      "path": "../../../assets/scripts/Player.lua"
     },
     "ModelComponent": { "path": "$prim$Quad" }
   }

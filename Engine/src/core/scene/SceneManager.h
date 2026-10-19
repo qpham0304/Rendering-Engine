@@ -45,7 +45,7 @@ private:
 
 	bool init(WindowConfig config) override;
 	bool onClose() override;
-	void onUpdate() override;
+	void onUpdate(const FrameTime& frameTime) override;
 	virtual void destroy(uint32_t id) override {};
 
 private:

@@ -12,7 +12,8 @@ public:
     virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
-    virtual void onUpdate() override;
+    virtual void onFixedUpdate(float fixedDeltaTime) override;
+    virtual void onUpdate(const FrameTime& frameTime) override;
 
 	virtual uint32_t createMeshBody(uint32_t entityID, const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, uint32_t colliderType) override;
 	virtual uint32_t createBoxBody(uint32_t entityID, const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, uint32_t colliderType) override;
@@ -22,6 +23,8 @@ public:
 	
 	virtual void addForce(uint32_t id, const glm::vec3& force) override;
 	virtual uint32_t rayCastClosest(const glm::vec2& coordsNDC) override;
+	virtual std::vector<glm::vec3> getColliderTriangles(uint32_t id) override;
+	virtual glm::mat4 getColliderTransform(uint32_t id) override;
 	virtual void setBullet(uint32_t id, bool flag) override;
 	virtual bool isBullet(uint32_t id) override;
 	virtual void enableSleep(uint32_t id, bool flag) override;
@@ -33,9 +36,13 @@ public:
 	virtual void disable(uint32_t id) override;
 	virtual void enable(uint32_t id) override;
 	virtual bool isEnabled(uint32_t id) override;
-	// virtual void setMotionLocks(uint32_t id, b3MotionLocks locks) override;
-	// virtual void getMotionLocks(uint32_t id) override;
 	virtual void addImpulse(uint32_t id, const glm::vec3& impulse) override;
+	virtual void setLinearVelocity(uint32_t id, const glm::vec3& velocity) override;
+	virtual glm::vec3 getLinearVelocity(uint32_t id) override;
+	virtual void setAngularVelocity(uint32_t id, const glm::vec3& velocity) override;
+	virtual glm::vec3 getAngularVelocity(uint32_t id) override;
+	virtual void setMotionLocks(uint32_t id, const MotionLocks& locks) override;
+	virtual MotionLocks getMotionLocks(uint32_t id) override;
 
 
 private:

@@ -112,7 +112,7 @@ uint32_t MeshManager::loadMesh(Mesh& mesh)
     return _assignID();
 }
 
-void MeshManager::onUpdate()
+void MeshManager::onUpdate(const FrameTime& frameTime)
 {
     for(auto& id: meshesTobeDestroyed) {
         MeshData meshData = m_meshesData[id];
@@ -150,4 +150,29 @@ void MeshManager::bindMesh(uint32_t id)
     catch (const std::exception& e) {
         m_logger->error("Failed to bind mesh ID {}: {}", id, e.what());
     }
+}
+
+Mesh MeshManager::combineMeshes(const std::vector<uint32_t>& meshIDs) const
+{
+    Mesh combined;
+    for (uint32_t id : meshIDs) {
+        Mesh* mesh = getMesh(id);
+        if (!mesh) {
+            continue;
+        }
+
+        uint32_t baseVertex = static_cast<uint32_t>(combined.vertices.size());
+        combined.vertices.insert(combined.vertices.end(), mesh->vertices.begin(), mesh->vertices.end());
+
+        if (mesh->indices.empty()) {
+            for (uint32_t i = 0; i < mesh->vertices.size(); i++) {
+                combined.indices.push_back(baseVertex + i);
+            }
+        } else {
+            for (uint32_t index : mesh->indices) {
+                combined.indices.push_back(baseVertex + index);
+            }
+        }
+    }
+    return combined;
 }

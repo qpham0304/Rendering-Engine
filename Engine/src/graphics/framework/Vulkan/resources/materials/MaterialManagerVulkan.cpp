@@ -59,7 +59,7 @@ bool MaterialManagerVulkan::init(WindowConfig config)
     return true;
 }
 
-void MaterialManagerVulkan::onUpdate()
+void MaterialManagerVulkan::onUpdate(const FrameTime& frameTime)
 {
 	//TODO: conditional update would be better in case of thousands materials
 	_buildMaterialCache();

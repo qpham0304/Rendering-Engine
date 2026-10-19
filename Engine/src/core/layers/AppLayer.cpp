@@ -90,7 +90,7 @@ void AppLayer::onAttach(LayerManager* manager)
 	);
 	skybox.reset(new SkyboxRenderer());
 	
-	EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [this](Event& event) {
+	m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [this](Event& event) {
 		ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
 		if (!e.entity.hasComponent<ModelComponent>()) {
 			e.entity.addComponent<ModelComponent>();
@@ -107,27 +107,27 @@ void AppLayer::onAttach(LayerManager* manager)
 			ImGui::OpenPopup("Failed to load file, please check the format");
 			component.reset();
 		}
-	});
+	}));
 
 	EventManager& eventManager = EventManager::getInstance();
-	eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::MouseScrolled, [this](Event& event) {
 		MouseScrollEvent& mouseEvent = static_cast<MouseScrollEvent&>(event);
 		if (isActive) {
 			camera->scroll_callback(mouseEvent.m_x, mouseEvent.m_y);
 		}
-	});
+	}));
 
-	eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::MouseMoved, [this](Event& event) {
 		MouseMoveEvent& mouseEvent = static_cast<MouseMoveEvent&>(event);
 		if (isActive) {
 			camera->processMouse();
 		}
-	});
+	}));
 
-	eventManager.subscribe(EventType::WindowResize, [this](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::WindowResize, [this](Event& event) {
 		WindowResizeEvent& windowResizeEvent = static_cast<WindowResizeEvent&>(event);
 		camera->updateViewResize(windowResizeEvent.m_width, windowResizeEvent.m_height);
-	});
+	}));
 }
 
 void AppLayer::onDetach()
@@ -135,7 +135,7 @@ void AppLayer::onDetach()
 	SceneManager::cameraController = nullptr;
 }
 
-void AppLayer::onUpdate()
+void AppLayer::onUpdate(const FrameTime& frameTime)
 {
 	camera->onUpdate();
 }

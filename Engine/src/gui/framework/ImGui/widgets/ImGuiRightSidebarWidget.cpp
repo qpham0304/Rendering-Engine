@@ -81,7 +81,7 @@ void ImGuiRightSidebarWidget::errorModal(const char* message) {
     }
 }
 
-void ImGuiRightSidebarWidget::textInput(std::string *text, std::string message)
+void ImGuiRightSidebarWidget::textInput(std::string* text, std::string message)
 {
     static std::string buffer;
         
@@ -457,7 +457,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
 
         if (ImGui::Selectable("Sprite")) {
             entity.addComponent<SpriteComponent>();
-            entity.onSpriteComponentAdded();
+            Entity::_onSpriteComponentAdded()(entity);
         }
 
         if (ImGui::Selectable("Camera")) { 
@@ -481,11 +481,11 @@ void ImGuiRightSidebarWidget::_componentsControl()
             }
             if (ImGui::Selectable("PlayerController")) { 
                 entity.addComponent<ScriptComponent>("assets/scripts/Player.lua");
-                entity.onScriptComponentAdded();
+                Entity::_onScriptComponentAdded()(entity);
             }
             if (ImGui::Selectable("CameraController")) { 
                 entity.addComponent<ScriptComponent>("assets/scripts/Camera.lua");
-                entity.onScriptComponentAdded();
+                Entity::_onScriptComponentAdded()(entity);
             }
             ImGui::EndMenu();
         }
@@ -498,12 +498,12 @@ void ImGuiRightSidebarWidget::_componentsControl()
             TransformComponent& transform = entity.getComponent<TransformComponent>();
             ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
             Model* model = modelManager->getModel(modelComponent.modelID);
-            Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+            auto combinedMesh = [&]() { return meshManager->combineMeshes(model->meshIDs); }; 
 
             if (ImGui::BeginMenu("Static Body")) { 
                 if (ImGui::Selectable("Mesh collider")) { 
                     uint32_t type = static_cast<uint32_t>(ColliderType::Static);
-                    uint32_t bodyID = physicsManager->createMeshBody(entity, *mesh, transform.translateVec, transform.scaleVec, type);
+                    uint32_t bodyID = physicsManager->createMeshBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, type);
                     entity.addComponent<ColliderComponent>(bodyID, type);
                     // entity.onColliderComponentAdded();
                 }
@@ -512,7 +512,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
             
             if (ImGui::BeginMenu("Kinematic Body")) { 
                 uint32_t type = static_cast<uint32_t>(ColliderType::Kinematic);
-                // uint32_t bodyID = physicsManager->createKineticBody(entity, *mesh, transform.translateVec, transform.scaleVec, type);
+                // uint32_t bodyID = physicsManager->createKineticBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, type);
                 // entity.addComponent<ColliderComponent>(bodyID, type);
                 // entity.onColliderComponentAdded();
                 ImGui::EndMenu();
@@ -521,12 +521,12 @@ void ImGuiRightSidebarWidget::_componentsControl()
             if (ImGui::BeginMenu("Dynamic Body")) { 
                 uint32_t type = static_cast<uint32_t>(ColliderType::Dynamic);
                 if (ImGui::Selectable("Box collider")) {
-                    uint32_t bodyID = physicsManager->createBoxBody(entity, *mesh, transform.translateVec, transform.scaleVec, type);
+                    uint32_t bodyID = physicsManager->createBoxBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, type);
                     entity.addComponent<ColliderComponent>(bodyID, type);
                     // entity.onColliderComponentAdded();
                 }
                 if (ImGui::Selectable("Sphere collider")) {
-                    uint32_t bodyID = physicsManager->createSphereBody(entity, *mesh, transform.translateVec, transform.scaleVec, 0.5f, type);
+                    uint32_t bodyID = physicsManager->createSphereBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, 0.5f, type);
                     entity.addComponent<ColliderComponent>(bodyID, type);
                     // entity.onColliderComponentAdded();
                 }

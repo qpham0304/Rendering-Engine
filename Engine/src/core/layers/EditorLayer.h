@@ -20,7 +20,7 @@ private:
 	bool editorActive = false;
 	bool flipUV = true;
 	bool faceCamera = false;
-	uint32_t keyEventID;
+	EventSubscription keyEventSubscription;
 
 	void mockThreadTasks();
 	void renderGuizmo();
@@ -32,7 +32,7 @@ public:
 	bool init() override;
 	void onAttach(LayerManager* manager) override;
 	void onDetach() override;
-	void onUpdate() override;
+	void onUpdate(const FrameTime& frameTime) override;
 	void onGuiUpdate() override;
 	void onEvent(Event& event) override;
 	void handleKeyPressed(int keycode);

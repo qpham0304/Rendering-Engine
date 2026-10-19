@@ -20,6 +20,16 @@ struct MassData {
 	glm::mat3 inertia;		// The inertia tensor about the shape center of mass.
 };
 
+// movement axis lock
+struct MotionLocks {
+	bool linearX { false };
+	bool linearY { false };
+	bool linearZ { false };
+	bool angularX { false };
+	bool angularY { false };
+	bool angularZ { false };
+};
+
 class MYGRAPHICSENGINE_EXPORT PhysicsManager : public Manager
 {
 public:
@@ -30,7 +40,8 @@ public:
     virtual bool onClose() = 0;
 	virtual void destroy(uint32_t id) = 0;
 	virtual std::vector<uint32_t> listIDs() const = 0;
-    virtual void onUpdate() = 0;
+    virtual void onFixedUpdate(float fixedDeltaTime) override = 0;
+    virtual void onUpdate(const FrameTime& frameTime) override = 0;
 
 	virtual uint32_t createMeshBody(uint32_t entityID, const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, uint32_t colliderType) = 0;
 	virtual uint32_t createBoxBody(uint32_t entityID, const Mesh& mesh, const glm::vec3& pos, const glm::vec3& scale, uint32_t colliderType) = 0;
@@ -40,6 +51,8 @@ public:
 	
 	virtual void addForce(uint32_t id, const glm::vec3& force) = 0;
 	virtual uint32_t rayCastClosest(const glm::vec2& coordsNDC) = 0;
+	virtual std::vector<glm::vec3> getColliderTriangles(uint32_t id) = 0;	// body space triangle list of the collider shape
+	virtual glm::mat4 getColliderTransform(uint32_t id) = 0;				// body to world, pairs with getColliderTriangles
 	virtual void setBullet(uint32_t id, bool flag) = 0;
 	virtual bool isBullet(uint32_t id) = 0;
 	virtual void enableSleep(uint32_t id, bool flag) = 0;
@@ -51,26 +64,13 @@ public:
 	virtual void disable(uint32_t id) = 0;
 	virtual void enable(uint32_t id) = 0;
 	virtual bool isEnabled(uint32_t id) = 0;
-	// virtual void setAngularVelocity(uint32_t id, const glm::vec3& force) = 0;
-	// virtual void setLinearVelocity(uint32_t id, const glm::vec3& force) = 0;
 	virtual void addImpulse(uint32_t id, const glm::vec3& impulse) = 0;
-
-
-
-	// virtual void setMotionLocks(uint32_t id, b3MotionLocks locks) = 0;
-	// virtual void getMotionLocks(uint32_t) = 0;
-
-		// b3Body_SetBullet(myBodyId, true);
-		// bool isBullet = b3Body_IsBullet(myBodyId);
-		// b3Body_EnableSleep(myBodyId, false);
-		// bool isSleepEnabled = b3Body_IsSleepEnabled(myBodyId);
-		// b3Body_SetAwake(myBodyId, true);
-		// bool isAwake = b3Body_IsAwake(myBodyId);
-		// b3Body_Disable(myBodyId);
-		// b3Body_Enable(myBodyId);
-		// bool isEnabled = b3Body_IsEnabled(myBodyId);
-		// b3Body_SetMotionLocks(myBodyId, locks);
-		// b3MotionLocks locks = b3Body_GetMotionLocks(myBodyId);
+	virtual void setLinearVelocity(uint32_t id, const glm::vec3& velocity) = 0;
+	virtual glm::vec3 getLinearVelocity(uint32_t id) = 0;
+	virtual void setAngularVelocity(uint32_t id, const glm::vec3& velocity) = 0;	// radians per second
+	virtual glm::vec3 getAngularVelocity(uint32_t id) = 0;
+	virtual void setMotionLocks(uint32_t id, const MotionLocks& locks) = 0;
+	virtual MotionLocks getMotionLocks(uint32_t id) = 0;
 
 protected:
 

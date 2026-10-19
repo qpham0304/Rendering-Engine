@@ -35,7 +35,7 @@ public:
     virtual bool onClose() override;
 	virtual void destroy(uint32_t id) override;
 	virtual std::vector<uint32_t> listIDs() const override;
-    virtual void onUpdate() override;
+    virtual void onUpdate(const FrameTime& frameTime) override;
     virtual uint32_t addSkeleton(std::string_view name);
     std::shared_ptr<SkeletonAsset> getSkeleton(uint32_t id) const;
 

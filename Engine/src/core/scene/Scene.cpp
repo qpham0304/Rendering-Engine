@@ -21,7 +21,7 @@ Scene::Scene(std::string name)
 		m_logger(ServiceLocator::GetService<Logger>("Engine_LoggerSPD"))
 {
 	EventManager& eventManager = EventManager::getInstance();
-	eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {
+	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		int keyCode = keyPressedEvent.keyCode;
 		
@@ -51,7 +51,7 @@ Scene::Scene(std::string name)
 				controlPressed = false;
 			}
 		}
-	});
+	}));
 
 	// entities.reserve(1000);
 }
@@ -205,19 +205,7 @@ bool Scene::saveScene(std::string_view filePath)
     std::filesystem::create_directories(path.parent_path());
     processing = true;
     nlohmann::json sceneJson;
-
-    sceneJson["scene_name"] = sceneName;
-    
-    for(auto& [id, entity] : entities) {
-        bool hasParent = false;
-        if(entity.hasComponent<RelationshipComponent>()) {
-            hasParent = entity.getComponent<RelationshipComponent>().parent != entt::null;
-        }
-
-        if (!hasParent) {
-            sceneJson["entities"].push_back(m_serializer.saveEntity(entity));
-        }
-    }
+    serialize(sceneJson);
 
     // Use the filesystem path directly
     std::ofstream out(path, std::ios::out | std::ios::trunc);
@@ -248,10 +236,10 @@ bool Scene::saveScene(std::string_view filePath)
 bool Scene::loadScene(std::string_view filePath) 
 {
 	processing = true;
-    nlohmann::json sceneJson = m_serializer.loadJson(filePath.data());
-
-	if(!sceneJson.contains("scene_name")) {
+    nlohmann::json sceneJson;
+	if(!loadJson(std::string(filePath), m_logger, sceneJson) || !sceneJson.contains("scene_name")) {
 		m_logger.error("missing scene name");
+		processing = false;
 		return false;
 	}
 	
@@ -263,16 +251,24 @@ bool Scene::loadScene(std::string_view filePath)
 	// 	sceneName = newName;
 	// }
 
-	if(sceneJson.contains("entities")){
-		for (const auto& entityData : sceneJson["entities"]) {
-			m_serializer.loadEntity(entityData, registry, entities, entt::null);
-		}
-
-    	m_logger.info("scene loaded with {} entities", entities.size());
-	}
+	deserialize(sceneJson);
 
     processing = false;
     return true;
+}
+
+void Scene::serialize(nlohmann::json& j) const
+{
+	j["scene_name"] = sceneName;
+	m_serializer.serialize(j);
+}
+
+void Scene::deserialize(const nlohmann::json& j)
+{
+	if(j.contains("entities")) {
+		m_serializer.deserialize(j["entities"]);
+		m_logger.info("scene loaded with {} entities", entities.size());
+	}
 }
 
 bool Scene::unloadScene() 

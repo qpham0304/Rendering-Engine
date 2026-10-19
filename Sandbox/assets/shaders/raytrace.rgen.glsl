@@ -93,7 +93,7 @@ layout(buffer_reference, scalar) buffer ObjectsBuffer { Object objects[]; };
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
 layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 layout(buffer_reference, scalar) buffer MaterialsBuffer { Material m[]; };
-layout(buffer_reference, scalar) readonly buffer MatIndicesBuffer { uint i[]; };
+layout(buffer_reference, scalar) readonly buffer MaterialIndicesBuffer { uint i[]; };
 
 layout(push_constant) uniform PushConstant {
     ObjectsBuffer objRef;
@@ -148,7 +148,7 @@ void getHitObjectData(out Material mat, out vec3 nrm) {
     Vertices vertices = Vertices(obj.vertexAddress);
     Indices indices = Indices(obj.indexAddress);
     MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
-    MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndiciesRef);
+    MaterialIndicesBuffer matIndices = MaterialIndicesBuffer(obj.materialIndiciesRef);
   
     // Use gl_PrimitiveID to access the triangle's vertices and material
     uint i0 = indices.i[3 * payload.primitiveIndex + 0];        // flatten triangle hit indices

@@ -1,4 +1,19 @@
 #include "EventManager.h"
+#include <algorithm>
+
+namespace {
+	bool s_eventManagerAlive = false;
+}
+
+EventManager::EventManager() : Manager("EventManager")
+{
+	s_eventManagerAlive = true;
+}
+
+EventManager::~EventManager()
+{
+	s_eventManagerAlive = false;
+}
 
 EventManager& EventManager::getInstance()
 {
@@ -6,30 +21,57 @@ EventManager& EventManager::getInstance()
 	return instance;
 }
 
-uint32_t EventManager::subscribe(EventType eventType, EventCallback callback)
+bool EventManager::isAlive()
 {
-	uint32_t id = callbackID.fetch_add(1, std::memory_order_relaxed);
-	auto& callbackList = callbacks[eventType];
-
-	callbackList.emplace_back(id, std::move(callback));
-	return id;
+	return s_eventManagerAlive;
 }
 
-//TODO: check what happen if an event is removed mid iteration? 
-// also what about synchronization?
-void EventManager::unsubscribe(EventType eventType, uint32_t cbID)
+EventSubscription EventManager::subscribe(EventType eventType, EventCallback callback)
 {
-	auto& vector = callbacks[eventType];
-	int index = 0;
-	for (auto& [id, callback] : vector) {
-		if (id == cbID) {
-			vector.erase(vector.begin() + index);
+	uint32_t id = callbackID.fetch_add(1, std::memory_order_relaxed);
+	Listener listener { id, std::move(callback) };
+
+	if (publishDepth > 0) {
+		pendingListeners.emplace_back(eventType, std::move(listener));	// joins after the current publish
+	}
+	else {
+		callbacks[eventType].push_back(std::move(listener));
+	}
+	return EventSubscription(eventType, id);
+}
+
+void EventManager::unsubscribe(EventType eventType, uint32_t id)
+{
+	for (auto& [type, listener] : pendingListeners) {
+		if (listener.id == id) {
+			listener.removed = true;
+			hasRemovedListeners = true;
+			return;
 		}
-		index++;
 	}
 
-	if (vector.empty()) {
-		callbacks.erase(eventType);
+	auto it = callbacks.find(eventType);
+	if (it == callbacks.end()) {
+		return;
+	}
+
+	auto& listeners = it->second;
+	auto listenerIt = std::find_if(listeners.begin(), listeners.end(), [id](const Listener& listener) {
+		return listener.id == id;
+	});
+	if (listenerIt == listeners.end()) {
+		return;
+	}
+
+	if (publishDepth > 0) {
+		listenerIt->removed = true;
+		hasRemovedListeners = true;
+		return;
+	}
+
+	listeners.erase(listenerIt);
+	if (listeners.empty()) {
+		callbacks.erase(it);
 	}
 }
 
@@ -40,18 +82,43 @@ void EventManager::publish(Event& event)
 		return;
 	}
 
-	for (const auto& [id, callback] : it->second | std::views::reverse) {
-        callback(event);
-        if (event.Handled) {
-            break;
-        }
-    }
+	publishDepth++;
+
+	// while publishDepth > 0 the vector is never resized, changes wait in _flushPendingChanges
+	for (Listener& listener : it->second | std::views::reverse) {
+		if (listener.removed) {
+			continue;
+		}
+		listener.callback(event);
+		if (event.Handled) {
+			break;
+		}
+	}
+
+	publishDepth--;
+	if (publishDepth == 0) {
+		_flushPendingChanges();
+	}
 }
 
-void EventManager::publishAsync(EventListener& eventListener)
+void EventManager::_flushPendingChanges()
 {
-	std::scoped_lock<std::mutex> lock(queueMutex);
-	eventListener.onEvent();
+	for (auto& [eventType, listener] : pendingListeners) {
+		if (!listener.removed) {
+			callbacks[eventType].push_back(std::move(listener));
+		}
+	}
+	pendingListeners.clear();
+
+	if (!hasRemovedListeners) {
+		return;
+	}
+	hasRemovedListeners = false;
+
+	for (auto it = callbacks.begin(); it != callbacks.end();) {
+		std::erase_if(it->second, [](const Listener& listener) { return listener.removed; });
+		it = it->second.empty() ? callbacks.erase(it) : std::next(it);
+	}
 }
 
 void EventManager::cleanUpThread()
@@ -78,15 +145,6 @@ void EventManager::queue(AsyncEvent event, AsyncCallback callback)
 	runningTasks.fetch_add(1, std::memory_order_relaxed);
 }
 
-// void EventManager::subscribe(const std::string& event, EventListener& listener) {
-// 	if (listeners.find(event) != listeners.end()) {
-// 		listeners[event].emplace_back(std::move(listener));
-// 	}
-// 	else {
-// 		listeners[event] = { std::move(listener) };
-// 	}
-// }
-
 bool EventManager::init(WindowConfig config)
 {
 	Service::init(config);
@@ -94,12 +152,10 @@ bool EventManager::init(WindowConfig config)
 	return true;
 }
 
-
-
 //TODO: use semaphore instead for running tasks instead of manual primitive
 //instead of joining threads per completed task, just keep them alive then clean all up on close
 //tldr: just use async instead
-void EventManager::onUpdate()
+void EventManager::onUpdate(const FrameTime& frameTime)
 {
 	Timer timer("thread queue", true);
 

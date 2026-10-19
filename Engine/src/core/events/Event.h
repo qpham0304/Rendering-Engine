@@ -1,7 +1,9 @@
 #pragma once
 
 #include <string>
-#include "core/scene/Serializer.h"
+#include "core/features/Serializable.h"
+#include "core/entities/Entity.h"
+#include "core/components/MComponent.h"
 
 enum class EventType
 {
@@ -38,9 +40,9 @@ public:
     EventType GetEventType() const override { return EventType::KeyPressed; }
     const char* GetName() const override { return "KeyPressedEvent"; }
     
-    REFLECT_TYPE(KeyPressedEvent,
-        visitor("keyCode", &KeyPressedEvent::keyCode),
-        visitor("isRepeat", &KeyPressedEvent::isRepeat)
+    DEFINE_TYPE(KeyPressedEvent,
+        member("keyCode", &KeyPressedEvent::keyCode),
+        member("isRepeat", &KeyPressedEvent::isRepeat)
     );
 };
 
@@ -55,9 +57,9 @@ public:
 	EventType GetEventType() const override { return EventType::MouseMoved; }
 	const char* GetName() const override { return "MouseMoveEvent"; };
 	
-	REFLECT_TYPE(MouseMoveEvent,
-        visitor("m_x", &MouseMoveEvent::m_x),
-        visitor("m_y", &MouseMoveEvent::m_y)
+	DEFINE_TYPE(MouseMoveEvent,
+        member("m_x", &MouseMoveEvent::m_x),
+        member("m_y", &MouseMoveEvent::m_y)
     );
 };
 
@@ -72,9 +74,9 @@ public:
 	EventType GetEventType() const override { return EventType::MouseScrolled; }
 	const char* GetName() const override { return "MouseScrollEvent"; };
 	
-	REFLECT_TYPE(MouseScrollEvent,
-        visitor("m_x", &MouseScrollEvent::m_x),
-        visitor("m_y", &MouseScrollEvent::m_y)
+	DEFINE_TYPE(MouseScrollEvent,
+        member("m_x", &MouseScrollEvent::m_x),
+        member("m_y", &MouseScrollEvent::m_y)
     );
 };
 
@@ -88,8 +90,8 @@ public:
 	EventType GetEventType() const override { return EventType::KeyCombined; }
 	const char* GetName() const override { return "KeyCombinedEvent"; };
 	
-	REFLECT_TYPE(KeyCombinedEvent,
-        visitor("keyCodes", &KeyCombinedEvent::keyCodes)
+	DEFINE_TYPE(KeyCombinedEvent,
+        member("keyCodes", &KeyCombinedEvent::keyCodes)
     );
 };
 
@@ -230,7 +232,7 @@ public:
 	EventType GetEventType() const override { return EventType::CameraUpdateEvent; }
 	const char* GetName() const override { return "CameraUpdateEvent"; };
 
-	REFLECT_TYPE(CameraUpdateEvent,
-		visitor("entity", &CameraUpdateEvent::entity);
+	DEFINE_TYPE(CameraUpdateEvent,
+		member("entity", &CameraUpdateEvent::entity)
 	);
 };

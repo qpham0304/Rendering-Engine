@@ -21,7 +21,7 @@ public:
 	virtual bool init() override;
 	void onAttach(LayerManager* manager) override;
 	void onDetach() override;
-	void onUpdate() override;
+	void onUpdate(const FrameTime& frameTime) override;
 	void onGuiUpdate() override;
 	void onEvent(Event& event) override;
 

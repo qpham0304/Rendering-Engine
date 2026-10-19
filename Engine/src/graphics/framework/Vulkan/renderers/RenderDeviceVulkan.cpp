@@ -35,7 +35,7 @@ bool RenderDeviceVulkan::onClose()
 	return true;
 }
 
-void RenderDeviceVulkan::onUpdate()
+void RenderDeviceVulkan::onUpdate(const FrameTime& frameTime)
 {
 	
 }

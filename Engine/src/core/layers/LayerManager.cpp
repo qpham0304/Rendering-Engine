@@ -40,23 +40,6 @@ const Layer& LayerManager::operator[](const int index) const
 	return *m_Layers[index];
 }
 
-bool LayerManager::addFrameBuffer(const std::string& name, FrameBuffer& FBO)
-{
-	if (frameBuffers.find(name) == frameBuffers.end()) {
-		frameBuffers[name] = std::make_shared<FrameBuffer>(FBO);
-		return true;
-	}
-	return false;
-}
-
-std::shared_ptr<FrameBuffer> LayerManager::getFrameBuffer(const std::string name)
-{
-	if (frameBuffers.find(name) != frameBuffers.end()) {
-		return frameBuffers[name];
-	}
-	return nullptr;
-}
-
 bool LayerManager::addLayer(Layer* layer)
 {
 	layer->onAttach(this);
@@ -142,13 +125,23 @@ std::vector<uint32_t> LayerManager::listIDs() const
 }
 
 
-void LayerManager::onUpdate()
+void LayerManager::onFixedUpdate(float fixedDeltaTime)
 {
 	for (const auto& layer : m_Layers) {
 		if (!layer->m_Enabled) {
 			continue;
 		}
-		layer->onUpdate();
+		layer->onFixedUpdate(fixedDeltaTime);
+	}
+}
+
+void LayerManager::onUpdate(const FrameTime& frameTime)
+{
+	for (const auto& layer : m_Layers) {
+		if (!layer->m_Enabled) {
+			continue;
+		}
+		layer->onUpdate(frameTime);
 	}
 }
 

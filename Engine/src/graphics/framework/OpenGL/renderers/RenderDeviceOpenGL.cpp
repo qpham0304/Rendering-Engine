@@ -23,7 +23,7 @@ bool RenderDeviceOpenGL::onClose()
 	throw std::runtime_error("RenderDeviceOpenGL beginFrame not implemented");
 }
 
-void RenderDeviceOpenGL::onUpdate()
+void RenderDeviceOpenGL::onUpdate(const FrameTime& frameTime)
 {
 	throw std::runtime_error("RenderDeviceOpenGL beginFrame not implemented");
 }

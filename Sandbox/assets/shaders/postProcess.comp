@@ -70,7 +70,7 @@ layout(buffer_reference, scalar) buffer ObjectsBuffer{ Object objects[]; };
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
 layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 layout(buffer_reference, scalar) buffer MaterialsBuffer{ Material m[]; };
-layout(buffer_reference, scalar) readonly buffer MatIndicesBuffer { uint i[]; };
+layout(buffer_reference, scalar) readonly buffer MaterialIndicesBuffer { uint i[]; };
 
 layout(push_constant) uniform PushConstant {
     ObjectsBuffer objRef;
@@ -171,7 +171,7 @@ void main() {
             Vertices vertices = Vertices(obj.vertexAddress);
             Indices indices = Indices(obj.indexAddress);
             MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
-            MatIndicesBuffer matIndices = MatIndicesBuffer(obj.materialIndiciesRef);
+            MaterialIndicesBuffer matIndices = MaterialIndicesBuffer(obj.materialIndiciesRef);
 
             uint i0 = indices.i[3 * primitiveID + 0];
             uint i1 = indices.i[3 * primitiveID + 1];

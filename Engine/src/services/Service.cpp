@@ -24,11 +24,11 @@ bool Service::init(WindowConfig config)
 	m_logger = make_unique<LoggerSpd>(m_serviceName);
 	m_logger->setLevel(LogLevel::Warn);
 	
-	EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
+	m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
 		WindowResizeEvent& resizeEvent = static_cast<WindowResizeEvent&>(event);
 		m_config.width = resizeEvent.m_width;
 		m_config.height = resizeEvent.m_height;
-	});
+	}));
 	
 	return true;
 }
@@ -38,7 +38,12 @@ bool Service::onClose()
     return true;
 }
 
-void Service::onUpdate()
+void Service::onFixedUpdate(float fixedDeltaTime)
+{
+
+}
+
+void Service::onUpdate(const FrameTime& frameTime)
 {
 
 }

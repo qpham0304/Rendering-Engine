@@ -21,11 +21,11 @@
 SandBoxLayer::SandBoxLayer(const std::string& name)
     : Layer(name)
 {
-    EventManager::getInstance().subscribe(EventType::CameraUpdateEvent, [this](Event& event) {
+    m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::CameraUpdateEvent, [this](Event& event) {
         auto& cameraUpdateEvent = static_cast<CameraUpdateEvent&>(event);
         auto& cameraComponent = cameraUpdateEvent.entity.getComponent<CameraComponent>();
         camera->setCamera(&cameraComponent);
-    });
+    }));
 }
 
 bool SandBoxLayer::init()
@@ -54,7 +54,7 @@ bool SandBoxLayer::init()
     // createScriptableCamera();
     // createLights();
 	createLightProbes();
-    // createParticle();
+    createParticle();
 
     // rendererManager->addRenderer();
 
@@ -71,7 +71,7 @@ void SandBoxLayer::onDetach()
 
 }
 
-void SandBoxLayer::onUpdate()
+void SandBoxLayer::onUpdate(const FrameTime& frameTime)
 {
     if(EngineState::isPlaying()) {
         // SceneManager::cameraController = camera.get();
@@ -290,7 +290,7 @@ void SandBoxLayer::createParticle()
     auto& spriteComponent = particleEntity.getComponent<SpriteComponent>();
     // spriteComponent.textureID = textureManager->loadTexture("assets/textures/ParticleAtlas.png", 1, false);;
     spriteComponent.textureID = textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false);;
-    particleEntity.onSpriteComponentAdded();
+    Entity::_onSpriteComponentAdded()(particleEntity);
 
     Entity particleEntity2 = activeScene->getEntity(activeScene->addEntity("particleEntity2"));
     particleEntity2.addComponent<ParticleEmitter>();

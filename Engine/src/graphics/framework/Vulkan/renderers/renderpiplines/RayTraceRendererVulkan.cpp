@@ -71,7 +71,7 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
 	auto materialManagerVulkan = static_cast<MaterialManagerVulkan*>(materialManager);
 	materialsAddress = materialManagerVulkan->getMaterialAddress();
 
-    EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [this](Event& event) {
+    m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [this](Event& event) {
         ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
         renderDeviceVulkan->waitIdle();
         // m_rtBuilder.destroy();
@@ -80,21 +80,21 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
         _createDescriptor();
         // _createPipeline();
         _createShaderBindingTable();
-    });
+    }));
 
-    EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
+    m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_2) {
 			clear = !clear;
 		}
-    });
+    }));
 
-    EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
+    m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_L) {
 			explicitPass = !explicitPass;
 		}
-    });
+    }));
 
     ubo.frameCount = 0;
 
