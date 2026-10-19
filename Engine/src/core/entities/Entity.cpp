@@ -50,170 +50,226 @@ entt::registry *Entity::getRegistry()
     return registry;
 }
 
-void Entity::onCameraComponentAdded()
+Entity::HookFunction Entity::_onCameraComponentAdded()
 {
-    TransformComponent& transformComponent = getComponent<TransformComponent>();
-    glm::mat4 view = transformComponent.getModelMatrix();
+    HookFunction function = [](Entity entity)
+    {
+        TransformComponent& transformComponent = entity.getComponent<TransformComponent>();
+        glm::mat4 view = transformComponent.getModelMatrix();
 
-    float width = static_cast<float>(AppWindow::getWidth());
-    float height = static_cast<float>(AppWindow::getHeight());
-    float aspectRatio = width / height;
+        float width = static_cast<float>(AppWindow::getWidth());
+        float height = static_cast<float>(AppWindow::getHeight());
+        float aspectRatio = width / height;
 
-    glm::mat4 projection = glm::ortho(
-        -aspectRatio,		// Left
-        aspectRatio,		// Right
-        -1.0f,				// Bottom
-        1.0f,				// Top
-        -1.0f,				// Near
-        1.0f				// Far
-    );
+        glm::mat4 projection = glm::ortho(
+            -aspectRatio,		// Left
+            aspectRatio,		// Right
+            -1.0f,				// Bottom
+            1.0f,				// Top
+            -1.0f,				// Near
+            1.0f				// Far
+        );
 
-    CameraComponent& cameraComponent = getComponent<CameraComponent>();
-    cameraComponent.viewWidth = width;
-    cameraComponent.viewHeight = height;
-    cameraComponent.projection = projection;
-    cameraComponent.view = view;
-    cameraComponent.orientation = -transformComponent.translateVec;
+        CameraComponent& cameraComponent = entity.getComponent<CameraComponent>();
+        cameraComponent.viewWidth = width;
+        cameraComponent.viewHeight = height;
+        cameraComponent.projection = projection;
+        cameraComponent.view = view;
+        cameraComponent.orientation = -transformComponent.translateVec;
 
-    CameraUpdateEvent cameraUpdateEvent(*this);
-    EventManager::getInstance().publish(cameraUpdateEvent);
+        CameraUpdateEvent cameraUpdateEvent(entity);
+        EventManager::getInstance().publish(cameraUpdateEvent);
+    };
+    return function;
 }
 
-void Entity::onParticleEmitterAdded()
+Entity::HookFunction Entity::_onParticleEmitterAdded()
 {
-    auto particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
-    
-    ParticleEmitter& emitter = getComponent<ParticleEmitter>();
+    HookFunction function = [](Entity entity)
+    {
+        auto particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
+
+        ParticleEmitter& emitter = entity.getComponent<ParticleEmitter>();
+    };
+    return function;
 }
 
-void Entity::onSkinningComponentAdded()
+Entity::HookFunction Entity::_onSkinningComponentAdded()
 {
-    auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
-    auto skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
-    auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+    HookFunction function = [](Entity entity)
+    {
+        auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
+        auto skeletonManager = &ServiceLocator::GetService<SkeletonManager>("SkeletonManager");
+        auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
 
-    SkinningComponent& skinningComponent = getComponent<SkinningComponent>();
+        SkinningComponent& skinningComponent = entity.getComponent<SkinningComponent>();
 
-    if (!hasComponent<ModelComponent>()) {
-        return;
-    }
-    ModelComponent& modelComponent = getComponent<ModelComponent>();
-    Model* model = modelManager->getModel(modelComponent.modelID);
-    if (!model) {
-        return;
-    }
-
-    auto skeleton = skeletonManager->getSkeleton(model->skeletonID);
-    if (!skeleton) {
-        return;
-    }
-    skinningComponent.boneMatricesID = animationManager->addBoneMatrices(skeleton->nodes.size());
-    skinningComponent.animatorID = animationManager->addAnimator(model->skeletonID);
-    skinningComponent.animationPath = model->path;  //For now animation is bound to model load
-    auto animator = animationManager->getAnimator(skinningComponent.animatorID);
-    
-    animator->animationPath = skinningComponent.animationPath;
-
-    if(skinningComponent.initialAnimation == "") {
-        const AnimationData* animationData = animationManager->getAnimationData(skinningComponent.animationPath);
-        if(!animationData) {
+        if (!entity.hasComponent<ModelComponent>()) {
             return;
         }
-        if (!animationData->empty()) {
-            auto it = animationData->begin();
-            animator->animationName = it->first;
-        }
-    } else {
-        animator->animationName = skinningComponent.initialAnimation;
-    }
-}
-
-void Entity::onModelComponentAdded()
-{
-    ModelComponent& modelComponent = getComponent<ModelComponent>();
-    ModelLoadEvent event(modelComponent.path, *this);
-    EventManager::getInstance().publish(event);
-}
-
-void Entity::onSpriteComponentAdded()
-{
-    SpriteComponent& sprite = getComponent<SpriteComponent>();
-    auto textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
-    auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-    auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-    auto materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
-    
-    assert(textureManager && modelManager && meshManager && materialManager && "failed to get texture manager");
-
-    if(!hasComponent<ModelComponent>()) {
-        addComponent<ModelComponent>("$prim$Quad");
-        onModelComponentAdded();
-    }
-    
-    if(!hasComponent<AnimationComponent>()) {
-        addComponent<AnimationComponent>();
-        onAnimationComponentAdded();
-    }
-
-    if(sprite.path != "None") {
-        sprite.textureID = textureManager->loadTexture(sprite.path);
-    }
-
-    if(sprite.textureID != 0) {
-        ModelComponent& modelComponent = getComponent<ModelComponent>();
+        ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
         Model* model = modelManager->getModel(modelComponent.modelID);
-        Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
-        MaterialDesc material = materialManager->getMaterial(mesh->materialID);
-        material.albedoIDs = { sprite.textureID };
-        materialManager->updateMaterial(mesh->materialID, material);
-    }
+        if (!model) {
+            return;
+        }
+
+        auto skeleton = skeletonManager->getSkeleton(model->skeletonID);
+        if (!skeleton) {
+            return;
+        }
+        skinningComponent.boneMatricesID = animationManager->addBoneMatrices(skeleton->nodes.size());
+        skinningComponent.animatorID = animationManager->addAnimator(model->skeletonID);
+        skinningComponent.animationPath = model->path;  //For now animation is bound to model load
+        auto animator = animationManager->getAnimator(skinningComponent.animatorID);
+
+        animator->animationPath = skinningComponent.animationPath;
+
+        if(skinningComponent.initialAnimation == "") {
+            const AnimationData* animationData = animationManager->getAnimationData(skinningComponent.animationPath);
+            if(!animationData) {
+                return;
+            }
+            if (!animationData->empty()) {
+                auto it = animationData->begin();
+                animator->animationName = it->first;
+            }
+        } else {
+            animator->animationName = skinningComponent.initialAnimation;
+        }
+    };
+    return function;
 }
 
-void Entity::onAnimationComponentAdded()
+Entity::HookFunction Entity::_onModelComponentAdded()
 {
-    
+    HookFunction function = [](Entity entity)
+    {
+        ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
+        ModelLoadEvent event(modelComponent.path, entity);
+        EventManager::getInstance().publish(event);
+    };
+    return function;
 }
 
-void Entity::onAnimationStateComponentAdded()
+Entity::HookFunction Entity::_onSpriteComponentAdded()
 {
-    // if (hasComponent<NameComponent>()) {
-    //     printf("animation state name: %s\n", getComponent<NameComponent>().name.c_str());
-    // } else {
-    //     printf("animation state name: [NameComponent not parsed yet]\n");
-    // }
+    HookFunction function = [](Entity entity)
+    {
+        SpriteComponent& sprite = entity.getComponent<SpriteComponent>();
+        auto textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
+        auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+        auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+        auto materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
+
+        assert(textureManager && modelManager && meshManager && materialManager && "failed to get texture manager");
+
+        if(!entity.hasComponent<ModelComponent>()) {
+            entity.addComponent<ModelComponent>("$prim$Quad");
+            _onModelComponentAdded()(entity);
+        }
+
+        if(!entity.hasComponent<AnimationComponent>()) {
+            entity.addComponent<AnimationComponent>();
+            _onAnimationComponentAdded()(entity);
+        }
+
+        if(sprite.path != "None") {
+            sprite.textureID = textureManager->loadTexture(sprite.path);
+        }
+
+        if(sprite.textureID != 0) {
+            ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
+            Model* model = modelManager->getModel(modelComponent.modelID);
+            Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+            MaterialDesc material = materialManager->getMaterial(mesh->materialID);
+            material.albedoIDs = { sprite.textureID };
+            materialManager->updateMaterial(mesh->materialID, material);
+        }
+    };
+    return function;
 }
 
-void Entity::onScriptComponentAdded()
+Entity::HookFunction Entity::_onAnimationComponentAdded()
 {
-    ScriptComponent& scriptComponent = getComponent<ScriptComponent>();
-    auto scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
-    scriptManager->loadScript(*this, scriptComponent.path);
+    HookFunction function = [](Entity entity)
+    {
+
+    };
+    return function;
 }
 
-void Entity::onColliderComponentAdded()
+Entity::HookFunction Entity::_onAnimationStateComponentAdded()
 {
-    auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-    auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-    auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
-    
-    if(!hasComponent<ColliderComponent>()){
-        printf("critical collider not found");
-        return;
-    }
+    HookFunction function = [](Entity entity)
+    {
+        // if (entity.hasComponent<NameComponent>()) {
+        //     printf("animation state name: %s\n", entity.getComponent<NameComponent>().name.c_str());
+        // } else {
+        //     printf("animation state name: [NameComponent not parsed yet]\n");
+        // }
+    };
+    return function;
+}
 
-    if(!hasComponent<ModelComponent>()){
-        printf("critical ModelComponent not found");
-        return;
-    }
+Entity::HookFunction Entity::_onScriptComponentAdded()
+{
+    HookFunction function = [](Entity entity)
+    {
+        ScriptComponent& scriptComponent = entity.getComponent<ScriptComponent>();
+        auto scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
+        scriptManager->loadScript(entity, scriptComponent.path);
+    };
+    return function;
+}
 
-    TransformComponent& transformComponent = getComponent<TransformComponent>();
-    ColliderComponent& colliderComponent = getComponent<ColliderComponent>();
-    
-    ModelComponent& modelComponent = getComponent<ModelComponent>();
-    Model* model = modelManager->getModel(modelComponent.modelID);
-    Mesh combinedMesh = meshManager->combineMeshes(model->meshIDs);
-    Mesh* mesh = &combinedMesh;
+Entity::HookFunction Entity::_onScriptComponentRemoved()
+{
+    HookFunction function = [](Entity entity)
+    {
+        ScriptComponent& scriptComponent = entity.getComponent<ScriptComponent>();
+        scriptComponent.onDestroy();
+    };
+    return function;
+}
 
-    auto shapeID = physicsManager->createBoxBody(*this, *mesh, transformComponent.translateVec, transformComponent.scaleVec, colliderComponent.colliderType);
-    colliderComponent.shapeID = shapeID;
+Entity::HookFunction Entity::_onColliderComponentAdded()
+{
+    HookFunction function = [](Entity entity)
+    {
+        auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+        auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+        auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
+
+        if(!entity.hasComponent<ColliderComponent>()){
+            printf("critical collider not found");
+            return;
+        }
+
+        if(!entity.hasComponent<ModelComponent>()){
+            printf("critical ModelComponent not found");
+            return;
+        }
+
+        TransformComponent& transformComponent = entity.getComponent<TransformComponent>();
+        ColliderComponent& colliderComponent = entity.getComponent<ColliderComponent>();
+
+        ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
+        Model* model = modelManager->getModel(modelComponent.modelID);
+        Mesh combinedMesh = meshManager->combineMeshes(model->meshIDs);
+        Mesh* mesh = &combinedMesh;
+
+        auto shapeID = physicsManager->createBoxBody(entity, *mesh, transformComponent.translateVec, transformComponent.scaleVec, colliderComponent.colliderType);
+        colliderComponent.shapeID = shapeID;
+    };
+    return function;
+}
+
+Entity::HookFunction Entity::_onColliderComponentRemoved()
+{
+    HookFunction function = [](Entity entity)
+    {
+        auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
+        physicsManager->destroy(entity.getComponent<ColliderComponent>().shapeID);
+    };
+    return function;
 }

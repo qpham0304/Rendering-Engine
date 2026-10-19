@@ -81,7 +81,7 @@ void ImGuiRightSidebarWidget::errorModal(const char* message) {
     }
 }
 
-void ImGuiRightSidebarWidget::textInput(std::string *text, std::string message)
+void ImGuiRightSidebarWidget::textInput(std::string* text, std::string message)
 {
     static std::string buffer;
         
@@ -457,7 +457,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
 
         if (ImGui::Selectable("Sprite")) {
             entity.addComponent<SpriteComponent>();
-            entity.onSpriteComponentAdded();
+            Entity::_onSpriteComponentAdded()(entity);
         }
 
         if (ImGui::Selectable("Camera")) { 
@@ -481,11 +481,11 @@ void ImGuiRightSidebarWidget::_componentsControl()
             }
             if (ImGui::Selectable("PlayerController")) { 
                 entity.addComponent<ScriptComponent>("assets/scripts/Player.lua");
-                entity.onScriptComponentAdded();
+                Entity::_onScriptComponentAdded()(entity);
             }
             if (ImGui::Selectable("CameraController")) { 
                 entity.addComponent<ScriptComponent>("assets/scripts/Camera.lua");
-                entity.onScriptComponentAdded();
+                Entity::_onScriptComponentAdded()(entity);
             }
             ImGui::EndMenu();
         }

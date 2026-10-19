@@ -118,9 +118,8 @@ bool ScriptManagerLua::init(WindowConfig config)
     SharedFunctionsLua::logging(m_luaState);
 
     
-    Serializer serializer;
-    auto componentFactory = serializer.getComponentFactory();
-    auto componentDestroyer = serializer.getComponentDestroyer();
+    auto componentFactory = EntitySerializer::getComponentFactory();
+    auto componentDestroyer = EntitySerializer::getComponentDestroyer();
     //TODO: brute force copy to lua table, return direct pointer to avoid copy
     m_luaState.new_usertype<Entity>("Entity",
         "getComponent", [this](Entity& self, std::string_view componentName) -> sol::object {

@@ -3,12 +3,12 @@
 #include "Engine/EngineCoreAPI.h"
 #include <iomanip>
 #include <fstream>
-#include "Serializer.h"
+#include "EntitySerializer.h"
 #include "core/events/EventSubscription.h"
 
 class SceneManager;
 class Logger;
-class MYGRAPHICSENGINE_EXPORT Scene
+class MYGRAPHICSENGINE_EXPORT Scene : public Serializable
 {
 public:
 	bool isEnabled;
@@ -75,6 +75,11 @@ public:
 	bool unloadScene();
 	bool reloadScene();
 
+	virtual void serialize(nlohmann::json& j) const override;
+	virtual void deserialize(const nlohmann::json& j) override;
+
+	const EntitySerializer& getEntitySerializer() const { return m_serializer; }
+
 
 private:
 	friend class SceneManager;
@@ -89,7 +94,7 @@ private:
 	std::vector<Entity> frameNewEntities;
 	std::vector<uint32_t> frameDeletedEntities;
 	Logger& m_logger;
-	Serializer m_serializer;
+	EntitySerializer m_serializer{ registry, entities };
 	std::vector<EventSubscription> m_eventSubscriptions;
 
 	bool controlPressed = false;

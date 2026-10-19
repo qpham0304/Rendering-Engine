@@ -1,7 +1,9 @@
 #pragma once
 
 #include <string>
-#include "core/scene/Serializer.h"
+#include "core/features/Serializable.h"
+#include "core/entities/Entity.h"
+#include "core/components/MComponent.h"
 
 enum class EventType
 {
@@ -39,8 +41,8 @@ public:
     const char* GetName() const override { return "KeyPressedEvent"; }
     
     REFLECT_TYPE(KeyPressedEvent,
-        visitor("keyCode", &KeyPressedEvent::keyCode),
-        visitor("isRepeat", &KeyPressedEvent::isRepeat)
+        member("keyCode", &KeyPressedEvent::keyCode),
+        member("isRepeat", &KeyPressedEvent::isRepeat)
     );
 };
 
@@ -56,8 +58,8 @@ public:
 	const char* GetName() const override { return "MouseMoveEvent"; };
 	
 	REFLECT_TYPE(MouseMoveEvent,
-        visitor("m_x", &MouseMoveEvent::m_x),
-        visitor("m_y", &MouseMoveEvent::m_y)
+        member("m_x", &MouseMoveEvent::m_x),
+        member("m_y", &MouseMoveEvent::m_y)
     );
 };
 
@@ -73,8 +75,8 @@ public:
 	const char* GetName() const override { return "MouseScrollEvent"; };
 	
 	REFLECT_TYPE(MouseScrollEvent,
-        visitor("m_x", &MouseScrollEvent::m_x),
-        visitor("m_y", &MouseScrollEvent::m_y)
+        member("m_x", &MouseScrollEvent::m_x),
+        member("m_y", &MouseScrollEvent::m_y)
     );
 };
 
@@ -89,7 +91,7 @@ public:
 	const char* GetName() const override { return "KeyCombinedEvent"; };
 	
 	REFLECT_TYPE(KeyCombinedEvent,
-        visitor("keyCodes", &KeyCombinedEvent::keyCodes)
+        member("keyCodes", &KeyCombinedEvent::keyCodes)
     );
 };
 
@@ -231,6 +233,6 @@ public:
 	const char* GetName() const override { return "CameraUpdateEvent"; };
 
 	REFLECT_TYPE(CameraUpdateEvent,
-		visitor("entity", &CameraUpdateEvent::entity);
+		member("entity", &CameraUpdateEvent::entity)
 	);
 };

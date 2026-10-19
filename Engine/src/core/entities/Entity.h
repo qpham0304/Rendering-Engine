@@ -2,6 +2,7 @@
 #include "Engine/EngineCoreAPI.h"
 #include "entt.hpp"
 #include <format>
+#include <functional>
 #include <stdexcept>
 #include <typeinfo>
 
@@ -59,17 +60,20 @@ public:
 
 	entt::registry* getRegistry();
 
-	void onModelComponentAdded();
-	void onMeshComponentAdded();
-	void onSpriteComponentAdded();
-	void onAnimationComponentAdded();
-	void onAnimationStateComponentAdded();
-	void onScriptComponentAdded();
-	void onColliderComponentAdded();
-	void onCameraComponentAdded();
-	void onParticleEmitterAdded();
-	void onSkinningComponentAdded();
-	
+	typedef std::function<void(Entity)> HookFunction;
+
+	static HookFunction _onModelComponentAdded();
+	static HookFunction _onSpriteComponentAdded();
+	static HookFunction _onAnimationComponentAdded();
+	static HookFunction _onAnimationStateComponentAdded();
+	static HookFunction _onScriptComponentAdded();
+	static HookFunction _onScriptComponentRemoved();
+	static HookFunction _onColliderComponentAdded();
+	static HookFunction _onColliderComponentRemoved();
+	static HookFunction _onCameraComponentAdded();
+	static HookFunction _onParticleEmitterAdded();
+	static HookFunction _onSkinningComponentAdded();
+
 private:
 	entt::entity entity;
 	entt::registry* registry;

@@ -290,7 +290,7 @@ void SandBoxLayer::createParticle()
     auto& spriteComponent = particleEntity.getComponent<SpriteComponent>();
     // spriteComponent.textureID = textureManager->loadTexture("assets/textures/ParticleAtlas.png", 1, false);;
     spriteComponent.textureID = textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false);;
-    particleEntity.onSpriteComponentAdded();
+    Entity::_onSpriteComponentAdded()(particleEntity);
 
     Entity particleEntity2 = activeScene->getEntity(activeScene->addEntity("particleEntity2"));
     particleEntity2.addComponent<ParticleEmitter>();

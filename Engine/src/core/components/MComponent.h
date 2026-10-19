@@ -6,6 +6,7 @@
 #include <string>
 #include <nlohmann/json.hpp>
 #include <entt/entt.hpp>
+#include "core/features/Serializable.h"
 
 namespace glm {
 	inline void to_json(nlohmann::json& j, const glm::vec3& v) {
@@ -80,23 +81,16 @@ public:
 		updateTransform();
 	}
 
-	friend void to_json(nlohmann::json& j, const TransformComponent& t) {
-		j = nlohmann::json{
-			{"translateVec", {t.translateVec.x, t.translateVec.y, t.translateVec.z}},
-			{"rotateVec",    {t.rotateVec.x, t.rotateVec.y, t.rotateVec.z}},
-			{"scaleVec",     {t.scaleVec.x, t.scaleVec.y, t.scaleVec.z}}
-		};
+	// called by from_json after the fields are loaded
+	void onDeserialized() {
+		updateTransform();
 	}
 
-	friend void from_json(const nlohmann::json& j, TransformComponent& t) {
-		auto tr = j.at("translateVec");
-		t.translateVec = glm::vec3(tr[0], tr[1], tr[2]);
-		auto rt = j.at("rotateVec");
-		t.rotateVec = glm::vec3(rt[0], rt[1], rt[2]);
-		auto sc = j.at("scaleVec");
-		t.scaleVec = glm::vec3(sc[0], sc[1], sc[2]);
-		t.updateTransform();
-	}
+	REFLECT_TYPE(TransformComponent,
+		member("translateVec", &TransformComponent::translateVec),
+		member("rotateVec", &TransformComponent::rotateVec),
+		member("scaleVec", &TransformComponent::scaleVec)
+	);
 
 };
 
@@ -113,7 +107,9 @@ public:
 		return name;
 	}
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(NameComponent, name);
+	REFLECT_TYPE(NameComponent,
+		member("name", &NameComponent::name)
+	);
 };
 
 struct MYGRAPHICSENGINE_EXPORT ModelComponent {
@@ -130,14 +126,9 @@ public:
 		modelID = 0;
 	}
 	
-	friend void to_json(nlohmann::json& j, const ModelComponent& m) {
-        j = nlohmann::json{{"path", m.path}};
-    }
-
-    friend void from_json(const nlohmann::json& j, ModelComponent& m) {
-        m.path = j.value("path", "None");
-        m.modelID = 0; 
-    }
+	REFLECT_TYPE(ModelComponent,
+		member("path", &ModelComponent::path)
+	);
 
 };
 
@@ -164,19 +155,16 @@ public:
 };
 
 struct MYGRAPHICSENGINE_EXPORT RelationshipComponent {
-    entt::entity parent;
+    entt::entity parent{ entt::null };
     std::vector<entt::entity> children;
 };
 
 struct MYGRAPHICSENGINE_EXPORT PrefabComponent {
     std::string prefabPath;
 
-    friend void to_json(nlohmann::json& j, const PrefabComponent& p) {
-        j = nlohmann::json{ {"prefabPath", p.prefabPath} };
-    }
-    friend void from_json(const nlohmann::json& j, PrefabComponent& p) {
-        j.at("prefabPath").get_to(p.prefabPath);
-    }
+	REFLECT_TYPE(PrefabComponent,
+		member("prefabPath", &PrefabComponent::prefabPath)
+	);
 };
 
 struct MYGRAPHICSENGINE_EXPORT RenderTag {
@@ -219,14 +207,13 @@ struct MYGRAPHICSENGINE_EXPORT SpriteComponent {
 		}
 	}
 
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE(
-		SpriteComponent,
-		path,
-		targetRenderer,
-		numRows,
-		numCols,
-		frameIndex,
-		color
+    REFLECT_TYPE(SpriteComponent,
+		member("path", &SpriteComponent::path),
+		member("targetRenderer", &SpriteComponent::targetRenderer),
+		member("numRows", &SpriteComponent::numRows),
+		member("numCols", &SpriteComponent::numCols),
+		member("frameIndex", &SpriteComponent::frameIndex),
+		member("color", &SpriteComponent::color)
 	)
 };
 
@@ -239,12 +226,11 @@ struct MYGRAPHICSENGINE_EXPORT AnimationComponent {
 	bool isRunning{ true };
 	bool isLooping{ true };
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
-		AnimationComponent,
-		frameCount,
-		frameDuration,
-		frameDelay,
-		isLooping
+	REFLECT_TYPE(AnimationComponent,
+		member("frameCount", &AnimationComponent::frameCount),
+		member("frameDuration", &AnimationComponent::frameDuration),
+		member("frameDelay", &AnimationComponent::frameDelay),
+		member("isLooping", &AnimationComponent::isLooping)
 	);
 };
 
@@ -257,13 +243,12 @@ struct MYGRAPHICSENGINE_EXPORT AnimationStateComponent {
 	float frameDuration{ 0.0f };
 	bool isLooping{ true };
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
-		AnimationStateComponent,
-		texturePath,
-		startFrame,
-		frameCount,
-		frameDuration,
-		isLooping
+	REFLECT_TYPE(AnimationStateComponent,
+		member("texturePath", &AnimationStateComponent::texturePath),
+		member("startFrame", &AnimationStateComponent::startFrame),
+		member("frameCount", &AnimationStateComponent::frameCount),
+		member("frameDuration", &AnimationStateComponent::frameDuration),
+		member("isLooping", &AnimationStateComponent::isLooping)
 	)
 };
 
@@ -275,10 +260,9 @@ struct MYGRAPHICSENGINE_EXPORT SkinningComponent {
 	std::string animationPath { "None" };
 	std::string initialAnimation { "None" };
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
-		SkinningComponent,
-		initialAnimation,
-		animationPath
+	REFLECT_TYPE(SkinningComponent,
+		member("initialAnimation", &SkinningComponent::initialAnimation),
+		member("animationPath", &SkinningComponent::animationPath)
 	);
 };
 
@@ -291,13 +275,9 @@ struct MYGRAPHICSENGINE_EXPORT CameraComponent {
 	glm::mat4 view;
 	glm::vec3 orientation;
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
-		CameraComponent,
-		// viewWidth,
-		// viewHeight,
-		// projection,
-		view,
-		orientation
+	REFLECT_TYPE(CameraComponent,
+		member("view", &CameraComponent::view),
+		member("orientation", &CameraComponent::orientation)
 	);
 };
 
@@ -312,7 +292,9 @@ struct MYGRAPHICSENGINE_EXPORT ScriptComponent {
     std::function<void()> onDestroy = []() {};
 	bool initilized { false };
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ScriptComponent, path);
+	REFLECT_TYPE(ScriptComponent,
+		member("path", &ScriptComponent::path)
+	);
 };
 
 struct MYGRAPHICSENGINE_EXPORT ColliderComponent {
@@ -329,7 +311,11 @@ struct MYGRAPHICSENGINE_EXPORT ColliderComponent {
 	glm::vec3 center{ glm::vec3(0.0) };
 	glm::mat3 inertia{ glm::mat3(1.0) };
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(ColliderComponent, shapeID, colliderType, bodyType);
+	REFLECT_TYPE(ColliderComponent,
+		member("shapeID", &ColliderComponent::shapeID),
+		member("colliderType", &ColliderComponent::colliderType),
+		member("bodyType", &ColliderComponent::bodyType)
+	);
 };
 
 struct MYGRAPHICSENGINE_EXPORT ParticleEmitter {
@@ -351,20 +337,19 @@ struct MYGRAPHICSENGINE_EXPORT ParticleEmitter {
 	glm::vec3 force{ 0.0f, 0.0f, 0.0f };
 	bool resetPosition{ false };
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE(
-		ParticleEmitter,
-		behaviorType,
-		emitMax,
-		emitCount,
-		areRecycled,
-		emitAccumulator,
-		emitRate,
-		lifetimeMin,
-		lifetimeMax,
-		speedMin,
-		speedMax,
-		spawnPosition,
-		force
+	REFLECT_TYPE(ParticleEmitter,
+		member("behaviorType", &ParticleEmitter::behaviorType),
+		member("emitMax", &ParticleEmitter::emitMax),
+		member("emitCount", &ParticleEmitter::emitCount),
+		member("areRecycled", &ParticleEmitter::areRecycled),
+		member("emitAccumulator", &ParticleEmitter::emitAccumulator),
+		member("emitRate", &ParticleEmitter::emitRate),
+		member("lifetimeMin", &ParticleEmitter::lifetimeMin),
+		member("lifetimeMax", &ParticleEmitter::lifetimeMax),
+		member("speedMin", &ParticleEmitter::speedMin),
+		member("speedMax", &ParticleEmitter::speedMax),
+		member("spawnPosition", &ParticleEmitter::spawnPosition),
+		member("force", &ParticleEmitter::force)
 	)
 };
 
