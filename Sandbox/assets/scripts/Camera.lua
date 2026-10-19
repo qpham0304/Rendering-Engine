@@ -22,27 +22,26 @@ function Camera:processKeyboard()
     local isPressing = false
     local step = 0.05
 
-    if transform and transform.translateVec then
+    if transform then
+        local position = transform.translateVec
         if isKeyPressed(KeyCodes.KEY_W) then
-            transform.translateVec[2] = transform.translateVec[2] + step
+            position.y = position.y + step
         elseif isKeyPressed(KeyCodes.KEY_S) then
-            transform.translateVec[2] = transform.translateVec[2] - step
+            position.y = position.y - step
         elseif isKeyPressed(KeyCodes.KEY_A) then
-            transform.translateVec[1] = transform.translateVec[1] - step
+            position.x = position.x - step
         elseif isKeyPressed(KeyCodes.KEY_D) then
-            transform.translateVec[1] = transform.translateVec[1] + step
+            position.x = position.x + step
+        end
+        transform:updateTransform()   -- rebuild the model matrix after editing the fields
+
+        if cameraComponent then
+            cameraComponent.view:set(4, 1, -position.x)
+            cameraComponent.view:set(4, 2, -position.y)
+            cameraComponent.view:set(4, 3, -position.z)
+            cameraComponent.view:set(4, 4, 1.0)
         end
     end
-
-    if cameraComponent and cameraComponent.view then
-        cameraComponent.view[4][1] = -transform.translateVec[1]
-        cameraComponent.view[4][2] = -transform.translateVec[2]
-        cameraComponent.view[4][3] = -transform.translateVec[3]
-        cameraComponent.view[4][4] = 1.0
-    end
-
-    self.entity:setComponent("TransformComponent", transform)
-    self.entity:setComponent("CameraComponent", cameraComponent)
 
     return isPressing
 end

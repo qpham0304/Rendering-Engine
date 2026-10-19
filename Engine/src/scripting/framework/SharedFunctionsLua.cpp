@@ -172,24 +172,6 @@ void SharedFunctionsLua::input(sol::state &luaState)
 }
 
 
-void SharedFunctionsLua::component(sol::state& luaState )
-{
-    luaState.new_usertype<NameComponent>("NameComponent",
-        "name", &NameComponent::name
-    );
-
-    luaState.new_usertype<TransformComponent>("TransformComponent",
-        "getModelMatrix", &TransformComponent::getModelMatrix,
-        "updateTransform", &TransformComponent::updateTransform,
-        "translate",       &TransformComponent::translate,
-        "rotate",          &TransformComponent::rotate,
-        "scale",            &TransformComponent::scale,
-        "translateVec",     &TransformComponent::translateVec,
-        "rotateVec",        &TransformComponent::rotateVec,
-        "scaleVec",         &TransformComponent::scaleVec
-    );
-}
-
 void SharedFunctionsLua::scene(sol::state& luaState )
 {
     luaState["getActiveScene"] = [] () -> Scene* {

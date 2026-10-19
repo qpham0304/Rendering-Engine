@@ -12,7 +12,6 @@ public:
     SharedFunctionsLua(Logger* logger);
 
     static void input(sol::state& luaState);
-    static void component(sol::state& luaState);
     static void scene(sol::state& luaState);
     static void logging(sol::state& luaState);
     

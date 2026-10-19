@@ -9,82 +9,9 @@
 #include "EventToLuaBindings.h"
 #include "MathToLuaBindings.h"
 #include "PhysicsToLuaBindings.h"
+#include "ComponentToLuaBindings.h"
 #include "physics/PhysicsManager.h"
 
-using namespace entt::literals;
-
-namespace LuaJsonBridge {
-    // convert nlohmann::json object into native sol::table
-    inline sol::object jsonToLua(sol::state_view lua, const nlohmann::json& j) {
-        if (j.is_null()) return sol::nil;
-        if (j.is_boolean()) return sol::make_object(lua, j.get<bool>());
-        if (j.is_number_integer()) return sol::make_object(lua, j.get<int64_t>());
-        if (j.is_number_float()) return sol::make_object(lua, j.get<double>());
-        if (j.is_string()) return sol::make_object(lua, j.get<std::string>());
-        
-        if (j.is_array()) {
-            sol::table t = lua.create_table();
-            int index = 1; // Lua array index starts at 1... why?
-            for (const auto& item : j) {
-                t[index++] = jsonToLua(lua, item);
-            }
-            return t;
-        }
-        
-        if (j.is_object()) {
-            sol::table t = lua.create_table();
-            for (auto it = j.begin(); it != j.end(); ++it) {
-                t[it.key()] = jsonToLua(lua, it.value());
-            }
-            return t;
-        }
-        return sol::nil;
-    }
-
-    // convert native sol::table back into nlohmann::json object
-    inline nlohmann::json luaToJson(sol::object obj) {
-        if (obj.is<sol::nil_t>()) return nullptr;
-        if (obj.is<bool>()) return obj.as<bool>();
-        if (obj.is<int64_t>()) return obj.as<int64_t>();
-        if (obj.is<double>()) return obj.as<double>();
-        if (obj.is<std::string>()) return obj.as<std::string>();
-        
-        if (obj.is<sol::table>()) {
-            sol::table t = obj.as<sol::table>();
-            
-            // Check if this table functions as an array (has numeric keys)
-            bool is_array = false;
-            size_t len = t.size();
-            if (len > 0) {
-                is_array = true;
-                for (size_t i = 1; i <= len; ++i) {
-                    sol::object val = t[i];
-                    if (!val.valid() || val == sol::nil) { 
-                        is_array = false; 
-                        break; 
-                    }
-                }
-            }
-            
-            if (is_array) {
-                nlohmann::json j = nlohmann::json::array();
-                for (size_t i = 1; i <= len; ++i) {
-                    j.push_back(luaToJson(t[i]));
-                }
-                return j;
-            } else {
-                nlohmann::json j = nlohmann::json::object();
-                t.for_each([&j](sol::object key, sol::object value) {
-                    if (key.is<std::string>()) {
-                        j[key.as<std::string>()] = luaToJson(value);
-                    }
-                });
-                return j;
-            }
-        }
-        return nullptr;
-    }
-}
 
 ScriptManagerLua::ScriptManagerLua(std::string serviceName)
     : ScriptManager(serviceName)
@@ -113,84 +40,10 @@ bool ScriptManagerLua::init(WindowConfig config)
     SharedFunctionsLua shareToLua(m_logger.get()); 
     
     SharedFunctionsLua::input(m_luaState);
-    SharedFunctionsLua::component(m_luaState);
     SharedFunctionsLua::scene(m_luaState);
     SharedFunctionsLua::logging(m_luaState);
 
-    
-    auto componentFactory = EntitySerializer::getComponentFactory();
-    auto componentDestroyer = EntitySerializer::getComponentDestroyer();
-    //TODO: brute force copy to lua table, return direct pointer to avoid copy
-    m_luaState.new_usertype<Entity>("Entity",
-        "getComponent", [this](Entity& self, std::string_view componentName) -> sol::object {
-            entt::meta_type metaType;
-            for (auto&& [id, type] : entt::resolve()) {
-                auto prop = type.prop("name"_hs);
-                if (prop) { // assumes component is registered in the serializer's macro
-                    if (prop.value().cast<std::string>() == componentName) {
-                        metaType = type;
-                        break;
-                    }
-                }
-            }
-
-            if (!metaType) {
-                m_logger->error("Lua failed to get component '{}' which doesn't exist in C++ EnTT reflection!", componentName);
-                return sol::nil;
-            }
-
-            // fetch the raw pointer to the component on this entity using its underlying type ID
-            auto* storage = self.getRegistry()->storage(metaType.id());
-            if (!storage || !storage->contains(self)) {
-                return sol::nil;
-            }
-            
-            const void* componentPtr = storage->value(self);
-
-            // invoke SerializerInternal::Serialize function dynamically over the raw pointer
-            auto serializeFunc = metaType.func("serialize"_hs);
-            if (!serializeFunc) {
-                return sol::nil;
-            }
-
-            entt::meta_any result = serializeFunc.invoke({}, componentPtr);
-            if (auto* jsonPtr = result.try_cast<nlohmann::json>()) {
-                return LuaJsonBridge::jsonToLua(m_luaState, *jsonPtr);
-            }
-
-            return sol::nil;
-        },
-        "setComponent", [this, componentFactory](Entity& self, std::string_view componentName, sol::object luaTable) {
-            nlohmann::json updatedData = LuaJsonBridge::luaToJson(luaTable);
-            
-            auto it = componentFactory.find(std::string(componentName));
-            if (it != componentFactory.end()) {
-                // invoke the factory lambda registered via REGISTER_COMPONENT
-                // this replaces the C++ data and runs the matching lifecycle hooks
-                it->second(self, updatedData);
-            } else {
-                m_logger->error("Failed to update component: '{}' factory not registered.", componentName);
-            }
-        },
-        "addComponent", [this, componentFactory](Entity& self, std::string_view componentName, sol::object luaTable) {
-            nlohmann::json updatedData = LuaJsonBridge::luaToJson(luaTable);
-
-            auto it = componentFactory.find(std::string(componentName));
-            if (it != componentFactory.end()) {
-                it->second(self, updatedData);
-            } else {
-                m_logger->error("Failed to add component: '{}' factory not registered.", componentName);
-            }
-        },
-        "removeComponent", [this, componentDestroyer](Entity& self, std::string_view componentName) {
-            auto it = componentDestroyer.find(std::string(componentName));
-            if (it != componentDestroyer.end()) {
-                it->second(self);
-            } else {
-                m_logger->error("Failed to remove component: '{}' factory not registered.", componentName);
-            }
-        }
-    );
+    ComponentToLuaBindings::exportComponents(m_luaState, m_logger.get());
 
     return true;
 }
