@@ -76,6 +76,7 @@ protected:
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 	AmbientOcclusionPassVulkan* ambientOcclusionPass { nullptr };
 	TextureVulkan* environmentImage { nullptr };
+	TextureVulkan* aoImage { nullptr };
 
 	void _updateLights(uint32_t currentFrame);
 	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);

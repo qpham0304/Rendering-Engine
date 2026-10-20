@@ -80,9 +80,12 @@ bool RendererManagerVulkan::init(WindowConfig config)
         ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
     }
     deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
-    ////postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererVulkan");
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
 	debugRenderer = addRenderer<DebugRendererVulkan>("DebugRendererVulkan");
+
+    // graph owned textures are sized from this, passes can acquire them during init
+    VkExtent2D extent = renderDeviceVulkan->swapchain.swapChainExtent;
+    m_renderGraph.setRenderSize(extent.width, extent.height);
 
     for(auto& [name, renderer] : m_renderers) {
         renderer->init(config);
@@ -171,6 +174,10 @@ void RendererManagerVulkan::render()
         ubo.height = renderDeviceVulkan->swapchain.swapChainExtent.height;
         swapchainOutdated = false;
     }
+
+    // graph owned textures get recreated on their next acquire when this changes
+    VkExtent2D renderExtent = renderDeviceVulkan->swapchain.swapChainExtent;
+    m_renderGraph.setRenderSize(renderExtent.width, renderExtent.height);
 
     beginFrame();
 

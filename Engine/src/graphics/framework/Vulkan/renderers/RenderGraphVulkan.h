@@ -22,16 +22,23 @@ struct RGAccess {
 
 struct RenderPassNode {
     std::string name{"Undefined"};
-    std::vector<RGAccess> reads{};  // Dependencies during the pass, use member path for name/type
-    std::vector<RGAccess> writes{}; // Outputs during the pass, use member path for name/type
+    std::vector<RGAccess> reads{};  // Dependencies during the pass
+    std::vector<RGAccess> writes{}; // Outputs during the pass
     std::function<void(VkCommandBuffer, uint32_t)> execute;
 };
 
 
 struct RGResource {
     TextureVulkan* texture;
-    VkImageLayout  initialLayout;   // layout before the first pass
-    VkImageLayout  finalLayout;     // layout after the last pass
+    VkImageLayout initialLayout;    // layout before the first pass
+    VkImageLayout finalLayout;      // layout after the last pass
+    bool lastWasWrite { false };    // for write to write of the same layout
+};
+
+struct RGTextureDesc {
+    TextureConfig config{};
+    TextureSamplerConfig sampler{};
+    float scale { 1.0f };   // 0.5 = half the render size
 };
 
 class RenderGraphVulkan {
@@ -48,13 +55,30 @@ public:
         VkImageLayout final = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
 
+    void setRenderSize(uint32_t width, uint32_t height);
+    TextureVulkan* acquireTexture(const std::string& name, const RGTextureDesc& desc);
+
 private:
-    // bool dfs(
+    // bool _dfs(
     //     const std::string& node, 
     //     std::unordered_map<std::string, std::vector<std::string>>& adj,
     //     std::unordered_set<std::string>& visited, 
     //     std::unordered_set<std::string>& visiting
     // );
+    void _prepareAccess(VkCommandBuffer cmd, const RGAccess& access, bool isWrite);
+    void _memoryBarrier(VkCommandBuffer cmd, TextureVulkan* texture, VkImageLayout layout);
+
+    struct RGOwnedTexture {
+        RGTextureDesc desc;
+        uint32_t width { 0 };
+        uint32_t height { 0 };
+        TextureVulkan* texture { nullptr };
+    };
+
     std::vector<RGResource> m_resources;
-    std::vector<RenderPassNode> m_passes;   // executed in the order they were added
+    std::vector<RenderPassNode> m_passes;   // atm are executed in the order they were added
+
+    std::unordered_map<std::string, RGOwnedTexture> m_ownedTextures;   // do not clear by reset
+    uint32_t m_renderWidth { 0 };
+    uint32_t m_renderHeight { 0 };
 };

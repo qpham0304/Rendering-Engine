@@ -91,7 +91,7 @@ void LightingPassVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 
-	if(environmentImage != imageBasedRenderer->hdrImage) {
+	if(environmentImage != imageBasedRenderer->hdrImage || aoImage != ambientOcclusionPass->getOutputImage()) {
 		renderDeviceVulkan->waitIdle();	// the frame in flight still reads the old descriptors
 		_updateLightDescriptor();
 	}
@@ -478,6 +478,7 @@ void LightingPassVulkan::_updateLightDescriptor()
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 	environmentImage = imageBasedRenderer->hdrImage;
+	aoImage = ambientOcclusionPass->getOutputImage();
 }
 
 void LightingPassVulkan::_recreateResources()

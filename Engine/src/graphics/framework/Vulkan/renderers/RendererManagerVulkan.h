@@ -41,6 +41,7 @@ public:
 	void endFrame();
 	void setDisplayImage(TextureVulkan* image);
 	TextureVulkan* getDisplayImage();
+	RenderGraphVulkan& getRenderGraph() { return m_renderGraph; }
 	const Common::UniformBufferObject& getUBO() const;
 	const std::vector<UniformBufferVulkan*>& getBufferUBO() const;
 

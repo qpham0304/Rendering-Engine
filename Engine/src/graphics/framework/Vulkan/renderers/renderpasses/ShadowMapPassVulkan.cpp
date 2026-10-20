@@ -325,6 +325,7 @@ void ShadowMapPassVulkan::_createDepthMap()
 
 	depthID = textureManagerVulkan->createTexture();
 	depthMap = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(depthID));
+	depthMap->format = depthFormat;
 
 	TextureManagerVulkan::createImage(
 		width,
