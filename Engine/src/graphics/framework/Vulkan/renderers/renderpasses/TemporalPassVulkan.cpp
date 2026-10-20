@@ -29,8 +29,7 @@ bool TemporalPassVulkan::init(WindowConfig config)
     PostProcessRendererVulkan::init(config);
         
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
     renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
     renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
@@ -38,10 +37,10 @@ bool TemporalPassVulkan::init(WindowConfig config)
 
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     ssrgiImage = SSRGIPassRenderer->getOutputImage();
-    motionImage = deferredRendererVulkan->renderTarget.gBufferMotion[currentFrame];
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
-    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
+    motionImage = geometryPass->renderTarget.gBufferMotion;
+    depthImage = geometryPass->renderTarget.depthTexture;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+    pbrImage = geometryPass->renderTarget.gPBR;
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
@@ -70,8 +69,7 @@ void TemporalPassVulkan::onUpdate()
 void TemporalPassVulkan::render(Camera &camera)
 {
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
     renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
     renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
@@ -79,10 +77,10 @@ void TemporalPassVulkan::render(Camera &camera)
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     ssrgiImage = SSRGIPassRenderer->getOutputImage();
-    motionImage = deferredRendererVulkan->renderTarget.gBufferMotion[currentFrame];
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
-    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
+    motionImage = geometryPass->renderTarget.gBufferMotion;
+    depthImage = geometryPass->renderTarget.depthTexture;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+    pbrImage = geometryPass->renderTarget.gPBR;
 
     // after the refresh above, the gbuffer and the ssrgi output were recreated earlier this frame
     if(needResize) {
@@ -101,7 +99,7 @@ void TemporalPassVulkan::render(Camera &camera)
     ubo.invViewProj = glm::inverse(currentViewProj);
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
-	pushConstant.screenRes = { deferredRendererVulkan->renderTarget.width, deferredRendererVulkan->renderTarget.height };
+	pushConstant.screenRes = { geometryPass->renderTarget.width, geometryPass->renderTarget.height };
     pushConstant.maxAccumulation = 128.0f;
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
@@ -135,10 +133,9 @@ void TemporalPassVulkan::writeTP(VkCommandBuffer cmd, uint32_t currentFrame)
     vkCmdPushConstants(cmd, pipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 
         0, sizeof(PushConstant), &pushConstant);
 
-    auto renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-    uint32_t width = deferredRendererVulkan->renderTarget.width;
-    uint32_t height = deferredRendererVulkan->renderTarget.height;
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    uint32_t width = geometryPass->renderTarget.width;
+    uint32_t height = geometryPass->renderTarget.height;
     uint32_t groupX = (width  + 15) / 16;
     uint32_t groupY = (height + 15) / 16;
 

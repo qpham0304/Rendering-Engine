@@ -125,7 +125,20 @@ void ImageBasedRendererVulkan::onUpdate()
 
 void ImageBasedRendererVulkan::render(Camera &camera)
 {
-	
+	// shared by forward and deferred, computed once for every frame in flight instead of every frame
+	if(environmentReady) {
+		return;
+	}
+
+	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+	renderDeviceVulkan->beginLabel(cmd, "IBL Pass");
+	for (uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
+		computeSH(cmd, i);
+	}
+	computePrefilter(cmd, 0);	// writes every mip itself
+	renderDeviceVulkan->endLabel(cmd);
+
+	environmentReady = true;
 }
 
 void ImageBasedRendererVulkan::computeSH(VkCommandBuffer cmd, uint32_t currentFrame) {

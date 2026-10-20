@@ -33,12 +33,11 @@ bool HiZPassVulkan::init(WindowConfig config)
     PostProcessRendererVulkan::init(config);
         
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
+    depthImage = geometryPass->renderTarget.depthTexture;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
 
     
     _createResources();
@@ -76,12 +75,11 @@ void HiZPassVulkan::onUpdate()
 void HiZPassVulkan::render(Camera &camera)
 {
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
+    depthImage = geometryPass->renderTarget.depthTexture;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
 
     if(needResize) {
 		_recreateResources();
@@ -103,17 +101,16 @@ void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)
 
     pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 
-    RendererVulkan* renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-    auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-    glm::vec2 gBufferDimensions = { (float)deferredRendererVulkan->renderTarget.width, (float)deferredRendererVulkan->renderTarget.height };
+    auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    glm::vec2 gBufferDimensions = { (float)geometryPass->renderTarget.width, (float)geometryPass->renderTarget.height };
 
     for (uint32_t i = 0; i < mipLevels; i++) {
         uint32_t currentWidth  = std::max(1u, mapSize >> i);
         uint32_t currentHeight = std::max(1u, mapSize >> i);
         glm::vec2 prevDims;
         if (i == 0) {
-            prevDims = glm::vec2(deferredRendererVulkan->renderTarget.width, 
-                                deferredRendererVulkan->renderTarget.height);
+            prevDims = glm::vec2(geometryPass->renderTarget.width, 
+                                geometryPass->renderTarget.height);
         } else {
             prevDims = glm::vec2(std::max(1u, mapSize >> (i - 1)));
         }
@@ -282,11 +279,11 @@ void HiZPassVulkan::_createDescriptors()
 		HiZMipSets[i] = descriptorManagerVulkan->getDescriptorSet(hiZSetsID);
 	}
 
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(rendererManagerVulkan->getRenderer("DeferredRendererVulkan"));
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 
 	for(uint32_t m = 0; m < HiZMipViews.size(); m++) {
 		// chain m is used on frame m, so it has to start from frame m's depth, not whichever frame was current here
-		TextureVulkan* frameDepth = deferredRendererVulkan->renderTarget.depthTextures[m];
+		TextureVulkan* frameDepth = geometryPass->renderTarget.depthTexture;
 		for (uint32_t i = 0; i < mipLevels; i++) {
 			VkDescriptorImageInfo sourceInfo{};
 			sourceInfo.sampler = outputImages[m]->textureSampler;

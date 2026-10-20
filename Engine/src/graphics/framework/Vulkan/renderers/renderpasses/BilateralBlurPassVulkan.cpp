@@ -27,13 +27,12 @@ bool BilateralBlurPassVulkan::init(WindowConfig config)
     RendererVulkan::init(config);
     
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    positionImage = deferredRendererVulkan->renderTarget.gBufferPos[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
+    depthImage = geometryPass->renderTarget.depthTexture;
+    positionImage = geometryPass->renderTarget.gBufferPos;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
     
     _createOcclusionMap();
     _createDescriptors();
@@ -57,13 +56,12 @@ void BilateralBlurPassVulkan::onUpdate()
 void BilateralBlurPassVulkan::render(Camera& camera) 
 {
 	RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    positionImage = deferredRendererVulkan->renderTarget.gBufferPos[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
+    depthImage = geometryPass->renderTarget.depthTexture;
+    positionImage = geometryPass->renderTarget.gBufferPos;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
 
 
 	pushConstant.view = camera.getViewMatrix();

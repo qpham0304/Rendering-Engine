@@ -72,6 +72,7 @@ uint32_t TextureVulkan::getLayerCount()
     return layerCount;
 }
 
+//TODO: eventually remove curLayout as it is stored in the itself but need some refactoring atm so manual layout is required
 void TextureVulkan::transitImage(VkCommandBuffer cmd, VkImageLayout curLayout, VkImageLayout newLayout, int mip, int layer)
 {
     TextureManagerVulkan::transitionImageLayout(
@@ -88,7 +89,7 @@ void TextureVulkan::transitImage(VkCommandBuffer cmd, VkImageLayout curLayout, V
 
 void TextureVulkan::transitImage(VkCommandBuffer cmd, VkImageLayout curLayout, VkImageLayout newLayout)
 {
-    transitImage(cmd, currentLayout, newLayout, mipLevels, layerCount);
+    transitImage(cmd, curLayout, newLayout, mipLevels, layerCount);
 }
 
 void TextureVulkan::copyFrom(VkCommandBuffer cmd, TextureVulkan* src)

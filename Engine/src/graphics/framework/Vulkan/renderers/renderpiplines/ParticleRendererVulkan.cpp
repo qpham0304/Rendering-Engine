@@ -39,7 +39,8 @@ bool ParticleRendererVulkan::init(WindowConfig config)
     emittersUBO.assign(1, {});   // need at least one emitter to upload, use dummy value at 0
 
     particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
-    deferredRenderer = dynamic_cast<DeferredRendererVulkan*>(rendererManagerVulkan->getRenderer("DeferredRendererVulkan"));
+    geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
     depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
     containersRefID = bufferManagerVulkan->createBufferDeviceAddress(MAX_CONTAINERS * sizeof(ContainerRefs));
@@ -321,13 +322,13 @@ void ParticleRendererVulkan::_computeParticle(VkCommandBuffer cmd, uint32_t curr
 
 void ParticleRendererVulkan::_renderParticle(VkCommandBuffer cmd, uint32_t currentFrame, Scene* scene)
 {
-    if(!deferredRenderer) {
+    if(!geometryPass || !lightingPass) {
         return;
     }
-    TextureVulkan* sceneImage = deferredRenderer->renderTarget.colorTextures[currentFrame];
-    TextureVulkan* depthImage = deferredRenderer->renderTarget.depthTextures[currentFrame];
-    uint32_t width = deferredRenderer->renderTarget.width;
-    uint32_t height = deferredRenderer->renderTarget.height;
+    TextureVulkan* sceneImage = lightingPass->renderTarget.colorTexture;
+    TextureVulkan* depthImage = geometryPass->renderTarget.depthTexture;
+    uint32_t width = geometryPass->renderTarget.width;
+    uint32_t height = geometryPass->renderTarget.height;
 
     TextureManagerVulkan::transitionImageLayout(cmd, sceneImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, 1, renderDeviceVulkan);

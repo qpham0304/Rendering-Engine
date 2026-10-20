@@ -8,7 +8,7 @@
 
 class RayTraceRendererVulkan;
 class ShadowMapPassVulkan;
-class DeferredRendererVulkan;
+class LightingPassVulkan;
 class ImageBasedRendererVulkan;
 
 // Dynamic diffuse global illumination, one probe grid (LightProbeComponent) per scene.
@@ -99,7 +99,7 @@ private:
 	PushConstant pushConstant{};
     RayTraceRendererVulkan* raytracer { nullptr };
 	ShadowMapPassVulkan* shadowMapPass { nullptr };
-	DeferredRendererVulkan* deferredRenderer { nullptr };
+	LightingPassVulkan* lightingPass { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 
 	// these three must match the constants in assets/shaders/common/ddgi.glsl

@@ -29,19 +29,19 @@ bool SSRGIPassVulkan::init(WindowConfig config)
     PostProcessRendererVulkan::init(config);
         
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+	auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
     renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     depthImageHiZ = highZRendererVulkan->outputImages[currentFrame];
-    depthImageRaw = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
-    colorImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
-    albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
-    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
-    emissiveImage = deferredRendererVulkan->renderTarget.gBufferEmissive[currentFrame];
+    depthImageRaw = geometryPass->renderTarget.depthTexture;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+    colorImage = lightingPass->renderTarget.colorTexture;
+    albedoImage = geometryPass->renderTarget.gBufferAlbedo;
+    pbrImage = geometryPass->renderTarget.gPBR;
+    emissiveImage = geometryPass->renderTarget.gBufferEmissive;
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
@@ -76,19 +76,19 @@ void SSRGIPassVulkan::render(Camera &camera)
 	}
 
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+	auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
     renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     depthImageHiZ = highZRendererVulkan->outputImages[currentFrame];
-    depthImageRaw = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
-    colorImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
-    albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
-    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
-    emissiveImage = deferredRendererVulkan->renderTarget.gBufferEmissive[currentFrame];
+    depthImageRaw = geometryPass->renderTarget.depthTexture;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+    colorImage = lightingPass->renderTarget.colorTexture;
+    albedoImage = geometryPass->renderTarget.gBufferAlbedo;
+    pbrImage = geometryPass->renderTarget.gPBR;
+    emissiveImage = geometryPass->renderTarget.gBufferEmissive;
     outputImage = outputImages[currentFrame];
 
     
@@ -99,7 +99,7 @@ void SSRGIPassVulkan::render(Camera &camera)
     ubo.invView = glm::inverse(ubo.view);
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
-	pushConstant.screenRes = { deferredRendererVulkan->renderTarget.width, deferredRendererVulkan->renderTarget.height };
+	pushConstant.screenRes = { geometryPass->renderTarget.width, geometryPass->renderTarget.height };
     pushConstant.maxDistance = 500.0f;
     pushConstant.maxMip = 11;          
     pushConstant.thickness = 0.05f;
@@ -127,10 +127,9 @@ void SSRGIPassVulkan::writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame)
     vkCmdPushConstants(cmd, pipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 
         0, sizeof(PushConstant), &pushConstant);
 
-    auto renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-    uint32_t width = deferredRendererVulkan->renderTarget.width;
-    uint32_t height = deferredRendererVulkan->renderTarget.height;
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    uint32_t width = geometryPass->renderTarget.width;
+    uint32_t height = geometryPass->renderTarget.height;
     uint32_t groupX = (width  + 7) / 8;
     uint32_t groupY = (height + 7) / 8;
 
@@ -255,18 +254,18 @@ void SSRGIPassVulkan::_createDescriptors()
 void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
 {
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+	auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
     renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
     depthImageHiZ = highZRendererVulkan->outputImages[index];
-    depthImageRaw = deferredRendererVulkan->renderTarget.depthTextures[index];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[index];
-    colorImage = deferredRendererVulkan->renderTarget.colorTextures[index];
-    albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[index];
-    pbrImage = deferredRendererVulkan->renderTarget.gPBR[index];
-    emissiveImage = deferredRendererVulkan->renderTarget.gBufferEmissive[index];
+    depthImageRaw = geometryPass->renderTarget.depthTexture;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+    colorImage = lightingPass->renderTarget.colorTexture;
+    albedoImage = geometryPass->renderTarget.gBufferAlbedo;
+    pbrImage = geometryPass->renderTarget.gPBR;
+    emissiveImage = geometryPass->renderTarget.gBufferEmissive;
     outputImage = outputImages[index];
 
 	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(SSRGISetsID);

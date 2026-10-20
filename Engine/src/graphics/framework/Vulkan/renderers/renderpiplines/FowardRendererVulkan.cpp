@@ -137,16 +137,6 @@ void ForwardRendererVulkan::render(Camera& camera)
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
-	renderDeviceVulkan->beginLabel(cmd, "shadow Pass");
-	shadowMapRenderer->render(camera);
-	renderDeviceVulkan->endLabel(cmd);
-
-	renderDeviceVulkan->beginLabel(cmd, "IBL Pass");
-	imageBasedRenderer->onUpdate();
-	imageBasedRenderer->computeSH(cmd, frame);	//TODO: call this in render manager or somewhere general
-	imageBasedRenderer->computePrefilter(cmd, frame);
-	renderDeviceVulkan->endLabel(cmd);
-
     renderDeviceVulkan->beginLabel(cmd, "Forward Render Pass");
 	recordDrawToTextureCommand(cmd, frame);
     renderDeviceVulkan->endLabel(cmd);

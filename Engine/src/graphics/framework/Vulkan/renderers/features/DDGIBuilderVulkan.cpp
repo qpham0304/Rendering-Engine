@@ -78,11 +78,11 @@ bool DDGIBuilderVulkan::init(WindowConfig config)
 	raytracer = dynamic_cast<RayTraceRendererVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
 	shadowMapPass = dynamic_cast<ShadowMapPassVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	deferredRenderer = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	renderer = rendererManagerVulkan->getRenderer("LightingPassVulkan");
+	lightingPass = dynamic_cast<LightingPassVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
 	imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
-    assert(raytracer && shadowMapPass && deferredRenderer && imageBasedRenderer && "failed to retrieve renderer");
+    assert(raytracer && shadowMapPass && lightingPass && imageBasedRenderer && "failed to retrieve renderer");
 
 	ubo.hysteresis = 0.97f;
 	ubo.normalBias = 0.3f;
@@ -145,7 +145,7 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	}
 	ubo.randomRotation = randomRotation();
 	ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), 0.0f);	// same direction and color the light pass and the shadow map use
-	ubo.sunColor = deferredRenderer->sunColor * deferredRenderer->sunIntensity;
+	ubo.sunColor = lightingPass->sunColor * lightingPass->sunIntensity;
 	ubo.maxRayDistance = probeGrid->spacing * 1.5f;	// a bit less than the diagonal of a grid cell
 	ubo.clear = resetHistory ? 1 : 0;
 

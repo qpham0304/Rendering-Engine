@@ -7,6 +7,24 @@
 
 class RenderDeviceVulkan;
 class TextureVulkan;
+class ApplicationRendererVulkan;
+class ForwardRendererVulkan;
+class DeferredRendererVulkan;
+class GeometryPassVulkan;
+class LightingPassVulkan;
+class RayTraceRendererVulkan;
+class ShadowMapPassVulkan;
+class ImageBasedRendererVulkan;
+class DDGIBuilderVulkan;
+class AmbientOcclusionPassVulkan;
+class HiZPassVulkan;
+class SSRGIPassVulkan;
+class BloomPassVulkan;
+class TemporalPassVulkan;
+class DeferredCombinePassVulkan;
+class PostProcessRendererVulkan;
+class ParticleRendererVulkan;
+class DebugRendererVulkan;
 
 class RendererManagerVulkan : public RendererManager
 {
@@ -43,23 +61,25 @@ protected:
 	//std::vector<Common::ObjectRefs> objects;
 
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
-	Renderer* applicationRenderer { nullptr };
-	Renderer* forwardRenderer { nullptr };
-	Renderer* deferredRenderer { nullptr };
-	Renderer* raytracingRenderer { nullptr };
+	ApplicationRendererVulkan* applicationRenderer { nullptr };
+	ForwardRendererVulkan* forwardRenderer { nullptr };
+	DeferredRendererVulkan* deferredRenderer { nullptr };
+	GeometryPassVulkan* geometryPassRenderer { nullptr };
+	LightingPassVulkan* lightingPassRenderer { nullptr };
+	RayTraceRendererVulkan* raytracingRenderer { nullptr };
 
-	Renderer* shadowMapPass { nullptr };
-	Renderer* imageBasedRenderer { nullptr };
-	Renderer* ddgiPassRenderer { nullptr };
-	Renderer* alchemyAORenderer { nullptr };
-	Renderer* hiZPassRenderer { nullptr };
-	Renderer* SSRGIPassRenderer { nullptr };
-	Renderer* bloomRenderer { nullptr };
-	Renderer* temporalPassRenderer { nullptr };
-	Renderer* deferredCombineRenderer { nullptr };
-	Renderer* postProcessRenderer { nullptr };
-	Renderer* particleRenderer { nullptr };
-	Renderer* debugRenderer { nullptr };
+	ShadowMapPassVulkan* shadowMapPass { nullptr };
+	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
+	DDGIBuilderVulkan* ddgiPassRenderer { nullptr };
+	AmbientOcclusionPassVulkan* alchemyAORenderer { nullptr };
+	HiZPassVulkan* hiZPassRenderer { nullptr };
+	SSRGIPassVulkan* SSRGIPassRenderer { nullptr };
+	BloomPassVulkan* bloomRenderer { nullptr };
+	TemporalPassVulkan* temporalPassRenderer { nullptr };
+	DeferredCombinePassVulkan* deferredCombineRenderer { nullptr };
+	PostProcessRendererVulkan* postProcessRenderer { nullptr };
+	ParticleRendererVulkan* particleRenderer { nullptr };
+	DebugRendererVulkan* debugRenderer { nullptr };
 
 private:
 	RenderGraphVulkan m_renderGraph;

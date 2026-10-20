@@ -4,7 +4,8 @@
 
 class TextureVulkan;
 class ParticleManager;
-class DeferredRendererVulkan;
+class GeometryPassVulkan;
+class LightingPassVulkan;
 
 class ParticleRendererVulkan : public RendererVulkan
 {
@@ -89,7 +90,8 @@ protected:
 	std::unique_ptr<VulkanPipeline> computePipeline;
 	ParticlePushConstant pushConstant;
 
-	DeferredRendererVulkan* deferredRenderer { nullptr };
+	GeometryPassVulkan* geometryPass { nullptr };
+	LightingPassVulkan* lightingPass { nullptr };
 	VkFormat depthFormat { VK_FORMAT_UNDEFINED };
 
 	uint32_t layoutID;

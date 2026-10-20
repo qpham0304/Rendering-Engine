@@ -34,13 +34,12 @@ bool AmbientOcclusionPassVulkan::init(WindowConfig config)
     PostProcessRendererVulkan::init(config);
     
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    positionImage = deferredRendererVulkan->renderTarget.gBufferPos[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
+    depthImage = geometryPass->renderTarget.depthTexture;
+    positionImage = geometryPass->renderTarget.gBufferPos;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
     
     _createOcclusionMap();
     _createDescriptors();
@@ -69,22 +68,10 @@ void AmbientOcclusionPassVulkan::onUpdate()
 
 }
 
-void AmbientOcclusionPassVulkan::render(Camera& camera) 
+void AmbientOcclusionPassVulkan::render(Camera& camera)
 {
-    RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-	
+    // resize and gbuffer fetch happen in addToGraph, before the graph imports the textures
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    positionImage = deferredRendererVulkan->renderTarget.gBufferPos[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
-
-    if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
-
 
 	pushConstant.view = camera.getViewMatrix();
     pushConstant.projScale = camera.getViewHeight() / (2.0 * tan(camera.getFOV() / 2));
@@ -102,18 +89,6 @@ void AmbientOcclusionPassVulkan::render(Camera& camera)
 
 void AmbientOcclusionPassVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, aoMap->textureImage, VK_FORMAT_R16_SFLOAT, 
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
-    
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, positionImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
-    
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, normalImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
-
     _updateDescriptorSetsAO(currentFrame);
     
     VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
@@ -140,35 +115,23 @@ void AmbientOcclusionPassVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFr
     );
 
 	RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-    uint32_t groupX = (deferredRendererVulkan->renderTarget.width + 15) / 16;
-    uint32_t groupY = (deferredRendererVulkan->renderTarget.height + 15) / 16;
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    uint32_t groupX = (geometryPass->renderTarget.width + 15) / 16;
+    uint32_t groupY = (geometryPass->renderTarget.height + 15) / 16;
 	vkCmdDispatch(cmd, groupX, groupY, 1);
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, positionImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-    
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, normalImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(cmd, aoMap->textureImage, VK_FORMAT_R16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-    );
 }
 
 void AmbientOcclusionPassVulkan::writeBlur(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-    TextureManagerVulkan::transitionImageLayout(cmd, aoMap->textureImage, VK_FORMAT_R16_SFLOAT, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
-    
-    TextureManagerVulkan::transitionImageLayout(cmd, aoMapTemp->textureImage, VK_FORMAT_R16_SFLOAT, 
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(cmd, positionImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
+    VkImageMemoryBarrier aoBarrier{};
+    aoBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    aoBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+    aoBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+    aoBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    aoBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    aoBarrier.image = aoMap->textureImage;
+    aoBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &aoBarrier);
 
     _updateDescriptorSetsBlur(currentFrame);
 
@@ -199,72 +162,82 @@ void AmbientOcclusionPassVulkan::writeBlur(VkCommandBuffer cmd, uint32_t current
     auto tToM_Sets = descriptorManagerVulkan->getDescriptorSet(blurDescSetTtoM_ID);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, blurPipeline->pipelineLayout, 0, 1, &tToM_Sets[currentFrame], 0, nullptr);
     vkCmdDispatch(cmd, groupX, groupY, 1);
-
-    TextureManagerVulkan::transitionImageLayout(cmd, aoMap->textureImage, VK_FORMAT_R16_SFLOAT, 
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-    TextureManagerVulkan::transitionImageLayout(cmd, positionImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 }
 
 void AmbientOcclusionPassVulkan::_createOcclusionMap()
 {
-    auto createTexture = [this] (uint32_t& id, TextureVulkan*& texture){
-        id = textureManagerVulkan->createTexture();
-        texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
+    // auto createTexture = [this] (uint32_t& id, TextureVulkan*& texture){
+    //     id = textureManagerVulkan->createTexture();
+    //     texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
         
-        assert(texture && "failed to cast texture into vulkan texture");
+    //     assert(texture && "failed to cast texture into vulkan texture");
         
-        VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-        VkDevice device = renderDeviceVulkan->device;
+    //     VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
+    //     VkDevice device = renderDeviceVulkan->device;
         
-        TextureManagerVulkan::createImage(
-            swapchain.swapChainExtent.width,
-            swapchain.swapChainExtent.height,
-            VK_FORMAT_R16_SFLOAT,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            texture->textureImage,
-            texture->textureImageMemory,
-            1,
-            renderDeviceVulkan->device
-        );
+    //     TextureManagerVulkan::createImage(
+    //         swapchain.swapChainExtent.width,
+    //         swapchain.swapChainExtent.height,
+    //         VK_FORMAT_R16_SFLOAT,
+    //         VK_IMAGE_TILING_OPTIMAL,
+    //         VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+    //         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    //         texture->textureImage,
+    //         texture->textureImageMemory,
+    //         1,
+    //         renderDeviceVulkan->device
+    //     );
 
-        TextureManagerVulkan::createImageView(
-            texture->textureImage,
-            texture->textureImageView,
-            VK_FORMAT_R16_SFLOAT,
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            1,
-            renderDeviceVulkan->device
-        );
+    //     TextureManagerVulkan::createImageView(
+    //         texture->textureImage,
+    //         texture->textureImageView,
+    //         VK_FORMAT_R16_SFLOAT,
+    //         VK_IMAGE_ASPECT_COLOR_BIT,
+    //         1,
+    //         renderDeviceVulkan->device
+    //     );
 
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.anisotropyEnable = VK_FALSE;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias = 0.0f;
-        samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = 0.0f;
+    //     VkSamplerCreateInfo samplerInfo{};
+    //     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    //     samplerInfo.magFilter = VK_FILTER_LINEAR;
+    //     samplerInfo.minFilter = VK_FILTER_LINEAR;
+    //     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    //     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    //     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    //     samplerInfo.anisotropyEnable = VK_FALSE;
+    //     samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    //     samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    //     samplerInfo.compareEnable = VK_FALSE;
+    //     samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    //     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    //     samplerInfo.mipLodBias = 0.0f;
+    //     samplerInfo.minLod = 0.0f;
+    //     samplerInfo.maxLod = 0.0f;
 
-        TextureManagerVulkan::createTextureSampler(
-            texture->textureSampler, 
-            renderDeviceVulkan->device,
-            samplerInfo
-        );
-    };
+    //     TextureManagerVulkan::createTextureSampler(
+    //         texture->textureSampler, 
+    //         renderDeviceVulkan->device,
+    //         samplerInfo
+    //     );
+    // };
  
-    createTexture(aoMapID, aoMap);
-    createTexture(aoMapTempID, aoMapTemp);
+    // createTexture(aoMapID, aoMap);
+    // createTexture(aoMapTempID, aoMapTemp);
+
+
+    VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
+    VkDevice device = renderDeviceVulkan->device;
+    TextureConfig textureConfig{};
+    textureConfig.width = swapchain.swapChainExtent.width;
+    textureConfig.height = swapchain.swapChainExtent.height;
+    textureConfig.format = VK_FORMAT_R16_SFLOAT;
+
+    TextureSamplerConfig samplerConfig{};
+
+    aoMapID = textureManagerVulkan->createTexture(textureConfig, samplerConfig);
+    aoMapTempID = textureManagerVulkan->createTexture(textureConfig, samplerConfig);
+    aoMap = textureManagerVulkan->getTexture(aoMapID);
+    aoMapTemp = textureManagerVulkan->getTexture(aoMapTempID);
     
     outputImage = aoMap;
     rendererManagerVulkan->addRenderTexture("aoMap", {outputImage->id()});
@@ -400,4 +373,45 @@ void AmbientOcclusionPassVulkan::_cleanupResources()
 
 void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+    // anything that changes which textures are used must happen before importing
+    auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    positionImage = geometryPass->renderTarget.gBufferPos;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+
+    // skip the pass on a resize frame: other passes (deferred gbuffer) still recreate
+    // their images later this frame, so recording against them now would use destroyed images
+    if(needResize) {
+        _recreateResources();
+        needResize = false;
+        return;
+    }
+
+    auto pos =graph.importTexture(positionImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto norm = graph.importTexture(normalImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto ao = graph.importTexture(aoMap, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto aoTemp = graph.importTexture(aoMapTemp, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    
+    RenderPassNode node{};
+    node.name = "AO";
+    node.reads  = { {pos, VK_IMAGE_LAYOUT_GENERAL}, {norm, VK_IMAGE_LAYOUT_GENERAL} };
+    node.writes = { {ao, VK_IMAGE_LAYOUT_GENERAL}, {aoTemp, VK_IMAGE_LAYOUT_GENERAL} };
+
+    node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+        
+
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        Camera* camera = SceneManager::cameraController;
+
+        if(!camera) {
+            return;
+        }
+
+        render(*camera);
+    };
+
+    graph.addPass(node);
+
+
 }

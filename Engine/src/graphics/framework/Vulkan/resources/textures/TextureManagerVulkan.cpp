@@ -107,6 +107,7 @@ uint32_t TextureManagerVulkan::loadTextureFromMemory(const void *data, size_t si
 	return _assignID();
 }
 
+//TODO: eventually remove this
 uint32_t TextureManagerVulkan::createTexture()
 {
 	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);

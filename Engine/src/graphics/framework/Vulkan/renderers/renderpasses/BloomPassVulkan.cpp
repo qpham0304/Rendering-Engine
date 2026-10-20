@@ -32,8 +32,7 @@ bool BloomPassVulkan::init(WindowConfig config)
     RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
 	auto giPassVulkan = dynamic_cast<SSRGIPassVulkan*>(renderer);
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
 
     assert(giPassVulkan && "failed to retrieve GI Pass data");
 
@@ -44,7 +43,7 @@ bool BloomPassVulkan::init(WindowConfig config)
     mipCount = std::clamp(maxMips, 5u, 10u);
 
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    inputImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
+    inputImage = lightingPass->renderTarget.colorTexture;
     
     lensDirtTextureID = textureManagerVulkan->loadTexture("assets/textures/DirtMaskTexture.jpg", 1, true);
     
@@ -78,8 +77,8 @@ void BloomPassVulkan::onUpdate()
 
 void BloomPassVulkan::render(Camera& camera) {
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    auto deferred = dynamic_cast<DeferredRendererVulkan*>(rendererManagerVulkan->getRenderer("DeferredRendererVulkan"));
-    inputImage = deferred->renderTarget.colorTextures[currentFrame];
+    auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
+    inputImage = lightingPass->renderTarget.colorTexture;
 
     if (needResize) {
         _recreateResources();
@@ -304,7 +303,7 @@ void BloomPassVulkan::_updateBloomProcessDesciptors()
 {
     auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(bloomDecriptorsetsID);
     TextureVulkan* dirtTex = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(lensDirtTextureID));
-    auto deferred = dynamic_cast<DeferredRendererVulkan*>(rendererManagerVulkan->getRenderer("DeferredRendererVulkan"));
+    auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
 
     for(int i = 0; i < VulkanUtils::numFrames(); i++) {
         std::vector<VkWriteDescriptorSet> writes;
@@ -313,7 +312,7 @@ void BloomPassVulkan::_updateBloomProcessDesciptors()
         VkDescriptorImageInfo outInfo{ VK_NULL_HANDLE, mipChain[0], VK_IMAGE_LAYOUT_GENERAL };
         VkDescriptorImageInfo dirtInfo{ dirtTex->textureSampler, dirtTex->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
         // set i is bound on frame i, so it reads frame i's scene color
-        TextureVulkan* sceneImage = deferred->renderTarget.colorTextures[i];
+        TextureVulkan* sceneImage = lightingPass->renderTarget.colorTexture;
         VkDescriptorImageInfo sceneInfo{ sceneImage->textureSampler, sceneImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
         descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 0, bloomInfo);

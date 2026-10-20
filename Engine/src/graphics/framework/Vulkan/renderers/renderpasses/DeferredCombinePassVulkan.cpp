@@ -71,6 +71,7 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 {
     RendererVulkan* renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     _fetchInputImages(currentFrame);
@@ -103,7 +104,7 @@ void DeferredCombinePassVulkan::render(Camera &camera)
     ubo.invView = glm::inverse(ubo.view);
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
-	pushConstant.screenRes = { deferredRendererVulkan->renderTarget.width, deferredRendererVulkan->renderTarget.height };
+	pushConstant.screenRes = { geometryPass->renderTarget.width, geometryPass->renderTarget.height };
     pushConstant.time = AppWindow::getTime();
     pushConstant.frameSeed = rand() % 32768;
 
@@ -123,6 +124,8 @@ void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
     RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
 	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+	auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
     renderer = rendererManagerVulkan->getRenderer("TemporalPassVulkan");
 	auto temporalPassRenderer = dynamic_cast<TemporalPassVulkan*>(renderer);
     renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
@@ -136,11 +139,11 @@ void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
         denoisedGIImage = SSRGIPassRenderer->getOutputImage();
     }
 
-    sceneImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
-    albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
-    positionImage = deferredRendererVulkan->renderTarget.gBufferPos[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
-    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
+    sceneImage = lightingPass->renderTarget.colorTexture;
+    albedoImage = geometryPass->renderTarget.gBufferAlbedo;
+    positionImage = geometryPass->renderTarget.gBufferPos;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+    pbrImage = geometryPass->renderTarget.gPBR;
 	bloomImage = bloomPassRenderer->getOutputImage();
 
     // without the ddgi renderer the shader never samples the atlases (ddgiMode 0), the bindings still need an image
@@ -163,10 +166,9 @@ void DeferredCombinePassVulkan::writeCombinedImage(VkCommandBuffer cmd, uint32_t
     vkCmdPushConstants(cmd, pipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 
         0, sizeof(PushConstant), &pushConstant);
 
-    auto renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-    uint32_t width = deferredRendererVulkan->renderTarget.width;
-    uint32_t height = deferredRendererVulkan->renderTarget.height;
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    uint32_t width = geometryPass->renderTarget.width;
+    uint32_t height = geometryPass->renderTarget.height;
     uint32_t groupX = (width  + 15) / 16;
     uint32_t groupY = (height + 15) / 16;
 

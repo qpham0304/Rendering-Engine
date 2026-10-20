@@ -2,11 +2,11 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput inputPos;
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput inputNorm;
-layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput inputAlbedo;
-layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput inputPBR;
-layout(input_attachment_index = 4, set = 0, binding = 4) uniform subpassInput inputEmissive;
+layout(set = 0, binding = 0) uniform sampler2D inputPos;
+layout(set = 0, binding = 1) uniform sampler2D inputNorm;
+layout(set = 0, binding = 2) uniform sampler2D inputAlbedo;
+layout(set = 0, binding = 3) uniform sampler2D inputPBR;
+layout(set = 0, binding = 4) uniform sampler2D inputEmissive;
 
 layout(location = 0) out vec4 outColor;
 
@@ -441,11 +441,11 @@ vec3 aces(vec3 x) {
 }
 
 void main() {
-    vec3 worldPos  = subpassLoad(inputPos).rgb;
-    vec3 worldNorm = subpassLoad(inputNorm).rgb;
-    vec4 albedo    = subpassLoad(inputAlbedo);
-    vec3 pbr       = subpassLoad(inputPBR).rgb;
-    vec4 emissive  = subpassLoad(inputEmissive);
+    vec3 worldPos  = texelFetch(inputPos, ivec2(gl_FragCoord.xy), 0).rgb;
+    vec3 worldNorm = texelFetch(inputNorm, ivec2(gl_FragCoord.xy), 0).rgb;
+    vec4 albedo    = texelFetch(inputAlbedo, ivec2(gl_FragCoord.xy), 0);
+    vec3 pbr       = texelFetch(inputPBR, ivec2(gl_FragCoord.xy), 0).rgb;
+    vec4 emissive  = texelFetch(inputEmissive, ivec2(gl_FragCoord.xy), 0);
 
     if(length(worldNorm) < 0.1) {
         vec2 texCoord = gl_FragCoord.xy / vec2(ubo.width, ubo.height); 

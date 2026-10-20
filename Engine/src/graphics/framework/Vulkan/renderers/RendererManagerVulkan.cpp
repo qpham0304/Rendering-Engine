@@ -64,7 +64,11 @@ bool RendererManagerVulkan::init(WindowConfig config)
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
 
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
+    // init runs in this order: the g-buffer has to exist before the deferred renderer inits ao/hiz,
+    // and the lighting pass needs the ao output for its descriptors
+    geometryPassRenderer = addRenderer<GeometryPassVulkan>("GeometryPassVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
+    lightingPassRenderer = addRenderer<LightingPassVulkan>("LightingPassVulkan");
     if(rtSupported) {
         raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
     }
@@ -85,6 +89,9 @@ bool RendererManagerVulkan::init(WindowConfig config)
     for(auto& [name, renderer] : m_renderers) {
         renderer->init(config);
     }
+
+
+
 
     return true;
 }
@@ -113,7 +120,7 @@ std::vector<uint32_t> RendererManagerVulkan::listIDs() const
 void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
 {
     Service::onUpdate(frameTime);
-    static_cast<ParticleRendererVulkan*>(particleRenderer)->setSimDeltaTime(frameTime.gameDeltaTime);
+    particleRenderer->setSimDeltaTime(frameTime.gameDeltaTime);
 
     if(needResize) {
 		_recreateResources();
@@ -125,15 +132,16 @@ void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
         forwardRenderer->onUpdate();
     } 
     else if(currentRenderMode == 1) {
-        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-        if(tmp->pushConstantLight.aoOn) {
+        if(lightingPassRenderer->pushConstantLight.aoOn) {
             alchemyAORenderer->onUpdate();
         }
         deferredRenderer->onUpdate();
+        geometryPassRenderer->onUpdate();
+        lightingPassRenderer->onUpdate();
         hiZPassRenderer->onUpdate();
         SSRGIPassRenderer->onUpdate();
         bloomRenderer->onUpdate();
-        if(tmp->denoiserOn) {
+        if(deferredRenderer->denoiserOn) {
             temporalPassRenderer->onUpdate();
         }
         if(ddgiPassRenderer) {
@@ -157,6 +165,7 @@ void RendererManagerVulkan::render()
 	if(!SceneManager::cameraController) {
 		return;
 	}
+
 
     //make sure swapchain need to be resized first before other renderer can rebuild the new size
     if(swapchainOutdated) {
@@ -187,22 +196,36 @@ void RendererManagerVulkan::render()
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 	lastViewProj = ubo.proj * ubo.view;
 
-    // shadowMapRenderer->render(*camera);
-    
+    VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+
+    if(currentRenderMode == 0 || currentRenderMode == 1) {
+        shadowMapPass->render(*camera);
+        imageBasedRenderer->render(*camera);
+    }
+
     if(currentRenderMode == 0) {
         forwardRenderer->render(*camera);
-    } 
+    }
     else if(currentRenderMode == 1) {
-        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-        if(tmp->pushConstantLight.aoOn) {
-            alchemyAORenderer->render(*camera);
+        // m_renderGraph.compile();
+
+        geometryPassRenderer->render(*camera);
+
+        m_renderGraph.reset();
+        alchemyAORenderer->addToGraph(m_renderGraph);
+        deferredRenderer->addToGraph(m_renderGraph);
+        //... more added to graph
+
+        if(lightingPassRenderer->pushConstantLight.aoOn) {
+            // alchemyAORenderer->render(*camera);
+            m_renderGraph.execute(cmd, currentFrame);
         }
-        deferredRenderer->render(*camera);
+        lightingPassRenderer->render(*camera);
         hiZPassRenderer->render(*camera);
         particleRenderer->render(*camera);
         SSRGIPassRenderer->render(*camera);
         bloomRenderer->render(*camera);
-        if(tmp->denoiserOn) {
+        if(deferredRenderer->denoiserOn) {
             temporalPassRenderer->render(*camera);
         }
         if(ddgiPassRenderer) {
@@ -226,10 +249,7 @@ void RendererManagerVulkan::drawDebug(glm::vec3 start, glm::vec3 end)
         return;
     }
 
-    auto* debugRendererVulkan = dynamic_cast<DebugRendererVulkan*>(debugRenderer);
-    assert(debugRendererVulkan && "drawdebug: failed to cast debug renderer");
-
-    debugRendererVulkan->drawLine(start, end);
+    debugRenderer->drawLine(start, end);
 }
 
 void RendererManagerVulkan::_cleanupResources()
