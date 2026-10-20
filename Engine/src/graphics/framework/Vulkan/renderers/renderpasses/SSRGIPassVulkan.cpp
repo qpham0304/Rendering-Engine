@@ -1,4 +1,5 @@
 #include "SSRGIPassVulkan.h"
+#include <core/scene/SceneManager.h>
 #include <core/features/camera.h>
 #include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h>
@@ -35,7 +36,7 @@ bool SSRGIPassVulkan::init(WindowConfig config)
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImageHiZ = highZRendererVulkan->outputImages[currentFrame];
+    depthImageHiZ = highZRendererVulkan->hizImage;
     depthImageRaw = geometryPass->renderTarget.depthTexture;
     normalImage = geometryPass->renderTarget.gBufferNorm;
     colorImage = lightingPass->renderTarget.colorTexture;
@@ -69,29 +70,22 @@ void SSRGIPassVulkan::onUpdate()
 
 void SSRGIPassVulkan::render(Camera &camera)
 {
-    if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
-
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    
     RendererVulkan* renderer = nullptr;
 	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 	auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
     renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
-    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImageHiZ = highZRendererVulkan->outputImages[currentFrame];
+    depthImageHiZ = highZRendererVulkan->hizImage;
     depthImageRaw = geometryPass->renderTarget.depthTexture;
     normalImage = geometryPass->renderTarget.gBufferNorm;
     colorImage = lightingPass->renderTarget.colorTexture;
     albedoImage = geometryPass->renderTarget.gBufferAlbedo;
     pbrImage = geometryPass->renderTarget.gPBR;
     emissiveImage = geometryPass->renderTarget.gBufferEmissive;
-    outputImage = outputImages[currentFrame];
 
-    
     ubo.view = camera.getViewMatrix();
     ubo.projection = camera.getProjectionMatrix();
     ubo.projection[1][1] *= -1.0f; 
@@ -115,10 +109,6 @@ void SSRGIPassVulkan::render(Camera &camera)
 
 void SSRGIPassVulkan::writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
-
     pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
     auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(SSRGISetsID)[currentFrame];
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, 
@@ -134,10 +124,6 @@ void SSRGIPassVulkan::writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame)
     uint32_t groupY = (height + 7) / 8;
 
     vkCmdDispatch(cmd, groupX, groupY, 1);
-    
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 }
 
 void SSRGIPassVulkan::_createResources()
@@ -145,8 +131,9 @@ void SSRGIPassVulkan::_createResources()
     auto createTexture = [this] (uint32_t& id, TextureVulkan*& texture){
         id = textureManagerVulkan->createTexture();
         texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-        
+
         assert(texture && "failed to cast texture into vulkan texture");
+        texture->format = VK_FORMAT_R16G16B16A16_SFLOAT;	// the graph's transitImage reads it back
         
         VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
         VkDevice device = renderDeviceVulkan->device;
@@ -195,6 +182,12 @@ void SSRGIPassVulkan::_createResources()
             renderDeviceVulkan->device,
             samplerInfo
         );
+
+        VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+        TextureManagerVulkan::transitionImageLayout(
+            cmd, texture->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
+        renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
     };
  
     outputImages.resize(VulkanUtils::numFrames());
@@ -259,7 +252,7 @@ void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
     renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
-    depthImageHiZ = highZRendererVulkan->outputImages[index];
+    depthImageHiZ = highZRendererVulkan->hizImage;
     depthImageRaw = geometryPass->renderTarget.depthTexture;
     normalImage = geometryPass->renderTarget.gBufferNorm;
     colorImage = lightingPass->renderTarget.colorTexture;
@@ -354,4 +347,50 @@ void SSRGIPassVulkan::_cleanupResources()
 
 void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    outputImage = outputImages[currentFrame];
+   
+    auto depthImageHiZHandle = graph.importTexture(depthImageHiZ);
+    auto depthImageRawHandle = graph.importTexture(depthImageRaw);
+    auto normalImageHandle = graph.importTexture(normalImage);
+    auto colorImageHandle = graph.importTexture(colorImage);
+    auto albedoImageHandle = graph.importTexture(albedoImage);
+    auto pbrImageHandle = graph.importTexture(pbrImage);
+    auto emissiveImageHandle = graph.importTexture(emissiveImage);
+    auto outputImageHandle = graph.importTexture(outputImage);
+
+    RenderPassNode node{};
+    node.name = "SSRGI";
+    node.reads = {
+        { depthImageHiZHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { depthImageRawHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { normalImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { colorImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { albedoImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { pbrImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { emissiveImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
+    };
+    
+    node.writes = {
+        { outputImageHandle, VK_IMAGE_LAYOUT_GENERAL }
+    };
+
+    node.execute = [this] (VkCommandBuffer cmd, uint32_t currentFrame){
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        Camera* camera = SceneManager::cameraController;
+
+        if(!camera) {
+            return;
+        }
+
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }

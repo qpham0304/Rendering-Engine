@@ -8,14 +8,14 @@ RenderGraphVulkan::RenderGraphVulkan()
 
 void RenderGraphVulkan::addPass(RenderPassNode node)
 {
-    m_passes[node.name] = std::make_shared<RenderPassNode>(node);
+    m_passes.push_back(std::move(node));
 }
 
 void RenderGraphVulkan::execute(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     //TODO: use sorted pass eventually
-    for(auto& [name, passNode] : m_passes) {
-        for(auto& access : passNode->reads) {
+    for(auto& passNode : m_passes) {
+        for(auto& access : passNode.reads) {
             RGResource& resource = m_resources[access.handle.index];
             if(resource.initialLayout != access.layout) {
                 resource.texture->transitImage(cmd, resource.initialLayout, access.layout);
@@ -23,7 +23,7 @@ void RenderGraphVulkan::execute(VkCommandBuffer cmd, uint32_t currentFrame)
             }
         }
         
-        for(auto& access : passNode->writes) {
+        for(auto& access : passNode.writes) {
             RGResource& resource = m_resources[access.handle.index];
             if(resource.initialLayout != access.layout) {
                 resource.texture->transitImage(cmd, resource.initialLayout, access.layout);
@@ -31,7 +31,7 @@ void RenderGraphVulkan::execute(VkCommandBuffer cmd, uint32_t currentFrame)
             }
         }
 
-        passNode->execute(cmd, currentFrame);
+        passNode.execute(cmd, currentFrame);
     }
 
     for(auto& resource : m_resources) {
@@ -46,11 +46,16 @@ void RenderGraphVulkan::reset()
 {
     m_resources.clear();
     m_passes.clear();
-    m_sortedPasses.clear();
 }
 
-RGHandle RenderGraphVulkan::importTexture(TextureVulkan *texture, VkImageLayout initialLayout, VkImageLayout finalLayout)
+RGHandle RenderGraphVulkan::importTexture(TextureVulkan* texture, VkImageLayout initialLayout, VkImageLayout finalLayout)
 {
+    //find matchin imported texture
+    for(uint32_t i = 0; i < m_resources.size(); i++) {
+        if(m_resources[i].texture == texture) {
+            return { i };
+        }
+    }
     uint32_t size = m_resources.size();
 
     RGResource resource{};

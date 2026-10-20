@@ -91,11 +91,9 @@ void LightingPassVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 
-	// runs after the geometry and ao passes, so their resize already recreated what the descriptors point at
-	if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
+	if(environmentImage != imageBasedRenderer->hdrImage) {
+		renderDeviceVulkan->waitIdle();	// the frame in flight still reads the old descriptors
+		_updateLightDescriptor();
 	}
 
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
@@ -103,8 +101,6 @@ void LightingPassVulkan::render(Camera& camera)
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	renderDeviceVulkan->beginLabel(cmd, "Light Pass");
-
-	_transitionTarget(cmd, true);
 
 	VkRenderingAttachmentInfo colorAttachment{};
 	colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -125,8 +121,6 @@ void LightingPassVulkan::render(Camera& camera)
 	_renderLightPass(cmd, currentFrame);
 	vkCmdEndRendering(cmd);
 
-	_transitionTarget(cmd, false);
-
 	renderDeviceVulkan->endLabel(cmd);
 
 	rendererManagerVulkan->setDisplayImage(renderTarget.colorTexture);
@@ -134,7 +128,54 @@ void LightingPassVulkan::render(Camera& camera)
 
 void LightingPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+	if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+	
+	auto& gBufferTarget = geometryPass->renderTarget;
 
+    auto gBufferPos = graph.importTexture(gBufferTarget.gBufferPos);
+    auto gBufferNorm = graph.importTexture(gBufferTarget.gBufferNorm);
+    auto gBufferAlbedo = graph.importTexture(gBufferTarget.gBufferAlbedo);
+    auto gPBR = graph.importTexture(gBufferTarget.gPBR);
+    auto gBufferEmissive = graph.importTexture(gBufferTarget.gBufferEmissive);
+    auto gBufferMotion = graph.importTexture(gBufferTarget.gBufferMotion);
+    auto depthTexture = graph.importTexture(gBufferTarget.depthTexture);
+    auto aoTexture = graph.importTexture(ambientOcclusionPass->getOutputImage());	// written by ao in GENERAL earlier in the graph
+
+	auto colorTexture = graph.importTexture(renderTarget.colorTexture, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	RenderPassNode node{};
+    node.name = "lighting";
+    node.reads  = { 
+		{ gBufferPos, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+		{ gBufferNorm, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+		{ gBufferAlbedo, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+		{ gPBR, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+		{ gBufferEmissive, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+		{ gBufferMotion, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+		{ depthTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+		{ aoTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
+	};
+
+	node.writes = {
+		{ colorTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }
+	};
+
+    node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        Camera* camera = SceneManager::cameraController;
+
+        if(!camera) {
+            return;
+        }
+
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }
 
 void LightingPassVulkan::_updateLights(uint32_t currentFrame)
@@ -214,37 +255,6 @@ void LightingPassVulkan::_renderLightPass(VkCommandBuffer cmd, uint32_t currentF
 	);
 
 	vkCmdDraw(cmd, 3, 1, 0, 0);
-}
-
-void LightingPassVulkan::_transitionTarget(VkCommandBuffer cmd, bool toAttachment)
-{
-	// single copy, so going back to attachment also waits for the previous frame's readers (bloom, ssrgi, combine, particles)
-	VkImageMemoryBarrier barrier{};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = renderTarget.colorTexture->textureImage;
-	barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-
-	VkPipelineStageFlags srcStage;
-	VkPipelineStageFlags dstStage;
-	if(toAttachment) {
-		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;	// cleared on load
-		barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		barrier.srcAccessMask = 0;
-		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		srcStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-		dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	} else {
-		barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
-		srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
-	}
-
-	vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
 #pragma region setup
@@ -467,6 +477,7 @@ void LightingPassVulkan::_updateLightDescriptor()
 
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
+	environmentImage = imageBasedRenderer->hdrImage;
 }
 
 void LightingPassVulkan::_recreateResources()

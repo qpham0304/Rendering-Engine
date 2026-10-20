@@ -218,7 +218,7 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 
 	guiManager->start();
 	
-	// //TODO: temporarily use imgui renderer, abstract to gui service and remove these
+	//TODO: temporarily use imgui renderer, abstract to gui service and remove these
 	int currentMode = rendererManagerVulkan->getRenderMode(); 
 	if(currentMode == 1) {
 		deferredRendererVulkan->renderGui();

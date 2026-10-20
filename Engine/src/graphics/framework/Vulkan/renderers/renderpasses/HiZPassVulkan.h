@@ -24,7 +24,7 @@ public:
     void writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame);
 
 	//TODO: turn this into private
-	std::vector<TextureVulkan*> outputImages;
+	TextureVulkan* hizImage { nullptr };	// single copy, gpu only, rebuilt from this frame's depth every frame
 
 protected:
 	bool m_initialized { false };
@@ -44,7 +44,7 @@ protected:
 	uint32_t mipLevels;
 	uint32_t mapSize{ 1024 };
 
-	std::vector<std::vector<VkImageView>> HiZMipViews;
-	std::vector<std::vector<VkDescriptorSet>> HiZMipSets;
+	std::vector<VkImageView> HiZMipViews;
+	std::vector<VkDescriptorSet> HiZMipSets;
 	PushConstant pushConstant;
 };

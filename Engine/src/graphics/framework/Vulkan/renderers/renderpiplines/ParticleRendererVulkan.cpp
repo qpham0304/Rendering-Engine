@@ -147,12 +147,6 @@ void ParticleRendererVulkan::render(Camera &camera)
 {
     Timer timer(m_name, true);
 
-    if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
-
     if(containerRefs.size() <= 1) {
         return;
     }
@@ -330,11 +324,6 @@ void ParticleRendererVulkan::_renderParticle(VkCommandBuffer cmd, uint32_t curre
     uint32_t width = geometryPass->renderTarget.width;
     uint32_t height = geometryPass->renderTarget.height;
 
-    TextureManagerVulkan::transitionImageLayout(cmd, sceneImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, 1, renderDeviceVulkan);
-    TextureManagerVulkan::transitionImageLayout(cmd, depthImage->textureImage, depthFormat,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
     VkRenderingAttachmentInfo colorAttachment{};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
     colorAttachment.imageView = sceneImage->textureImageView;
@@ -387,11 +376,6 @@ void ParticleRendererVulkan::_renderParticle(VkCommandBuffer cmd, uint32_t curre
     scene->forEnitiesWith<ParticleEmitter>(func);
 
     vkCmdEndRendering(cmd);
-
-    TextureManagerVulkan::transitionImageLayout(cmd, sceneImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-    TextureManagerVulkan::transitionImageLayout(cmd, depthImage->textureImage, depthFormat,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 }
 
 
@@ -414,4 +398,38 @@ bool ParticleRendererVulkan::_isValidContainer(uint32_t containerID) const
 
 void ParticleRendererVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
+    TextureVulkan* sceneImage = lightingPass->renderTarget.colorTexture;
+    TextureVulkan* depthImage = geometryPass->renderTarget.depthTexture;
+
+    auto scene = graph.importTexture(sceneImage);
+    auto depth = graph.importTexture(depthImage);
+    
+    RenderPassNode node{};
+    node.name = "Particle";
+    node.reads  = {
+        { depth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL } 
+    };
+
+    node.writes = { 
+        { scene, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL } 
+    };
+
+    node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        Camera* camera = SceneManager::cameraController;
+
+        if(!camera) {
+            return;
+        }
+
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }

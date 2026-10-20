@@ -75,10 +75,10 @@ protected:
 	ShadowMapPassVulkan* shadowMapPass { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 	AmbientOcclusionPassVulkan* ambientOcclusionPass { nullptr };
+	TextureVulkan* environmentImage { nullptr };
 
 	void _updateLights(uint32_t currentFrame);
 	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
-	void _transitionTarget(VkCommandBuffer cmd, bool toAttachment);
 	void _createRenderTarget();
 	void _createLightDescriptor();
 	void _updateLightDescriptor();

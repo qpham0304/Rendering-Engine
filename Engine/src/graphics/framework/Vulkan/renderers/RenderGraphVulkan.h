@@ -18,21 +18,20 @@ struct RGHandle {
 struct RGAccess {
     RGHandle handle;
     VkImageLayout layout;
-
 };
 
 struct RenderPassNode {
     std::string name{"Undefined"};
-    std::vector<RGAccess> reads{};  // Dependencies, use member path for name/type
-    std::vector<RGAccess> writes{}; // Outputs, use member path  for name/type
+    std::vector<RGAccess> reads{};  // Dependencies during the pass, use member path for name/type
+    std::vector<RGAccess> writes{}; // Outputs during the pass, use member path for name/type
     std::function<void(VkCommandBuffer, uint32_t)> execute;
 };
 
 
 struct RGResource {
     TextureVulkan* texture;
-    VkImageLayout  initialLayout;   // for external textures
-    VkImageLayout  finalLayout;
+    VkImageLayout  initialLayout;   // layout before the first pass
+    VkImageLayout  finalLayout;     // layout after the last pass
 };
 
 class RenderGraphVulkan {
@@ -43,8 +42,11 @@ public:
     // const std::vector<std::shared_ptr<RenderPassNode>>& getExecutionOrder() const;
     void execute(VkCommandBuffer cmd, uint32_t currentFrame);
     void reset();
-    RGHandle importTexture(TextureVulkan* texture, VkImageLayout initial, VkImageLayout final);
-
+    RGHandle importTexture(
+        TextureVulkan* texture,
+        VkImageLayout initial = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VkImageLayout final = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
 
 private:
     // bool dfs(
@@ -54,6 +56,5 @@ private:
     //     std::unordered_set<std::string>& visiting
     // );
     std::vector<RGResource> m_resources;
-    std::unordered_map<std::string, std::shared_ptr<RenderPassNode>> m_passes;
-    std::vector<std::shared_ptr<RenderPassNode>> m_sortedPasses;
+    std::vector<RenderPassNode> m_passes;   // executed in the order they were added
 };

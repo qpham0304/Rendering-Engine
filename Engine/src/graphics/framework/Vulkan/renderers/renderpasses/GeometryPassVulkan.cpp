@@ -79,19 +79,13 @@ void GeometryPassVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 
-	if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
+	
 
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	_updateSceneData(currentFrame);
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	renderDeviceVulkan->beginLabel(cmd, "Geometry Pass");
-
-	_transitionTargets(cmd, true);
 
 	auto colorAttachment = [](TextureVulkan* texture, VkClearColorValue clear) {
 		VkRenderingAttachmentInfo attachment{};
@@ -134,14 +128,50 @@ void GeometryPassVulkan::render(Camera& camera)
 	_renderGeometryPass(cmd, currentFrame);
 	vkCmdEndRendering(cmd);
 
-	_transitionTargets(cmd, false);
-
 	renderDeviceVulkan->endLabel(cmd);
 }
 
 void GeometryPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+	if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
 
+    auto gBufferPos = graph.importTexture(renderTarget.gBufferPos, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto gBufferNorm = graph.importTexture(renderTarget.gBufferNorm, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto gBufferAlbedo = graph.importTexture(renderTarget.gBufferAlbedo, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto gPBR = graph.importTexture(renderTarget.gPBR, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto gBufferEmissive = graph.importTexture(renderTarget.gBufferEmissive, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto gBufferMotion = graph.importTexture(renderTarget.gBufferMotion, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto depthTexture = graph.importTexture(renderTarget.depthTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    
+	RenderPassNode node{};
+    node.name = "gBuffer";
+    node.reads  = { };	//TODO: add a depth prepass before everything
+    node.writes = {
+		{ gBufferPos, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ gBufferNorm, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ gBufferAlbedo, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ gPBR, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ gBufferEmissive, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ gBufferMotion, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ depthTexture, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL }
+	};
+
+    node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        Camera* camera = SceneManager::cameraController;
+
+        if(!camera) {
+            return;
+        }
+
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }
 
 void GeometryPassVulkan::_updateSceneData(uint32_t currentFrame)
@@ -277,60 +307,6 @@ void GeometryPassVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t curre
 	}
 }
 
-void GeometryPassVulkan::_transitionTargets(VkCommandBuffer cmd, bool toAttachment)
-{
-	// the g-buffer is a single copy, so the transition into attachment also has to wait for the previous
-	// frame's readers (compute and fragment passes), hence the broad source stage
-	bool hasStencil = renderTarget.depthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT || renderTarget.depthFormat == VK_FORMAT_D24_UNORM_S8_UINT;
-	VkImageAspectFlags depthAspect = VK_IMAGE_ASPECT_DEPTH_BIT | (hasStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
-
-	auto barrier = [&](TextureVulkan* texture, VkImageAspectFlags aspect, VkImageLayout attachmentLayout, VkAccessFlags attachmentAccess) {
-		VkImageMemoryBarrier imageBarrier{};
-		imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		imageBarrier.image = texture->textureImage;
-		imageBarrier.subresourceRange = { aspect, 0, 1, 0, 1 };
-
-		if(toAttachment) {
-			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;	// cleared on load, previous contents are not needed
-			imageBarrier.newLayout = attachmentLayout;
-			imageBarrier.srcAccessMask = 0;
-			imageBarrier.dstAccessMask = attachmentAccess;
-		} else {
-			imageBarrier.oldLayout = attachmentLayout;
-			imageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageBarrier.srcAccessMask = attachmentAccess;
-			imageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT;
-		}
-		return imageBarrier;
-	};
-
-	VkAccessFlags colorAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	VkAccessFlags depthAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-	std::array<VkImageMemoryBarrier, 7> barriers = {
-		barrier(renderTarget.gBufferPos, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAccess),
-		barrier(renderTarget.gBufferNorm, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAccess),
-		barrier(renderTarget.gBufferAlbedo, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAccess),
-		barrier(renderTarget.gPBR, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAccess),
-		barrier(renderTarget.gBufferEmissive, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAccess),
-		barrier(renderTarget.gBufferMotion, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAccess),
-		barrier(renderTarget.depthTexture, depthAspect, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, depthAccess),
-	};
-
-	VkPipelineStageFlags attachmentStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-		| VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-		| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	VkPipelineStageFlags readerStages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-		| VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
-		| VK_PIPELINE_STAGE_TRANSFER_BIT;
-
-	VkPipelineStageFlags srcStage = toAttachment ? VK_PIPELINE_STAGE_ALL_COMMANDS_BIT : attachmentStages;
-	VkPipelineStageFlags dstStage = toAttachment ? attachmentStages : readerStages;
-
-	vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data());
-}
 
 #pragma region setup
 void GeometryPassVulkan::_createRenderTargets()

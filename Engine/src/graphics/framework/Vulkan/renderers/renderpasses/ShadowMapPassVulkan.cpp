@@ -616,4 +616,20 @@ void ShadowMapPassVulkan::_cleanupResources()
 
 void ShadowMapPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+	auto depth = graph.importTexture(depthMap);
+
+	RenderPassNode node{};
+	node.name = "ShadowMap";
+	node.writes = {};
+	node.writes = { { depth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
+
+	node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+		Camera* camera = SceneManager::cameraController;
+		if(!camera) {
+			return;
+		}
+		render(*camera);
+	};
+
+	graph.addPass(node);
 }

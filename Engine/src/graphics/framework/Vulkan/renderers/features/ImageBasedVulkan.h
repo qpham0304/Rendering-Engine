@@ -33,7 +33,7 @@ public:
 	TextureVulkan* prefilterMap;
 	
 protected:
-	bool environmentReady { false };	// sh and prefilter only change with the environment, onUpdate redoes them on load
+	bool environmentReady { false };
 
 	struct PartialSum {
 		glm::vec4 coefficients;
@@ -78,6 +78,7 @@ protected:
 	uint32_t mapSize{ 128 };
 
 private:
+	void _updateEnvironmentDescriptors();
 	void _createDescriptorSetProjection();
 	void _createDescriptorSetGlobalSum();
 	void _createResourceLUT();

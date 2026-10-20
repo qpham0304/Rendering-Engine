@@ -111,8 +111,7 @@ void DDGIBuilderVulkan::render(Camera &camera)
 {
 	RendererVulkan::render(camera);
 
-	// nothing here depends on the window size
-	needResize = false;
+	needResize = false;	// nothing here depends on the window size
 
 	LightProbeComponent* probeGrid = findProbeGrid();
 	AccelStructureBufferVulkan* tlas = raytracer->m_rtBuilder.getTlas();
@@ -616,4 +615,38 @@ bool DDGIBuilderVulkan::onClose()
 
 void DDGIBuilderVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+   
+    auto rayColorBufferHandle = graph.importTexture(rayColorBuffer);
+    auto rayDistanceBufferHandle = graph.importTexture(rayDistanceBuffer);
+    auto currentIrradianceAtlasHandle = graph.importTexture(currentIrradianceAtlas);
+    auto lastframeIrradianceAtlasHandle = graph.importTexture(lastframeIrradianceAtlas);
+    auto currentVisibilityAtlasHandle = graph.importTexture(currentVisibilityAtlas);
+    auto lastFrameVisibilityAtlasHandle = graph.importTexture(lastFrameVisibilityAtlas);
+
+    RenderPassNode node{};
+    node.name = "DDGI";
+    node.reads = {};
+    
+    node.writes = {
+        { rayColorBufferHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { rayDistanceBufferHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { currentIrradianceAtlasHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { lastframeIrradianceAtlasHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { currentVisibilityAtlasHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { lastFrameVisibilityAtlasHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
+    };
+
+    node.execute = [this] (VkCommandBuffer cmd, uint32_t currentFrame){
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        Camera* camera = SceneManager::cameraController;
+
+        if(!camera) {
+            return;
+        }
+
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }

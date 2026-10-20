@@ -1,4 +1,5 @@
 #include "TemporalPassVulkan.h"
+#include <core/scene/SceneManager.h>
 #include <core/features/camera.h>
 #include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h>
@@ -68,27 +69,7 @@ void TemporalPassVulkan::onUpdate()
 
 void TemporalPassVulkan::render(Camera &camera)
 {
-    RendererVulkan* renderer = nullptr;
-	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-    renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
-	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
-    renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
-	auto SSRGIPassRenderer = dynamic_cast<SSRGIPassVulkan*>(renderer);
-	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    ssrgiImage = SSRGIPassRenderer->getOutputImage();
-    motionImage = geometryPass->renderTarget.gBufferMotion;
-    depthImage = geometryPass->renderTarget.depthTexture;
-    normalImage = geometryPass->renderTarget.gBufferNorm;
-    pbrImage = geometryPass->renderTarget.gPBR;
-
-    // after the refresh above, the gbuffer and the ssrgi output were recreated earlier this frame
-    if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
-
     _updateDescriptor(TemporalSetsID, currentFrame, outputImage, ssrgiHistoryImage);
     _updateDescriptor(TemporalSetsHistoryID, currentFrame, ssrgiHistoryImage, outputImage);
     
@@ -99,6 +80,7 @@ void TemporalPassVulkan::render(Camera &camera)
     ubo.invViewProj = glm::inverse(currentViewProj);
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 	pushConstant.screenRes = { geometryPass->renderTarget.width, geometryPass->renderTarget.height };
     pushConstant.maxAccumulation = 128.0f;
 
@@ -108,22 +90,15 @@ void TemporalPassVulkan::render(Camera &camera)
     renderDeviceVulkan->endLabel(cmd);
 
     ubo.priorViewProj = currentViewProj;
-
-    // renderDeviceVulkan->waitIdle();
-    // rendererManagerVulkan->setDisplayImage(outputImage);
 }
 
 void TemporalPassVulkan::writeTP(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
         
-    flip = !flip;
+    // flip is toggled in addToGraph, so the graph prepares the same target this writes
     TextureVulkan* currentWriteTarget = flip ? outputImage : ssrgiHistoryImage;
     TextureVulkan* currentReadHistory = flip ? ssrgiHistoryImage : outputImage;
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, currentWriteTarget->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
 
     uint32_t currentSets = flip ? TemporalSetsID : TemporalSetsHistoryID;
     auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(currentSets);
@@ -141,10 +116,6 @@ void TemporalPassVulkan::writeTP(VkCommandBuffer cmd, uint32_t currentFrame)
 
     vkCmdDispatch(cmd, groupX, groupY, 1);
     
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, currentWriteTarget->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
     _copyImageReource(cmd);
 }
 
@@ -171,9 +142,10 @@ void TemporalPassVulkan::_createResources()
     ){
         id = textureManagerVulkan->createTexture();
         texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-        
+
         assert(texture && "failed to cast texture into vulkan texture");
-        
+        texture->format = format;	// the graph's transitImage reads it back
+
         VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
         VkDevice device = renderDeviceVulkan->device;
         
@@ -386,4 +358,64 @@ void TemporalPassVulkan::_copyImageReource(VkCommandBuffer cmd) {
 
 void TemporalPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+    RendererVulkan* renderer = nullptr;
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
+	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
+    renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
+	auto SSRGIPassRenderer = dynamic_cast<SSRGIPassVulkan*>(renderer);
+	
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    ssrgiImage = SSRGIPassRenderer->getOutputImage();
+    motionImage = geometryPass->renderTarget.gBufferMotion;
+    depthImage = geometryPass->renderTarget.depthTexture;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+    pbrImage = geometryPass->renderTarget.gPBR;
+
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
+    // toggle here, not in writeTP: the graph has to prepare the same ping-pong target writeTP writes this frame
+    flip = !flip;
+    TextureVulkan* currentWriteTarget = flip ? outputImage : ssrgiHistoryImage;
+    TextureVulkan* currentReadHistory = flip ? ssrgiHistoryImage : outputImage;
+
+    auto ssrgiImageHandle = graph.importTexture(ssrgiImage);
+    auto motionImageHandle = graph.importTexture(motionImage);
+    auto depthImageHandle = graph.importTexture(depthImage);
+    auto normalImageHandle = graph.importTexture(normalImage);
+    auto pbrImageHandle = graph.importTexture(pbrImage);
+    auto historyHandle = graph.importTexture(currentReadHistory);	// keeps its contents, last frame's result
+    auto currentWriteTargetHandle = graph.importTexture(currentWriteTarget);
+
+    RenderPassNode node{};
+    node.name = "TAA";
+    node.reads = {
+        { ssrgiImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { motionImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { depthImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { normalImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { pbrImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { historyHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
+    };
+    
+    node.writes = {
+        { currentWriteTargetHandle, VK_IMAGE_LAYOUT_GENERAL }
+    };
+
+    node.execute = [this] (VkCommandBuffer cmd, uint32_t currentFrame){
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        Camera* camera = SceneManager::cameraController;
+
+        if(!camera) {
+            return;
+        }
+
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }

@@ -374,4 +374,31 @@ void BloomPassVulkan::_cleanupResources()
 
 void BloomPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+    auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
+    inputImage = lightingPass->renderTarget.colorTexture;
+
+    if (needResize) {
+        _recreateResources();
+        needResize = false;
+        return;
+    }
+
+    auto scene = graph.importTexture(inputImage);
+    auto bloom = graph.importTexture(outputImage);
+
+    RenderPassNode node{};
+    node.name = "Bloom";
+    node.reads  = { { scene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
+    // each mip goes GENERAL and back inside the down/up sample loops, the chain rests in SHADER_READ_ONLY
+    node.writes = { { bloom, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
+
+    node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+        Camera* camera = SceneManager::cameraController;
+        if(!camera) {
+            return;
+        }
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }

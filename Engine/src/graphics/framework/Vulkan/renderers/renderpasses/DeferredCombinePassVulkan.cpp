@@ -153,10 +153,7 @@ void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
 
 void DeferredCombinePassVulkan::writeCombinedImage(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,  1, 1, renderDeviceVulkan);
-
+    // the graph moves outputImage to GENERAL before this node and to SHADER_READ_ONLY at the end of the frame
     pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
     
     auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(setsID)[currentFrame];
@@ -173,11 +170,6 @@ void DeferredCombinePassVulkan::writeCombinedImage(VkCommandBuffer cmd, uint32_t
     uint32_t groupY = (height + 15) / 16;
 
     vkCmdDispatch(cmd, groupX, groupY, 1);
-
-    
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 }
 
 void DeferredCombinePassVulkan::_createResources()
@@ -185,8 +177,9 @@ void DeferredCombinePassVulkan::_createResources()
     auto createTexture = [this] (uint32_t& id, TextureVulkan*& texture){
         id = textureManagerVulkan->createTexture();
         texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-        
+
         assert(texture && "failed to cast texture into vulkan texture");
+        texture->format = VK_FORMAT_R16G16B16A16_SFLOAT;	// the graph's transitImage reads it back
         
         VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
         VkDevice device = renderDeviceVulkan->device;
@@ -389,4 +382,51 @@ void DeferredCombinePassVulkan::_cleanupResources()
 
 void DeferredCombinePassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+    // the gi image depends on the denoiser toggle and the taa ping-pong, look it up before importing
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    _fetchInputImages(currentFrame);
+
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
+    auto gi = graph.importTexture(denoisedGIImage);
+    auto scene = graph.importTexture(sceneImage);
+    auto albedo = graph.importTexture(albedoImage);
+    auto bloom = graph.importTexture(bloomImage);
+    auto atlas = graph.importTexture(atlasImageGI);
+    auto position = graph.importTexture(positionImage);
+    auto normal = graph.importTexture(normalImage);
+    auto visibility = graph.importTexture(visibilityAtlasImageGI);
+    auto pbr = graph.importTexture(pbrImage);
+    auto output = graph.importTexture(outputImage, VK_IMAGE_LAYOUT_UNDEFINED);	// fully overwritten every frame
+
+    RenderPassNode node{};
+    node.name = "DeferredCombine";
+    node.reads = {
+        { gi, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { scene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { albedo, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { bloom, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { atlas, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { position, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { normal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { visibility, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { pbr, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+    };
+    node.writes = {
+        { output, VK_IMAGE_LAYOUT_GENERAL },
+    };
+
+    node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+        Camera* camera = SceneManager::cameraController;
+        if(!camera) {
+            return;
+        }
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }

@@ -70,7 +70,6 @@ void AmbientOcclusionPassVulkan::onUpdate()
 
 void AmbientOcclusionPassVulkan::render(Camera& camera)
 {
-    // resize and gbuffer fetch happen in addToGraph, before the graph imports the textures
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 
 	pushConstant.view = camera.getViewMatrix();
@@ -388,8 +387,8 @@ void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
         return;
     }
 
-    auto pos =graph.importTexture(positionImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto norm = graph.importTexture(normalImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto pos = graph.importTexture(positionImage);
+    auto norm = graph.importTexture(normalImage);
     auto ao = graph.importTexture(aoMap, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     auto aoTemp = graph.importTexture(aoMapTemp, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     
@@ -399,8 +398,6 @@ void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
     node.writes = { {ao, VK_IMAGE_LAYOUT_GENERAL}, {aoTemp, VK_IMAGE_LAYOUT_GENERAL} };
 
     node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
-        
-
         Scene* scene = SceneManager::getInstance().getActiveScene();
         Camera* camera = SceneManager::cameraController;
 

@@ -63,7 +63,6 @@ protected:
 
 	void _updateSceneData(uint32_t currentFrame);
 	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
-	void _transitionTargets(VkCommandBuffer cmd, bool toAttachment);
 	void _createRenderTargets();
 	void _createDescriptor();
 	void _updateDescriptor();

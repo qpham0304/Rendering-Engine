@@ -1,6 +1,5 @@
 #include "RendererManagerVulkan.h"
 #include <core/scene/SceneManager.h>
-
 #include "core/features/Timer.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ApplicationRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
@@ -64,10 +63,9 @@ bool RendererManagerVulkan::init(WindowConfig config)
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
 
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
-    // init runs in this order: the g-buffer has to exist before the deferred renderer inits ao/hiz,
-    // and the lighting pass needs the ao output for its descriptors
+    
     geometryPassRenderer = addRenderer<GeometryPassVulkan>("GeometryPassVulkan");
-    deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
+    deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");   //TODO: only ui atm, remove soon
     lightingPassRenderer = addRenderer<LightingPassVulkan>("LightingPassVulkan");
     if(rtSupported) {
         raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
@@ -166,7 +164,6 @@ void RendererManagerVulkan::render()
 		return;
 	}
 
-
     //make sure swapchain need to be resized first before other renderer can rebuild the new size
     if(swapchainOutdated) {
         renderDeviceVulkan->swapchain.recreateSwapchain();
@@ -198,40 +195,40 @@ void RendererManagerVulkan::render()
 
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 
-    if(currentRenderMode == 0 || currentRenderMode == 1) {
+    if(currentRenderMode == 0) {
+        // forward is not on the graph yet, it still records the shared passes directly
         shadowMapPass->render(*camera);
         imageBasedRenderer->render(*camera);
-    }
-
-    if(currentRenderMode == 0) {
         forwardRenderer->render(*camera);
     }
     else if(currentRenderMode == 1) {
         // m_renderGraph.compile();
 
-        geometryPassRenderer->render(*camera);
-
         m_renderGraph.reset();
-        alchemyAORenderer->addToGraph(m_renderGraph);
-        deferredRenderer->addToGraph(m_renderGraph);
-        //... more added to graph
+
+        // passes run in the order they are added
+        shadowMapPass->addToGraph(m_renderGraph);
+        imageBasedRenderer->addToGraph(m_renderGraph);
+        geometryPassRenderer->addToGraph(m_renderGraph);
 
         if(lightingPassRenderer->pushConstantLight.aoOn) {
-            // alchemyAORenderer->render(*camera);
-            m_renderGraph.execute(cmd, currentFrame);
+            alchemyAORenderer->addToGraph(m_renderGraph);
         }
-        lightingPassRenderer->render(*camera);
-        hiZPassRenderer->render(*camera);
-        particleRenderer->render(*camera);
-        SSRGIPassRenderer->render(*camera);
-        bloomRenderer->render(*camera);
+        
+        lightingPassRenderer->addToGraph(m_renderGraph);
+        hiZPassRenderer->addToGraph(m_renderGraph);
+        particleRenderer->addToGraph(m_renderGraph);
+        SSRGIPassRenderer->addToGraph(m_renderGraph);
+        bloomRenderer->addToGraph(m_renderGraph);
         if(deferredRenderer->denoiserOn) {
-            temporalPassRenderer->render(*camera);
+            temporalPassRenderer->addToGraph(m_renderGraph);
         }
         if(ddgiPassRenderer) {
-            ddgiPassRenderer->render(*camera);
+            ddgiPassRenderer->addToGraph(m_renderGraph);
         }
-        deferredCombineRenderer->render(*camera);
+        deferredCombineRenderer->addToGraph(m_renderGraph);
+
+        m_renderGraph.execute(cmd, currentFrame);
     } else if(currentRenderMode == 2 && raytracingRenderer) {
         raytracingRenderer->render(*camera);
     }

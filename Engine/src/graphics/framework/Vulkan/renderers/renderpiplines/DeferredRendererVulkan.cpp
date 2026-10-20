@@ -63,6 +63,7 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 		&& "failed to retrieve renderer"
 	);
 
+	// TODO: add a depth prepass to fix this 
 	// the geometry pass is registered before this renderer so the g-buffer exists already,
 	// ao has to exist before the lighting pass (registered after this) builds its descriptors
 	ambientOcclusionPass->init(config);
@@ -99,7 +100,7 @@ void DeferredRendererVulkan::renderGui()
 	auto& pushConstantLight = lightingPass->pushConstantLight;
 
 	ImGui::Begin("Lights Control");
-	if(ImGui::Button("Change Environment")) {
+	if(ImGui::Button("Change Environment", ImVec2(-1.0f, 0.0f))) {
 		std::string path;
 		path = Utils::fileDialog();
 		if(!path.empty()) {

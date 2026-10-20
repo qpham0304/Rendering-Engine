@@ -19,6 +19,7 @@
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <core/scene/SceneManager.h>
+#include <graphics/framework/Vulkan/renderers/RenderGraphVulkan.h>
 #include <imgui.h>
 #include <volk.h>
 
@@ -95,37 +96,20 @@ bool ImageBasedRendererVulkan::onClose()
 
 void ImageBasedRendererVulkan::onUpdate()
 {
-	if(hdrImage_temp) {
-		uint32_t frameCount = VulkanUtils::numFrames();
-		renderDeviceVulkan->waitIdle();
-		VkCommandBuffer cmdBuffer = renderDeviceVulkan->commandPool.currentBuffer();
-		
-		//update spherical harmonic descriptors
-		auto projectionSets = descriptorManagerVulkan->getDescriptorSet(projectionSH_descriptorSetID);
-		for (uint32_t i = 0; i < frameCount; i++) {
-			VkDescriptorImageInfo imageInfo{ hdrImage->textureSampler, hdrImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-			std::vector<VkWriteDescriptorSet> writes;
-			descriptorManagerVulkan->writeImage(&writes, projectionSets[i], 0, imageInfo);
-			descriptorManagerVulkan->updateDescriptorSets(&writes);
-			computeSH(cmdBuffer, i);
-		}
 
-		//update prefilter descriptors
-		for (uint32_t i = 0; i < mipLevels; i++) {
-			VkDescriptorImageInfo imageInfo{ hdrImage->textureSampler, hdrImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-			std::vector<VkWriteDescriptorSet> writes;
-			descriptorManagerVulkan->writeImage(&writes, prefilterSets[i], 0, imageInfo);
-			descriptorManagerVulkan->updateDescriptorSets(&writes);
-			computePrefilter(cmdBuffer, i);
-		}
-		hdrImage_temp = nullptr;
-	}
-	
 }
 
 void ImageBasedRendererVulkan::render(Camera &camera)
 {
-	// shared by forward and deferred, computed once for every frame in flight instead of every frame
+	// a new environment was loaded from the gui. handled here instead of in loadTexture because the gui
+	// is built inside the swapchain render pass, where dispatches and these barriers are not allowed
+	if(hdrImage_temp) {
+		renderDeviceVulkan->waitIdle();	// the frame in flight still reads the old descriptors
+		_updateEnvironmentDescriptors();
+		hdrImage_temp = nullptr;
+		environmentReady = false;
+	}
+
 	if(environmentReady) {
 		return;
 	}
@@ -343,8 +327,25 @@ void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
 
 		// textureManagerVulkan->destroy(temp);
 	}
-	
-	onUpdate();
+	// sh and prefilter are recomputed by render() at the start of the next frame
+}
+
+void ImageBasedRendererVulkan::_updateEnvironmentDescriptors()
+{
+	VkDescriptorImageInfo imageInfo{ hdrImage->textureSampler, hdrImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+
+	auto projectionSets = descriptorManagerVulkan->getDescriptorSet(projectionSH_descriptorSetID);
+	for (uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
+		std::vector<VkWriteDescriptorSet> writes;
+		descriptorManagerVulkan->writeImage(&writes, projectionSets[i], 0, imageInfo);
+		descriptorManagerVulkan->updateDescriptorSets(&writes);
+	}
+
+	for (uint32_t i = 0; i < mipLevels; i++) {
+		std::vector<VkWriteDescriptorSet> writes;
+		descriptorManagerVulkan->writeImage(&writes, prefilterSets[i], 0, imageInfo);
+		descriptorManagerVulkan->updateDescriptorSets(&writes);
+	}
 }
 
 
@@ -709,4 +710,21 @@ void ImageBasedRendererVulkan::_cleanupResources()
 
 void ImageBasedRendererVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+	auto hdr = graph.importTexture(hdrImage);
+	auto prefilter = graph.importTexture(prefilterMap);
+
+	RenderPassNode node{};
+	node.name = "IBL";
+	node.reads  = { { hdr, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
+	node.writes = { { prefilter, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
+
+	node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+		Camera* camera = SceneManager::cameraController;
+		if(!camera) {
+			return;
+		}
+		render(*camera);
+	};
+
+	graph.addPass(node);
 }
