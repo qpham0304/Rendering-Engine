@@ -20,6 +20,7 @@ struct TextureConfig {
 	VkMemoryPropertyFlagBits properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	uint32_t mipLevels = 1;
 	uint32_t layerCount = 1;
+	VkImageLayout initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;	// UNDEFINED skips the transition on creation
 };
 
 struct TextureSamplerConfig {
@@ -40,6 +41,7 @@ public:
 	void init(TextureConfig config, TextureSamplerConfig sampler);
 	uint32_t getMipLevels();
 	uint32_t getLayerCount();
+	VkImageLayout getInitialLayout();
 	void transitImage(VkCommandBuffer cmd, VkImageLayout curLayout, VkImageLayout newLayout, int mip, int layer);
 	void transitImage(VkCommandBuffer cmd, VkImageLayout curLayout, VkImageLayout newLayout);
 	void copyFrom(VkCommandBuffer cmd, TextureVulkan* src);
@@ -68,6 +70,7 @@ private:
     VkDescriptorImageInfo imageInfoReadOnly{};
 	
 	VkImageLayout currentLayout;
+	VkImageLayout initialLayout { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 	VkImageUsageFlags usage;
 	VkMemoryPropertyFlags properties;
 	VkImageAspectFlagBits aspectBits;

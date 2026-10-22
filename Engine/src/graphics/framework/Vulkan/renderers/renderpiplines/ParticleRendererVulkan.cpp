@@ -39,7 +39,8 @@ bool ParticleRendererVulkan::init(WindowConfig config)
     emittersUBO.assign(1, {});   // need at least one emitter to upload, use dummy value at 0
 
     particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
-    deferredRenderer = dynamic_cast<DeferredRendererVulkan*>(rendererManagerVulkan->getRenderer("DeferredRendererVulkan"));
+    geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
     depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
     containersRefID = bufferManagerVulkan->createBufferDeviceAddress(MAX_CONTAINERS * sizeof(ContainerRefs));
@@ -145,12 +146,6 @@ void ParticleRendererVulkan::onUpdate()
 void ParticleRendererVulkan::render(Camera &camera)
 {
     Timer timer(m_name, true);
-
-    if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
 
     if(containerRefs.size() <= 1) {
         return;
@@ -321,18 +316,13 @@ void ParticleRendererVulkan::_computeParticle(VkCommandBuffer cmd, uint32_t curr
 
 void ParticleRendererVulkan::_renderParticle(VkCommandBuffer cmd, uint32_t currentFrame, Scene* scene)
 {
-    if(!deferredRenderer) {
+    if(!geometryPass || !lightingPass) {
         return;
     }
-    TextureVulkan* sceneImage = deferredRenderer->renderTarget.colorTextures[currentFrame];
-    TextureVulkan* depthImage = deferredRenderer->renderTarget.depthTextures[currentFrame];
-    uint32_t width = deferredRenderer->renderTarget.width;
-    uint32_t height = deferredRenderer->renderTarget.height;
-
-    TextureManagerVulkan::transitionImageLayout(cmd, sceneImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, 1, renderDeviceVulkan);
-    TextureManagerVulkan::transitionImageLayout(cmd, depthImage->textureImage, depthFormat,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
+    TextureVulkan* sceneImage = lightingPass->renderTarget.colorTexture;
+    TextureVulkan* depthImage = geometryPass->renderTarget.depthTexture;
+    uint32_t width = geometryPass->renderTarget.width;
+    uint32_t height = geometryPass->renderTarget.height;
 
     VkRenderingAttachmentInfo colorAttachment{};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -386,11 +376,6 @@ void ParticleRendererVulkan::_renderParticle(VkCommandBuffer cmd, uint32_t curre
     scene->forEnitiesWith<ParticleEmitter>(func);
 
     vkCmdEndRendering(cmd);
-
-    TextureManagerVulkan::transitionImageLayout(cmd, sceneImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-    TextureManagerVulkan::transitionImageLayout(cmd, depthImage->textureImage, depthFormat,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 }
 
 
@@ -409,4 +394,42 @@ void ParticleRendererVulkan::_uploadEmitters(uint32_t frame)
 bool ParticleRendererVulkan::_isValidContainer(uint32_t containerID) const
 {
     return containerID != 0 && containerID < containerRefs.size() && containerID < emittersUBO.size();
+}
+
+void ParticleRendererVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
+    TextureVulkan* sceneImage = lightingPass->renderTarget.colorTexture;
+    TextureVulkan* depthImage = geometryPass->renderTarget.depthTexture;
+
+    auto scene = graph.importTexture(sceneImage);
+    auto depth = graph.importTexture(depthImage);
+    
+    RenderPassNode node{};
+    node.name = "Particle";
+    node.reads  = {
+        { depth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL } 
+    };
+
+    node.writes = { 
+        { scene, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL } 
+    };
+
+    node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        Camera* camera = SceneManager::cameraController;
+
+        if(!camera) {
+            return;
+        }
+
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }

@@ -115,7 +115,10 @@ public:
 		VkImageLayout oldLayout,
 		VkImageLayout newLayout,
 		VkPipelineStageFlags srcStage,
-		VkPipelineStageFlags dstStage
+		VkPipelineStageFlags dstStage,
+		uint32_t mipLevels = 1,
+		uint32_t layerCount = 1,
+		VkFormat format = VK_FORMAT_UNDEFINED	// picks the depth/stencil aspect for depth formats
 	);
 
 	static void copyImage(

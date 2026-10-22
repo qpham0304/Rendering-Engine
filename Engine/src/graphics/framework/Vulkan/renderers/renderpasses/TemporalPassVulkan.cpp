@@ -1,4 +1,5 @@
 #include "TemporalPassVulkan.h"
+#include <core/scene/SceneManager.h>
 #include <core/features/camera.h>
 #include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h>
@@ -29,8 +30,7 @@ bool TemporalPassVulkan::init(WindowConfig config)
     PostProcessRendererVulkan::init(config);
         
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
     renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
     renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
@@ -38,10 +38,10 @@ bool TemporalPassVulkan::init(WindowConfig config)
 
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     ssrgiImage = SSRGIPassRenderer->getOutputImage();
-    motionImage = deferredRendererVulkan->renderTarget.gBufferMotion[currentFrame];
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
-    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
+    motionImage = geometryPass->renderTarget.gBufferMotion;
+    depthImage = geometryPass->renderTarget.depthTexture;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+    pbrImage = geometryPass->renderTarget.gPBR;
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 
@@ -69,28 +69,7 @@ void TemporalPassVulkan::onUpdate()
 
 void TemporalPassVulkan::render(Camera &camera)
 {
-    RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-    renderer = rendererManagerVulkan->getRenderer("HiZPassVulkan");
-	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
-    renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
-	auto SSRGIPassRenderer = dynamic_cast<SSRGIPassVulkan*>(renderer);
-	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    ssrgiImage = SSRGIPassRenderer->getOutputImage();
-    motionImage = deferredRendererVulkan->renderTarget.gBufferMotion[currentFrame];
-    depthImage = deferredRendererVulkan->renderTarget.depthTextures[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
-    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
-
-    // after the refresh above, the gbuffer and the ssrgi output were recreated earlier this frame
-    if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
-
     _updateDescriptor(TemporalSetsID, currentFrame, outputImage, ssrgiHistoryImage);
     _updateDescriptor(TemporalSetsHistoryID, currentFrame, ssrgiHistoryImage, outputImage);
     
@@ -101,7 +80,8 @@ void TemporalPassVulkan::render(Camera &camera)
     ubo.invViewProj = glm::inverse(currentViewProj);
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
-	pushConstant.screenRes = { deferredRendererVulkan->renderTarget.width, deferredRendererVulkan->renderTarget.height };
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+	pushConstant.screenRes = { geometryPass->renderTarget.width, geometryPass->renderTarget.height };
     pushConstant.maxAccumulation = 128.0f;
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
@@ -110,22 +90,15 @@ void TemporalPassVulkan::render(Camera &camera)
     renderDeviceVulkan->endLabel(cmd);
 
     ubo.priorViewProj = currentViewProj;
-
-    // renderDeviceVulkan->waitIdle();
-    // rendererManagerVulkan->setDisplayImage(outputImage);
 }
 
 void TemporalPassVulkan::writeTP(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
         
-    flip = !flip;
+    // flip is toggled in addToGraph, so the graph prepares the same target this writes
     TextureVulkan* currentWriteTarget = flip ? outputImage : ssrgiHistoryImage;
     TextureVulkan* currentReadHistory = flip ? ssrgiHistoryImage : outputImage;
-
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, currentWriteTarget->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1, renderDeviceVulkan);
 
     uint32_t currentSets = flip ? TemporalSetsID : TemporalSetsHistoryID;
     auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(currentSets);
@@ -135,19 +108,14 @@ void TemporalPassVulkan::writeTP(VkCommandBuffer cmd, uint32_t currentFrame)
     vkCmdPushConstants(cmd, pipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 
         0, sizeof(PushConstant), &pushConstant);
 
-    auto renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-    uint32_t width = deferredRendererVulkan->renderTarget.width;
-    uint32_t height = deferredRendererVulkan->renderTarget.height;
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    uint32_t width = geometryPass->renderTarget.width;
+    uint32_t height = geometryPass->renderTarget.height;
     uint32_t groupX = (width  + 15) / 16;
     uint32_t groupY = (height + 15) / 16;
 
     vkCmdDispatch(cmd, groupX, groupY, 1);
     
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, currentWriteTarget->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
     _copyImageReource(cmd);
 }
 
@@ -165,92 +133,28 @@ void TemporalPassVulkan::writeTAA(VkCommandBuffer cmd, uint32_t currentFrame)
 
 void TemporalPassVulkan::_createResources()
 {
-    auto createTexture = [this] (
-        uint32_t& id, 
-        TextureVulkan*& texture, 
-        VkFormat format, 
-        VkImageAspectFlagBits aspect, 
-        VkImageUsageFlags extraUsage
-    ){
-        id = textureManagerVulkan->createTexture();
-        texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-        
-        assert(texture && "failed to cast texture into vulkan texture");
-        
-        VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-        VkDevice device = renderDeviceVulkan->device;
-        
-        TextureManagerVulkan::createImage(
-            swapchain.swapChainExtent.width,
-            swapchain.swapChainExtent.height,
-            format,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | extraUsage,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            texture->textureImage,
-            texture->textureImageMemory,
-            1,
-            renderDeviceVulkan->device
-        );
-
-        TextureManagerVulkan::createImageView(
-            texture->textureImage,
-            texture->textureImageView,
-            format,
-            aspect,
-            1,
-            renderDeviceVulkan->device
-        );
-
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.anisotropyEnable = VK_FALSE;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias = 0.0f;
-        samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = 11.0f;
-
-        TextureManagerVulkan::createTextureSampler(
-            texture->textureSampler, 
-            renderDeviceVulkan->device,
-            samplerInfo
-        );
+    // all four are owned by the render graph: same textures every frame, recreated when the render size changes
+    // (the accumulated history simply restarts after a resize)
+    RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
+    auto createTexture = [&](const char* name, VkFormat format, VkImageAspectFlagBits aspect, VkImageUsageFlags extraUsage, RGHandle& handle) {
+        RGTextureDesc desc{};
+        desc.config.format = format;
+        desc.config.aspectBits = aspect;
+        desc.config.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | extraUsage;
+        handle = graph.createRenderTexture(name, desc);
+        return graph.getTexture(handle);
     };
- 
+
     VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
-    createTexture(outputImageID, outputImage, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0);
-    createTexture(ssrgiHistoryImageID, ssrgiHistoryImage, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0);
-    createTexture(prevDepthImageID, prevDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-    createTexture(prevNormalImageID, prevNormalImage, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+    outputImage = createTexture("TAA.HistoryA", VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0, historyAHandle);
+    ssrgiHistoryImage = createTexture("TAA.HistoryB", VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0, historyBHandle);
+    prevDepthImage = createTexture("TAA.PrevDepth", depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT, prevDepthHandle);
+    prevNormalImage = createTexture("TAA.PrevNormal", VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT, prevNormalHandle);
 
-    VkCommandBuffer tempCmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-
-    TextureManagerVulkan::transitionImageLayout(tempCmd, outputImage->textureImage, 
-        VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(tempCmd, ssrgiHistoryImage->textureImage, 
-        VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(tempCmd, prevDepthImage->textureImage, 
-        depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    TextureManagerVulkan::transitionImageLayout(tempCmd, prevNormalImage->textureImage, 
-        VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
-
-    renderDeviceVulkan->commandPool.endSingleTimeCommand(tempCmd);
+    outputImageID = outputImage->id();
+    ssrgiHistoryImageID = ssrgiHistoryImage->id();
+    prevDepthImageID = prevDepthImage->id();
+    prevNormalImageID = prevNormalImage->id();
 }
 
 void TemporalPassVulkan::_createPipelines()
@@ -378,11 +282,68 @@ void TemporalPassVulkan::_recreateResources()
 
 void TemporalPassVulkan::_cleanupResources()
 {
-    textureManagerVulkan->destroy(outputImage->id());
     pipeline->destroy();
 }
 
 void TemporalPassVulkan::_copyImageReource(VkCommandBuffer cmd) {
     TextureManagerVulkan::copyImage(cmd, depthImage, prevDepthImage, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT, renderDeviceVulkan);
     TextureManagerVulkan::copyImage(cmd, normalImage, prevNormalImage, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, renderDeviceVulkan);
+}
+
+void TemporalPassVulkan::addToGraph(RenderGraphVulkan& graph)
+{f
+	
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    ssrgiImage = SSRGIPassRenderer->getOutputImage();
+    motionImage = geometryPass->renderTarget.gBufferMotion;
+    depthImage = geometryPass->renderTarget.depthTexture;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+    pbrImage = geometryPass->renderTarget.gPBR;
+    _createResources();     // same textures unless the render size changed
+
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
+    flip = !flip;
+    RGHandle currentWriteTargetHandle = flip ? historyAHandle : historyBHandle;
+    RGHandle historyHandle = flip ? historyBHandle : historyAHandle;	// keeps its contents, last frame's result
+
+    auto ssrgiImageHandle = graph.importTexture(ssrgiImage);
+    auto motionImageHandle = graph.importTexture(motionImage);
+    auto depthImageHandle = graph.importTexture(depthImage);
+    auto normalImageHandle = graph.importTexture(normalImage);
+    auto pbrImageHandle = graph.importTexture(pbrImage);
+
+    RenderPassNode node{};
+    node.name = "TAA";
+    node.reads = {
+        { ssrgiImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { motionImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { depthImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { normalImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { pbrImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { historyHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
+    };
+    
+    node.writes = {
+        { currentWriteTargetHandle, VK_IMAGE_LAYOUT_GENERAL },
+        { prevDepthHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { prevNormalHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
+    };
+
+    node.execute = [this] (VkCommandBuffer cmd, uint32_t currentFrame){
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        Camera* camera = SceneManager::cameraController;
+
+        if(!camera) {
+            return;
+        }
+
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }

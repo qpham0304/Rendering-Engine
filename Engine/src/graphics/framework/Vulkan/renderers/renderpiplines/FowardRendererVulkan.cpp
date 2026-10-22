@@ -137,16 +137,6 @@ void ForwardRendererVulkan::render(Camera& camera)
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
-	renderDeviceVulkan->beginLabel(cmd, "shadow Pass");
-	shadowMapRenderer->render(camera);
-	renderDeviceVulkan->endLabel(cmd);
-
-	renderDeviceVulkan->beginLabel(cmd, "IBL Pass");
-	imageBasedRenderer->onUpdate();
-	imageBasedRenderer->computeSH(cmd, frame);	//TODO: call this in render manager or somewhere general
-	imageBasedRenderer->computePrefilter(cmd, frame);
-	renderDeviceVulkan->endLabel(cmd);
-
     renderDeviceVulkan->beginLabel(cmd, "Forward Render Pass");
 	recordDrawToTextureCommand(cmd, frame);
     renderDeviceVulkan->endLabel(cmd);
@@ -455,8 +445,6 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 			throw std::runtime_error("failed to create offscreen framebuffer!");
 		}	
 	}
-	
-	rendererManagerVulkan->addRenderTexture("forwardColorOut", colorTextureIDs);
 }
 
 void ForwardRendererVulkan::_createDescriptorSetLayout()
@@ -500,12 +488,11 @@ void ForwardRendererVulkan::_updateDescriptor()
 {
     auto uniformBuffersList = rendererManagerVulkan->getBufferUBO();
 
-	Texture* temp = rendererManagerVulkan->getRenderTextures("shadowMap")[0].get();
-	TextureVulkan* depthMap = dynamic_cast<TextureVulkan*>(temp);
+	TextureVulkan* depthMap = shadowMapRenderer->depthMap;
 	assert(depthMap && "failed to retrieve depthMap");
 
 	uint32_t blueNoiseID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
-	temp = textureManagerVulkan->getTexture(blueNoiseID);
+	Texture* temp = textureManagerVulkan->getTexture(blueNoiseID);
 	TextureVulkan* blueNoiseImage = dynamic_cast<TextureVulkan*>(temp);
 	assert(blueNoiseImage && "failed to retrieve depthMap");
 
@@ -539,4 +526,8 @@ void ForwardRendererVulkan::_cleanupResources()
 {
 	renderTarget.destroy(renderDeviceVulkan->device);
 	offscreenPipeline->destroy();
+}
+
+void ForwardRendererVulkan::addToGraph(RenderGraphVulkan& graph)
+{
 }

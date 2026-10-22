@@ -19,11 +19,13 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
     void writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame);
 
 	//TODO: turn this into private
-	std::vector<TextureVulkan*> outputImages;
+	TextureVulkan* hizImage { nullptr };
+	RGHandle hizHandle {};
 
 protected:
 	bool m_initialized { false };
@@ -43,7 +45,7 @@ protected:
 	uint32_t mipLevels;
 	uint32_t mapSize{ 1024 };
 
-	std::vector<std::vector<VkImageView>> HiZMipViews;
-	std::vector<std::vector<VkDescriptorSet>> HiZMipSets;
+	std::vector<VkImageView> HiZMipViews;
+	std::vector<VkDescriptorSet> HiZMipSets;
 	PushConstant pushConstant;
 };

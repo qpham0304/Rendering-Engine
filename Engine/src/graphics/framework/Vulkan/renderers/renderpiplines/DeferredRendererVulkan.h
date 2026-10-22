@@ -5,6 +5,8 @@
 #include "graphics/framework/vulkan/core/CommonStructs.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/GeometryPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/LightingPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
 
 #include <glm/glm.hpp>
@@ -14,40 +16,11 @@
 class AmbientOcclusionPassVulkan;
 class HiZPassVulkan;
 class SSRGIPassVulkan;
+
+// deferred pipeline: the g-buffer is written by GeometryPassVulkan and lit by LightingPassVulkan,
+// this keeps the shared toggles, the gui and the shadow map
 class DeferredRendererVulkan : public RendererVulkan
 {
-
-private:
-
-	struct StorageBufferObject {
-		glm::mat4 model;
-	};
-
-	struct PushConstantLight {
-		alignas(64) glm::mat4 sunlightMVP;
-		alignas(16) glm::vec4 direction;
-		alignas(16) glm::vec4 color;
-		alignas(4)  float bias;
-		alignas(4)  float alpha;
-		alignas(4)  float lintstepLow;
-		alignas(4)  float linstepHigh;
-		alignas(4)  float litBias;
-		alignas(4)  float time;
-		alignas(4)	float numLights;
-		alignas(4)	float skyboxDetail;
-		alignas(4)	int aoOn;
-		alignas(4)	float G;
-		alignas(4)	float scatteringScale;
-		alignas(4)	float iblDiffuse;
-	};
-
-	struct LightSSBO {
-		alignas(16) glm::vec4 color;
-		alignas(16) glm::vec4 position;
-		alignas(4) float intensity;
-	};
-
-
 public:
     DeferredRendererVulkan();
     virtual~DeferredRendererVulkan() override;
@@ -56,45 +29,11 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 	void renderGui();
 
-	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer);
-	void endRecording(void* cmdBuffer);
-	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-
-public:	//TODO: make private once done testing	
-	const int numInstances = 1;
-	const int numLights = 1000;
+public:	//TODO: make private once done testing
 	bool showGui{ true };
-	uint32_t frameCounter = 0;
-	
-	std::vector<StorageBufferVulkan*> storagebuffersList;
-	std::vector<StorageBufferVulkan*> prevStoragebufferList;
-	std::vector<StorageBufferObject> instanceData;
-	std::vector<StorageBufferObject> instanceDataPrev;
-	std::vector<StorageBufferVulkan*> lightStoragebuffers;
-	Common::PushBDA pushConstant;
-	std::vector<LightSSBO> lights;
-	PushConstantLight pushConstantLight;
-
-	uint32_t layoutID;
-	uint32_t poolID;
-	uint32_t setsID;
-
-	VulkanRenderTarget renderTarget;
-	std::unique_ptr<VulkanPipeline> gPassPipeline;
-
-	std::unique_ptr<VulkanPipeline> lightingPipeline;
-	uint32_t lightLayoutID;
-	uint32_t lightLayoutID_1;
-	uint32_t lightSetsID;
-	uint32_t lightSetsID_1;
-
-	float sunIntensity { 10.0f };
-	glm::vec4 sunColor { 1.0 };
-
-	Camera* cam;
-
 	bool denoiserOn { true };
 	bool shouldCombine { true };
 
@@ -102,26 +41,8 @@ public:	//TODO: make private once done testing
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 	AmbientOcclusionPassVulkan* ambientOcclusionPass { nullptr };
 	HiZPassVulkan* hiZPass { nullptr };
-	
-	std::unique_ptr<VulkanPipeline> tempPipeline { nullptr };
-
-	
-	uint32_t objDeviceAddressBufferID;
-	uint64_t objDeviceAddress;
-	uint64_t materialsAddress;
-	std::vector<Common::ObjectRefs> objects;
-
-	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
-	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
-	void _createRenderPasses();
-	void _createFrameBuffers();
-	void _createDescriptor();
-	void _updateDescriptor();
-	void _createPipelines();
-
-	void _createLightPipeline();
-	void _createLightDescriptor();
-	void _updateLightDescriptor();
+	GeometryPassVulkan* geometryPass { nullptr };
+	LightingPassVulkan* lightingPass { nullptr };
 
 	void _recreateResources();
 	void _cleanupResources();

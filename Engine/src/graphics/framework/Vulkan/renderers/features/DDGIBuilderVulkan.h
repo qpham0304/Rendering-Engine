@@ -8,7 +8,7 @@
 
 class RayTraceRendererVulkan;
 class ShadowMapPassVulkan;
-class DeferredRendererVulkan;
+class LightingPassVulkan;
 class ImageBasedRendererVulkan;
 
 // Dynamic diffuse global illumination, one probe grid (LightProbeComponent) per scene.
@@ -51,6 +51,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void writeTrace(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeUpdateVisibility(VkCommandBuffer cmd, uint32_t currentFrame);
@@ -77,6 +78,13 @@ private:
 	TextureVulkan* currentVisibilityAtlas { nullptr };
 	TextureVulkan* lastFrameVisibilityAtlas { nullptr };
 
+	RGHandle rayColorHandle {};
+	RGHandle rayDistanceHandle {};
+	RGHandle currentIrradianceHandle {};
+	RGHandle lastIrradianceHandle {};
+	RGHandle currentVisibilityHandle {};
+	RGHandle lastVisibilityHandle {};
+
 	uint32_t probTracePipelineLayoutID;
 	uint32_t probTracePipelinePoolID;
 	uint32_t probTracePipelineSetID;
@@ -98,7 +106,7 @@ private:
 	PushConstant pushConstant{};
     RayTraceRendererVulkan* raytracer { nullptr };
 	ShadowMapPassVulkan* shadowMapPass { nullptr };
-	DeferredRendererVulkan* deferredRenderer { nullptr };
+	LightingPassVulkan* lightingPass { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 
 	// these three must match the constants in assets/shaders/common/ddgi.glsl
@@ -123,7 +131,7 @@ private:
 	bool showIndirectOnly { false };
 	float intensity { 1.0f };
 
-	void _createResources();
+	bool _createResources();	// true when the graph handed back new textures (first call or probe count change)
 	void _createPipeline();
 	void _createDescriptor();
 	void _updateDescriptor(uint32_t index);

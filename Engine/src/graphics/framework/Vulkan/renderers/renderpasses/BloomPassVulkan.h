@@ -32,6 +32,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 	void renderGui();
 
 	void writeUpSample(VkCommandBuffer cmd, uint32_t currentFrame);
@@ -49,6 +50,7 @@ protected:
 	void _updateBloomProcessDesciptors();
 	void _recreateResources();
 	void _cleanupResources();
+	void _destroyMipViews();
 	void _transitionMip(VkCommandBuffer cmd, VkImage image, uint32_t mipLevel, VkImageLayout oldLayout, VkImageLayout newLayout);
 
 
@@ -67,6 +69,7 @@ protected:
 	uint32_t mipDescriptorPoolID;
 	std::vector<glm::vec2> mipSizes;
 	std::vector<VkImageView> mipChain;
+	RGHandle outputHandle {};
 	std::vector<VkDescriptorSet> downDescriptorSets;
 	std::vector<VkDescriptorSet> upDescriptorSets;
 

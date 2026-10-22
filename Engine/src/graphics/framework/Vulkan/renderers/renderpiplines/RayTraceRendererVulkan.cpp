@@ -666,3 +666,7 @@ void RayTraceRendererVulkan::updateTlas() {
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 #pragma endregion setup
+
+void RayTraceRendererVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

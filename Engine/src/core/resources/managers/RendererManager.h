@@ -20,22 +20,20 @@ public:
 	virtual void drawDebug(glm::vec3 start, glm::vec3 end) = 0;
 
 	template<typename T> requires std::derived_from<T, Renderer>
-	Renderer* addRenderer(std::string_view name) {
+	T* addRenderer(std::string_view name) {
 		for(auto& tuple : m_renderers) {
 			if(name.data() == std::get<0>(tuple)) {
-				return std::get<1>(tuple).get();
+				return dynamic_cast<T*>(std::get<1>(tuple).get());
 			}
 		}
 
-		m_renderers.push_back(std::tuple(name.data(), std::make_shared<T>()));
-		return std::get<1>(m_renderers[m_renderers.size() - 1]).get();
+		auto renderer = std::make_shared<T>();
+		T* rendererPtr = renderer.get();
+		m_renderers.push_back(std::tuple(name.data(), std::move(renderer)));
+		return rendererPtr;
 	}
 
     virtual Renderer* getRenderer(std::string_view name) = 0;
-	
-	
-	void addRenderTexture(std::string_view name, std::vector<uint32_t> textureIDs);
-	std::vector<std::shared_ptr<Texture>> getRenderTextures(std::string_view name);
 
 protected:
 	friend class Engine;
@@ -43,6 +41,5 @@ protected:
     RendererManager(std::string serviceName = "RendererManager") : Manager(serviceName) {};
 
 	std::vector<std::tuple<std::string, std::shared_ptr<Renderer>>> m_renderers;
-	std::unordered_map<std::string, std::vector<std::shared_ptr<Texture>>> m_renderTextures;
 
 };

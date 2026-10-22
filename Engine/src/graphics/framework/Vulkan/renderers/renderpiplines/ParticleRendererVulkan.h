@@ -4,7 +4,8 @@
 
 class TextureVulkan;
 class ParticleManager;
-class DeferredRendererVulkan;
+class GeometryPassVulkan;
+class LightingPassVulkan;
 
 class ParticleRendererVulkan : public RendererVulkan
 {
@@ -52,6 +53,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void setSimDeltaTime(float deltaTime) { simDeltaTime = deltaTime; }
 
@@ -88,7 +90,8 @@ protected:
 	std::unique_ptr<VulkanPipeline> computePipeline;
 	ParticlePushConstant pushConstant;
 
-	DeferredRendererVulkan* deferredRenderer { nullptr };
+	GeometryPassVulkan* geometryPass { nullptr };
+	LightingPassVulkan* lightingPass { nullptr };
 	VkFormat depthFormat { VK_FORMAT_UNDEFINED };
 
 	uint32_t layoutID;

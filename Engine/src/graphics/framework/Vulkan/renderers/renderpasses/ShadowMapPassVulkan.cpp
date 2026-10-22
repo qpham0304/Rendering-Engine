@@ -325,6 +325,7 @@ void ShadowMapPassVulkan::_createDepthMap()
 
 	depthID = textureManagerVulkan->createTexture();
 	depthMap = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(depthID));
+	depthMap->format = depthFormat;
 
 	TextureManagerVulkan::createImage(
 		width,
@@ -520,13 +521,6 @@ void ShadowMapPassVulkan::_createMomentImage()
 	createTexture(momentImage);
 	createTexture(tempMomentImage);
 
-	std::string name = "";
-	name = "shadowMap";
-	rendererManagerVulkan->addRenderTexture(name, {depthMap->id()});
-
-	name = "momentShadowMap";
-	rendererManagerVulkan->addRenderTexture(name, {momentImage->id()});
-	
 }
 
 void ShadowMapPassVulkan::_createMomentDescriptor()
@@ -612,4 +606,24 @@ void ShadowMapPassVulkan::_recreateResources()
 void ShadowMapPassVulkan::_cleanupResources()
 {
 	m_logger->warn("recource cleanup unimlemented");
+}
+
+void ShadowMapPassVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+	auto depth = graph.importTexture(depthMap);
+
+	RenderPassNode node{};
+	node.name = "ShadowMap";
+	node.writes = {};
+	node.writes = { { depth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
+
+	node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+		Camera* camera = SceneManager::cameraController;
+		if(!camera) {
+			return;
+		}
+		render(*camera);
+	};
+
+	graph.addPass(node);
 }

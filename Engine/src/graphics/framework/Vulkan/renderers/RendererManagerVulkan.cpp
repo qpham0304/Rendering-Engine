@@ -1,6 +1,5 @@
 #include "RendererManagerVulkan.h"
 #include <core/scene/SceneManager.h>
-
 #include "core/features/Timer.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ApplicationRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
@@ -64,7 +63,10 @@ bool RendererManagerVulkan::init(WindowConfig config)
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
 
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
-    deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");
+    
+    geometryPassRenderer = addRenderer<GeometryPassVulkan>("GeometryPassVulkan");
+    deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");   //TODO: only ui atm, remove soon
+    lightingPassRenderer = addRenderer<LightingPassVulkan>("LightingPassVulkan");
     if(rtSupported) {
         raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
     }
@@ -78,13 +80,19 @@ bool RendererManagerVulkan::init(WindowConfig config)
         ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
     }
     deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
-    ////postProcessRenderer = addRenderer<PostProcessRendererVulkan>("postProcessRendererVulkan");
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
 	debugRenderer = addRenderer<DebugRendererVulkan>("DebugRendererVulkan");
+
+    // graph owned textures are sized from this, passes can create them during init
+    VkExtent2D extent = renderDeviceVulkan->swapchain.swapChainExtent;
+    m_renderGraph.setRenderSize(extent.width, extent.height);
 
     for(auto& [name, renderer] : m_renderers) {
         renderer->init(config);
     }
+
+
+
 
     return true;
 }
@@ -113,7 +121,7 @@ std::vector<uint32_t> RendererManagerVulkan::listIDs() const
 void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
 {
     Service::onUpdate(frameTime);
-    static_cast<ParticleRendererVulkan*>(particleRenderer)->setSimDeltaTime(frameTime.gameDeltaTime);
+    particleRenderer->setSimDeltaTime(frameTime.gameDeltaTime);
 
     if(needResize) {
 		_recreateResources();
@@ -125,15 +133,16 @@ void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
         forwardRenderer->onUpdate();
     } 
     else if(currentRenderMode == 1) {
-        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-        if(tmp->pushConstantLight.aoOn) {
+        if(lightingPassRenderer->pushConstantLight.aoOn) {
             alchemyAORenderer->onUpdate();
         }
         deferredRenderer->onUpdate();
+        geometryPassRenderer->onUpdate();
+        lightingPassRenderer->onUpdate();
         hiZPassRenderer->onUpdate();
         SSRGIPassRenderer->onUpdate();
         bloomRenderer->onUpdate();
-        if(tmp->denoiserOn) {
+        if(deferredRenderer->denoiserOn) {
             temporalPassRenderer->onUpdate();
         }
         if(ddgiPassRenderer) {
@@ -166,6 +175,10 @@ void RendererManagerVulkan::render()
         swapchainOutdated = false;
     }
 
+    // graph owned textures get recreated on their next create when this changes
+    VkExtent2D renderExtent = renderDeviceVulkan->swapchain.swapChainExtent;
+    m_renderGraph.setRenderSize(renderExtent.width, renderExtent.height);
+
     beginFrame();
 
     if (firstFrame) {
@@ -187,28 +200,42 @@ void RendererManagerVulkan::render()
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 	lastViewProj = ubo.proj * ubo.view;
 
-    // shadowMapRenderer->render(*camera);
-    
+    VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+
     if(currentRenderMode == 0) {
+        // forward is not on the graph yet, it still records the shared passes directly
+        shadowMapPass->render(*camera);
+        imageBasedRenderer->render(*camera);
         forwardRenderer->render(*camera);
-    } 
+    }
     else if(currentRenderMode == 1) {
-        auto tmp = (DeferredRendererVulkan*)deferredRenderer;
-        if(tmp->pushConstantLight.aoOn) {
-            alchemyAORenderer->render(*camera);
+        // m_renderGraph.compile();
+
+        m_renderGraph.reset();
+
+        // passes run in the order they are added
+        shadowMapPass->addToGraph(m_renderGraph);
+        imageBasedRenderer->addToGraph(m_renderGraph);
+        geometryPassRenderer->addToGraph(m_renderGraph);
+
+        if(lightingPassRenderer->pushConstantLight.aoOn) {
+            alchemyAORenderer->addToGraph(m_renderGraph);
         }
-        deferredRenderer->render(*camera);
-        hiZPassRenderer->render(*camera);
-        particleRenderer->render(*camera);
-        SSRGIPassRenderer->render(*camera);
-        bloomRenderer->render(*camera);
-        if(tmp->denoiserOn) {
-            temporalPassRenderer->render(*camera);
+        
+        lightingPassRenderer->addToGraph(m_renderGraph);
+        hiZPassRenderer->addToGraph(m_renderGraph);
+        particleRenderer->addToGraph(m_renderGraph);
+        SSRGIPassRenderer->addToGraph(m_renderGraph);
+        bloomRenderer->addToGraph(m_renderGraph);
+        if(deferredRenderer->denoiserOn) {
+            temporalPassRenderer->addToGraph(m_renderGraph);
         }
         if(ddgiPassRenderer) {
-            ddgiPassRenderer->render(*camera);
+            ddgiPassRenderer->addToGraph(m_renderGraph);
         }
-        deferredCombineRenderer->render(*camera);
+        deferredCombineRenderer->addToGraph(m_renderGraph);
+
+        m_renderGraph.execute(cmd, currentFrame);
     } else if(currentRenderMode == 2 && raytracingRenderer) {
         raytracingRenderer->render(*camera);
     }
@@ -226,10 +253,7 @@ void RendererManagerVulkan::drawDebug(glm::vec3 start, glm::vec3 end)
         return;
     }
 
-    auto* debugRendererVulkan = dynamic_cast<DebugRendererVulkan*>(debugRenderer);
-    assert(debugRendererVulkan && "drawdebug: failed to cast debug renderer");
-
-    debugRendererVulkan->drawLine(start, end);
+    debugRenderer->drawLine(start, end);
 }
 
 void RendererManagerVulkan::_cleanupResources()

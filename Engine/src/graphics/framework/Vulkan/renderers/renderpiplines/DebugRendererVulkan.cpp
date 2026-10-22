@@ -399,3 +399,7 @@ void DebugRendererVulkan::_cleanupResources()
     textureManagerVulkan->destroy(displayImage->id());
     textureManagerVulkan->destroy(maskImage->id());
 }
+
+void DebugRendererVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

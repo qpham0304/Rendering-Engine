@@ -30,6 +30,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
     void writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame);
 
@@ -41,7 +42,7 @@ public: // TODO: consider make private
 	TextureVulkan* pbrImage;
 	TextureVulkan* emissiveImage;
 	TextureVulkan* colorImage;
-	std::vector<TextureVulkan*> outputImages;
+	RGHandle outputHandle {};
 	
 protected:
 	void _createResources();

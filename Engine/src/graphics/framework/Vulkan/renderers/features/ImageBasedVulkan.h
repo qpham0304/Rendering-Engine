@@ -15,6 +15,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void computeSH(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeBRDF();
@@ -32,6 +33,8 @@ public:
 	TextureVulkan* prefilterMap;
 	
 protected:
+	bool environmentReady { false };
+
 	struct PartialSum {
 		glm::vec4 coefficients;
 	};
@@ -75,6 +78,7 @@ protected:
 	uint32_t mapSize{ 128 };
 
 private:
+	void _updateEnvironmentDescriptors();
 	void _createDescriptorSetProjection();
 	void _createDescriptorSetGlobalSum();
 	void _createResourceLUT();

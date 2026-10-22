@@ -28,6 +28,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void writeAO(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeBlur(VkCommandBuffer cmd, uint32_t currentFrame);
@@ -47,8 +48,10 @@ protected:
 
 	uint32_t aoMapID;
 	uint32_t aoMapTempID;
-	TextureVulkan* aoMap;
-	TextureVulkan* aoMapTemp;
+	TextureVulkan* aoMap { nullptr };
+	TextureVulkan* aoMapTemp { nullptr };
+	RGHandle aoMapHandle {};
+	RGHandle aoMapTempHandle {};
 	TextureVulkan* depthImage;
 	TextureVulkan* positionImage;
 	TextureVulkan* normalImage;

@@ -3,6 +3,7 @@
 #include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
+#include "graphics/framework/Vulkan/renderers/RenderGraphVulkan.h"	// passes keep RGHandles of the textures they create
 #include <glm/glm.hpp>
 #include <vector>
 
@@ -16,6 +17,7 @@ class ModelManager;
 class GuiManager;
 class BufferManager;
 class RendererManagerVulkan;
+class RenderGraphVulkan;
 class Camera;
 
 class RendererVulkan : public Renderer
@@ -29,6 +31,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) = 0;
 
 	
 protected:
