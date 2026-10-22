@@ -318,38 +318,139 @@ struct MYGRAPHICSENGINE_EXPORT ColliderComponent {
 	);
 };
 
+// TODO: currently match shaders/common/particles.glsl defines, make shared struct for this
+enum class ParticleSpawnShape : int { Point = 0, Box, Sphere, Hemisphere, Cone, Circle, Count };
+enum class ParticleRenderMode : int { Billboard = 0, AxisLockedY, VelocityStretched, Horizontal, Oriented, Mesh, Count };
+enum class ParticleBlendMode : int { Additive = 0, Alpha, Count };
+enum class ParticleTextureSource : int { None = 0, Emitter, Sprite, Model };	// where the drawn texture came from, highest priority first after None
+
 struct MYGRAPHICSENGINE_EXPORT ParticleEmitter {
 	ParticleEmitter() = default;
 
-	uint32_t containerID;
+	uint32_t containerID { 0 };			// created by the particle renderer when left at 0
 
-	int behaviorType{ 0 };
-	int emitMax{ 100 };
-	int emitCount{ 0 };
-	bool areRecycled{ false };
-	float emitAccumulator{ 0.0f };
-	float emitRate{ 1.0f };
-	float lifetimeMin{ 1.0f };
-	float lifetimeMax{ 1.0f };
-	float speedMin{ 1.0f };
-	float speedMax{ 1.0f };
-	glm::vec3 spawnPosition{ 0.0f, 0.0f, 0.0f };
-	glm::vec3 force{ 0.0f, 0.0f, 0.0f };
-	bool resetPosition{ false };
+	// emission
+	bool isPlaying { true };
+	int maxParticles { 1000 };			// container capacity, the container is recreated when this changes
+	float emitRate { 100.0f };			// particles per second
+	int burstCount { 0 };				// particles spawned at once every burstInterval
+	float burstInterval { 1.0f };		// seconds, if <= 0 only bursts on request
+	bool localSpace { false };			// particles move with the emitter transform, forces act in emitter space
+
+	// spawn shape, placed and oriented by the entity transform
+	int spawnShape { 0 };				// ParticleSpawnShape
+	glm::vec3 shapeExtents { 1.0f };	// box half extents
+	float shapeRadius { 1.0f };
+	float shapeConeAngle { 25.0f };		// degrees
+	bool emitFromShell { false };		// spawn on the surface instead of inside the volume
+
+	// initial velocity
+	glm::vec3 direction { 0.0f, 1.0f, 0.0f };
+	float spreadAngle { 15.0f };		// degrees around direction
+	bool velocityFromShape { false };	// push outward from the shape instead of along direction
+	float speedMin { 1.0f };
+	float speedMax { 2.0f };
+
+	float lifetimeMin { 1.0f };
+	float lifetimeMax { 2.0f };
+
+	// forces
+	float gravityScale { 0.0f };
+	glm::vec3 force { 0.0f };
+	float drag { 0.0f };
+	float turbulenceStrength { 0.0f };
+	float turbulenceFrequency { 1.0f };
+	float vortexStrength { 0.0f };		// swirl around the emitter up axis
+	float attractStrength { 0.0f };		// pull toward the emitter, negative pushes away
+
+	// size and rotation over life
+	float sizeMin { 0.1f };
+	float sizeMax { 0.1f };
+	float sizeEndScale { 1.0f };		// size multiplier reached at the end of life
+	float rotationMin { 0.0f };			// degrees
+	float rotationMax { 0.0f };
+	float angularVelocityMin { 0.0f };	// degrees per second
+	float angularVelocityMax { 0.0f };
+
+	// color over life
+	glm::vec4 colorStart { 1.0f };
+	glm::vec4 colorEnd { 1.0f, 1.0f, 1.0f, 0.0f };
+	float fadeIn { 0.0f };				// fraction of the lifetime
+	float fadeOut { 0.0f };
+
+	// rendering
+	int renderMode { 0 };				// ParticleRenderMode
+	int blendMode { 0 };				// ParticleBlendMode
+	float stretchFactor { 0.1f };		// extra length per unit of speed for velocity stretched quads
+	std::string texturePath { "None" };
+	int flipbookRows { 1 };
+	int flipbookCols { 1 };
+	float flipbookFPS { 0.0f };				// 0 plays the sheet once over the lifetime
+	std::string meshPath { "$prim$Cube" };	// model path or primitive, first mesh is drawn
+	float meshShading { 0.5f };
+	bool meshDoubleSided { false };		// draw back faces too, for open meshes or models with flipped winding
+	bool useModelTexture { true };		// mesh particles fall back to the model's albedo texture when no texture is set
+
+	// runtime state, not serialized
+	uint32_t textureID { 0 };
+	uint32_t activeTextureID { 0 };		// written by the renderer, the texture actually drawn
+	int activeTextureSource { 0 };		// ParticleTextureSource of activeTextureID
+	uint32_t meshModelID { 0 };
+	std::string loadedTexturePath { "None" };
+	std::string loadedMeshPath { "None" };
+	float emitAccumulator { 0.0f };
+	float burstTimer { 0.0f };
+	int pendingBurst { 0 };
+	bool resetRequested { false };
 
 	DEFINE_TYPE(ParticleEmitter,
-		member("behaviorType", &ParticleEmitter::behaviorType),
-		member("emitMax", &ParticleEmitter::emitMax),
-		member("emitCount", &ParticleEmitter::emitCount),
-		member("areRecycled", &ParticleEmitter::areRecycled),
-		member("emitAccumulator", &ParticleEmitter::emitAccumulator),
+		member("isPlaying", &ParticleEmitter::isPlaying),
+		member("maxParticles", &ParticleEmitter::maxParticles),
 		member("emitRate", &ParticleEmitter::emitRate),
-		member("lifetimeMin", &ParticleEmitter::lifetimeMin),
-		member("lifetimeMax", &ParticleEmitter::lifetimeMax),
+		member("burstCount", &ParticleEmitter::burstCount),
+		member("burstInterval", &ParticleEmitter::burstInterval),
+		member("localSpace", &ParticleEmitter::localSpace),
+		member("spawnShape", &ParticleEmitter::spawnShape),
+		member("shapeExtents", &ParticleEmitter::shapeExtents),
+		member("shapeRadius", &ParticleEmitter::shapeRadius),
+		member("shapeConeAngle", &ParticleEmitter::shapeConeAngle),
+		member("emitFromShell", &ParticleEmitter::emitFromShell),
+		member("direction", &ParticleEmitter::direction),
+		member("spreadAngle", &ParticleEmitter::spreadAngle),
+		member("velocityFromShape", &ParticleEmitter::velocityFromShape),
 		member("speedMin", &ParticleEmitter::speedMin),
 		member("speedMax", &ParticleEmitter::speedMax),
-		member("spawnPosition", &ParticleEmitter::spawnPosition),
-		member("force", &ParticleEmitter::force)
+		member("lifetimeMin", &ParticleEmitter::lifetimeMin),
+		member("lifetimeMax", &ParticleEmitter::lifetimeMax),
+		member("gravityScale", &ParticleEmitter::gravityScale),
+		member("force", &ParticleEmitter::force),
+		member("drag", &ParticleEmitter::drag),
+		member("turbulenceStrength", &ParticleEmitter::turbulenceStrength),
+		member("turbulenceFrequency", &ParticleEmitter::turbulenceFrequency),
+		member("vortexStrength", &ParticleEmitter::vortexStrength),
+		member("attractStrength", &ParticleEmitter::attractStrength),
+		member("sizeMin", &ParticleEmitter::sizeMin),
+		member("sizeMax", &ParticleEmitter::sizeMax),
+		member("sizeEndScale", &ParticleEmitter::sizeEndScale),
+		member("rotationMin", &ParticleEmitter::rotationMin),
+		member("rotationMax", &ParticleEmitter::rotationMax),
+		member("angularVelocityMin", &ParticleEmitter::angularVelocityMin),
+		member("angularVelocityMax", &ParticleEmitter::angularVelocityMax),
+		member("colorStart", &ParticleEmitter::colorStart),
+		member("colorEnd", &ParticleEmitter::colorEnd),
+		member("fadeIn", &ParticleEmitter::fadeIn),
+		member("fadeOut", &ParticleEmitter::fadeOut),
+		member("renderMode", &ParticleEmitter::renderMode),
+		member("blendMode", &ParticleEmitter::blendMode),
+		member("stretchFactor", &ParticleEmitter::stretchFactor),
+		member("texturePath", &ParticleEmitter::texturePath),
+		member("flipbookRows", &ParticleEmitter::flipbookRows),
+		member("flipbookCols", &ParticleEmitter::flipbookCols),
+		member("flipbookFPS", &ParticleEmitter::flipbookFPS),
+		member("meshPath", &ParticleEmitter::meshPath),
+		member("meshShading", &ParticleEmitter::meshShading),
+		member("meshDoubleSided", &ParticleEmitter::meshDoubleSided),
+		member("useModelTexture", &ParticleEmitter::useModelTexture)
 	)
 };
 

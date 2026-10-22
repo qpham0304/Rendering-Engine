@@ -54,7 +54,7 @@ bool SandBoxLayer::init()
     // createScriptableCamera();
     // createLights();
 	createLightProbes();
-    createParticle();
+    // createParticle();
 
     // rendererManager->addRenderer();
 
@@ -272,43 +272,57 @@ void SandBoxLayer::createParticle()
     Entity particleEntity = activeScene->getEntity(activeScene->addEntity("particleEntity"));
     particleEntity.addComponent<ParticleEmitter>();
     ParticleEmitter& emitter = particleEntity.getComponent<ParticleEmitter>();
-    emitter.emitMax = 5000;
-    emitter.emitCount = 5000;
-    emitter.areRecycled = true; // Enable particle recycling so dead particles respawn
-    emitter.emitRate = 1000.0f; // Spawning rate if using rate-based emission
-    emitter.lifetimeMin = 1.5f; // Minimum seconds a particle lives
-    emitter.lifetimeMax = 3.0f; // Maximum seconds a particle lives
-    emitter.speedMin = 4.0f;    // Minimum upward burst speed
-    emitter.speedMax = 8.0f;    // Maximum upward burst speed
-    emitter.spawnPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-    emitter.force = glm::vec3(0.0, 0.0, 0.0);
-    emitter.resetPosition = false;
-    emitter.behaviorType = 0;
-    emitter.containerID = particleManager->createContainer(5000, glm::vec3(-1.0), glm::vec3(1.0));
-    
-    particleEntity.addComponent<SpriteComponent>();
-    auto& spriteComponent = particleEntity.getComponent<SpriteComponent>();
-    // spriteComponent.textureID = textureManager->loadTexture("assets/textures/ParticleAtlas.png", 1, false);;
-    spriteComponent.textureID = textureManager->loadTexture("assets/textures/mobi-padoru.png", 1, false);;
-    Entity::_onSpriteComponentAdded()(particleEntity);
+    emitter.maxParticles = 5000;
+    emitter.emitRate = 1000.0f;
+    emitter.lifetimeMin = 1.5f;
+    emitter.lifetimeMax = 3.0f;
+    emitter.spawnShape = static_cast<int>(ParticleSpawnShape::Circle);
+    emitter.shapeRadius = 1.0f;
+    emitter.speedMin = 1.0f;
+    emitter.speedMax = 3.0f;
+    emitter.spreadAngle = 10.0f;
+    emitter.turbulenceStrength = 2.0f;
+    emitter.sizeMin = 0.2f;
+    emitter.sizeMax = 0.4f;
+    emitter.sizeEndScale = 0.2f;
+    emitter.angularVelocityMin = -90.0f;
+    emitter.angularVelocityMax = 90.0f;
+    emitter.colorStart = glm::vec4(1.0f, 0.8f, 0.4f, 1.0f);
+    emitter.colorEnd = glm::vec4(1.0f, 0.2f, 0.05f, 0.0f);
+    emitter.fadeIn = 0.1f;
+    emitter.texturePath = "assets/textures/mobi-padoru.png";
+    particleEntity.getComponent<TransformComponent>().translate(glm::vec3(-5.0f, 0.0f, 0.0f));
+    emitter.containerID = particleManager->createContainer(emitter.maxParticles);
 
+    
+    
     Entity particleEntity2 = activeScene->getEntity(activeScene->addEntity("particleEntity2"));
     particleEntity2.addComponent<ParticleEmitter>();
     TransformComponent& transform2 = particleEntity2.getComponent<TransformComponent>();
     transform2.translate(glm::vec3(5.0, 0.0, 0.0));
     ParticleEmitter& emitter2 = particleEntity2.getComponent<ParticleEmitter>();
-    emitter2.emitMax = 5000;
-    emitter2.emitCount = 5000;
-    emitter2.areRecycled = true; // Enable particle recycling so dead particles respawn
-    emitter2.emitRate = 1000.0f; // Spawning rate if using rate-based emission
-    emitter2.lifetimeMin = 1.5f; // Minimum seconds a particle lives
-    emitter2.lifetimeMax = 3.0f; // Maximum seconds a particle lives
-    emitter2.speedMin = 4.0f;    // Minimum upward burst speed
-    emitter2.speedMax = 8.0f;    // Maximum upward burst speed
-    emitter2.spawnPosition = transform2.translateVec;
-    emitter2.force = glm::vec3(0.0, 0.0, 0.0);
-    emitter2.resetPosition = false;
-    emitter2.behaviorType = 0;
-    emitter2.containerID = particleManager->createContainer(5000, glm::vec3(1.0), glm::vec3(1.0));
+    emitter2.maxParticles = 2000;
+    emitter2.emitRate = 0.0f;
+    emitter2.burstCount = 300;
+    emitter2.burstInterval = 2.0f;
+    emitter2.lifetimeMin = 1.5f;
+    emitter2.lifetimeMax = 2.0f;
+    emitter2.velocityFromShape = true;
+    emitter2.spreadAngle = 0.0f;
+    emitter2.speedMin = 4.0f;
+    emitter2.speedMax = 8.0f;
+    emitter2.gravityScale = 1.0f;
+    emitter2.drag = 0.5f;
+    emitter2.sizeMin = 0.1f;
+    emitter2.sizeMax = 0.25f;
+    emitter2.angularVelocityMin = 180.0f;
+    emitter2.angularVelocityMax = 540.0f;
+    emitter2.colorStart = glm::vec4(0.6f, 0.8f, 1.0f, 1.0f);
+    emitter2.colorEnd = glm::vec4(0.2f, 0.3f, 1.0f, 1.0f);
+    emitter2.fadeOut = 0.3f;
+    emitter2.renderMode = static_cast<int>(ParticleRenderMode::Mesh);
+    emitter2.blendMode = static_cast<int>(ParticleBlendMode::Alpha);
+    emitter2.meshPath = "$prim$Cube";
+    emitter2.containerID = particleManager->createContainer(emitter2.maxParticles);
 
 }
