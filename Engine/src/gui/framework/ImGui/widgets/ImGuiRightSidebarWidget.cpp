@@ -390,6 +390,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
     _scriptControl(entity);
     _colliderControl(entity);
     _particleControl(entity);
+    _ribbonControl(entity);
 
     ImGui::Separator();
     if (ImGui::Button("+ Add Component", ImVec2(-1.0f, 0.0f))) {
@@ -461,6 +462,24 @@ void ImGuiRightSidebarWidget::_componentsControl()
             Entity::_onSpriteComponentAdded()(entity);
         }
 
+        if (!entity.hasComponent<RibbonComponent>() && ImGui::BeginMenu("Ribbon")) {
+            const char* modes[] = { "Trail", "Beam", "Lightning" };
+            for (int mode = 0; mode < IM_ARRAYSIZE(modes); mode++) {
+                if (ImGui::Selectable(modes[mode])) {
+                    entity.addComponent<RibbonComponent>();
+                    RibbonComponent& ribbon = entity.getComponent<RibbonComponent>();
+                    ribbon.mode = mode;
+                    if (mode == static_cast<int>(RibbonMode::Lightning)) {      // a usable bolt straight away
+                        ribbon.widthStart = 0.08f;
+                        ribbon.widthEnd = 0.04f;
+                        ribbon.colorStart = glm::vec4(2.0f, 2.4f, 4.0f, 1.0f);
+                        ribbon.colorEnd = glm::vec4(1.2f, 1.5f, 3.0f, 0.8f);
+                    }
+                }
+            }
+            ImGui::EndMenu();
+        }
+
         if (ImGui::Selectable("Camera")) { 
             entity.addComponent<CameraComponent>();
 
@@ -491,7 +510,13 @@ void ImGuiRightSidebarWidget::_componentsControl()
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Collider")) {
+        // a collider is built from the model's mesh, opening the menu on an entity without one used to crash on getComponent
+        bool hasModel = entity.hasComponent<ModelComponent>();
+        bool colliderMenuOpen = ImGui::BeginMenu("Collider", hasModel);
+        if (!hasModel && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("needs a Model or Mesh component first");
+        }
+        if (colliderMenuOpen) {
             auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
             auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
             auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
@@ -499,9 +524,12 @@ void ImGuiRightSidebarWidget::_componentsControl()
             TransformComponent& transform = entity.getComponent<TransformComponent>();
             ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
             Model* model = modelManager->getModel(modelComponent.modelID);
-            auto combinedMesh = [&]() { return meshManager->combineMeshes(model->meshIDs); }; 
+            auto combinedMesh = [&]() { return meshManager->combineMeshes(model->meshIDs); };
+            if (!model) {
+                ImGui::TextDisabled("the model has not loaded yet");
+            }
 
-            if (ImGui::BeginMenu("Static Body")) { 
+            if (model && ImGui::BeginMenu("Static Body")) {
                 if (ImGui::Selectable("Mesh collider")) { 
                     uint32_t type = static_cast<uint32_t>(ColliderType::Static);
                     uint32_t bodyID = physicsManager->createMeshBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, type);
@@ -511,7 +539,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
                 ImGui::EndMenu();
             }
             
-            if (ImGui::BeginMenu("Kinematic Body")) { 
+            if (model && ImGui::BeginMenu("Kinematic Body")) {
                 uint32_t type = static_cast<uint32_t>(ColliderType::Kinematic);
                 // uint32_t bodyID = physicsManager->createKineticBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, type);
                 // entity.addComponent<ColliderComponent>(bodyID, type);
@@ -519,7 +547,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
                 ImGui::EndMenu();
             }
 
-            if (ImGui::BeginMenu("Dynamic Body")) { 
+            if (model && ImGui::BeginMenu("Dynamic Body")) {
                 uint32_t type = static_cast<uint32_t>(ColliderType::Dynamic);
                 if (ImGui::Selectable("Box collider")) {
                     uint32_t bodyID = physicsManager->createBoxBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, type);
@@ -840,6 +868,22 @@ void ImGuiRightSidebarWidget::_particleControl(const Entity &entity)
     }
 
     ImGuiParticleInspector::draw(emitter, textureManager, modelManager);
+}
+
+void ImGuiRightSidebarWidget::_ribbonControl(const Entity &entity)
+{
+    if(!entity.hasComponent<RibbonComponent>()) {
+        return;
+    }
+
+    // the header's close button removes the component
+    bool keep = true;
+    if (ImGui::CollapsingHeader("Ribbon", &keep, ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGuiParticleInspector::drawRibbon(entity.getComponent<RibbonComponent>(), textureManager);
+    }
+    if (!keep) {
+        const_cast<Entity&>(entity).removeComponent<RibbonComponent>();
+    }
 }
 
 void ImGuiRightSidebarWidget::_scenesControl()

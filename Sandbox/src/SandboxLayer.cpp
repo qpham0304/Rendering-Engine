@@ -55,6 +55,7 @@ bool SandBoxLayer::init()
     // createLights();
 	createLightProbes();
     // createParticle();
+    createRibbons();
 
     // rendererManager->addRenderer();
 
@@ -324,5 +325,24 @@ void SandBoxLayer::createParticle()
     emitter2.blendMode = static_cast<int>(ParticleBlendMode::Alpha);
     emitter2.meshPath = "$prim$Cube";
     emitter2.containerID = particleManager->createContainer(emitter2.maxParticles);
+}
 
+void SandBoxLayer::createRibbons()
+{
+    Scene* activeScene = SceneManager::getInstance().getActiveScene();
+
+    // lightning striking down from above the origin, bright HDR blue so it blooms
+    Entity lightningEntity = activeScene->getEntity(activeScene->addEntity("lightning"));
+    lightningEntity.getComponent<TransformComponent>().translate(glm::vec3(0.0f, 6.0f, 0.0f));
+    lightningEntity.addComponent<RibbonComponent>();
+    RibbonComponent& lightning = lightningEntity.getComponent<RibbonComponent>();
+    lightning.mode = static_cast<int>(RibbonMode::Lightning);
+    lightning.target = glm::vec3(0.0f, -6.0f, 0.0f);
+    lightning.segments = 32;
+    lightning.jitter = 0.12f;
+    lightning.branches = 3;
+    lightning.widthStart = 0.08f;
+    lightning.widthEnd = 0.04f;
+    lightning.colorStart = glm::vec4(2.0f, 2.4f, 4.0f, 1.0f);
+    lightning.colorEnd = glm::vec4(1.2f, 1.5f, 3.0f, 0.8f);
 }

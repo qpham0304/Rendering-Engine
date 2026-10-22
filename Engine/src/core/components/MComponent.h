@@ -454,3 +454,78 @@ struct MYGRAPHICSENGINE_EXPORT ParticleEmitter {
 	)
 };
 
+// where a ribbon's points come from
+enum class RibbonMode : int { Trail = 0, Beam, Lightning, Count };
+
+// a camera facing strip through a list of points, drawn after particles with the same blend modes
+struct MYGRAPHICSENGINE_EXPORT RibbonComponent {
+	RibbonComponent() = default;
+
+	int mode { 0 };						// RibbonMode
+	bool isPlaying { true };
+
+	// look along the length, start is the entity end (trail head, beam and bolt origin)
+	float widthStart { 0.2f };
+	float widthEnd { 0.0f };
+	glm::vec4 colorStart { 1.0f };
+	glm::vec4 colorEnd { 1.0f, 1.0f, 1.0f, 0.0f };
+	int blendMode { 0 };				// ParticleBlendMode
+	std::string texturePath { "None" };
+	float textureTiling { 1.0f };		// texture repeats per unit of length
+	float textureScroll { 0.0f };		// texture lengths per second, along the ribbon
+
+	// trail: the entity's recent positions
+	float trailLifetime { 0.5f };		// seconds a recorded point lasts
+	float minSegmentLength { 0.05f };	// a new point is recorded once the entity moved this far
+	int maxPoints { 64 };
+
+	// beam and lightning: from the entity to a target
+	glm::vec3 target { 0.0f, 5.0f, 0.0f };
+	bool targetInLocalSpace { true };	// target moves and rotates with the entity
+	int segments { 16 };
+
+	// lightning
+	float jitter { 0.15f };				// sideways displacement as a fraction of the bolt length
+	float regenerateInterval { 0.06f };	// seconds between new bolt shapes
+	int branches { 2 };
+	float branchLength { 0.35f };		// fraction of the bolt length
+	float flicker { 0.4f };				// brightness variation between bolt shapes
+
+	// runtime state, not serialized
+	struct TrailPoint {
+		glm::vec3 position;
+		float age;
+	};
+	std::vector<TrailPoint> trailPoints;
+	std::vector<std::vector<glm::vec3>> boltStrips;		// main bolt first, then branches
+	float regenerateTimer { 0.0f };
+	float boltBrightness { 1.0f };
+	uint32_t seed { 1 };
+	uint32_t textureID { 0 };
+	std::string loadedTexturePath { "None" };
+
+	DEFINE_TYPE(RibbonComponent,
+		member("mode", &RibbonComponent::mode),
+		member("isPlaying", &RibbonComponent::isPlaying),
+		member("widthStart", &RibbonComponent::widthStart),
+		member("widthEnd", &RibbonComponent::widthEnd),
+		member("colorStart", &RibbonComponent::colorStart),
+		member("colorEnd", &RibbonComponent::colorEnd),
+		member("blendMode", &RibbonComponent::blendMode),
+		member("texturePath", &RibbonComponent::texturePath),
+		member("textureTiling", &RibbonComponent::textureTiling),
+		member("textureScroll", &RibbonComponent::textureScroll),
+		member("trailLifetime", &RibbonComponent::trailLifetime),
+		member("minSegmentLength", &RibbonComponent::minSegmentLength),
+		member("maxPoints", &RibbonComponent::maxPoints),
+		member("target", &RibbonComponent::target),
+		member("targetInLocalSpace", &RibbonComponent::targetInLocalSpace),
+		member("segments", &RibbonComponent::segments),
+		member("jitter", &RibbonComponent::jitter),
+		member("regenerateInterval", &RibbonComponent::regenerateInterval),
+		member("branches", &RibbonComponent::branches),
+		member("branchLength", &RibbonComponent::branchLength),
+		member("flicker", &RibbonComponent::flicker)
+	)
+};
+

@@ -10,12 +10,9 @@
 #include <filesystem>
 #include <string>
 
-void ImGuiParticleInspector::draw(ParticleEmitter& emitter, TextureManager* textureManager, ModelManager* modelManager)
-{
-    ImGui::PushID("ParticleEmitter");
-
+namespace {
     // every section is a framed header over a label | widget table so the controls line up
-    auto BeginSection = [](const char* name, bool defaultOpen) {
+    bool BeginSection(const char* name, bool defaultOpen) {
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
         if (defaultOpen) {
             flags |= ImGuiTreeNodeFlags_DefaultOpen;
@@ -30,13 +27,15 @@ void ImGuiParticleInspector::draw(ParticleEmitter& emitter, TextureManager* text
         ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 7.5f);
         ImGui::TableSetupColumn("value", ImGuiTableColumnFlags_WidthStretch);
         return true;
-    };
-    auto EndSection = []() {
+    }
+
+    void EndSection() {
         ImGui::EndTable();
         ImGui::TreePop();
-    };
+    }
+
     // label cell, then leaves the cursor in the value cell with a full width item
-    auto Row = [](const char* label, const char* tooltip = nullptr) {
+    void Row(const char* label, const char* tooltip = nullptr) {
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
         ImGui::AlignTextToFramePadding();
@@ -46,12 +45,49 @@ void ImGuiParticleInspector::draw(ParticleEmitter& emitter, TextureManager* text
         }
         ImGui::TableNextColumn();
         ImGui::SetNextItemWidth(-FLT_MIN);
-    };
-    auto Range = [](const char* id, float& minValue, float& maxValue, float speed, float lower, float upper, const char* format) {
+    }
+
+    bool Range(const char* id, float& minValue, float& maxValue, float speed, float lower, float upper, const char* format) {
         std::string minFormat = std::string("min ") + format;
         std::string maxFormat = std::string("max ") + format;
         return ImGui::DragFloatRange2(id, &minValue, &maxValue, speed, lower, upper, minFormat.c_str(), maxFormat.c_str(), ImGuiSliderFlags_AlwaysClamp);
-    };
+    }
+
+    // file name, Browse and Clear on one row, the renderer loads the path on its next update
+    void TexturePicker(std::string& texturePath, std::string& loadedTexturePath, uint32_t& textureID, uint32_t shownTextureID, TextureManager* textureManager) {
+        float thumbSize = ImGui::GetFrameHeight();
+        if (shownTextureID != 0) {
+            ImGui::Image((ImTextureID)textureManager->inspectTexture(shownTextureID), ImVec2(thumbSize, thumbSize), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::SameLine();
+        }
+        std::string textureName = texturePath != "None" ? std::filesystem::path(texturePath).filename().string() : "(none)";
+        float buttonsWidth = ImGui::CalcTextSize("BrowseClear").x + ImGui::GetStyle().FramePadding.x * 4.0f + ImGui::GetStyle().ItemSpacing.x * 2.0f;
+        ImGui::SetNextItemWidth(std::max(ImGui::GetContentRegionAvail().x - buttonsWidth, 1.0f));
+        ImGui::BeginDisabled();
+        ImGui::InputText("##textureName", &textureName, ImGuiInputTextFlags_ReadOnly);
+        ImGui::EndDisabled();
+        if (texturePath != "None" && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s", texturePath.c_str());
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Browse##texture")) {
+            std::string path = Utils::fileDialog();
+            if (!path.empty()) {
+                texturePath = path;
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Clear##texture")) {
+            texturePath = "None";
+            loadedTexturePath = "None";
+            textureID = 0;
+        }
+    }
+}
+
+void ImGuiParticleInspector::draw(ParticleEmitter& emitter, TextureManager* textureManager, ModelManager* modelManager)
+{
+    ImGui::PushID("ParticleEmitter");
 
     // transport and status
     float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
@@ -297,33 +333,7 @@ void ImGuiParticleInspector::draw(ParticleEmitter& emitter, TextureManager* text
         const char* sourceNames[] = { "none, flat color", "set here", "from the entity's sprite", "from the model's material" };
 
         Row("Texture", "Browse sets a texture for this emitter, it wins over sprite and model textures");
-        float thumbSize = ImGui::GetFrameHeight();
-        if (emitter.activeTextureID != 0) {
-            ImGui::Image((ImTextureID)textureManager->inspectTexture(emitter.activeTextureID), ImVec2(thumbSize, thumbSize), ImVec2(0, 1), ImVec2(1, 0));
-            ImGui::SameLine();
-        }
-        std::string textureName = emitter.texturePath != "None" ? std::filesystem::path(emitter.texturePath).filename().string() : "(none)";
-        float buttonsWidth = ImGui::CalcTextSize("BrowseClear").x + ImGui::GetStyle().FramePadding.x * 4.0f + ImGui::GetStyle().ItemSpacing.x * 2.0f;
-        ImGui::SetNextItemWidth(std::max(ImGui::GetContentRegionAvail().x - buttonsWidth, 1.0f));
-        ImGui::BeginDisabled();
-        ImGui::InputText("##textureName", &textureName, ImGuiInputTextFlags_ReadOnly);
-        ImGui::EndDisabled();
-        if (emitter.texturePath != "None" && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("%s", emitter.texturePath.c_str());
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Browse##texture")) {
-            std::string path = Utils::fileDialog();
-            if (!path.empty()) {
-                emitter.texturePath = path;     // the renderer loads it on its next update
-            }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Clear##texture")) {
-            emitter.texturePath = "None";
-            emitter.loadedTexturePath = "None";
-            emitter.textureID = 0;
-        }
+        TexturePicker(emitter.texturePath, emitter.loadedTexturePath, emitter.textureID, emitter.activeTextureID, textureManager);
 
         Row("Drawing");
         ImGui::TextDisabled("%s", sourceNames[std::clamp(static_cast<int>(source), 0, IM_ARRAYSIZE(sourceNames) - 1)]);
@@ -344,6 +354,98 @@ void ImGuiParticleInspector::draw(ParticleEmitter& emitter, TextureManager* text
             Row("Flipbook speed", "frames per second, 0 plays the sheet once over each lifetime");
             ImGui::DragFloat("##flipbookFPS", &emitter.flipbookFPS, 0.1f, 0.0f, 120.0f, emitter.flipbookFPS > 0.0f ? "%.1f fps" : "once per life");
         }
+        EndSection();
+    }
+
+    ImGui::PopID();
+}
+
+void ImGuiParticleInspector::drawRibbon(RibbonComponent& ribbon, TextureManager* textureManager)
+{
+    ImGui::PushID("Ribbon");
+
+    float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+    if (ImGui::Button(ribbon.isPlaying ? "On" : "Off", ImVec2(buttonWidth, 0.0f))) {
+        ribbon.isPlaying = !ribbon.isPlaying;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Off stops recording or drawing, a trail still fades out what it has");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Clear", ImVec2(buttonWidth, 0.0f))) {
+        ribbon.trailPoints.clear();
+        ribbon.boltStrips.clear();
+    }
+    ImGui::Spacing();
+
+    if (BeginSection("Source", true)) {
+        const char* modes[] = { "Trail (follows the entity)", "Beam (straight)", "Lightning" };
+        static_assert(IM_ARRAYSIZE(modes) == static_cast<int>(RibbonMode::Count));
+        Row("Mode");
+        ImGui::Combo("##mode", &ribbon.mode, modes, IM_ARRAYSIZE(modes));
+
+        RibbonMode mode = static_cast<RibbonMode>(ribbon.mode);
+        if (mode == RibbonMode::Trail) {
+            Row("Lifetime", "seconds a recorded point lasts, so how long the trail is");
+            ImGui::DragFloat("##trailLifetime", &ribbon.trailLifetime, 0.01f, 0.01f, 10.0f, "%.2f s");
+            Row("Min step", "the entity has to move this far before a new point is recorded");
+            ImGui::DragFloat("##minSegment", &ribbon.minSegmentLength, 0.005f, 0.001f, 5.0f, "%.3f");
+            Row("Max points");
+            ImGui::DragInt("##maxPoints", &ribbon.maxPoints, 1.0f, 2, 256);
+        } else {
+            Row("Target", ribbon.targetInLocalSpace ? "end point relative to the entity" : "end point in world space");
+            ImGui::DragFloat3("##target", &ribbon.target[0], 0.05f, -1000.0f, 1000.0f, "%.2f");
+            Row("Target space");
+            int space = ribbon.targetInLocalSpace ? 1 : 0;
+            if (ImGui::Combo("##targetSpace", &space, "World\0Local\0")) {
+                ribbon.targetInLocalSpace = space == 1;
+            }
+            Row("Segments", "more segments bend more smoothly, lightning rounds up to a power of two");
+            ImGui::DragInt("##segments", &ribbon.segments, 0.2f, 1, 256);
+        }
+
+        if (mode == RibbonMode::Lightning) {
+            Row("Jitter", "how far the bolt zigzags, as a part of its length");
+            ImGui::SliderFloat("##jitter", &ribbon.jitter, 0.0f, 0.5f, "%.2f");
+            Row("New shape every", "seconds a bolt keeps its shape before a new one is generated");
+            ImGui::DragFloat("##regenerate", &ribbon.regenerateInterval, 0.005f, 0.0f, 2.0f, "%.3f s");
+            Row("Branches");
+            ImGui::DragInt("##branches", &ribbon.branches, 0.1f, 0, 8);
+            Row("Branch length", "as a part of the bolt length");
+            ImGui::SliderFloat("##branchLength", &ribbon.branchLength, 0.0f, 1.0f, "%.2f");
+            Row("Flicker", "brightness change between bolt shapes");
+            ImGui::SliderFloat("##flicker", &ribbon.flicker, 0.0f, 1.0f, "%.2f");
+        }
+        EndSection();
+    }
+
+    if (BeginSection("Look", true)) {
+        Row("Width", "start is the entity end, end is the far end or the trail's tail");
+        float half = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+        ImGui::SetNextItemWidth(half);
+        ImGui::DragFloat("##widthStart", &ribbon.widthStart, 0.005f, 0.0f, 50.0f, "start %.3f");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::DragFloat("##widthEnd", &ribbon.widthEnd, 0.005f, 0.0f, 50.0f, "end %.3f");
+
+        ImGuiColorEditFlags colorFlags = ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar;
+        Row("Color start");
+        ImGui::ColorEdit4("##colorStart", &ribbon.colorStart[0], colorFlags);
+        Row("Color end");
+        ImGui::ColorEdit4("##colorEnd", &ribbon.colorEnd[0], colorFlags);
+
+        const char* blendModes[] = { "Additive (glow)", "Alpha" };
+        static_assert(IM_ARRAYSIZE(blendModes) == static_cast<int>(ParticleBlendMode::Count));
+        Row("Blend", "Additive suits lightning and energy, Alpha suits smoke and cloth trails");
+        ImGui::Combo("##blend", &ribbon.blendMode, blendModes, IM_ARRAYSIZE(blendModes));
+
+        Row("Texture", "without one the edges fade so a plain ribbon reads as a glow");
+        TexturePicker(ribbon.texturePath, ribbon.loadedTexturePath, ribbon.textureID, ribbon.textureID, textureManager);
+
+        Row("Tiling", "texture repeats per unit of length");
+        ImGui::DragFloat("##tiling", &ribbon.textureTiling, 0.01f, 0.0f, 50.0f, "%.2f");
+        Row("Scroll", "texture lengths per second along the ribbon");
+        ImGui::DragFloat("##scroll", &ribbon.textureScroll, 0.05f, -50.0f, 50.0f, "%.2f");
         EndSection();
     }
 
