@@ -26,6 +26,14 @@ public:
 		TextureVulkan* gBufferEmissive { nullptr };
 		TextureVulkan* gBufferMotion { nullptr };
 		TextureVulkan* depthTexture { nullptr };
+
+		RGHandle posHandle {};
+		RGHandle normHandle {};
+		RGHandle albedoHandle {};
+		RGHandle pbrHandle {};
+		RGHandle emissiveHandle {};
+		RGHandle motionHandle {};
+		RGHandle depthHandle {};
 	};
 
 public:

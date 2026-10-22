@@ -78,6 +78,13 @@ private:
 	TextureVulkan* currentVisibilityAtlas { nullptr };
 	TextureVulkan* lastFrameVisibilityAtlas { nullptr };
 
+	RGHandle rayColorHandle {};
+	RGHandle rayDistanceHandle {};
+	RGHandle currentIrradianceHandle {};
+	RGHandle lastIrradianceHandle {};
+	RGHandle currentVisibilityHandle {};
+	RGHandle lastVisibilityHandle {};
+
 	uint32_t probTracePipelineLayoutID;
 	uint32_t probTracePipelinePoolID;
 	uint32_t probTracePipelineSetID;
@@ -124,7 +131,7 @@ private:
 	bool showIndirectOnly { false };
 	float intensity { 1.0f };
 
-	void _createResources();
+	bool _createResources();	// true when the graph handed back new textures (first call or probe count change)
 	void _createPipeline();
 	void _createDescriptor();
 	void _updateDescriptor(uint32_t index);

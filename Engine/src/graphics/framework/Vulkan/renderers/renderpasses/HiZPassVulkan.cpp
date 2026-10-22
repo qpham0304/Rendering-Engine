@@ -135,69 +135,29 @@ void HiZPassVulkan::_createResources()
 {
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(mapSize))) + 1;
 
-	uint32_t textureID = textureManagerVulkan->createTexture();
-	hizImage = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(textureID));
-	assert(hizImage && "failed to cast texture into vulkan texture");
+	// fixed size, owned by the render graph: created once, never touched by a window resize
+	RGTextureDesc desc{};
+	desc.config.width = mapSize;
+	desc.config.height = mapSize;
+	desc.config.format = VK_FORMAT_R32_SFLOAT;
+	desc.config.mipLevels = mipLevels;
+	desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	desc.sampler.filter = VK_FILTER_NEAREST;
+	desc.sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 
-	// the graph transitions it through TextureVulkan::transitImage, which reads the format and mip count back
-	TextureConfig hizConfig{};
-	hizConfig.width = mapSize;
-	hizConfig.height = mapSize;
-	hizConfig.format = VK_FORMAT_R32_SFLOAT;
-	hizConfig.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	hizConfig.mipLevels = mipLevels;
-	hizImage->init(hizConfig, {});
+	RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
+	TextureVulkan* previousImage = hizImage;
+	hizHandle = graph.createRenderTexture("HiZ.Depth", desc);
+	hizImage = graph.getTexture(hizHandle);
 
-	TextureManagerVulkan::createImage(
-		mapSize,
-		mapSize,
-		VK_FORMAT_R32_SFLOAT,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		hizImage->textureImage,
-		hizImage->textureImageMemory,
-		mipLevels,
-		1,
-		0,
-		renderDeviceVulkan->device
-	);
+	if(hizImage == previousImage) {
+		return;
+	}
 
-	TextureManagerVulkan::createImageView(
-		hizImage->textureImage,
-		hizImage->textureImageView,
-		VK_FORMAT_R32_SFLOAT,
-		VK_IMAGE_ASPECT_COLOR_BIT,
-		mipLevels,
-		0,
-		1,
-		VK_IMAGE_VIEW_TYPE_2D,
-		renderDeviceVulkan->device
-	);
-
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_NEAREST;
-	samplerInfo.minFilter = VK_FILTER_NEAREST;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.anisotropyEnable = VK_FALSE;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = static_cast<float>(mipLevels);
-
-	TextureManagerVulkan::createTextureSampler(
-		hizImage->textureSampler,
-		renderDeviceVulkan->device,
-		samplerInfo
-	);
-
+	// a new texture, rebuild the per mip views every level of the chain is written through
+	for (auto view : HiZMipViews) {
+		vkDestroyImageView(renderDeviceVulkan->device, view, nullptr);
+	}
 	HiZMipViews.resize(mipLevels);
 	for (uint32_t j = 0; j < mipLevels; j++) {
 		TextureManagerVulkan::createImageView(
@@ -212,19 +172,6 @@ void HiZPassVulkan::_createResources()
 			renderDeviceVulkan->device
 		);
 	}
-
-	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-	TextureManagerVulkan::transitionImageLayout(
-		cmd,
-		hizImage->textureImage,
-		VK_FORMAT_R32_SFLOAT,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		mipLevels,
-		1,
-		renderDeviceVulkan
-	);
-	renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
 }
 
 void HiZPassVulkan::_createPipelines()
@@ -300,12 +247,6 @@ void HiZPassVulkan::_recreateResources()
 
 void HiZPassVulkan::_cleanupResources()
 {
-	for (auto view : HiZMipViews) {
-		vkDestroyImageView(renderDeviceVulkan->device, view, nullptr);
-	}
-	HiZMipViews.clear();
-
-	textureManagerVulkan->destroy(hizImage->id());
     pipeline->destroy();
 }
 
@@ -314,6 +255,7 @@ void HiZPassVulkan::addToGraph(RenderGraphVulkan& graph)
 	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 	depthImage = geometryPass->renderTarget.depthTexture;
 	normalImage = geometryPass->renderTarget.gBufferNorm;
+	_createResources();		// fixed size, the graph hands back the same texture every frame
 
 	if(needResize) {
 		_recreateResources();
@@ -322,12 +264,11 @@ void HiZPassVulkan::addToGraph(RenderGraphVulkan& graph)
 	}
 
 	auto depth = graph.importTexture(depthImage);
-	auto hiZ = graph.importTexture(hizImage);
 
 	RenderPassNode node{};
 	node.name = "HiZ";
 	node.reads  = { { depth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };	// mip 0 samples the g-buffer depth
-	node.writes = { { hiZ, VK_IMAGE_LAYOUT_GENERAL } };						// every mip is a storage image
+	node.writes = { { hizHandle, VK_IMAGE_LAYOUT_GENERAL } };				// every mip is a storage image
 
 	node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
 		Camera* camera = SceneManager::cameraController;

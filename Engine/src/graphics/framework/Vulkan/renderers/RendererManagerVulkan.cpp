@@ -83,7 +83,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
 	debugRenderer = addRenderer<DebugRendererVulkan>("DebugRendererVulkan");
 
-    // graph owned textures are sized from this, passes can acquire them during init
+    // graph owned textures are sized from this, passes can create them during init
     VkExtent2D extent = renderDeviceVulkan->swapchain.swapChainExtent;
     m_renderGraph.setRenderSize(extent.width, extent.height);
 
@@ -175,7 +175,7 @@ void RendererManagerVulkan::render()
         swapchainOutdated = false;
     }
 
-    // graph owned textures get recreated on their next acquire when this changes
+    // graph owned textures get recreated on their next create when this changes
     VkExtent2D renderExtent = renderDeviceVulkan->swapchain.swapChainExtent;
     m_renderGraph.setRenderSize(renderExtent.width, renderExtent.height);
 

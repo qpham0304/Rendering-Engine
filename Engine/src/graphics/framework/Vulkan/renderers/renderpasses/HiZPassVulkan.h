@@ -24,7 +24,8 @@ public:
     void writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame);
 
 	//TODO: turn this into private
-	TextureVulkan* hizImage { nullptr };	// single copy, gpu only, rebuilt from this frame's depth every frame
+	TextureVulkan* hizImage { nullptr };
+	RGHandle hizHandle {};
 
 protected:
 	bool m_initialized { false };

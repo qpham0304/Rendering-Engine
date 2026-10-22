@@ -48,8 +48,10 @@ protected:
 
 	uint32_t aoMapID;
 	uint32_t aoMapTempID;
-	TextureVulkan* aoMap;
-	TextureVulkan* aoMapTemp;
+	TextureVulkan* aoMap { nullptr };
+	TextureVulkan* aoMapTemp { nullptr };
+	RGHandle aoMapHandle {};
+	RGHandle aoMapTempHandle {};
 	TextureVulkan* depthImage;
 	TextureVulkan* positionImage;
 	TextureVulkan* normalImage;

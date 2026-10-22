@@ -34,10 +34,6 @@ public:
 	}
 
     virtual Renderer* getRenderer(std::string_view name) = 0;
-	
-	
-	void addRenderTexture(std::string_view name, std::vector<uint32_t> textureIDs);
-	std::vector<std::shared_ptr<Texture>> getRenderTextures(std::string_view name);
 
 protected:
 	friend class Engine;
@@ -45,6 +41,5 @@ protected:
     RendererManager(std::string serviceName = "RendererManager") : Manager(serviceName) {};
 
 	std::vector<std::tuple<std::string, std::shared_ptr<Renderer>>> m_renderers;
-	std::unordered_map<std::string, std::vector<std::shared_ptr<Texture>>> m_renderTextures;
 
 };

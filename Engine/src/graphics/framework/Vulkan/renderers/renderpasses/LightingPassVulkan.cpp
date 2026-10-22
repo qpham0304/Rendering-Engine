@@ -128,6 +128,8 @@ void LightingPassVulkan::render(Camera& camera)
 
 void LightingPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+	_createRenderTarget();
+
 	if(needResize) {
 		_recreateResources();
 		needResize = false;
@@ -145,7 +147,6 @@ void LightingPassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto depthTexture = graph.importTexture(gBufferTarget.depthTexture);
     auto aoTexture = graph.importTexture(ambientOcclusionPass->getOutputImage());	// written by ao in GENERAL earlier in the graph
 
-	auto colorTexture = graph.importTexture(renderTarget.colorTexture, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	RenderPassNode node{};
     node.name = "lighting";
@@ -161,7 +162,7 @@ void LightingPassVulkan::addToGraph(RenderGraphVulkan& graph)
 	};
 
 	node.writes = {
-		{ colorTexture, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }
+		{ renderTarget.colorHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }
 	};
 
     node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
@@ -264,56 +265,15 @@ void LightingPassVulkan::_createRenderTarget()
 	renderTarget.width = swapchain.swapChainExtent.width;
 	renderTarget.height = swapchain.swapChainExtent.height;
 
-	// hdr target, the combine pass tonemaps. an 8 bit target clips everything the sun lights to white
-	VkFormat format = VK_FORMAT_R16G16B16A16_SFLOAT;
 
-	uint32_t id = textureManagerVulkan->createTexture();
-	auto* texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-	texture->format = format;
+	RGTextureDesc desc{};
+	desc.config.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+	desc.config.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	TextureManagerVulkan::createImage(
-		renderTarget.width,
-		renderTarget.height,
-		format,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		texture->textureImage,
-		texture->textureImageMemory,
-		1,
-		renderDeviceVulkan->device
-	);
-
-	TextureManagerVulkan::createImageView(
-		texture->textureImage,
-		texture->textureImageView,
-		format,
-		VK_IMAGE_ASPECT_COLOR_BIT,
-		1,
-		renderDeviceVulkan->device
-	);
-
-	TextureManagerVulkan::createTextureSampler(
-		texture->textureSampler,
-		renderDeviceVulkan->device,
-		TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
-	);
-
-	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-	TextureManagerVulkan::transitionImageLayout(
-		cmd,
-		texture->textureImage,
-		format,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		1,
-		1,
-		renderDeviceVulkan
-	);
-	renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
-
-	renderTarget.colorTexture = texture;
-	rendererManagerVulkan->addRenderTexture("deferredColorOut", { texture->id() });
+    RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
+	renderTarget.colorHandle = graph.createRenderTexture("Lighting.Pass", desc);
+	renderTarget.colorTexture = graph.getTexture(renderTarget.colorHandle);
 }
 
 void LightingPassVulkan::_createLightPipeline()
@@ -494,7 +454,6 @@ void LightingPassVulkan::_recreateResources()
 
 void LightingPassVulkan::_cleanupResources()
 {
-	textureManagerVulkan->destroy(renderTarget.colorTexture->id());
 	lightingPipeline->destroy();
 }
 #pragma endregion setup

@@ -58,6 +58,7 @@ void TextureVulkan::init(TextureConfig config, TextureSamplerConfig sampler)
 	tiling = config.tiling;
 	mipLevels = config.mipLevels;
 	layerCount = config.layerCount;
+	initialLayout = config.initialLayout;
 
     samplerInfo = sampler;
 }
@@ -65,6 +66,11 @@ void TextureVulkan::init(TextureConfig config, TextureSamplerConfig sampler)
 uint32_t TextureVulkan::getMipLevels()
 {
     return mipLevels;
+}
+
+VkImageLayout TextureVulkan::getInitialLayout()
+{
+	return initialLayout;
 }
 
 uint32_t TextureVulkan::getLayerCount()

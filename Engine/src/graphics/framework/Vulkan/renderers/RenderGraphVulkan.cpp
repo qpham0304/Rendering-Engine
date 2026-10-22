@@ -47,44 +47,17 @@ void RenderGraphVulkan::_prepareAccess(VkCommandBuffer cmd, const RGAccess& acce
         resource.texture->transitImage(cmd, resource.initialLayout, access.layout);
         resource.initialLayout = access.layout;
     } else if(resource.lastWasWrite || isWrite) {
-        _memoryBarrier(cmd, resource.texture, access.layout);
+        
+        TextureManagerVulkan::createBarrier(    // same layout, only makes the previous accesses finish and their writes visible
+            cmd, resource.texture->textureImage,
+            VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+            access.layout, access.layout,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            VK_REMAINING_MIP_LEVELS, VK_REMAINING_ARRAY_LAYERS, resource.texture->format	// old path textures (ibl cubemap) do not record their mips and layers
+        );
     }
 
     resource.lastWasWrite = isWrite;
-}
-
-// same layout on both sides, only makes the previous accesses finish and their writes visible.
-// all commands to all commands is broad but always correct, it can be narrowed per usage later
-void RenderGraphVulkan::_memoryBarrier(VkCommandBuffer cmd, TextureVulkan* texture, VkImageLayout layout)
-{
-    VkFormat format = texture->format;
-    bool hasStencil = format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D16_UNORM_S8_UINT;
-    bool isDepth = hasStencil || format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D16_UNORM;
-
-    VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-    if(isDepth) {
-        aspect = VK_IMAGE_ASPECT_DEPTH_BIT | (hasStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
-    }
-
-    VkImageMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = layout;
-    barrier.newLayout = layout;
-    barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image = texture->textureImage;
-    //TODO: every mip and layer, some textures like bloom, hiz never record their real mip count on the TextureVulkan
-    // add add a way to support that on texture vulkan eventually
-    barrier.subresourceRange = { aspect, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS };
-
-    vkCmdPipelineBarrier(
-        cmd,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        0, 0, nullptr, 0, nullptr, 1, &barrier
-    );
 }
 
 void RenderGraphVulkan::setRenderSize(uint32_t width, uint32_t height)
@@ -93,21 +66,32 @@ void RenderGraphVulkan::setRenderSize(uint32_t width, uint32_t height)
     m_renderHeight = height;
 }
 
-// the render graph authors texture and handle recreation every frame
-TextureVulkan* RenderGraphVulkan::acquireTexture(const std::string& name, const RGTextureDesc& desc)
+RGHandle RenderGraphVulkan::createRenderTexture(const std::string& name, const RGTextureDesc& desc)
 {
-    uint32_t width = std::max(1u, static_cast<uint32_t>(m_renderWidth * desc.scale));
-    uint32_t height = std::max(1u, static_cast<uint32_t>(m_renderHeight * desc.scale));
+    return importTexture(_createTexture(name, desc));
+}
+
+TextureVulkan* RenderGraphVulkan::getTexture(RGHandle handle)
+{
+    return m_resources[handle.index].texture;
+}
+
+// the render graph authors texture and handle recreation every frame
+TextureVulkan* RenderGraphVulkan::_createTexture(const std::string& name, const RGTextureDesc& desc)
+{
+    bool fixedSize = desc.config.width > 0 && desc.config.height > 0;
+    uint32_t width = fixedSize ? desc.config.width : std::max(1u, static_cast<uint32_t>(m_renderWidth * desc.scale));
+    uint32_t height = fixedSize ? desc.config.height : std::max(1u, static_cast<uint32_t>(m_renderHeight * desc.scale));
 
     auto& textureManager = dynamic_cast<TextureManagerVulkan&>(ServiceLocator::GetService<TextureManager>("TextureManagerVulkan"));
 
     auto it = m_ownedTextures.find(name);
     if(it != m_ownedTextures.end()) {
-        RGOwnedTexture& owned = it->second;
+        RenderTexture& owned = it->second;
         const TextureConfig& a = owned.desc.config;
         const TextureConfig& b = desc.config;
         bool sameConfig = a.format == b.format && a.usage == b.usage && a.mipLevels == b.mipLevels
-            && a.layerCount == b.layerCount && a.aspectBits == b.aspectBits;
+            && a.layerCount == b.layerCount && a.aspectBits == b.aspectBits && a.initialLayout == b.initialLayout;
         if(owned.width == width && owned.height == height && sameConfig) {
             return owned.texture;
         }
@@ -144,6 +128,11 @@ RGHandle RenderGraphVulkan::importTexture(TextureVulkan* texture, VkImageLayout 
         }
     }
     uint32_t size = m_resources.size();
+
+    // the contents are discarded every frame, the first pass has to overwrite the whole image
+    if(texture->getInitialLayout() == VK_IMAGE_LAYOUT_UNDEFINED) {
+        initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
 
     RGResource resource{};
     resource.texture = texture;

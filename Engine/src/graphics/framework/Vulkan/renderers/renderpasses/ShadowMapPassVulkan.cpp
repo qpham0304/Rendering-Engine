@@ -521,13 +521,6 @@ void ShadowMapPassVulkan::_createMomentImage()
 	createTexture(momentImage);
 	createTexture(tempMomentImage);
 
-	std::string name = "";
-	name = "shadowMap";
-	rendererManagerVulkan->addRenderTexture(name, {depthMap->id()});
-
-	name = "momentShadowMap";
-	rendererManagerVulkan->addRenderTexture(name, {momentImage->id()});
-	
 }
 
 void ShadowMapPassVulkan::_createMomentDescriptor()

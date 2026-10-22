@@ -54,6 +54,7 @@ private: // TODO: consider make private
 	TextureVulkan* bloomImage;
 	TextureVulkan* atlasImageGI;
 	TextureVulkan* visibilityAtlasImageGI;
+	RGHandle outputHandle {};
 
 protected:
 	void _createResources();

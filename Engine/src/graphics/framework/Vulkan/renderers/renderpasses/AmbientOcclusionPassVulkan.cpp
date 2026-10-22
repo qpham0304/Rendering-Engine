@@ -167,18 +167,17 @@ void AmbientOcclusionPassVulkan::_createOcclusionMap()
 {
     RGTextureDesc desc{};
     desc.config.format = VK_FORMAT_R16_SFLOAT;
+    desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
-    TextureVulkan* previousAoMap = aoMap;
-    aoMap = graph.acquireTexture("AO.Map", desc);
-    aoMapTemp = graph.acquireTexture("AO.Temp", desc);
+    aoMapHandle = graph.createRenderTexture("AO.Map", desc);
+    aoMapTempHandle = graph.createRenderTexture("AO.Temp", desc);
+    aoMap = graph.getTexture(aoMapHandle);
+    aoMapTemp = graph.getTexture(aoMapTempHandle);
     aoMapID = aoMap->id();
     aoMapTempID = aoMapTemp->id();
 
     outputImage = aoMap;
-    if(aoMap != previousAoMap) {
-        rendererManagerVulkan->addRenderTexture("aoMap", {outputImage->id()});
-    }
 }
 
 void AmbientOcclusionPassVulkan::_createDescriptors()
@@ -324,13 +323,11 @@ void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
 
     auto pos = graph.importTexture(positionImage);
     auto norm = graph.importTexture(normalImage);
-    auto ao = graph.importTexture(aoMap, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto aoTemp = graph.importTexture(aoMapTemp, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    
+
     RenderPassNode node{};
     node.name = "AO";
     node.reads  = { {pos, VK_IMAGE_LAYOUT_GENERAL}, {norm, VK_IMAGE_LAYOUT_GENERAL} };
-    node.writes = { {ao, VK_IMAGE_LAYOUT_GENERAL}, {aoTemp, VK_IMAGE_LAYOUT_GENERAL} };
+    node.writes = { {aoMapHandle, VK_IMAGE_LAYOUT_GENERAL}, {aoMapTempHandle, VK_IMAGE_LAYOUT_GENERAL} };
 
     node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
         Scene* scene = SceneManager::getInstance().getActiveScene();

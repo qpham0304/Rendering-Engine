@@ -35,10 +35,11 @@ struct RGResource {
     bool lastWasWrite { false };    // for write to write of the same layout
 };
 
+// user specified config.width and config.height will be fixed size and wont be resized automatically by the graph
 struct RGTextureDesc {
     TextureConfig config{};
     TextureSamplerConfig sampler{};
-    float scale { 1.0f };   // 0.5 = half the render size
+    float scale { 1.0f };   // 0.5 = half the render size, ignored for fixed size
 };
 
 class RenderGraphVulkan {
@@ -56,7 +57,11 @@ public:
     );
 
     void setRenderSize(uint32_t width, uint32_t height);
-    TextureVulkan* acquireTexture(const std::string& name, const RGTextureDesc& desc);
+
+    // graph owned texture: created on first use, recreated when the size or desc changes, and already imported
+    // for this frame (it ends every frame in SHADER_READ_ONLY, and starts from UNDEFINED when config.initialLayout asks for it)
+    RGHandle createRenderTexture(const std::string& name, const RGTextureDesc& desc);
+    TextureVulkan* getTexture(RGHandle handle);
 
 private:
     // bool _dfs(
@@ -65,10 +70,10 @@ private:
     //     std::unordered_set<std::string>& visited, 
     //     std::unordered_set<std::string>& visiting
     // );
+    TextureVulkan* _createTexture(const std::string& name, const RGTextureDesc& desc);
     void _prepareAccess(VkCommandBuffer cmd, const RGAccess& access, bool isWrite);
-    void _memoryBarrier(VkCommandBuffer cmd, TextureVulkan* texture, VkImageLayout layout);
 
-    struct RGOwnedTexture {
+    struct RenderTexture {
         RGTextureDesc desc;
         uint32_t width { 0 };
         uint32_t height { 0 };
@@ -78,7 +83,7 @@ private:
     std::vector<RGResource> m_resources;
     std::vector<RenderPassNode> m_passes;   // atm are executed in the order they were added
 
-    std::unordered_map<std::string, RGOwnedTexture> m_ownedTextures;   // do not clear by reset
+    std::unordered_map<std::string, RenderTexture> m_ownedTextures;   // do not clear by reset
     uint32_t m_renderWidth { 0 };
     uint32_t m_renderHeight { 0 };
 };

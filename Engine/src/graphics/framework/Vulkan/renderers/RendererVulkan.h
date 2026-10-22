@@ -3,6 +3,7 @@
 #include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
+#include "graphics/framework/Vulkan/renderers/RenderGraphVulkan.h"	// passes keep RGHandles of the textures they create
 #include <glm/glm.hpp>
 #include <vector>
 

@@ -75,6 +75,7 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 	
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     _fetchInputImages(currentFrame);
+    _createResources();     // same output unless the render size changed
 
     if(needResize) {
 		_recreateResources();
@@ -174,74 +175,20 @@ void DeferredCombinePassVulkan::writeCombinedImage(VkCommandBuffer cmd, uint32_t
 
 void DeferredCombinePassVulkan::_createResources()
 {
-    auto createTexture = [this] (uint32_t& id, TextureVulkan*& texture){
-        id = textureManagerVulkan->createTexture();
-        texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
+    RGTextureDesc desc{};
+    desc.config.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        assert(texture && "failed to cast texture into vulkan texture");
-        texture->format = VK_FORMAT_R16G16B16A16_SFLOAT;	// the graph's transitImage reads it back
-        
-        VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-        VkDevice device = renderDeviceVulkan->device;
-        
-        TextureManagerVulkan::createImage(
-            swapchain.swapChainExtent.width,
-            swapchain.swapChainExtent.height,
-            VK_FORMAT_R16G16B16A16_SFLOAT,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            texture->textureImage,
-            texture->textureImageMemory,
-            1,
-            renderDeviceVulkan->device
-        );
+    RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
+    TextureVulkan* previousOutput = outputImage;
+    outputHandle = graph.createRenderTexture("DeferredCombine.Output", desc);
+    outputImage = graph.getTexture(outputHandle);
+    outputImageID = outputImage->id();
 
-        TextureManagerVulkan::createImageView(
-            texture->textureImage,
-            texture->textureImageView,
-            VK_FORMAT_R16G16B16A16_SFLOAT,
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            1,
-            renderDeviceVulkan->device
-        );
-
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.anisotropyEnable = VK_FALSE;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias = 0.0f;
-        samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = 1.0f;
-
-        TextureManagerVulkan::createTextureSampler(
-            texture->textureSampler, 
-            renderDeviceVulkan->device,
-            samplerInfo
-        );
-    };
- 
-    createTexture(outputImageID, outputImage);
-    rendererManagerVulkan->addRenderTexture("deferredCombineOut", {outputImage->id()});
-    // ApplicationRendererVulkan draws the display image through the bindless set when the gui is hidden
-    textureManagerVulkan->registerBindlessTexture(outputImage->id());
-
-    auto cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-    );
-    renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
-
+    if(outputImage != previousOutput) {
+        // ApplicationRendererVulkan draws the display image through the bindless set when the gui is hidden
+        textureManagerVulkan->registerBindlessTexture(outputImage->id());
+    }
 }
 
 void DeferredCombinePassVulkan::_createPipelines()
@@ -376,7 +323,6 @@ void DeferredCombinePassVulkan::_recreateResources()
 
 void DeferredCombinePassVulkan::_cleanupResources()
 {
-    textureManagerVulkan->destroy(outputImage->id());
     pipeline->destroy();
 }
 
@@ -385,6 +331,7 @@ void DeferredCombinePassVulkan::addToGraph(RenderGraphVulkan& graph)
     // the gi image depends on the denoiser toggle and the taa ping-pong, look it up before importing
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     _fetchInputImages(currentFrame);
+    _createResources();     // same output unless the render size changed
 
     if(needResize) {
 		_recreateResources();
@@ -401,7 +348,6 @@ void DeferredCombinePassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto normal = graph.importTexture(normalImage);
     auto visibility = graph.importTexture(visibilityAtlasImageGI);
     auto pbr = graph.importTexture(pbrImage);
-    auto output = graph.importTexture(outputImage, VK_IMAGE_LAYOUT_UNDEFINED);	// fully overwritten every frame
 
     RenderPassNode node{};
     node.name = "DeferredCombine";
@@ -417,7 +363,7 @@ void DeferredCombinePassVulkan::addToGraph(RenderGraphVulkan& graph)
         { pbr, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
     };
     node.writes = {
-        { output, VK_IMAGE_LAYOUT_GENERAL },
+        { outputHandle, VK_IMAGE_LAYOUT_GENERAL },
     };
 
     node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {

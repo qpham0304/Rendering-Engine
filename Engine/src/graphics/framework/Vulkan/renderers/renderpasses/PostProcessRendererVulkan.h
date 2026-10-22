@@ -30,7 +30,7 @@ public:
 	
 protected:
 	uint32_t outputImageID;
-	TextureVulkan* outputImage;
+	TextureVulkan* outputImage { nullptr };
 
     uint32_t layoutID;
 	uint32_t poolID;

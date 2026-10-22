@@ -66,6 +66,7 @@ bool BloomPassVulkan::onClose()
     PostProcessRendererVulkan::onClose();
 
     _cleanupResources();
+    _destroyMipViews();
 
     return true;
 }
@@ -177,25 +178,27 @@ void BloomPassVulkan::_transitionMip(VkCommandBuffer cmd, VkImage image, uint32_
 }
 
 void BloomPassVulkan::_createResources() {
-    uint32_t id = textureManagerVulkan->createTexture();
-    outputImage = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-    outputImageID = id;
+    RGTextureDesc desc{};
+    desc.config.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    desc.config.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    desc.config.mipLevels = mipCount;
 
-    uint32_t width = renderDeviceVulkan->swapchain.swapChainExtent.width;
-    uint32_t height = renderDeviceVulkan->swapchain.swapChainExtent.height;
+    RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
+    TextureVulkan* previousOutput = outputImage;
+    outputHandle = graph.createRenderTexture("Bloom.Chain", desc);
+    outputImage = graph.getTexture(outputHandle);
+    outputImageID = outputImage->id();
 
-    TextureManagerVulkan::createImage(
-        width, height, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        outputImage->textureImage, outputImage->textureImageMemory,
-        mipCount, renderDeviceVulkan->device
-    );
+    if(outputImage == previousOutput) {
+        return;
+    }
+
+    // a new texture, rebuild the per mip views the down/up sample passes write through
+    _destroyMipViews();
 
     mipChain.resize(mipCount);
     mipSizes.resize(mipCount);
-    glm::vec2 currentSize(width, height);
+    glm::vec2 currentSize(outputImage->width(), outputImage->height());
 
     for (uint32_t i = 0; i < mipCount; i++) {
         TextureManagerVulkan::createImageView(
@@ -206,25 +209,14 @@ void BloomPassVulkan::_createResources() {
         mipSizes[i] = currentSize;
         currentSize = glm::max(glm::vec2(1.0f), glm::floor(currentSize / 2.0f));
     }
-    outputImage->textureImageView = mipChain[0];
+}
 
-    VkSamplerCreateInfo samplerInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-    samplerInfo.magFilter = VK_FILTER_LINEAR;
-    samplerInfo.minFilter = VK_FILTER_LINEAR;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    vkCreateSampler(renderDeviceVulkan->device, &samplerInfo, nullptr, &outputImage->textureSampler);
-
-    auto cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        mipCount, 1, renderDeviceVulkan
-    );
-    renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
-
-    std::string name = "bloomPassOut" + std::to_string(outputImage->id()); 
-    rendererManagerVulkan->addRenderTexture(name, {outputImage->id()});
+void BloomPassVulkan::_destroyMipViews()
+{
+    for(auto& view : mipChain) {
+        vkDestroyImageView(renderDeviceVulkan->device, view, nullptr);
+    }
+    mipChain.clear();
 }
 
 void BloomPassVulkan::_createDescriptors()
@@ -364,18 +356,13 @@ void BloomPassVulkan::_cleanupResources()
     upsamplePipeline->destroy();
     downsamplePipeline->destroy();
     bloomPipeline->destroy();
-
-    for(auto& view : mipChain) {
-        vkDestroyImageView(renderDeviceVulkan->device, view, nullptr);
-    }
-
-    outputImage->textureImageView = VK_NULL_HANDLE;
 }
 
 void BloomPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
     auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
     inputImage = lightingPass->renderTarget.colorTexture;
+    _createResources();     // same chain unless the render size changed
 
     if (needResize) {
         _recreateResources();
@@ -384,13 +371,12 @@ void BloomPassVulkan::addToGraph(RenderGraphVulkan& graph)
     }
 
     auto scene = graph.importTexture(inputImage);
-    auto bloom = graph.importTexture(outputImage);
 
     RenderPassNode node{};
     node.name = "Bloom";
     node.reads  = { { scene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
     // each mip goes GENERAL and back inside the down/up sample loops, the chain rests in SHADER_READ_ONLY
-    node.writes = { { bloom, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
+    node.writes = { { outputHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
 
     node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
         Camera* camera = SceneManager::cameraController;

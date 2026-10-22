@@ -445,8 +445,6 @@ void ForwardRendererVulkan::_createOffscreenTarget()
 			throw std::runtime_error("failed to create offscreen framebuffer!");
 		}	
 	}
-	
-	rendererManagerVulkan->addRenderTexture("forwardColorOut", colorTextureIDs);
 }
 
 void ForwardRendererVulkan::_createDescriptorSetLayout()
@@ -490,12 +488,11 @@ void ForwardRendererVulkan::_updateDescriptor()
 {
     auto uniformBuffersList = rendererManagerVulkan->getBufferUBO();
 
-	Texture* temp = rendererManagerVulkan->getRenderTextures("shadowMap")[0].get();
-	TextureVulkan* depthMap = dynamic_cast<TextureVulkan*>(temp);
+	TextureVulkan* depthMap = shadowMapRenderer->depthMap;
 	assert(depthMap && "failed to retrieve depthMap");
 
 	uint32_t blueNoiseID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
-	temp = textureManagerVulkan->getTexture(blueNoiseID);
+	Texture* temp = textureManagerVulkan->getTexture(blueNoiseID);
 	TextureVulkan* blueNoiseImage = dynamic_cast<TextureVulkan*>(temp);
 	assert(blueNoiseImage && "failed to retrieve depthMap");
 

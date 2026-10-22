@@ -133,31 +133,21 @@ void GeometryPassVulkan::render(Camera& camera)
 
 void GeometryPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
-	if(needResize) {
-		_recreateResources();
-		needResize = false;
-		return;
-	}
+	// same textures as last frame unless the render size changed, then the graph recreated them
+	_createRenderTargets();
+	needResize = false;		// nothing else in this pass depends on the window size
 
-    auto gBufferPos = graph.importTexture(renderTarget.gBufferPos, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto gBufferNorm = graph.importTexture(renderTarget.gBufferNorm, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto gBufferAlbedo = graph.importTexture(renderTarget.gBufferAlbedo, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto gPBR = graph.importTexture(renderTarget.gPBR, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto gBufferEmissive = graph.importTexture(renderTarget.gBufferEmissive, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto gBufferMotion = graph.importTexture(renderTarget.gBufferMotion, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto depthTexture = graph.importTexture(renderTarget.depthTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    
 	RenderPassNode node{};
     node.name = "gBuffer";
     node.reads  = { };	//TODO: add a depth prepass before everything
     node.writes = {
-		{ gBufferPos, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
-		{ gBufferNorm, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
-		{ gBufferAlbedo, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
-		{ gPBR, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
-		{ gBufferEmissive, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
-		{ gBufferMotion, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
-		{ depthTexture, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL }
+		{ renderTarget.posHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ renderTarget.normHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ renderTarget.albedoHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ renderTarget.pbrHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ renderTarget.emissiveHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ renderTarget.motionHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
+		{ renderTarget.depthHandle, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL }
 	};
 
     node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
@@ -316,104 +306,34 @@ void GeometryPassVulkan::_createRenderTargets()
 	renderTarget.height = swapchain.swapChainExtent.height;
 	renderTarget.depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
-	auto createTexture = [&] (VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspect) -> TextureVulkan* {
-		uint32_t id = textureManagerVulkan->createTexture();
-		auto* texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-		texture->format = format;	// barriers and pipeline formats read it back
-
-		TextureManagerVulkan::createImage(
-			renderTarget.width,
-			renderTarget.height,
-			format,
-			VK_IMAGE_TILING_OPTIMAL,
-			usage,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			texture->textureImage,
-			texture->textureImageMemory,
-			1,
-			renderDeviceVulkan->device
-		);
-
-		TextureManagerVulkan::createImageView(
-			texture->textureImage,
-			texture->textureImageView,
-			format,
-			aspect,
-			1,
-			renderDeviceVulkan->device
-		);
-
-		TextureManagerVulkan::createTextureSampler(
-			texture->textureSampler,
-			renderDeviceVulkan->device,
-			TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
-		);
-
-		VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-		TextureManagerVulkan::transitionImageLayout(
-			cmd,
-			texture->textureImage,
-			format,
-			VK_IMAGE_LAYOUT_UNDEFINED,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			1,
-			1,
-			renderDeviceVulkan
-		);
-		renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
-
-		return texture;
+	RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
+	auto createTexture = [&](const char* name, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlagBits aspect, RGHandle& handle) {
+		RGTextureDesc desc{};
+		desc.config.format = format;
+		desc.config.usage = usage;
+		desc.config.aspectBits = aspect;
+		desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		handle = graph.createRenderTexture(name, desc);
+		return graph.getTexture(handle);
 	};
 
-	renderTarget.gBufferPos = createTexture(
-		VK_FORMAT_R16G16B16A16_SFLOAT,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-		VK_IMAGE_ASPECT_COLOR_BIT
-	);
+	const VkImageUsageFlags colorUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-	renderTarget.gBufferNorm = createTexture(
-		VK_FORMAT_R16G16B16A16_SFLOAT,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-		VK_IMAGE_ASPECT_COLOR_BIT
-	);
-
-	renderTarget.gBufferAlbedo = createTexture(
-		VK_FORMAT_R8G8B8A8_UNORM,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		VK_IMAGE_ASPECT_COLOR_BIT
-	);
-
-	renderTarget.gPBR = createTexture(
-		VK_FORMAT_R8G8B8A8_UNORM,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		VK_IMAGE_ASPECT_COLOR_BIT
-	);
-
-	renderTarget.gBufferEmissive = createTexture(
-		VK_FORMAT_R16G16B16A16_SFLOAT,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-		VK_IMAGE_ASPECT_COLOR_BIT
-	);
-
-	renderTarget.gBufferMotion = createTexture(
-		VK_FORMAT_R16G16_SFLOAT,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-		VK_IMAGE_ASPECT_COLOR_BIT
-	);
-
-	renderTarget.depthTexture = createTexture(
-		renderTarget.depthFormat,
+	renderTarget.gBufferPos = createTexture("GBuffer.Position", VK_FORMAT_R16G16B16A16_SFLOAT,
+		colorUsage | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_ASPECT_COLOR_BIT, renderTarget.posHandle);
+	renderTarget.gBufferNorm = createTexture("GBuffer.Normal", VK_FORMAT_R16G16B16A16_SFLOAT,
+		colorUsage | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT, renderTarget.normHandle);
+	renderTarget.gBufferAlbedo = createTexture("GBuffer.Albedo", VK_FORMAT_R8G8B8A8_UNORM,
+		colorUsage, VK_IMAGE_ASPECT_COLOR_BIT, renderTarget.albedoHandle);
+	renderTarget.gPBR = createTexture("GBuffer.PBR", VK_FORMAT_R8G8B8A8_UNORM,
+		colorUsage, VK_IMAGE_ASPECT_COLOR_BIT, renderTarget.pbrHandle);
+	renderTarget.gBufferEmissive = createTexture("GBuffer.Emissive", VK_FORMAT_R16G16B16A16_SFLOAT,
+		colorUsage | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_ASPECT_COLOR_BIT, renderTarget.emissiveHandle);
+	renderTarget.gBufferMotion = createTexture("GBuffer.Motion", VK_FORMAT_R16G16_SFLOAT,
+		colorUsage | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_ASPECT_COLOR_BIT, renderTarget.motionHandle);
+	renderTarget.depthTexture = createTexture("GBuffer.Depth", renderTarget.depthFormat,
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-		VK_IMAGE_ASPECT_DEPTH_BIT
-	);
-
-	rendererManagerVulkan->addRenderTexture("gBufferPos", { renderTarget.gBufferPos->id() });
-	rendererManagerVulkan->addRenderTexture("gBufferNorm", { renderTarget.gBufferNorm->id() });
-	rendererManagerVulkan->addRenderTexture("gBufferAlbedo", { renderTarget.gBufferAlbedo->id() });
-	rendererManagerVulkan->addRenderTexture("gPBR", { renderTarget.gPBR->id() });
-	rendererManagerVulkan->addRenderTexture("gBufferEmissive", { renderTarget.gBufferEmissive->id() });
-	rendererManagerVulkan->addRenderTexture("gBufferMotion", { renderTarget.gBufferMotion->id() });
-	rendererManagerVulkan->addRenderTexture("deferredDepth", { renderTarget.depthTexture->id() });
+		VK_IMAGE_ASPECT_DEPTH_BIT, renderTarget.depthHandle);
 }
 
 void GeometryPassVulkan::_createDescriptor()
@@ -523,13 +443,6 @@ void GeometryPassVulkan::_recreateResources()
 
 void GeometryPassVulkan::_cleanupResources()
 {
-	textureManagerVulkan->destroy(renderTarget.gBufferPos->id());
-	textureManagerVulkan->destroy(renderTarget.gBufferNorm->id());
-	textureManagerVulkan->destroy(renderTarget.gBufferAlbedo->id());
-	textureManagerVulkan->destroy(renderTarget.gPBR->id());
-	textureManagerVulkan->destroy(renderTarget.gBufferEmissive->id());
-	textureManagerVulkan->destroy(renderTarget.gBufferMotion->id());
-	textureManagerVulkan->destroy(renderTarget.depthTexture->id());
 	gPassPipeline->destroy();
 }
 #pragma endregion setup

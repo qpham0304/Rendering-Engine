@@ -42,7 +42,7 @@ public: // TODO: consider make private
 	TextureVulkan* pbrImage;
 	TextureVulkan* emissiveImage;
 	TextureVulkan* colorImage;
-	std::vector<TextureVulkan*> outputImages;
+	RGHandle outputHandle {};
 	
 protected:
 	void _createResources();
