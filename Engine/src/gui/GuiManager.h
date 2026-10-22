@@ -19,7 +19,7 @@ protected:
 	int width { 0 };
 	int height { 0 };
 	int count { 0 };
-	bool drawGrid { false };
+	bool drawGrid { true };
 	bool guizmoActive { false };
 	bool editorActive { false };
 	bool guiActive { false };
@@ -61,6 +61,10 @@ public:
 	void setEditorFocus(bool isFocused) {editorActive = isFocused; };
 	bool isEditorFocus() { return editorActive; };
 	
+	// ground grid in the Application view, toggled from its toolbar
+	void setGridVisible(bool visible) { drawGrid = visible; };
+	bool isGridVisible() const { return drawGrid; };
+
 	void setActive(bool active) {guiActive = active; };
 	bool isActive() { return guiActive; };
 };

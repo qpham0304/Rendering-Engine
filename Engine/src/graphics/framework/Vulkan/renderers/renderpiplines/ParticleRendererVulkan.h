@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics/framework/vulkan/renderers/RendererVulkan.h"
+#include "particle/ParticleManager.h"
 #include <array>
 #include <unordered_map>
 #include <unordered_set>
@@ -69,6 +70,7 @@ private:
 		uint32_t containerIdx { 0 };
 		uint32_t capacity { 0 };
 		uint32_t spawnCount { 0 };
+		float deltaTime { 0.0f };	// game time, or real time for the emitter the editor is simulating
 		uint32_t sortSize { 0 };	// power of two draw list size, 0 when the emitter does not need sorting
 		int blendMode { 0 };
 		bool cullBackFaces { false };
@@ -106,6 +108,7 @@ public:
 	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void setSimDeltaTime(float deltaTime) { simDeltaTime = deltaTime; }
+	void setRealDeltaTime(float deltaTime) { realDeltaTime = deltaTime; }
 
 protected:
     static constexpr uint32_t MAX_CONTAINERS = 100;
@@ -134,6 +137,7 @@ protected:
 
 	// update ticks and rendered frames are not the same, the sim time is summed per tick and consumed once per render
 	float simDeltaTime { 0.0f };
+	float realDeltaTime { 0.0f };		// never stops, drives the editor preview
 	float simTime { 0.0f };
 	uint32_t frameSeed { 0 };
 	const float MAX_SIM_STEP = 0.1f;
@@ -148,7 +152,7 @@ protected:
 	void _prepareEmitter(ParticleEmitter& emitter, bool& deviceIdle);
 	void _resolveAssets(ParticleEmitter& emitter);
 	void _rebuildContainerRefs();
-	void _gatherEmitters(Scene* scene, float deltaTime);
+	void _gatherEmitters(Scene* scene, float gameStep, float previewStep);
 	void _computeParticle(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _renderParticle(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _uploadContainerRefs();
@@ -157,6 +161,21 @@ protected:
 
 	void _sortParticles(VkCommandBuffer cmd);
 	VulkanPipeline* _getPipeline(int blendMode, bool cullBackFaces) const;
+	void _drawEmitter(VkCommandBuffer cmd, const ActiveEmitter& active, VkDescriptorSet cameraSet, VulkanPipeline*& boundPipeline);
+
+	// editor preview, one emitter drawn alone from its own camera into graph owned targets
+	void _addPreviewToGraph(RenderGraphVulkan& graph);
+	void _uploadPreviewCamera(uint32_t frame);
+	void _renderPreview(VkCommandBuffer cmd, uint32_t currentFrame);
+	bool _isPreviewed(uint32_t containerIdx) const { return previewActive && preview.containerID == containerIdx; }
+
+	ParticleManager::PreviewRequest preview {};
+	bool previewActive { false };
+	std::vector<UniformBufferVulkan*> previewUBOs {};
+	uint32_t previewSetsID { 0 };
+	std::vector<VkDescriptorSet> previewDescriptorSets {};
+	TextureVulkan* previewColor { nullptr };
+	TextureVulkan* previewDepth { nullptr };
 
 	std::array<std::unique_ptr<VulkanPipeline>, 4> pipelines;
 	std::unique_ptr<VulkanPipeline> computePipeline;

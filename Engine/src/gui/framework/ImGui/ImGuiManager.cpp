@@ -172,7 +172,7 @@ void ImGuiManager::applicationWindow()
 	const ImVec4 idleHoveredColor = ImVec4(0.38f, 0.38f, 0.38f, 1.0f);
 
 	const bool isPlaying = EngineState::isPlaying();
-	const float groupWidth = buttonSize.x * 2.0f + ImGui::GetStyle().ItemSpacing.x;
+	const float groupWidth = buttonSize.x * 3.0f + ImGui::GetStyle().ItemSpacing.x * 2.0f;
 	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - groupWidth) * 0.5f);
 
 	ImGui::PushStyleColor(ImGuiCol_Button, isPlaying ? playingColor : idleColor);
@@ -192,6 +192,17 @@ void ImGuiManager::applicationWindow()
 		EngineState::stop();
 	}
 	ImGui::EndDisabled();
+
+	ImGui::SameLine();
+	ImGui::PushStyleColor(ImGuiCol_Button, drawGrid ? ImVec4(0.26f, 0.42f, 0.70f, 1.0f) : idleColor);
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, drawGrid ? ImVec4(0.32f, 0.50f, 0.80f, 1.0f) : idleHoveredColor);
+	if (ImGui::Button(ICON_FA_TH, buttonSize)) {
+		drawGrid = !drawGrid;
+	}
+	ImGui::PopStyleColor(2);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip(drawGrid ? "Hide grid" : "Show grid (deferred mode)");
+	}
 }
 
 void ImGuiManager::render(void* handle)
@@ -314,11 +325,6 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 	//	ImGui::GetWindowHeight()
 	//);
 
-	glm::mat4 identity(1.0f);
-
-	if (drawGrid) {
-		ImGuizmo::DrawGrid(v, p, glm::value_ptr(identity), 100.f);
-	}
 
 	ImGuizmo::OPERATION op = (ImGuizmo::OPERATION)GuizmoType;
 

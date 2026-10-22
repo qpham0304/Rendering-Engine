@@ -184,12 +184,13 @@ void BloomPassVulkan::_createResources() {
     desc.config.mipLevels = mipCount;
 
     RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
-    TextureVulkan* previousOutput = outputImage;
+    uint32_t previousOutputID = outputImageID;
     outputHandle = graph.createRenderTexture("Bloom.Chain", desc);
     outputImage = graph.getTexture(outputHandle);
     outputImageID = outputImage->id();
 
-    if(outputImage == previousOutput) {
+    // compared by id, a recreated texture can land at the same address and the old mip views would point at freed memory
+    if(outputImageID == previousOutputID) {
         return;
     }
 

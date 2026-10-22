@@ -7,7 +7,9 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
+#include <graphics/framework/Vulkan/renderers/renderpasses/GeometryPassVulkan.h>
 #include "core/features/ServiceLocator.h"
+#include "core/features/Camera.h"
 #include "logging/Logger.h"
 #include "window/AppWindow.h"
 
@@ -25,6 +27,9 @@ DebugRendererVulkan::~DebugRendererVulkan()
 bool DebugRendererVulkan::init(WindowConfig config)
 {
     RendererVulkan::init(config);
+
+    geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
     _createBuffers();
     _createResources();
@@ -55,10 +60,21 @@ void DebugRendererVulkan::render(Camera &camera)
 	}
 
     
+    // the grid needs the scene depth, which only the deferred path leaves at this size
+    TextureVulkan* depthImage = geometryPass ? geometryPass->renderTarget.depthTexture : nullptr;
+    bool gridEnabled = gridVisible && rendererManagerVulkan->getRenderMode() == 1 && depthImage
+        && geometryPass->renderTarget.width == width && geometryPass->renderTarget.height == height;
+    if(gridEnabled) {
+        _buildGrid(camera.getPosition());
+    } else {
+        m_gridVertices.clear();
+    }
+
     // if no draw data is empty/no one request draw debug, exit and keep the scene image untouched
     TextureVulkan* sceneImage = rendererManagerVulkan->getDisplayImage();
     bool hasOutlines = !m_outlineDraws.empty();
-    if(!sceneImage || sceneImage == displayImage || (m_lineVertices.empty() && !hasOutlines)) {
+    bool hasGrid = !m_gridVertices.empty();
+    if(!sceneImage || sceneImage == displayImage || (m_lineVertices.empty() && !hasOutlines && !hasGrid)) {
         _clearDrawRequests();
         return;
     }
@@ -112,6 +128,13 @@ void DebugRendererVulkan::render(Camera &camera)
     renderDeviceVulkan->beginLabel(cmd, "debug render");
     {
         debugImage->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+        // the grid goes in first and clears the debug image, the lines then draw over it without a depth test
+        if(hasGrid) {
+            _renderGrid(cmd, currentFrame, depthImage);
+            colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        }
+
         vkCmdBeginRendering(cmd, &renderingInfo);
         renderDeviceVulkan->setViewport(width, height);
         renderDeviceVulkan->setScissor(width, height);
@@ -176,6 +199,97 @@ void DebugRendererVulkan::render(Camera &camera)
     _clearDrawRequests();
 }
 
+// lines are split into segments so the alpha can fade out radially instead of ending in a hard square
+void DebugRendererVulkan::_buildGrid(const glm::vec3& cameraPosition)
+{
+    const int halfLines = 50;
+    const int segmentsPerLine = 10;
+    const float spacing = 1.0f;
+    const float extent = halfLines * spacing;
+    const float segmentLength = 2.0f * extent / segmentsPerLine;
+
+    // snapped under the camera so the grid seems endless while its lines stay on whole units
+    glm::vec3 center(std::round(cameraPosition.x / spacing) * spacing, 0.0f, std::round(cameraPosition.z / spacing) * spacing);
+
+    auto fadeAt = [&](const glm::vec3& p) {
+        float distance = glm::length(glm::vec2(p.x - center.x, p.z - center.z)) / extent;
+        return 1.0f - glm::smoothstep(0.35f, 1.0f, distance);
+    };
+
+    // world axes in red (x) and blue (z), every tenth line brighter
+    auto lineColor = [&](float worldCoordinate, const glm::vec4& axisColor) {
+        int index = static_cast<int>(std::round(worldCoordinate / spacing));
+        if(index == 0) {
+            return axisColor;
+        }
+        return index % 10 == 0 ? glm::vec4(0.65f, 0.65f, 0.65f, 0.45f) : glm::vec4(0.55f, 0.55f, 0.55f, 0.22f);
+    };
+
+    auto addLine = [&](const glm::vec3& start, const glm::vec3& direction, const glm::vec4& color) {
+        for(int s = 0; s < segmentsPerLine; s++) {
+            glm::vec3 a = start + direction * (segmentLength * s);
+            glm::vec3 b = a + direction * segmentLength;
+            m_gridVertices.push_back({ a, glm::vec4(glm::vec3(color), color.a * fadeAt(a)) });
+            m_gridVertices.push_back({ b, glm::vec4(glm::vec3(color), color.a * fadeAt(b)) });
+        }
+    };
+
+    m_gridVertices.clear();
+    for(int i = -halfLines; i <= halfLines; i++) {
+        float x = center.x + i * spacing;
+        float z = center.z + i * spacing;
+        addLine(glm::vec3(x, 0.0f, center.z - extent), glm::vec3(0.0f, 0.0f, 1.0f), lineColor(x, glm::vec4(0.27f, 0.45f, 0.95f, 0.9f)));
+        addLine(glm::vec3(center.x - extent, 0.0f, z), glm::vec3(1.0f, 0.0f, 0.0f), lineColor(z, glm::vec4(0.95f, 0.3f, 0.3f, 0.9f)));
+    }
+}
+
+void DebugRendererVulkan::_renderGrid(VkCommandBuffer cmd, uint32_t currentFrame, TextureVulkan* depthImage)
+{
+    uint32_t vertexCount = std::min<uint32_t>(m_gridVertices.size(), MAX_GRID_VERTICES);
+    m_gridBuffers[currentFrame]->update(m_gridVertices.data(), vertexCount * sizeof(GridVertex));
+
+    // the graph leaves the gbuffer depth readable, it is only tested against here, never written
+    depthImage->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+
+    VkRenderingAttachmentInfo colorAttachment{};
+    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    colorAttachment.imageView = debugImage->textureImageView;
+    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.clearValue = { {0.0f, 0.0f, 0.0f, 0.0f} };
+
+    VkRenderingAttachmentInfo depthAttachment{};
+    depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    depthAttachment.imageView = depthImage->textureImageView;
+    depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    VkRenderingInfo renderingInfo{};
+    renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    renderingInfo.renderArea = { {0, 0}, {width, height} };
+    renderingInfo.layerCount = 1;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachments = &colorAttachment;
+    renderingInfo.pDepthAttachment = &depthAttachment;
+
+    auto debugSets = descriptorManagerVulkan->getDescriptorSet(setsID);
+    VkBuffer vertexBuffer = static_cast<VkBuffer>(*m_gridBuffers[currentFrame]);
+    VkDeviceSize offset = 0;
+
+    vkCmdBeginRendering(cmd, &renderingInfo);
+    renderDeviceVulkan->setViewport(width, height);
+    renderDeviceVulkan->setScissor(width, height);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, gridPipeline->pipeline);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, gridPipeline->pipelineLayout, 0, 1, &debugSets[currentFrame], 0, nullptr);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &vertexBuffer, &offset);
+    vkCmdDraw(cmd, vertexCount, 1, 0, 0);
+    vkCmdEndRendering(cmd);
+
+    depthImage->transitImage(cmd, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+}
+
 void DebugRendererVulkan::drawLine(const glm::vec3 &start, const glm::vec3 &end)
  {
     m_lineVertices.push_back({start});
@@ -233,7 +347,9 @@ void DebugRendererVulkan::_createBuffers()
     uint32_t frameCount = VulkanUtils::numFrames();
     for(uint32_t i = 0; i < frameCount; i++) {
         m_vertexBuffers.push_back(_createMappedBuffer(MAX_DEBUG_VERTICES * sizeof(DebugVertex)));
+        m_gridBuffers.push_back(_createMappedBuffer(MAX_GRID_VERTICES * sizeof(GridVertex)));
     }
+    m_gridVertices.reserve(MAX_GRID_VERTICES);
 }
 
 void DebugRendererVulkan::_createResources()
@@ -322,6 +438,42 @@ void DebugRendererVulkan::_createPipelines()
         sizeof(MaskPushConstant)
     );
 
+    // grid: colored lines tested against the scene depth, color stays unpremultiplied for the combine pass
+    auto gridBinding = GridVertex::getBindingDescription();
+    auto gridAttributes = GridVertex::getAttributeDescriptions();
+    VkPipelineVertexInputStateCreateInfo gridVertexInput = vertexInputInfo;
+    gridVertexInput.pVertexBindingDescriptions = &gridBinding;
+    gridVertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(gridAttributes.size());
+    gridVertexInput.pVertexAttributeDescriptions = gridAttributes.data();
+
+    PipelineConfigInfo gridConfig = config;
+    gridConfig.depthStencilInfo.depthTestEnable = VK_TRUE;
+    gridConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
+    gridConfig.depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    for(auto& attachment : gridConfig.colorBlendAttachments) {
+        attachment.blendEnable = VK_TRUE;
+        attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        attachment.colorBlendOp = VK_BLEND_OP_ADD;
+        attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+    }
+
+    AttachmentsInfo gridAttachmentsInfo = attachmentsInfo;
+    gridAttachmentsInfo.depthAttachmentFormat = depthFormat;
+
+    gridPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+    gridPipeline->createGraphicsPipelineDynamic(
+        "assets/shaders/spv/debugGrid.vert.spv",
+        "assets/shaders/spv/debugGrid.frag.spv",
+        gridConfig,
+        gridAttachmentsInfo,
+        gridVertexInput,
+        { debugSetLayout },
+        sizeof(DebugDrawPushConstant)
+    );
+
     VkDescriptorSetLayout displaySetLayout = descriptorManagerVulkan->getDescriptorLayout(displayLayoutID);
     combinePipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
     combinePipeline->createComputePipeline(
@@ -392,6 +544,7 @@ void DebugRendererVulkan::_recreateResources()
 void DebugRendererVulkan::_cleanupResources()
 {
     pipeline->destroy();
+    gridPipeline->destroy();
     maskPipeline->destroy();
     combinePipeline->destroy();
 

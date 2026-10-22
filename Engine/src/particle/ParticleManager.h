@@ -15,6 +15,20 @@ public:
 		uint32_t countersBufferID { 0 };	// ParticleCounters
 	};
 
+	// an isolated view of one emitter for editor tools, asked for every frame it should be drawn
+	struct PreviewRequest {
+		bool enabled { false };
+		uint32_t containerID { 0 };
+		uint32_t width { 0 };
+		uint32_t height { 0 };
+		glm::mat4 view { 1.0f };
+		glm::mat4 projection { 1.0f };		// renderer needs to flip it
+		glm::vec3 cameraPosition { 0.0f };
+		glm::vec4 clearColor { 0.07f, 0.07f, 0.08f, 1.0f };
+		bool simulate { false };			// emitter still runs on the editor while the game stops
+		float timeScale { 1.0f };
+	};
+
 	ParticleManager();
 	virtual ~ParticleManager();
 
@@ -36,6 +50,12 @@ public:
 	// bumped whenever a container's buffers are created or replaced so renderers can refresh their address tables
 	uint32_t getVersion() const { return m_version; }
 
+	// the request lasts one frame, the renderer consumes it and reports the texture it drew into
+	void requestPreview(const PreviewRequest& request) { m_previewRequest = request; m_previewRequest.enabled = true; }
+	PreviewRequest consumePreview() { PreviewRequest request = m_previewRequest; m_previewRequest.enabled = false; return request; }
+	void setPreviewTextureID(uint32_t textureID) { m_previewTextureID = textureID; }
+	uint32_t getPreviewTextureID() const { return m_previewTextureID; }
+
 private:
 	void _allocateBuffers(ContainerData& data, uint32_t capacity);
 	void _releaseBuffers(ContainerData& data);
@@ -47,5 +67,7 @@ private:
 	std::vector<uint32_t> m_toBeDestroyed;
 	BufferManager* m_bufferManager { nullptr };
 	uint32_t m_version { 0 };
+	PreviewRequest m_previewRequest {};
+	uint32_t m_previewTextureID { 0 };
 
 };

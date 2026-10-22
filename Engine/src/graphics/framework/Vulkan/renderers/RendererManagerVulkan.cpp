@@ -122,6 +122,7 @@ void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
 {
     Service::onUpdate(frameTime);
     particleRenderer->setSimDeltaTime(frameTime.gameDeltaTime);
+    particleRenderer->setRealDeltaTime(frameTime.deltaTime);   // the editor preview runs on it while the game is stopped
 
     if(needResize) {
 		_recreateResources();
