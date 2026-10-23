@@ -57,16 +57,7 @@ bool LightingPassVulkan::init(WindowConfig config)
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
 
-	pushConstantLight.skyboxDetail = 0.0f;
-	pushConstantLight.color = sunColor * sunIntensity;
-	pushConstantLight.bias = 0.001f;
-	pushConstantLight.alpha = 0.0001f;
-	pushConstantLight.lintstepLow = 0.2f;
-	pushConstantLight.linstepHigh = 1.0f;
-	pushConstantLight.litBias = 0.0005f;
-	pushConstantLight.aoOn = 1;
-	pushConstantLight.G = 0.7f;
-	pushConstantLight.scatteringScale = 0.2f;
+	settings = &rendererManagerVulkan->getGraphicsSettings().add<LightingSettings>("Lighting");
 
 	_createLightDescriptor();
 	_createLightPipeline();
@@ -78,6 +69,8 @@ bool LightingPassVulkan::onClose()
 {
 	renderDeviceVulkan->waitIdle();
 	_cleanupResources();
+	rendererManagerVulkan->getGraphicsSettings().remove<LightingSettings>();
+	settings = nullptr;
 
 	return true;
 }
@@ -202,15 +195,29 @@ void LightingPassVulkan::_updateLights(uint32_t currentFrame)
 		}
 	}
 
-	pushConstantLight.color = sunColor * sunIntensity;
-	pushConstantLight.direction = glm::vec4(shadowMapPass->lightDir, 1.0f);
-	pushConstantLight.sunlightMVP = shadowMapPass->lightSpaceMatrix;
+	pushConstantLight.color = settings->sunColor * settings->sunIntensity;
+	pushConstantLight.skyboxDetail = settings->skyboxDetail;
+	pushConstantLight.aoOn = settings->ambientOcclusion ? 1 : 0;
+	pushConstantLight.G = settings->phaseG;
+	pushConstantLight.scatteringScale = settings->scatteringScale;
+	pushConstantLight.bias = settings->shadowBias;
+	pushConstantLight.alpha = settings->momentAlpha;
+	pushConstantLight.lintstepLow = settings->linstepLow;
+	pushConstantLight.linstepHigh = settings->linstepHigh;
+	pushConstantLight.litBias = settings->litBias;
+	const GraphicsSettingsSerializer& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
+	const ShadowMapSettings* shadowSettings = graphicsSettings.get<ShadowMapSettings>();
+	const DDGISettings* ddgiSettings = graphicsSettings.get<DDGISettings>();
+
+	if(shadowSettings) {
+		pushConstantLight.direction = glm::vec4(shadowSettings->lightDir, 1.0f);
+		pushConstantLight.sunlightMVP = shadowSettings->lightSpaceMatrix;
+	}
 	pushConstantLight.time = AppWindow::getTime();
 	pushConstantLight.numLights = lights.size();
 
 	// with a probe grid the diffuse ambient comes from ddgi in the combine pass, the light pass only keeps the specular ibl
-	auto ddgiRenderer = dynamic_cast<DDGIBuilderVulkan*>(rendererManagerVulkan->getRenderer("DDGIBuilderVulkan"));
-	pushConstantLight.iblDiffuse = (ddgiRenderer && ddgiRenderer->isReady()) ? 0.0f : 1.0f;
+	pushConstantLight.iblDiffuse = (ddgiSettings && ddgiSettings->isReady()) ? 0.0f : 1.0f;
 
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));

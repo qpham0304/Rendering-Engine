@@ -32,7 +32,7 @@ private:
         auto luaType = luaState.new_usertype<T>(T::GetStaticType());
 
         // static call to the VisitFields function that each component registers itself to
-        T::VisitFields([&luaType](const char* name, auto memberPtr) {
+        T::VisitFields([&luaType](const char* name, auto memberPtr, auto&&...) {
             luaType.set(name, memberPtr);
         });
 
@@ -50,7 +50,7 @@ private:
 
             if (luaTable.is<sol::table>()) {
                 sol::table table = luaTable.as<sol::table>();
-                T::VisitFields([&](const char* name, auto memberPtr) {
+                T::VisitFields([&](const char* name, auto memberPtr, auto&&...) {
                     using FieldType = std::remove_cvref_t<decltype(component.*memberPtr)>;
                     auto value = table[name].template get<sol::optional<FieldType>>();
                     if (value) {

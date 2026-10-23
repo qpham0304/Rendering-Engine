@@ -56,7 +56,6 @@ public:
 private:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	void recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-	void renderGui(void* commandBuffer);
 
 
 	void _createPipeline();

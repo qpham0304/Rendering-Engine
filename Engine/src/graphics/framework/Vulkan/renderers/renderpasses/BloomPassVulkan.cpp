@@ -12,7 +12,6 @@
 #include <graphics/framework/Vulkan/renderers/renderpasses/SSRGIPassVulkan.h>
 #include <window/AppWindow.h>
 #include <graphics/framework/Vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
-#include <imgui.h>
 
 BloomPassVulkan::BloomPassVulkan(std::string serviceName)
 	:	PostProcessRendererVulkan(serviceName)
@@ -51,19 +50,16 @@ bool BloomPassVulkan::init(WindowConfig config)
     _createDescriptors();
 	_createPipelines();
 
-    downPushConstant.threshold = 0.5f;
-    downPushConstant.softThreshold = 0.5f;
-
-    bloomPushConstant.dirtImageIdx = lensDirtTextureID;
-    bloomPushConstant.bloomStrength = 0.04f;
-    bloomPushConstant.exposure = 1.0f;
+    settings = &rendererManagerVulkan->getGraphicsSettings().add<BloomSettings>("Bloom");
 
     return true;
 }
 
-bool BloomPassVulkan::onClose() 
+bool BloomPassVulkan::onClose()
 {
     PostProcessRendererVulkan::onClose();
+    rendererManagerVulkan->getGraphicsSettings().remove<BloomSettings>();
+    settings = nullptr;
 
     _cleanupResources();
     _destroyMipViews();
@@ -87,23 +83,18 @@ void BloomPassVulkan::render(Camera& camera) {
         return;
     }
 
+    downPushConstant.threshold = settings->threshold;
+    downPushConstant.softThreshold = settings->softThreshold;
+    bloomPushConstant.bloomStrength = settings->strength;
+    bloomPushConstant.exposure = settings->exposure;
+    bloomPushConstant.dirtImageIdx = settings->lensDirt ? lensDirtTextureID : 0;
+
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     renderDeviceVulkan->beginLabel(cmd, "Bloom Pass");
     writeDownSample(cmd, currentFrame);
     writeUpSample(cmd, currentFrame);
     writeBloomProcess(cmd, currentFrame);
     renderDeviceVulkan->endLabel(cmd);
-}
-
-void BloomPassVulkan::renderGui()
-{
-    ImGui::Begin("bloom control");
-    ImGui::SliderFloat("bloomStrength", &bloomPushConstant.bloomStrength, 0.0, 1.0);
-    ImGui::SliderFloat("exposure", &bloomPushConstant.exposure, 0.0, 1.0);
-    ImGui::SliderFloat("threshold", &downPushConstant.threshold, 0.0, 1.0);
-    ImGui::SliderFloat("softThreshold", &downPushConstant.softThreshold, 0.0, 1.0);
-    ImGui::SliderInt("bloomOn", &bloomPushConstant.dirtImageIdx, 0.0, 30.0);
-    ImGui::End();
 }
 
 void BloomPassVulkan::writeDownSample(VkCommandBuffer cmd, uint32_t currentFrame) {

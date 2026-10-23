@@ -49,14 +49,15 @@ bool AmbientOcclusionPassVulkan::init(WindowConfig config)
     pushConstant.bias = 0.01f;
     pushConstant.intensity = 2.0f;
     
-    blurrPushConstant.blurRadius = 4;
-    blurrPushConstant.scale = 100.0f;
+    settings = &rendererManagerVulkan->getGraphicsSettings().add<AmbientOcclusionSettings>("Ambient Occlusion");
 
     return true;
 }
-bool AmbientOcclusionPassVulkan::onClose() 
+bool AmbientOcclusionPassVulkan::onClose()
 {
     PostProcessRendererVulkan::onClose();
+    rendererManagerVulkan->getGraphicsSettings().remove<AmbientOcclusionSettings>();
+    settings = nullptr;
 
     _cleanupResources();
 
@@ -140,6 +141,8 @@ void AmbientOcclusionPassVulkan::writeBlur(VkCommandBuffer cmd, uint32_t current
 
     blurPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 
+    blurrPushConstant.blurRadius = settings->blurRadius;
+    blurrPushConstant.scale = settings->blurScale;
     blurrPushConstant.isVertical = 0.0f;
     vkCmdPushConstants(cmd, blurPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlurPushConstantInfo), &blurrPushConstant);
     auto mToT_Sets = descriptorManagerVulkan->getDescriptorSet(blurDescSetMtoT_ID);

@@ -69,10 +69,11 @@ void DeferredCombinePassVulkan::onUpdate()
 
 void DeferredCombinePassVulkan::render(Camera &camera)
 {
-    RendererVulkan* renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
 	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-	
+	const GraphicsSettingsSerializer& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
+	const DeferredSettings* deferredSettings = graphicsSettings.get<DeferredSettings>();
+	const DDGISettings* ddgiSettings = graphicsSettings.get<DDGISettings>();	// null without ray tracing, the pass then combines without ddgi
+
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     _fetchInputImages(currentFrame);
     _createResources();     // same output unless the render size changed
@@ -83,19 +84,19 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 		return;
 	}
 
-    pushConstant.shouldCombine = deferredRendererVulkan->shouldCombine ? 1 : 0;
+    pushConstant.shouldCombine = (deferredSettings && deferredSettings->combine) ? 1 : 0;
 
-    // the grid values come from the ddgi renderer so they always match what the atlases were built with
+    // the grid values are published by the ddgi builder so they always match what the atlases were built with
     pushConstant.ddgiMode = 0;
-    if(ddgiRenderer && ddgiRenderer->isReady()) {
-        pushConstant.gridSpacing = ddgiRenderer->getGridSpacing();
-        pushConstant.gridOrigin = ddgiRenderer->getGridOrigin();
-        pushConstant.probeCounts = glm::ivec4(ddgiRenderer->getProbeCounts(), 0);
-        pushConstant.skyIntensity = ddgiRenderer->getSkyIntensity();
+    if(ddgiSettings && ddgiSettings->isReady()) {
+        pushConstant.gridSpacing = ddgiSettings->gridSpacing;
+        pushConstant.gridOrigin = ddgiSettings->gridOrigin;
+        pushConstant.probeCounts = glm::ivec4(ddgiSettings->probeCounts, 0);
+        pushConstant.skyIntensity = ddgiSettings->skyIntensity;
         pushConstant.probesResolution = 8;
-        pushConstant.normalBias = ddgiRenderer->getNormalBias();
-        pushConstant.ddgiIntensity = ddgiRenderer->getIntensity();
-        pushConstant.ddgiMode = ddgiRenderer->getShowIndirectOnly() ? 2 : 1;
+        pushConstant.normalBias = ddgiSettings->normalBias;
+        pushConstant.ddgiIntensity = ddgiSettings->intensity;
+        pushConstant.ddgiMode = ddgiSettings->indirectOnly ? 2 : 1;
     }
 
     ubo.view = camera.getViewMatrix();
@@ -123,8 +124,7 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
 {
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	const DeferredSettings* deferredSettings = rendererManagerVulkan->getGraphicsSettings().get<DeferredSettings>();
 	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
 	auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
     renderer = rendererManagerVulkan->getRenderer("TemporalPassVulkan");
@@ -134,7 +134,7 @@ void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
     renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
 	auto bloomPassRenderer = dynamic_cast<BloomPassVulkan*>(renderer);
 
-    if(deferredRendererVulkan->denoiserOn) {
+    if(deferredSettings && deferredSettings->temporalReprojection) {
         denoisedGIImage = temporalPassRenderer->getOutputImage();
     } else {
         denoisedGIImage = SSRGIPassRenderer->getOutputImage();

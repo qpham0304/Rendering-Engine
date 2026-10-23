@@ -22,6 +22,7 @@
 #include "core/features/ServiceLocator.h"
 #include "core/features/camera.h"
 #include "core/events/EventManager.h"
+#include <filesystem>
 
 RendererManagerVulkan::RendererManagerVulkan(std::string serviceName)
     : RendererManager(serviceName) 
@@ -89,6 +90,11 @@ bool RendererManagerVulkan::init(WindowConfig config)
     VkExtent2D extent = renderDeviceVulkan->swapchain.swapChainExtent;
     m_renderGraph.setRenderSize(extent.width, extent.height);
 
+    // renderers loads saved values first before registering settings
+    if(std::filesystem::exists(GraphicsSettingsSerializer::DefaultPath)) {
+        m_graphicsSettings.loadSettings(GraphicsSettingsSerializer::DefaultPath);
+    }
+
     for(auto& [name, renderer] : m_renderers) {
         renderer->init(config);
     }
@@ -137,7 +143,7 @@ void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
         forwardRenderer->onUpdate();
     } 
     else if(currentRenderMode == 1) {
-        if(lightingPassRenderer->pushConstantLight.aoOn) {
+        if(m_graphicsSettings.get<LightingSettings>()->ambientOcclusion) {
             alchemyAORenderer->onUpdate();
         }
         deferredRenderer->onUpdate();
@@ -146,7 +152,7 @@ void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
         hiZPassRenderer->onUpdate();
         SSRGIPassRenderer->onUpdate();
         bloomRenderer->onUpdate();
-        if(deferredRenderer->denoiserOn) {
+        if(m_graphicsSettings.get<DeferredSettings>()->temporalReprojection) {
             temporalPassRenderer->onUpdate();
         }
         if(ddgiPassRenderer) {
@@ -223,7 +229,7 @@ void RendererManagerVulkan::render()
         imageBasedRenderer->addToGraph(m_renderGraph);
         geometryPassRenderer->addToGraph(m_renderGraph);
 
-        if(lightingPassRenderer->pushConstantLight.aoOn) {
+        if(m_graphicsSettings.get<LightingSettings>()->ambientOcclusion) {
             alchemyAORenderer->addToGraph(m_renderGraph);
         }
         
@@ -233,7 +239,7 @@ void RendererManagerVulkan::render()
         ribbonRenderer->addToGraph(m_renderGraph);
         SSRGIPassRenderer->addToGraph(m_renderGraph);
         bloomRenderer->addToGraph(m_renderGraph);
-        if(deferredRenderer->denoiserOn) {
+        if(m_graphicsSettings.get<DeferredSettings>()->temporalReprojection) {
             temporalPassRenderer->addToGraph(m_renderGraph);
         }
         if(ddgiPassRenderer) {

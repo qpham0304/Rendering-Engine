@@ -20,7 +20,6 @@
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <animation/AnimationManager.h>
-#include <imgui.h>
 #include <volk.h>
 
 ShadowMapPassVulkan::ShadowMapPassVulkan() 
@@ -54,19 +53,16 @@ bool ShadowMapPassVulkan::init(WindowConfig config)
 	textureManagerVulkan->registerBindlessTexture(depthMap->id());
 	textureManagerVulkan->registerBindlessTexture(blueNoiseImage->id());
 
-	pushconstant.radius = 64;  	// range 1 to 64
-    pushconstant.sigma = 15;  	// range 1.0 to 30.0
-	lightDir = glm::normalize(glm::vec3(1.0f));
-	s = 25.0f; 
-	zNear = 0.01f;
-	zFar = 105.0f;
-	sunElevation = 1.357;
+	settings =&rendererManagerVulkan->getGraphicsSettings().add<ShadowMapSettings>("Shadow Map");
 
 	return true;
 }
 
 bool ShadowMapPassVulkan::onClose()
 {
+	rendererManagerVulkan->getGraphicsSettings().remove<ShadowMapSettings>();
+	settings = nullptr;
+
 	shadowPipeline->destroy();
 	vkDestroyFramebuffer(renderDeviceVulkan->device, shadowFramebuffer, nullptr);
 	vkDestroyRenderPass(renderDeviceVulkan->device, shadowRenderPass, nullptr);
@@ -86,9 +82,9 @@ void ShadowMapPassVulkan::render(Camera& camera)
 	RendererVulkan::render(camera);
 
 	glm::mat4 lightProjection;
-	if(useOrtho) {
-		glm::mat4 rotElevation = glm::rotate(glm::mat4(1.0f), -sunElevation, glm::vec3(1.0f, 0.0f, 0.0f));
-		glm::mat4 rotAzimuth = glm::rotate(glm::mat4(1.0f), sunAzimuth, glm::vec3(0.0f, 1.0f, 0.0f));
+	if(settings->useOrtho) {
+		glm::mat4 rotElevation = glm::rotate(glm::mat4(1.0f), -settings->sunElevation, glm::vec3(1.0f, 0.0f, 0.0f));
+		glm::mat4 rotAzimuth = glm::rotate(glm::mat4(1.0f), settings->sunAzimuth, glm::vec3(0.0f, 1.0f, 0.0f));
 		glm::mat4 sunRotation = rotAzimuth * rotElevation;
 
 		lightPos = glm::vec3(sunRotation * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f)) * 100.0f;
@@ -106,7 +102,8 @@ void ShadowMapPassVulkan::render(Camera& camera)
 		lightView[3][1] = -glm::dot(up, lightPos);
 		lightView[3][2] = -glm::dot(forward, lightPos);
 		
-		lightProjection = glm::ortho(-s, s, -s, s, zNear, zFar);
+		float s = settings->orthoExtent;
+		lightProjection = glm::ortho(-s, s, -s, s, settings->zNear, settings->zFar);
 
 		// glm::vec3 followTarget = camera.getPosition();
 		// float s = 25.0f;
@@ -129,12 +126,11 @@ void ShadowMapPassVulkan::render(Camera& camera)
 		}
 	}
 
-	// row 2 of the view is the axis pointing from the scene back to the light.
-	// the light pass and the ddgi probes shade with lightDir, so it has to be the direction the shadow map is rendered from
-	lightDir = glm::normalize(glm::vec3(lightView[0][2], lightView[1][2], lightView[2][2]));
+	// row 2 of the view is the axis pointing from the scene back to the light, should be direction the shadow map is rendered from
+	settings->lightDir = glm::normalize(glm::vec3(lightView[0][2], lightView[1][2], lightView[2][2]));
 
 	lightProjection[1][1] *= -1;
-	lightSpaceMatrix = lightProjection * lightView;
+	settings->lightSpaceMatrix = lightProjection * lightView;
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     renderDeviceVulkan->beginLabel(cmd, "Shadow Pass");
@@ -212,7 +208,7 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 
 			LightPushConstant push{};
 			push.model = transform.getModelMatrix();
-			push.lightMVP = lightSpaceMatrix;
+			push.lightMVP = settings->lightSpaceMatrix;
 			
 			push.boneMatricesRef = boneMatricesRef;
 			if(entity.hasComponent<SkinningComponent>()) {
@@ -248,7 +244,7 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 
 			LightPushConstant push{};
 			push.model = transform.getModelMatrix();
-			push.lightMVP = lightSpaceMatrix;
+			push.lightMVP = settings->lightSpaceMatrix;
 
 			vkCmdPushConstants(
 				commandBuffer,
@@ -286,6 +282,8 @@ void ShadowMapPassVulkan::dispatchBlur(VkCommandBuffer cmd, uint32_t frameIndex)
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipeline);
 
 	// horizontal pass moment -> temp
+	pushconstant.radius = settings->blurRadius;
+	pushconstant.sigma = settings->blurSigma;
 	pushconstant.isVertical = 0;
 	vkCmdPushConstants(cmd, computePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ComputePushConstant), &pushconstant);
 

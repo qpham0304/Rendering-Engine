@@ -123,8 +123,10 @@ void ForwardRendererVulkan::render(Camera& camera)
     }
 	
 	// pushConstantLight.color = sunColor * sunIntensity;
-	pushConstantLight.direction = glm::vec4(shadowMapRenderer->lightDir, 0.0f);
-	pushConstantLight.sunlightMVP = shadowMapRenderer->lightSpaceMatrix;
+	if(const ShadowMapSettings* shadowSettings = rendererManagerVulkan->getGraphicsSettings().get<ShadowMapSettings>()) {
+		pushConstantLight.direction = glm::vec4(shadowSettings->lightDir, 0.0f);
+		pushConstantLight.sunlightMVP = shadowSettings->lightSpaceMatrix;
+	}
     pushConstantLight.time = AppWindow::getTime();
 	pushConstantLight.numLights = lights.size();
 

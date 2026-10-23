@@ -18,7 +18,7 @@ class HiZPassVulkan;
 class SSRGIPassVulkan;
 
 // deferred pipeline: the g-buffer is written by GeometryPassVulkan and lit by LightingPassVulkan,
-// this keeps the shared toggles, the gui and the shadow map
+// this keeps the shared toggles and publishes the g-buffer for the debug views
 class DeferredRendererVulkan : public RendererVulkan
 {
 public:
@@ -30,12 +30,11 @@ public:
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
 	virtual void addToGraph(RenderGraphVulkan& graph) override;
-	void renderGui();
+
+protected:
+	DeferredSettings* settings { nullptr };
 
 public:	//TODO: make private once done testing
-	bool showGui{ true };
-	bool denoiserOn { true };
-	bool shouldCombine { true };
 
 	ShadowMapPassVulkan* shadowMapPass { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };

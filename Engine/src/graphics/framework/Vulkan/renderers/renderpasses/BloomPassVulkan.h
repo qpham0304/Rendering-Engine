@@ -33,7 +33,6 @@ public:
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
 	virtual void addToGraph(RenderGraphVulkan& graph) override;
-	void renderGui();
 
 	void writeUpSample(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeDownSample(VkCommandBuffer cmd, uint32_t currentFrame);
@@ -74,6 +73,7 @@ protected:
 	std::vector<VkDescriptorSet> upDescriptorSets;
 
 	uint32_t lensDirtTextureID;
+	BloomSettings* settings { nullptr };
 
 	uint32_t bloomDescriptorLayoutID;
 	uint32_t bloomDescriptorPoolID;
