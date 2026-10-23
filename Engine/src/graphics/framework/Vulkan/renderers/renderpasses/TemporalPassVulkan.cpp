@@ -291,8 +291,10 @@ void TemporalPassVulkan::_copyImageReource(VkCommandBuffer cmd) {
 }
 
 void TemporalPassVulkan::addToGraph(RenderGraphVulkan& graph)
-{f
-	
+{
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+	auto SSRGIPassRenderer = dynamic_cast<SSRGIPassVulkan*>(rendererManagerVulkan->getRenderer("SSRGIPassVulkan"));
+
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     ssrgiImage = SSRGIPassRenderer->getOutputImage();
     motionImage = geometryPass->renderTarget.gBufferMotion;

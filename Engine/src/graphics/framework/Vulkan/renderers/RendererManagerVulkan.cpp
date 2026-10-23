@@ -6,6 +6,7 @@
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/RayTraceRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ParticleRendererVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpiplines/RibbonRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DebugRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
@@ -81,6 +82,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     }
     deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
+    ribbonRenderer = addRenderer<RibbonRendererVulkan>("RibbonRendererVulkan");
 	debugRenderer = addRenderer<DebugRendererVulkan>("DebugRendererVulkan");
 
     // graph owned textures are sized from this, passes can create them during init
@@ -122,6 +124,8 @@ void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
 {
     Service::onUpdate(frameTime);
     particleRenderer->setSimDeltaTime(frameTime.gameDeltaTime);
+    particleRenderer->setRealDeltaTime(frameTime.deltaTime);   // the editor preview runs on it while the game is stopped
+    ribbonRenderer->setDeltaTime(frameTime.deltaTime);
 
     if(needResize) {
 		_recreateResources();
@@ -154,6 +158,7 @@ void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
     }
 
     particleRenderer->onUpdate();
+    ribbonRenderer->onUpdate();
     debugRenderer->onUpdate();
 }
 
@@ -225,6 +230,7 @@ void RendererManagerVulkan::render()
         lightingPassRenderer->addToGraph(m_renderGraph);
         hiZPassRenderer->addToGraph(m_renderGraph);
         particleRenderer->addToGraph(m_renderGraph);
+        ribbonRenderer->addToGraph(m_renderGraph);
         SSRGIPassRenderer->addToGraph(m_renderGraph);
         bloomRenderer->addToGraph(m_renderGraph);
         if(deferredRenderer->denoiserOn) {

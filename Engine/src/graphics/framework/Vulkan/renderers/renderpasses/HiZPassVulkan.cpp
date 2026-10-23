@@ -146,11 +146,12 @@ void HiZPassVulkan::_createResources()
 	desc.sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 
 	RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
-	TextureVulkan* previousImage = hizImage;
+	uint32_t previousImageID = hizImage ? hizImage->id() : 0;
 	hizHandle = graph.createRenderTexture("HiZ.Depth", desc);
 	hizImage = graph.getTexture(hizHandle);
 
-	if(hizImage == previousImage) {
+	// compared by id, a recreated texture can land at the same address and the old mip views would point at freed memory
+	if(hizImage->id() == previousImageID) {
 		return;
 	}
 

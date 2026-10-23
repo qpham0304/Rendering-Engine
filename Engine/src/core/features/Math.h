@@ -121,4 +121,7 @@ namespace Math {
     Quat slerp(const Quat& a, const Quat& b, float t);
     VQS interpolate(const VQS& a, const VQS& b, float t);
 
+    glm::vec3 catmullRom(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3, float t);
+    void orthonormalBasis(const glm::vec3& axis, glm::vec3& sideA, glm::vec3& sideB);
+
 }

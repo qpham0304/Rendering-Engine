@@ -24,6 +24,7 @@ class TemporalPassVulkan;
 class DeferredCombinePassVulkan;
 class PostProcessRendererVulkan;
 class ParticleRendererVulkan;
+class RibbonRendererVulkan;
 class DebugRendererVulkan;
 
 class RendererManagerVulkan : public RendererManager
@@ -80,6 +81,7 @@ protected:
 	DeferredCombinePassVulkan* deferredCombineRenderer { nullptr };
 	PostProcessRendererVulkan* postProcessRenderer { nullptr };
 	ParticleRendererVulkan* particleRenderer { nullptr };
+	RibbonRendererVulkan* ribbonRenderer { nullptr };
 	DebugRendererVulkan* debugRenderer { nullptr };
 
 private:

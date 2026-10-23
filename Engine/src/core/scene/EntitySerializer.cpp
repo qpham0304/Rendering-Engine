@@ -65,6 +65,7 @@ void EntitySerializer::RegisterComponents()
 	REGISTER_COMPONENT(ColliderComponent, Entity::_onColliderComponentAdded(), Entity::_onColliderComponentRemoved());
 	REGISTER_COMPONENT(CameraComponent, Entity::_onCameraComponentAdded(), NO_DEFINE);
 	REGISTER_COMPONENT(ParticleEmitter, Entity::_onParticleEmitterAdded(), NO_DEFINE);
+	REGISTER_COMPONENT(RibbonComponent, NO_DEFINE, NO_DEFINE);
 	REGISTER_COMPONENT(SkinningComponent, Entity::_onSkinningComponentAdded(), NO_DEFINE);
 }
 

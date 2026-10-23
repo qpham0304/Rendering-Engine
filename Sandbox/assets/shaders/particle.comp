@@ -2,199 +2,247 @@
 
 #extension GL_GOOGLE_include_directive : require
 
-#include "common/buffers.glsl"
-#include "common/mathUtils.glsl"
-
-layout(set = 0, binding = 0) uniform UniformBufferObject {
-    mat4 invNormal;
-    mat4 view;
-    mat4 prevViewProj;
-    mat4 proj;
-    vec4 cameraPos;
-    mat4 invView;
-    mat4 invProj;
-    float width;
-    float height;
-} ubo;
-
-struct Emitter {
-    int emitMax;
-    int emitCount;
-    int areRecycled;
-    float emitAccumulator;
-    float emitRate;
-    float lifetimeMin;
-    float lifetimeMax;
-    float speedMin;
-    float speedMax;
-    vec3 spawnPosition;
-    vec3 force;
-    int resetPosition;
-    vec2 uvOffset;
-    vec2 uvScale;
-    int textureID;
-    int behaviorType;
-};
-
-struct Container {
-    uint64_t lifetimeRef;
-    uint64_t positionsRef;
-    uint64_t scalesRef;
-    uint64_t velocitiesRef;
-    uint64_t colorsRef;
-};
-
-layout(buffer_reference, scalar) buffer EmittersBuffers { Emitter emitters[]; };
-layout(buffer_reference, scalar) buffer ContainerBuffers { Container containers[]; };
-layout(buffer_reference, scalar) buffer Lifetime { float lifetime[]; };
-layout(buffer_reference, scalar) buffer Positions { vec3 positions[]; };
-layout(buffer_reference, scalar) buffer Scales { vec3 scales[]; };
-layout(buffer_reference, scalar) buffer Velocities { vec3 velocities[]; };
-layout(buffer_reference, scalar) buffer Colors { vec4 colors[]; };
-
-layout(push_constant) uniform ParticleContainerRefs {
-    EmittersBuffers emittersRef;
-    ContainerBuffers containersRef;
-    uint containerIdx;
-    uint particleCount;
-    float deltaTime;
-} pc;
+#include "common/particles.glsl"
 
 layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
-vec3 randomRange(uint particleID, vec3 scaleFactor) {
-    float x = random(vec2(pc.deltaTime, particleID + 1.0));
-    float y = random(vec2(pc.deltaTime, particleID + 2.0));
-    float z = random(vec2(pc.deltaTime, particleID + 3.0));
-    return vec3(x, y, z) * scaleFactor;
+vec3 randomUnitVector(inout uint seed) {
+    float z = rand01(seed) * 2.0 - 1.0;
+    float angle = rand01(seed) * 2.0 * PI;
+    float r = sqrt(max(1.0 - z * z, 0.0));
+    return vec3(r * cos(angle), z, r * sin(angle));
 }
 
-vec3 randomRangeNDC(uint particleID, vec3 scaleFactor) {
-    float x = random(vec2(pc.deltaTime, particleID + 1.0)) * 2.0 - 1.0;
-    float y = random(vec2(pc.deltaTime, particleID + 2.0)) * 2.0 - 1.0;
-    float z = random(vec2(pc.deltaTime, particleID + 3.0)) * 2.0 - 1.0;
-    return vec3(x, y, z) * scaleFactor;
+// uniform direction inside a cone of halfAngle around axis
+vec3 randomInCone(vec3 axis, float halfAngle, inout uint seed) {
+    float cosTheta = mix(1.0, cos(halfAngle), rand01(seed));
+    float sinTheta = sqrt(max(1.0 - cosTheta * cosTheta, 0.0));
+    float phi = rand01(seed) * 2.0 * PI;
+
+    vec3 tangent = abs(axis.y) < 0.999 ? normalize(cross(axis, vec3(0.0, 1.0, 0.0))) : vec3(1.0, 0.0, 0.0);
+    vec3 bitangent = cross(axis, tangent);
+    return normalize((tangent * cos(phi) + bitangent * sin(phi)) * sinTheta + axis * cosTheta);
 }
 
-vec2 randomCircle(uint particleID, float radius) {
-    float angle = random(vec2(pc.deltaTime, particleID + 1.0)) * 2.0 * PI;
-    float r = sqrt(random(vec2(pc.deltaTime, particleID + 2.0))) * radius;
-    
-    return vec2(cos(angle) * r, sin(angle) * r);
+// position and outward direction in emitter space, the emitter transform is applied afterwards
+void sampleShape(Emitter e, inout uint seed, out vec3 position, out vec3 normal) {
+    bool shell = e.emitFromShell != 0;
+
+    switch (e.spawnShape) {
+        case SPAWN_BOX: {
+            vec3 r = vec3(rand01(seed), rand01(seed), rand01(seed)) * 2.0 - 1.0;
+            if(shell) {     // snap one axis onto a face
+                int axis = min(int(rand01(seed) * 3.0), 2);
+                r[axis] = r[axis] < 0.0 ? -1.0 : 1.0;
+            }
+            position = r * e.shapeExtents;
+            normal = length(position) > 1e-5 ? normalize(position) : vec3(0.0, 1.0, 0.0);
+            break;
+        }
+
+        case SPAWN_SPHERE:
+        case SPAWN_HEMISPHERE: {
+            vec3 dir = randomUnitVector(seed);
+            if(e.spawnShape == SPAWN_HEMISPHERE) {
+                dir.y = abs(dir.y);
+            }
+            float r = shell ? 1.0 : pow(rand01(seed), 1.0 / 3.0);   // cube root keeps the volume uniform
+            position = dir * r * e.shapeRadius;
+            normal = dir;
+            break;
+        }
+
+        case SPAWN_CONE: {
+            // disc at the base, directions tilt outward with the distance from the center
+            float angle = rand01(seed) * 2.0 * PI;
+            float r = shell ? 1.0 : sqrt(rand01(seed));
+            position = vec3(cos(angle), 0.0, sin(angle)) * r * e.shapeRadius;
+            if(e.shapeRadius > 1e-5) {
+                float tilt = r * e.shapeConeAngle;
+                normal = vec3(cos(angle) * sin(tilt), cos(tilt), sin(angle) * sin(tilt));
+            } else {
+                normal = randomInCone(vec3(0.0, 1.0, 0.0), e.shapeConeAngle, seed);
+            }
+            break;
+        }
+
+        case SPAWN_CIRCLE: {
+            float angle = rand01(seed) * 2.0 * PI;
+            float r = shell ? 1.0 : sqrt(rand01(seed));
+            normal = vec3(cos(angle), 0.0, sin(angle));
+            position = normal * r * e.shapeRadius;
+            break;
+        }
+
+        default: {  // point, outward is any direction so velocityFromShape gives an explosion
+            position = vec3(0.0);
+            normal = randomUnitVector(seed);
+            break;
+        }
+    }
 }
 
-vec3 randomSphere(uint particleID, float radius) {
-    float u = random(vec2(pc.deltaTime, particleID + 1.0));
-    float v = random(vec2(pc.deltaTime, particleID + 2.0));
-    
-    float theta = u * 6.2831853;        // Azimuthal angle
-    float phi = acos(2.0 * v - 1.0);    // Polar angle
-    float r = pow(random(vec2(pc.deltaTime, particleID + 3.0)), 1.0 / 3.0) * radius;    // Cube root for uniform 3D volume
-
-    float sinPhi = sin(phi);
+// cheap divergence-ish flow field, enough to break up straight trajectories
+vec3 turbulence(vec3 p, float t) {
     return vec3(
-        r * sinPhi * cos(theta),
-        r * sinPhi * sin(theta),
-        r * cos(phi)
-    );
+        sin(p.y + t * 1.3) + sin(p.z * 1.7 + t * 0.6),
+        sin(p.z + t * 1.1) + sin(p.x * 1.3 + t * 0.7),
+        sin(p.x + t * 0.9) + sin(p.y * 1.5 + t * 1.7)
+    ) * 0.5;
+}
+
+void emitParticle(uint id) {
+    if(id >= pc.particleCount) {
+        return;
+    }
+
+    Container c = pc.containersRef.containers[pc.containerIdx];
+    Counters counters = Counters(c.countersRef);
+
+    // pop a free slot, give it back if the pool is already full
+    int top = atomicAdd(counters.deadCount, -1);
+    if(top <= 0) {
+        atomicAdd(counters.deadCount, 1);
+        return;
+    }
+    uint slot = IndexList(c.deadListRef).i[top - 1];
+
+    Emitter e = pc.emittersRef.emitters[pc.containerIdx];
+    uint seed = pcgHash(slot * 1973u + pc.frameSeed * 9277u + pc.containerIdx * 26699u + id);
+
+    vec3 position;
+    vec3 shapeNormal;
+    sampleShape(e, seed, position, shapeNormal);
+
+    vec3 baseDir = e.velocityFromShape != 0 ? shapeNormal : e.direction;
+    baseDir = length(baseDir) > 1e-5 ? normalize(baseDir) : vec3(0.0, 1.0, 0.0);
+    vec3 dir = randomInCone(baseDir, e.spreadAngle, seed);
+    float speed = mix(e.speedMin, e.speedMax, rand01(seed));
+
+    Particle p;
+    if(e.localSpace != 0) {
+        p.position = position;
+        p.velocity = dir * speed;
+    } else {
+        p.position = (e.transform * vec4(position, 1.0)).xyz;
+        vec3 worldDir = mat3(e.transform) * dir;
+        p.velocity = (length(worldDir) > 1e-5 ? normalize(worldDir) : dir) * speed;
+    }
+    p.age = 0.0;
+    p.lifetime = max(mix(e.lifetimeMin, e.lifetimeMax, rand01(seed)), 1e-3);
+    p.axis = randomUnitVector(seed);
+    p.rotation = mix(e.rotationMin, e.rotationMax, rand01(seed));
+    p.angularVelocity = mix(e.angularVelocityMin, e.angularVelocityMax, rand01(seed));
+    p.size = mix(e.sizeMin, e.sizeMax, rand01(seed));
+    p.seed = seed;
+    p.alive = 1;
+
+    ParticlesBuffer(c.particlesRef).p[slot] = p;
+}
+
+void simulateParticle(uint id) {
+    if(id >= pc.particleCount) {
+        return;
+    }
+
+    Container c = pc.containersRef.containers[pc.containerIdx];
+    ParticlesBuffer particles = ParticlesBuffer(c.particlesRef);
+    Particle p = particles.p[id];
+    if(p.alive == 0) {
+        return;
+    }
+
+    float dt = pc.deltaTime;
+    p.age += dt;
+
+    // push the slot back on the free stack
+    if(p.age >= p.lifetime) {
+        particles.p[id].alive = 0;
+        int top = atomicAdd(Counters(c.countersRef).deadCount, 1);
+        IndexList(c.deadListRef).i[top] = id;
+        return;
+    }
+
+    Emitter e = pc.emittersRef.emitters[pc.containerIdx];
+    bool localSpace = e.localSpace != 0;
+    vec3 center = localSpace ? vec3(0.0) : e.transform[3].xyz;
+    vec3 up = localSpace ? vec3(0.0, 1.0, 0.0) : normalize(mat3(e.transform)[1]);
+
+    vec3 acceleration = e.force + G_FORCE * e.gravityScale;
+
+    if(e.turbulenceStrength != 0.0) {
+        acceleration += turbulence(p.position * e.turbulenceFrequency, pc.time) * e.turbulenceStrength;
+    }
+
+    vec3 offset = p.position - center;
+    if(e.vortexStrength != 0.0) {
+        vec3 radial = offset - up * dot(offset, up);
+        if(length(radial) > 1e-4) {
+            acceleration += normalize(cross(up, radial)) * e.vortexStrength;
+        }
+    }
+
+    if(e.attractStrength != 0.0 && length(offset) > 1e-4) {
+        acceleration -= normalize(offset) * e.attractStrength;
+    }
+
+    p.velocity += acceleration * dt;
+    p.velocity /= 1.0 + e.drag * dt;
+    p.position += p.velocity * dt;
+    p.rotation += p.angularVelocity * dt;
+    particles.p[id] = p;
+
+    // survivors become this frame's instances, keyed so the farthest sorts first
+    vec3 worldPos = localSpace ? (e.transform * vec4(p.position, 1.0)).xyz : p.position;
+    vec3 cameraForward = -ubo.invView[2].xyz;
+    DrawEntry entry;
+    entry.sortKey = -dot(worldPos - ubo.cameraPos.xyz, cameraForward);
+    entry.particleID = id;
+
+    uint drawSlot = atomicAdd(pc.drawCommandsRef.cmds[pc.containerIdx].instanceCount, 1u);
+    DrawList(c.aliveListRef).e[drawSlot] = entry;
+}
+
+// the append order changes every frame, entries past the live count are pushed behind everything
+void padDrawList(uint id) {
+    uint liveCount = pc.drawCommandsRef.cmds[pc.containerIdx].instanceCount;
+    if(id >= pc.particleCount || id < liveCount) {
+        return;
+    }
+
+    Container c = pc.containersRef.containers[pc.containerIdx];
+    DrawEntry entry;
+    entry.sortKey = uintBitsToFloat(0x7f800000u);   // +inf
+    entry.particleID = 0;
+    DrawList(c.aliveListRef).e[id] = entry;
+}
+
+// one compare and swap step over the whole list, ascending keys
+void sortDrawList(uint id) {
+    uint partner = id ^ pc.sortStride;
+    if(id >= pc.particleCount || partner <= id) {
+        return;
+    }
+
+    Container c = pc.containersRef.containers[pc.containerIdx];
+    DrawList list = DrawList(c.aliveListRef);
+    DrawEntry a = list.e[id];
+    DrawEntry b = list.e[partner];
+
+    bool ascending = (id & pc.sortBlock) == 0;
+    if((a.sortKey > b.sortKey) == ascending) {
+        list.e[id] = b;
+        list.e[partner] = a;
+    }
 }
 
 void main() {
-    uint particleID = gl_GlobalInvocationID.x;
-    if(particleID >= pc.particleCount) {
-        return;
+    uint id = gl_GlobalInvocationID.x;
+
+    switch (pc.stage) {
+        case STAGE_EMIT:        emitParticle(id); break;
+        case STAGE_SIMULATE:    simulateParticle(id); break;
+        case STAGE_SORT_PAD:    padDrawList(id); break;
+        default:                sortDrawList(id); break;
     }
-    
-    Emitter emitter = pc.emittersRef.emitters[pc.containerIdx];
-    Container c = pc.containersRef.containers[pc.containerIdx];
-    Lifetime lifeBuffer = Lifetime(c.lifetimeRef);
-    Positions posBuffer = Positions(c.positionsRef);
-    Velocities velBuffer = Velocities(c.velocitiesRef);
-    
-    float lifetime = lifeBuffer.lifetime[particleID];
-    vec3 position = posBuffer.positions[particleID];
-    vec3 velocity = velBuffer.velocities[particleID];
-
-    lifetime -= pc.deltaTime;
-
-    switch (emitter.behaviorType) {
-        case 0: {
-            if(lifetime <= 0) {
-                position = emitter.spawnPosition + randomRangeNDC(particleID, vec3(1.0, 0.0, 1.0));
-             
-                lifetime = emitter.lifetimeMin + random(vec2(particleID + 11, pc.deltaTime)) * (emitter.lifetimeMax - emitter.lifetimeMin);
-            } else {
-
-            }
-            break;
-        }
-        
-        case 1: {
-            if(lifetime <= 0) {
-                position = emitter.spawnPosition + randomRangeNDC(particleID, vec3(1.0, 0.0, 1.0));
-                velocity = randomRangeNDC(particleID, vec3(1.0, emitter.speedMax - emitter.speedMin, 1.0));
-
-                lifetime = emitter.lifetimeMin + random(vec2(particleID + 11, pc.deltaTime)) * (emitter.lifetimeMax - emitter.lifetimeMin);
-            } else {
-                velocity += (emitter.force + G_FORCE) * pc.deltaTime;
-                position += velocity * pc.deltaTime;
-            }
-            break;
-
-        }
-        
-        case 2: {
-            if(lifetime <= 0) {
-                position = emitter.spawnPosition + randomSphere(particleID, 2.0);
-                velocity = randomRangeNDC(particleID, vec3(1.0, 1.0, 1.0) * (emitter.speedMax - emitter.speedMin));
-             
-                lifetime = emitter.lifetimeMin + random(vec2(particleID + 11, pc.deltaTime)) * (emitter.lifetimeMax - emitter.lifetimeMin);
-            }
-
-            break;
-        }
-        
-        case 3: {
-            if(lifetime <= 0) { // vortex
-                position = emitter.spawnPosition + randomRangeNDC(particleID, vec3(1.0, 0.0, 1.0));
-                velocity = randomRange(particleID, vec3(1.0, (emitter.speedMax - emitter.speedMin), 1.0));
-                // float initialUpSpeed = mix(emitter.speedMin, emitter.speedMax, random(vec2(particleID, pc.deltaTime)));
-                // velocity = vec3(0.0, initialUpSpeed, 0.0);
-
-                lifetime = emitter.lifetimeMin + random(vec2(particleID + 11, pc.deltaTime)) * (emitter.lifetimeMax - emitter.lifetimeMin);
-            } else {
-                vec2 offset = position.xz - emitter.spawnPosition.xz;
-                vec2 tangent = vec2(-offset.y, offset.x);
-                if (length(tangent) > 0.0001) {
-                    tangent = normalize(tangent);
-                }
-
-                float lifeRatio = clamp(lifetime / emitter.lifetimeMax, 0.0, 1.0);
-                vec3 rotationForce = vec3(tangent.x, 0.0, tangent.y) * vec3(emitter.force.x, 0.0, emitter.force.z) * lifeRatio;
-                vec3 upwardForce = vec3(0.0, emitter.force.y, 0.0) + G_FORCE;
-
-                // inward pull toward the center to make a funnel shape
-                vec2 inwardPull = -normalize(offset) * 5.0;
-                vec3 radialForce = vec3(inwardPull.x, 0.0, inwardPull.y);
-
-                vec3 totalForce = rotationForce + upwardForce + radialForce;
-                velocity += totalForce * pc.deltaTime;
-                velocity *= (1.0 - 2.0 * pc.deltaTime); // drag
-
-                position += velocity * pc.deltaTime;
-            }
-            break;
-        }
-
-        default: {
-            velocity += emitter.force * pc.deltaTime;
-            position += velocity * pc.deltaTime;
-            break;
-        }
-    }
-
-
-    lifeBuffer.lifetime[particleID] = lifetime;
-    posBuffer.positions[particleID] = position;
-    velBuffer.velocities[particleID] = velocity;
 }

@@ -29,7 +29,7 @@ public:
 	void cleanupResources();
 	
 protected:
-	uint32_t outputImageID;
+	uint32_t outputImageID { 0 };	// texture ids start at 1
 	TextureVulkan* outputImage { nullptr };
 
     uint32_t layoutID;

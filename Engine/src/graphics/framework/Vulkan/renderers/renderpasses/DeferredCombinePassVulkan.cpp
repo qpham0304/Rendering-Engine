@@ -180,14 +180,16 @@ void DeferredCombinePassVulkan::_createResources()
     desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
-    TextureVulkan* previousOutput = outputImage;
+    uint32_t previousOutputID = outputImageID;
     outputHandle = graph.createRenderTexture("DeferredCombine.Output", desc);
     outputImage = graph.getTexture(outputHandle);
     outputImageID = outputImage->id();
 
-    if(outputImage != previousOutput) {
-        // ApplicationRendererVulkan draws the display image through the bindless set when the gui is hidden
-        textureManagerVulkan->registerBindlessTexture(outputImage->id());
+    // compared by id, a recreated texture can land at the same address as the one it replaced
+    if(outputImageID != previousOutputID) {
+        // ApplicationRendererVulkan draws the display image through the bindless set when the gui is hidden,
+        // the debug pass also reads the scene through it
+        textureManagerVulkan->registerBindlessTexture(outputImageID);
     }
 }
 

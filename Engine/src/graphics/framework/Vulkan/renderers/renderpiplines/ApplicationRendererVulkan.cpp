@@ -217,7 +217,11 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 
 
 	guiManager->start();
-	
+
+	if(debugRendererVulkan) {
+		debugRendererVulkan->setGridVisible(guiManager->isGridVisible());
+	}
+
 	//TODO: temporarily use imgui renderer, abstract to gui service and remove these
 	int currentMode = rendererManagerVulkan->getRenderMode(); 
 	if(currentMode == 1) {

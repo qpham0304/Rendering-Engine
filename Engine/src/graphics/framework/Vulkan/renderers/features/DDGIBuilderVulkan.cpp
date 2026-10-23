@@ -340,7 +340,7 @@ bool DDGIBuilderVulkan::_createResources()
     // owned by the render graph, sized by the probe count. the graph hands back the same textures every
     // frame and recreates them when the probe count (so the size) changes
     RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
-    TextureVulkan* previousAtlas = currentIrradianceAtlas;
+    uint32_t previousAtlasID = currentIrradianceAtlas ? currentIrradianceAtlas->id() : 0;
     auto createTexture = [&] (const char* name, RGHandle& handle, uint32_t w, uint32_t h, VkFormat format, VkImageUsageFlags extraUsage = 0) {
         RGTextureDesc desc{};
         desc.config.width = w;
@@ -361,7 +361,8 @@ bool DDGIBuilderVulkan::_createResources()
     lastFrameVisibilityAtlas = createTexture("DDGI.VisibilityLastFrame", lastVisibilityHandle, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT);
 
     // all six change together, nothing else to do while they are the same textures as last frame
-    if(currentIrradianceAtlas == previousAtlas) {
+    // (by id, a recreated texture can land at the same address)
+    if(currentIrradianceAtlas->id() == previousAtlasID) {
         return false;
     }
 

@@ -16,6 +16,8 @@
 #include <assimp/postprocess.h>
 #include <assimp_glm_helpers.h>
 #include <functional>
+#include <algorithm>
+#include <set>
 
 const std::unordered_map<std::string, std::function<std::pair<std::string, Mesh>()>> meshPrimitives = {
     { "$prim$Sphere", []() { return std::pair<std::string, Mesh>( "$prim$Sphere", EngineUtils::drawSphere(0.5f, 36, 36) ); }},
@@ -133,11 +135,46 @@ uint32_t ModelManager::loadModel(std::string_view path)
         return m_modelData.at(path.data());;
     }
 
+    // primitives are generated instead of imported, one shared copy per path
+    auto primitive = meshPrimitives.find(path.data());
+    if(primitive != meshPrimitives.end()) {
+        Mesh mesh = primitive->second().second;
+        mesh.materialID = materialManager->createMaterial(MaterialDesc{});
+
+        Model model {};
+        model.meshIDs.push_back(meshManager->loadMesh(mesh));
+        model.path = path.data();
+        m_modelData[path.data()] = m_ids;
+        return addModel(model);
+    }
+
     if(!_loadModel(path)) {
         return 0;
     }
 
     return _assignID();
+}
+
+std::vector<std::string> ModelManager::listPrimitives()
+{
+    std::vector<std::string> names;
+    for(const auto& [name, generator] : meshPrimitives) {
+        names.push_back(name);
+    }
+    std::sort(names.begin(), names.end());
+    return names;
+}
+
+std::vector<std::string> ModelManager::listModelPaths()
+{
+    ReadLock lock = _lockRead();
+    std::set<std::string> paths;
+    for(const auto& [id, model] : m_models) {
+        if(model && !model->path.empty()) {
+            paths.insert(model->path);
+        }
+    }
+    return { paths.begin(), paths.end() };
 }
 
 uint32_t ModelManager::addModel(Model& model)

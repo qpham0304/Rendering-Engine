@@ -27,6 +27,9 @@ public:
 	uint32_t addModel(Model& model);
 	Model* getModel(uint32_t id) const;
 
+	static std::vector<std::string> listPrimitives();	// generated meshes loadModel accepts by name, i.e $prim$Cube
+	std::vector<std::string> listModelPaths();			// every loaded model and primitive, sorted, no duplicates
+
 private:
 	bool _loadModel(std::string_view path);
     void _processNode(aiNode* node, const aiScene* scene, std::vector<uint32_t>& meshes, std::string_view directory, uint32_t skeletonID);

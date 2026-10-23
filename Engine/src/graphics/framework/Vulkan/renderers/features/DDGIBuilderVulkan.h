@@ -131,7 +131,7 @@ private:
 	bool showIndirectOnly { false };
 	float intensity { 1.0f };
 
-	bool _createResources();	// true when the graph handed back new textures (first call or probe count change)
+	bool _createResources();
 	void _createPipeline();
 	void _createDescriptor();
 	void _updateDescriptor(uint32_t index);
