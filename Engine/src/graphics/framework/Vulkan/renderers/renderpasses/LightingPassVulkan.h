@@ -59,10 +59,9 @@ public:
 	RenderTarget renderTarget;
 	PushConstantLight pushConstantLight;
 	std::vector<LightSSBO> lights;
-	float sunIntensity { 10.0f };
-	glm::vec4 sunColor { 1.0 };
 
 protected:
+	LightingSettings* settings { nullptr };
 	const int numLights = 1000;
 	std::vector<StorageBufferVulkan*> lightStoragebuffers;
 

@@ -11,7 +11,11 @@ ImGuiAnimationWidget::ImGuiAnimationWidget(std::string name)
 
 void ImGuiAnimationWidget::render()
 {
-    ImGui::Begin("Animation Widget");
+    if(!m_isVisible) {
+        return;
+    }
+    
+    ImGui::Begin("Animation Widget", &m_isVisible);
 
     std::vector<uint32_t> ids = skeletonManager->listIDs();
     auto func = std::function<void(Entity)>([&](Entity entity) -> void {

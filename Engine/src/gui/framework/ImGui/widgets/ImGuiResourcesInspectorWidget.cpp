@@ -16,7 +16,7 @@ void ImGuiResourceInspectorWidget::render()
         return;
     }
     
-    ImGui::Begin("Resource Inspector");
+    ImGui::Begin("Resource Inspector", &m_isVisible);
 
     // texture inspector
     if (ImGui::CollapsingHeader("Texture Data", ImGuiTreeNodeFlags_DefaultOpen)) {

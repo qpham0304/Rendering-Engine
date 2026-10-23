@@ -21,9 +21,6 @@
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/renderpiplines/ForwardRendererVulkan.h>
-#include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
-#include <graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h>
-#include <graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h>
 #include <graphics/framework/Vulkan/renderers/renderpiplines/DebugRendererVulkan.h>
 #include <core/scene/SceneManager.h>
 #include "imgui.h" // TODO: remove it once done
@@ -108,8 +105,7 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
 
     TextureVulkan* texture = rendererManagerVulkan->getDisplayImage();
     if (!showGui && !texture) {
-        beginRecording(commandBuffer, renderDeviceVulkan->swapchain.renderPass, 
-                       renderDeviceVulkan->swapchain.currentFrameBuffer());
+        beginRecording(commandBuffer, renderDeviceVulkan->swapchain.renderPass, renderDeviceVulkan->swapchain.currentFrameBuffer());
         endRecording(commandBuffer);
         return; 
     }
@@ -129,16 +125,6 @@ void ApplicationRendererVulkan::recordDrawCommand(VkCommandBuffer commandBuffer,
 		} 
 		else {
 			renderDeviceVulkan->beginLabel(commandBuffer, "Render To Swap Chain Mode");
-			// vkCmdBindDescriptorSets(
-			// 	commandBuffer,
-			// 	VK_PIPELINE_BIND_POINT_GRAPHICS,
-			// 	appPipeline->pipelineLayout,
-			// 	0,
-			// 	1,
-			// 	&descriptorSets[renderDeviceVulkan->getCurrentFrameIndex()],
-			// 	0,
-			// 	nullptr
-			// );
 
 			vkCmdBindDescriptorSets(
 				commandBuffer,
@@ -205,16 +191,7 @@ void ApplicationRendererVulkan::endRecording(void* cmdBuffer)
 
 void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 {
-	RendererVulkan* renderer = nullptr;
-	renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
-	auto bloomPassRendererVulkan = dynamic_cast<BloomPassVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("DDGIBuilderVulkan");
-	auto ddgiRendererVulkan = dynamic_cast<DDGIBuilderVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("DebugRendererVulkan");
-	auto debugRendererVulkan = dynamic_cast<DebugRendererVulkan*>(renderer);
-
+	auto debugRendererVulkan = dynamic_cast<DebugRendererVulkan*>(rendererManagerVulkan->getRenderer("DebugRendererVulkan"));
 
 	guiManager->start();
 
@@ -222,15 +199,7 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 		debugRendererVulkan->setGridVisible(guiManager->isGridVisible());
 	}
 
-	//TODO: temporarily use imgui renderer, abstract to gui service and remove these
-	int currentMode = rendererManagerVulkan->getRenderMode(); 
-	if(currentMode == 1) {
-		deferredRendererVulkan->renderGui();
-		bloomPassRendererVulkan->renderGui();
-		if(ddgiRendererVulkan) {
-			ddgiRendererVulkan->renderGui();
-		}
-	}
+	int currentMode = rendererManagerVulkan->getRenderMode();
 
 	ImGui::Begin("Application");
 	guiManager->applicationWindow();

@@ -15,7 +15,6 @@
 #include "core/features/Camera.h"
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/constants.hpp>
-#include <imgui/imgui.h>
 #include <algorithm>
 #include <random>
 
@@ -76,17 +75,11 @@ bool DDGIBuilderVulkan::init(WindowConfig config)
     RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("RayTraceRendererVulkan");
 	raytracer = dynamic_cast<RayTraceRendererVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
-	shadowMapPass = dynamic_cast<ShadowMapPassVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("LightingPassVulkan");
-	lightingPass = dynamic_cast<LightingPassVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
 	imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
-    assert(raytracer && shadowMapPass && lightingPass && imageBasedRenderer && "failed to retrieve renderer");
+    assert(raytracer && imageBasedRenderer && "failed to retrieve renderer");
 
-	ubo.hysteresis = 0.97f;
-	ubo.normalBias = 0.3f;
-	ubo.skyIntensity = 1.0f;
+	settings = &rendererManagerVulkan->getGraphicsSettings().add<DDGISettings>("DDGI");
 
 	// the scene can gain its probe grid later, render() resizes the atlases when it shows up
 	LightProbeComponent* probeGrid = findProbeGrid();
@@ -116,7 +109,18 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	LightProbeComponent* probeGrid = findProbeGrid();
 	AccelStructureBufferVulkan* tlas = raytracer->m_rtBuilder.getTlas();
 	hasProbe = probeGrid && probeGrid->spacing > 0.0f && tlas;
-	if(!hasProbe || !enabled) {
+
+	if(settings->resetProbes) {
+		resetHistory = true;
+		settings->resetProbes = false;
+	}
+
+	settings->hasProbeGrid = hasProbe;
+	settings->probeCounts = hasProbe ? glm::ivec3(probeCounts) : glm::ivec3(0);
+	settings->irradianceAtlas = lastframeIrradianceAtlas->id();
+	settings->visibilityAtlas = lastFrameVisibilityAtlas->id();
+
+	if(!settings->isReady()) {
 		return;
 	}
 
@@ -132,15 +136,29 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	pushConstant.probesResolution = IRRADIANCE_RES;
 	pushConstant.gridSpacing = probeGrid->spacing;
 
-	glm::vec3 sunDirection = shadowMapPass->lightDir;
+	// the grid this frame's atlases are built with, the combine pass samples them with it
+	settings->gridOrigin = pushConstant.gridOrigin;
+	settings->gridSpacing = pushConstant.gridSpacing;
+	settings->gridMin = glm::vec3(pushConstant.gridOrigin);
+	settings->gridMax = settings->gridMin + glm::vec3(probeCounts - 1u) * pushConstant.gridSpacing;
+
+	// same direction and color the light pass and the shadow map use
+	const AppGraphicsSettings& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
+	const ShadowMapSettings* shadowSettings = graphicsSettings.get<ShadowMapSettings>();
+	const LightingSettings* lightingSettings = graphicsSettings.get<LightingSettings>();
+
+	glm::vec3 sunDirection = shadowSettings ? shadowSettings->lightDir : glm::vec3(0.0f);
 	if(glm::length(sunDirection) < 0.0001f) {
 		sunDirection = glm::vec3(0.0f, 1.0f, 0.0f);
 	}
 	ubo.randomRotation = randomRotation();
-	ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), 0.0f);	// same direction and color the light pass and the shadow map use
-	ubo.sunColor = lightingPass->sunColor * lightingPass->sunIntensity;
+	ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), 0.0f);
+	ubo.sunColor = lightingSettings ? lightingSettings->sunColor * lightingSettings->sunIntensity : glm::vec4(0.0f);
 	ubo.maxRayDistance = probeGrid->spacing * 1.5f;	// a bit less than the diagonal of a grid cell
 	ubo.clear = resetHistory ? 1 : 0;
+	ubo.hysteresis = settings->hysteresis;
+	ubo.normalBias = settings->normalBias;
+	ubo.skyIntensity = settings->skyIntensity;
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
@@ -231,44 +249,6 @@ void DDGIBuilderVulkan::writeUpdateVisibility(VkCommandBuffer cmd, uint32_t curr
     _copyToLastFrame(cmd, currentVisibilityAtlas, lastFrameVisibilityAtlas);
 }
 
-void DDGIBuilderVulkan::renderGui()
-{
-    ImGui::Begin("DDGI");
-	ImGui::Checkbox("enabled", &enabled);
-	ImGui::SameLine();
-	ImGui::Checkbox("indirect only", &showIndirectOnly);
-	ImGui::SameLine();
-	if(ImGui::Button("reset probes")) {
-		resetHistory = true;
-	}
-	ImGui::SliderFloat("intensity", &intensity, 0.0f, 5.0f);
-	ImGui::SliderFloat("sky intensity", &ubo.skyIntensity, 0.0f, 2.0f);
-	ImGui::SliderFloat("hysteresis", &ubo.hysteresis, 0.0f, 0.99f);
-	ImGui::SliderFloat("normal bias", &ubo.normalBias, 0.0f, 1.0f);
-
-	if(hasProbe) {
-		ImGui::Text("%u x %u x %u probes, %u rays each", probeCounts.x, probeCounts.y, probeCounts.z, raysPerProbe);
-		glm::vec3 gridMin = glm::vec3(pushConstant.gridOrigin);
-		glm::vec3 gridMax = gridMin + glm::vec3(probeCounts - 1u) * pushConstant.gridSpacing;
-		ImGui::Text("covers (%.1f, %.1f, %.1f) to (%.1f, %.1f, %.1f)", gridMin.x, gridMin.y, gridMin.z, gridMax.x, gridMax.y, gridMax.z);
-	} else {
-		ImGui::Text("no light probe grid in the scene");
-	}
-
-	// the atlases are Cx tiles wide and Cy * Cz tiles tall
-	float scale = 384.0f / static_cast<float>(visAtlasH);
-	ImGui::Image(
-		(ImTextureID)textureManagerVulkan->inspectTexture(lastframeIrradianceAtlas->id()),
-		ImVec2(visAtlasW * scale, visAtlasH * scale)
-	);
-	ImGui::SameLine();
-	ImGui::Image(
-		(ImTextureID)textureManagerVulkan->inspectTexture(lastFrameVisibilityAtlas->id()),
-		ImVec2(visAtlasW * scale, visAtlasH * scale)
-	);
-    ImGui::End();
-}
-
 TextureVulkan *DDGIBuilderVulkan::getAtlasImage()
 {
     return lastframeIrradianceAtlas;
@@ -277,46 +257,6 @@ TextureVulkan *DDGIBuilderVulkan::getAtlasImage()
 TextureVulkan *DDGIBuilderVulkan::getVisibilityAtlasImage()
 {
     return lastFrameVisibilityAtlas;
-}
-
-bool DDGIBuilderVulkan::isReady() const
-{
-    return hasProbe && enabled;
-}
-
-glm::vec4 DDGIBuilderVulkan::getGridOrigin() const
-{
-    return pushConstant.gridOrigin;
-}
-
-float DDGIBuilderVulkan::getGridSpacing() const
-{
-    return pushConstant.gridSpacing;
-}
-
-glm::uvec3 DDGIBuilderVulkan::getProbeCounts() const
-{
-    return probeCounts;
-}
-
-float DDGIBuilderVulkan::getSkyIntensity() const
-{
-    return ubo.skyIntensity;
-}
-
-float DDGIBuilderVulkan::getNormalBias() const
-{
-    return ubo.normalBias;
-}
-
-float DDGIBuilderVulkan::getIntensity() const
-{
-    return intensity;
-}
-
-bool DDGIBuilderVulkan::getShowIndirectOnly() const
-{
-    return showIndirectOnly;
 }
 
 // true when the graph handed back new textures (first call or probe count change)
@@ -600,6 +540,9 @@ void DDGIBuilderVulkan::_copyToLastFrame(VkCommandBuffer cmd, TextureVulkan* cur
 
 bool DDGIBuilderVulkan::onClose()
 {
+    rendererManagerVulkan->getGraphicsSettings().remove<DDGISettings>();
+    settings = nullptr;
+
     probTracePipeline->destroy();
     updateIrradiancePipeline->destroy();
     updateVisibilityPipeline->destroy();

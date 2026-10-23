@@ -7,8 +7,6 @@
 
 
 class RayTraceRendererVulkan;
-class ShadowMapPassVulkan;
-class LightingPassVulkan;
 class ImageBasedRendererVulkan;
 
 // Dynamic diffuse global illumination, one probe grid (LightProbeComponent) per scene.
@@ -56,19 +54,8 @@ public:
 	void writeTrace(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeUpdateVisibility(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeUpdateIrradiance(VkCommandBuffer cmd, uint32_t currentFrame);
-	void renderGui();
 	TextureVulkan* getAtlasImage();
 	TextureVulkan* getVisibilityAtlasImage();
-
-	// data required to sample the atlases
-	bool isReady() const;
-	glm::vec4 getGridOrigin() const;
-	float getGridSpacing() const;
-	glm::uvec3 getProbeCounts() const;
-	float getSkyIntensity() const;
-	float getNormalBias() const;
-	float getIntensity() const;
-	bool getShowIndirectOnly() const;
 
 private:
 	TextureVulkan* rayColorBuffer { nullptr };
@@ -105,8 +92,6 @@ private:
 	UniformBufferObject ubo{};
 	PushConstant pushConstant{};
     RayTraceRendererVulkan* raytracer { nullptr };
-	ShadowMapPassVulkan* shadowMapPass { nullptr };
-	LightingPassVulkan* lightingPass { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 
 	// these three must match the constants in assets/shaders/common/ddgi.glsl
@@ -127,9 +112,7 @@ private:
 	bool hasProbe { false };
 	bool resetHistory { true };
 
-	bool enabled { true };
-	bool showIndirectOnly { false };
-	float intensity { 1.0f };
+	DDGISettings* settings { nullptr };
 
 	bool _createResources();
 	void _createPipeline();

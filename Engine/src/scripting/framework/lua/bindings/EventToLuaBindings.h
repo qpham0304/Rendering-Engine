@@ -19,7 +19,7 @@ private:
         );
 
         // The visitor feeds field names and pointers directly to Sol3
-        T::VisitFields([&ut](const char* name, auto memberPtr) {
+        T::VisitFields([&ut](const char* name, auto memberPtr, auto&&...) {
             ut.set(name, memberPtr);
         });
 

@@ -33,10 +33,9 @@ public:
 	void writeAO(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeBlur(VkCommandBuffer cmd, uint32_t currentFrame);
 
-	//TODO: make this private after test done or use a function instead
+protected:
 	BlurPushConstantInfo blurrPushConstant;
-
-protected:	
+	AmbientOcclusionSettings* settings { nullptr };
 	bool m_initialized { false };
 	void _createOcclusionMap();
 	void _createPipelines();

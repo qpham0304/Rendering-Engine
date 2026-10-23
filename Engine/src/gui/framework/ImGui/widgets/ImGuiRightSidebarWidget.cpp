@@ -389,6 +389,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
     _animationControl(entity);
     _scriptControl(entity);
     _colliderControl(entity);
+    _lightControl(entity);
     _particleControl(entity);
     _ribbonControl(entity);
 
@@ -863,6 +864,19 @@ void ImGuiRightSidebarWidget::_colliderControl(const Entity &entity)
     // m_logger->info("updated mass: {}", data.mass);
     // m_logger->info("updated Gravity Center: x:{}, y:{}, z:{}", data.center.x, data.center.y, data.center.z);
 
+}
+
+void ImGuiRightSidebarWidget::_lightControl(const Entity &entity)
+{
+    if(!entity.hasComponent<LightComponent>()) {
+        return;
+    }
+
+    LightComponent& light = entity.getComponent<LightComponent>();
+    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::ColorEdit4("Color", &light.color[0]);
+        ImGui::DragFloat("Intensity", &light.intensity, 0.1f, 0.0f, 1000.0f);
+    }
 }
 
 void ImGuiRightSidebarWidget::_particleControl(const Entity &entity)

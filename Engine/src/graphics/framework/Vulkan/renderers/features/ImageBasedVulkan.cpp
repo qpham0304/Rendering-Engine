@@ -9,7 +9,6 @@
 #include <core/resources/managers/MeshManager.h>
 #include <core/resources/managers/ModelManager.h>
 #include <core/resources/managers/DescriptorManager.h>
-#include <gui/GuiManager.h>
 #include <core/features/Mesh.h>
 #include <core/features/Camera.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureVulkan.h>
@@ -18,9 +17,9 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
+#include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <graphics/framework/Vulkan/renderers/RenderGraphVulkan.h>
-#include <imgui.h>
 #include <volk.h>
 
 ImageBasedRendererVulkan::ImageBasedRendererVulkan()
@@ -38,12 +37,11 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 {
 	RendererVulkan::init(config);
 
+	settings = &rendererManagerVulkan->getGraphicsSettings().add<ImageBasedSettings>("Environment");
+	loadedEnvironmentMap = settings->environmentMap;
+
 	hdrImageID = textureManagerVulkan->loadTexture(
-		"assets/textures/hdr/farm_field_puresky_2k.hdr", 
-		// "assets/textures/hdr/newport_loft.hdr", 
-		// "assets/textures/hdr/meadow_1k.hdr", 
-		// "assets/textures/night-skybox/top.jpg", 
-		// "assets/textures/hdr/photo_studio_loft_hall_2k.hdr", 
+		loadedEnvironmentMap,
 		1, 
 		false
 	);
@@ -79,6 +77,9 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 
 bool ImageBasedRendererVulkan::onClose()
 {
+	rendererManagerVulkan->getGraphicsSettings().remove<ImageBasedSettings>();
+	settings = nullptr;
+
 	for (auto view : prefilterMipViews) {
         if (view != VK_NULL_HANDLE) {
             vkDestroyImageView(renderDeviceVulkan->device, view, nullptr);
@@ -101,10 +102,12 @@ void ImageBasedRendererVulkan::onUpdate()
 
 void ImageBasedRendererVulkan::render(Camera &camera)
 {
-	// a new environment was loaded from the gui. handled here instead of in loadTexture because the gui
-	// is built inside the swapchain render pass, where dispatches and these barriers are not allowed
+	_loadEnvironmentIfChanged();
+
+	// a new environment was loaded. the descriptors are updated here instead of in loadTexture
+	// because the frame in flight may still read the old ones
 	if(hdrImage_temp) {
-		renderDeviceVulkan->waitIdle();	// the frame in flight still reads the old descriptors
+		renderDeviceVulkan->waitIdle();
 		_updateEnvironmentDescriptors();
 		hdrImage_temp = nullptr;
 		environmentReady = false;
@@ -708,8 +711,19 @@ void ImageBasedRendererVulkan::_cleanupResources()
 	m_logger->warn("recource cleanup unimlemented");
 }
 
+void ImageBasedRendererVulkan::_loadEnvironmentIfChanged()
+{
+	if(settings->environmentMap == loadedEnvironmentMap || settings->environmentMap.empty()) {
+		return;
+	}
+	loadedEnvironmentMap = settings->environmentMap;
+	loadTexture(loadedEnvironmentMap);
+}
+
 void ImageBasedRendererVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+	_loadEnvironmentIfChanged();
+
 	auto hdr = graph.importTexture(hdrImage);
 	auto prefilter = graph.importTexture(prefilterMap);
 

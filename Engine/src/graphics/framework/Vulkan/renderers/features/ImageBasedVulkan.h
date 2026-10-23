@@ -34,6 +34,10 @@ public:
 	
 protected:
 	bool environmentReady { false };
+	ImageBasedSettings* settings { nullptr };
+	std::string loadedEnvironmentMap;
+
+	void _loadEnvironmentIfChanged();
 
 	struct PartialSum {
 		glm::vec4 coefficients;

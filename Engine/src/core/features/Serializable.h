@@ -18,6 +18,21 @@ void CallOnDeserialized(T& obj)
 	}
 }
 
+// how an editor draws a reflected field
+enum class FieldWidget { Auto, Drag, Color, Button, FilePath, Texture };
+
+// optional third argument of a DEFINE_TYPE member, visitors that don't draw ui ignore it
+struct FieldMeta {
+	FieldWidget widget { FieldWidget::Auto };
+	float min { 0.0f };
+	float max { 0.0f };				// min and max for slider
+	float speed { 0.01f };
+	const char* format { nullptr };
+	bool logarithmic { false };
+	bool readOnly { false };		// option to viewonly, no edit
+	const char* tooltip { nullptr };
+};
+
 #define DEFINE_TYPE(ClassName, ...)                                            \
 	static const char* GetStaticType() { return #ClassName; }                   \
 	template<typename Member>                                                   \
@@ -27,14 +42,14 @@ void CallOnDeserialized(T& obj)
 	template<typename Json> requires std::same_as<Json, nlohmann::json>         \
 	friend void to_json(Json& j, const ClassName& obj) {                        \
 		j = Json::object();                                                     \
-		auto resolver = [&j, &obj](const char* name, auto memberPtr) {          \
+		auto resolver = [&j, &obj](const char* name, auto memberPtr, auto&&...) { \
 			j[name] = obj.*memberPtr;                                           \
 		};                                                                      \
 		ClassName::VisitFields(resolver);                                       \
 	}                                                                           \
 	template<typename Json> requires std::same_as<Json, nlohmann::json>         \
 	friend void from_json(const Json& j, ClassName& obj) {                      \
-		auto resolver = [&j, &obj](const char* name, auto memberPtr) {          \
+		auto resolver = [&j, &obj](const char* name, auto memberPtr, auto&&...) { \
 			if (j.contains(name)) {                                             \
 				j.at(name).get_to(obj.*memberPtr);                              \
 			}                                                                   \
