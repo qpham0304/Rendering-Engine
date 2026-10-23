@@ -3,7 +3,7 @@
 #include "ImGuiWidget.h"
 #include "gui/framework/ImGui/ImGuiReflection.h"
 
-// every settings struct the running renderers registered in AppGraphicsSettings, drawn from its DEFINE_TYPE fields
+// every settings struct the running renderers registered in GraphicsSettingsSerializer, drawn from its DEFINE_TYPE fields
 class ImGuiGraphicsSettingsWidget : public ImGuiWidget
 {
 public:

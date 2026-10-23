@@ -34,15 +34,6 @@ namespace ImGuiReflection {
     bool BeginFields(const char* id);
     void EndFields();
 
-    template<typename... Meta>
-    FieldMeta ResolveMeta(const Meta&... meta) {
-        if constexpr (sizeof...(Meta) == 0) {
-            return FieldMeta{};
-        } else {
-            return FieldMeta(meta...);
-        }
-    }
-
     // the fields of object as rows, call between BeginFields and EndFields
     template<typename T>
     bool DrawFields(T& object) {
@@ -50,7 +41,7 @@ namespace ImGuiReflection {
         T::VisitFields([&](const char* name, auto memberPtr, auto&&... meta) {
             using Value = std::remove_reference_t<decltype(object.*memberPtr)>;
             if constexpr (HasFieldDrawer<Value>) {
-                changed |= DrawField(name, object.*memberPtr, ResolveMeta(meta...));
+                changed |= DrawField(name, object.*memberPtr, ResolveFieldMeta(meta...));
             } else {
                 DrawUnsupported(name);
             }

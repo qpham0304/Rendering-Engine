@@ -205,7 +205,7 @@ void LightingPassVulkan::_updateLights(uint32_t currentFrame)
 	pushConstantLight.lintstepLow = settings->linstepLow;
 	pushConstantLight.linstepHigh = settings->linstepHigh;
 	pushConstantLight.litBias = settings->litBias;
-	const AppGraphicsSettings& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
+	const GraphicsSettingsSerializer& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
 	const ShadowMapSettings* shadowSettings = graphicsSettings.get<ShadowMapSettings>();
 	const DDGISettings* ddgiSettings = graphicsSettings.get<DDGISettings>();
 

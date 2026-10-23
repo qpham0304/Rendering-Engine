@@ -33,29 +33,39 @@ struct FieldMeta {
 	const char* tooltip { nullptr };
 };
 
-#define DEFINE_TYPE(ClassName, ...)                                            \
-	static const char* GetStaticType() { return #ClassName; }                   \
-	template<typename Member>                                                   \
-	static void VisitFields(Member&& member) {                                  \
-		__VA_ARGS__;                                                            \
-	}                                                                           \
-	template<typename Json> requires std::same_as<Json, nlohmann::json>         \
-	friend void to_json(Json& j, const ClassName& obj) {                        \
-		j = Json::object();                                                     \
-		auto resolver = [&j, &obj](const char* name, auto memberPtr, auto&&...) { \
-			j[name] = obj.*memberPtr;                                           \
-		};                                                                      \
-		ClassName::VisitFields(resolver);                                       \
-	}                                                                           \
-	template<typename Json> requires std::same_as<Json, nlohmann::json>         \
-	friend void from_json(const Json& j, ClassName& obj) {                      \
-		auto resolver = [&j, &obj](const char* name, auto memberPtr, auto&&...) { \
-			if (j.contains(name)) {                                             \
-				j.at(name).get_to(obj.*memberPtr);                              \
-			}                                                                   \
-		};                                                                      \
-		ClassName::VisitFields(resolver);                                       \
-		CallOnDeserialized(obj);                                                \
+// for resolving optional meta field for visitor, default when member has none
+template<typename... Meta>
+FieldMeta ResolveFieldMeta(const Meta&... meta) {
+	if constexpr (sizeof...(Meta) == 0) {
+		return FieldMeta{};
+	} else {
+		return FieldMeta(meta...);
+	}
+}
+
+#define DEFINE_TYPE(ClassName, ...)                                            		\
+	static const char* GetStaticType() { return #ClassName; }                   	\
+	template<typename Member>                                                   	\
+	static void VisitFields(Member&& member) {                                  	\
+		__VA_ARGS__;                                                            	\
+	}                                                                           	\
+	template<typename Json> requires std::same_as<Json, nlohmann::json>         	\
+	friend void to_json(Json& j, const ClassName& obj) {                        	\
+		j = Json::object();                                                     	\
+		auto resolver = [&j, &obj](const char* name, auto memberPtr, auto&&...) { 	\
+			j[name] = obj.*memberPtr;                                           	\
+		};                                                                      	\
+		ClassName::VisitFields(resolver);                                       	\
+	}                                                                           	\
+	template<typename Json> requires std::same_as<Json, nlohmann::json>         	\
+	friend void from_json(const Json& j, ClassName& obj) {                      	\
+		auto resolver = [&j, &obj](const char* name, auto memberPtr, auto&&...) { 	\
+			if (j.contains(name)) {                                             	\
+				j.at(name).get_to(obj.*memberPtr);                              	\
+			}                                                                   	\
+		};                                                                      	\
+		ClassName::VisitFields(resolver);                                       	\
+		CallOnDeserialized(obj);                                                	\
 	}
 
 class Logger;

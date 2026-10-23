@@ -70,7 +70,7 @@ void DeferredCombinePassVulkan::onUpdate()
 void DeferredCombinePassVulkan::render(Camera &camera)
 {
 	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-	const AppGraphicsSettings& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
+	const GraphicsSettingsSerializer& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
 	const DeferredSettings* deferredSettings = graphicsSettings.get<DeferredSettings>();
 	const DDGISettings* ddgiSettings = graphicsSettings.get<DDGISettings>();	// null without ray tracing, the pass then combines without ddgi
 

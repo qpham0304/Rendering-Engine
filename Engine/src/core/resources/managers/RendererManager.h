@@ -3,7 +3,7 @@
 #include "core/resources/managers/Manager.h"
 #include "graphics/renderers/Renderer.h"
 #include "core/features/Texture.h"
-#include "graphics/utils/GraphicsSettings.h"
+#include "graphics/utils/GraphicsSettingsSerializer.h"
 #include <glm/glm.hpp>
 
 class MYGRAPHICSENGINE_EXPORT RendererManager : public Manager
@@ -36,7 +36,7 @@ public:
 
     virtual Renderer* getRenderer(std::string_view name) = 0;
 
-	AppGraphicsSettings& getGraphicsSettings() { return m_graphicsSettings; }
+	GraphicsSettingsSerializer& getGraphicsSettings() { return m_graphicsSettings; }
 
 protected:
 	friend class Engine;
@@ -44,6 +44,6 @@ protected:
     RendererManager(std::string serviceName = "RendererManager") : Manager(serviceName) {};
 
 	std::vector<std::tuple<std::string, std::shared_ptr<Renderer>>> m_renderers;
-	AppGraphicsSettings m_graphicsSettings;
+	GraphicsSettingsSerializer m_graphicsSettings;
 
 };

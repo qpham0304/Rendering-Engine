@@ -22,6 +22,7 @@
 #include "core/features/ServiceLocator.h"
 #include "core/features/camera.h"
 #include "core/events/EventManager.h"
+#include <filesystem>
 
 RendererManagerVulkan::RendererManagerVulkan(std::string serviceName)
     : RendererManager(serviceName) 
@@ -88,6 +89,11 @@ bool RendererManagerVulkan::init(WindowConfig config)
     // graph owned textures are sized from this, passes can create them during init
     VkExtent2D extent = renderDeviceVulkan->swapchain.swapChainExtent;
     m_renderGraph.setRenderSize(extent.width, extent.height);
+
+    // renderers loads saved values first before registering settings
+    if(std::filesystem::exists(GraphicsSettingsSerializer::DefaultPath)) {
+        m_graphicsSettings.loadSettings(GraphicsSettingsSerializer::DefaultPath);
+    }
 
     for(auto& [name, renderer] : m_renderers) {
         renderer->init(config);

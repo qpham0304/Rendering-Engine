@@ -143,7 +143,7 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	settings->gridMax = settings->gridMin + glm::vec3(probeCounts - 1u) * pushConstant.gridSpacing;
 
 	// same direction and color the light pass and the shadow map use
-	const AppGraphicsSettings& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
+	const GraphicsSettingsSerializer& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
 	const ShadowMapSettings* shadowSettings = graphicsSettings.get<ShadowMapSettings>();
 	const LightingSettings* lightingSettings = graphicsSettings.get<LightingSettings>();
 

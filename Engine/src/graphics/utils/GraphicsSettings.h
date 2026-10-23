@@ -3,13 +3,7 @@
 #include "core/features/Serializable.h"
 
 #include <glm/glm.hpp>
-#include <algorithm>
-#include <concepts>
-#include <memory>
 #include <string>
-#include <string_view>
-#include <typeindex>
-#include <vector>
 
 // The tunables of each renderer, update every frame. Renderer registers its struct during initialization
 // The editor draws whatever is registered through DEFINE_TYPE
@@ -176,47 +170,3 @@ struct DDGISettings {
 	)
 };
 
-template<typename T>
-concept ReflectedSettings = std::default_initializable<T> && requires { T::GetStaticType(); };
-
-// Owns one instance of each registered settings struct, shared by the renderer that registered it and the editor.
-// Instances keep their address until removed, renderers hold a pointer to theirs.
-// An editor draws an entry from its type and data, the way the lua bindings resolve components.
-class AppGraphicsSettings {
-public:
-	struct Entry {
-		std::type_index type;
-		std::string name;
-		std::shared_ptr<void> data;
-	};
-
-	// registers T under a display name, or returns the instance already registered
-	template<ReflectedSettings T>
-	T& add(std::string_view name) {
-		if (T* existing = get<T>()) {
-			return *existing;
-		}
-		auto data = std::make_shared<T>();
-		T& settings = *data;
-		m_entries.push_back(Entry{ typeid(T), std::string(name), std::move(data) });
-		return settings;
-	}
-
-	template<ReflectedSettings T>
-	void remove() {
-		std::erase_if(m_entries, [](const Entry& entry) { return entry.type == typeid(T); });
-	}
-
-	// nullptr when the renderer owning T is not running
-	template<ReflectedSettings T>
-	T* get() const {
-		auto it = std::find_if(m_entries.begin(), m_entries.end(), [](const Entry& entry) { return entry.type == typeid(T); });
-		return it != m_entries.end() ? static_cast<T*>(it->data.get()) : nullptr;
-	}
-
-	// in registration order
-	const std::vector<Entry>& entries() const { return m_entries; }
-
-private:
-	std::vector<Entry> m_entries;
-};

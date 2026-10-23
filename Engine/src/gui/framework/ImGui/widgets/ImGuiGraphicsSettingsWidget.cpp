@@ -24,7 +24,21 @@ void ImGuiGraphicsSettingsWidget::render()
 
     ImGui::Begin(getName(), &m_isVisible);
 
-    const auto& entries = rendererManager->getGraphicsSettings().entries();
+    GraphicsSettingsSerializer& graphicsSettings = rendererManager->getGraphicsSettings();
+    float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+    if (ImGui::Button("Save", ImVec2(buttonWidth, 0.0f))) {
+        graphicsSettings.saveSettings(GraphicsSettingsSerializer::DefaultPath);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Load", ImVec2(buttonWidth, 0.0f))) {
+        graphicsSettings.loadSettings(GraphicsSettingsSerializer::DefaultPath);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s", GraphicsSettingsSerializer::DefaultPath);
+    }
+    ImGui::Separator();
+
+    const auto& entries = graphicsSettings.entries();
     if (entries.empty()) {
         ImGui::TextDisabled("no renderer registered settings");
     }
