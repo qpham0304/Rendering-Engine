@@ -9,7 +9,7 @@ class GeometryPassVulkan;
 class LightingPassVulkan;
 struct RibbonComponent;
 
-// camera facing strips through point lists (trails, beams, lightning), drawn into the lit scene after particles
+// camera facing strips through point lists (trails, beams, lightning) and swept blade surfaces, drawn into the lit scene after particles
 class RibbonRendererVulkan : public RendererVulkan
 {
 private:
@@ -27,15 +27,19 @@ private:
 		uint32_t firstPoint;
 		uint32_t pointCount;
 		int32_t textureID;
-		uint32_t pad;
+		uint32_t flags;
 	};
+
+	// mirrored in ribbon.vert and ribbon.frag
+	static constexpr uint32_t STRIP_FLAG_PAIRED = 1u;		// points come in edge pairs, the strip is not camera facing
 
 	// one strip of this frame's shared point buffer
 	struct StripDraw {
 		uint32_t firstPoint { 0 };
-		uint32_t pointCount { 0 };
+		uint32_t pointCount { 0 };		// pairs for a paired strip
 		int textureID { 0 };
 		int blendMode { 0 };
+		uint32_t flags { 0 };
 	};
 
 	// how one strip is shaded along its length
@@ -65,6 +69,8 @@ protected:
 
 	void _updateTrail(RibbonComponent& ribbon, const glm::vec3& head, float dt);
 	void _updateLightning(RibbonComponent& ribbon, const glm::vec3& start, const glm::vec3& end, float dt);
+	void _updateBlade(RibbonComponent& ribbon, const glm::vec3& base, const glm::vec3& tip, float dt);
+	void _appendBlade(const RibbonComponent& ribbon, const glm::vec3& base, const glm::vec3& tip);
 	std::vector<glm::vec3> _generateBolt(const glm::vec3& start, const glm::vec3& end, int segments, float jitter, std::mt19937& rng) const;
 	void _appendStrip(const std::vector<glm::vec3>& positions, const RibbonComponent& ribbon, const StripStyle& style);
 

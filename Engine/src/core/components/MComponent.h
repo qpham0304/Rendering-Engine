@@ -379,8 +379,8 @@ struct MYGRAPHICSENGINE_EXPORT ParticleEmitter {
 	float fadeOut { 0.0f };
 
 	// rendering
-	int renderMode { 0 };				// ParticleRenderMode
-	int blendMode { 0 };				// ParticleBlendMode
+	int renderMode { 0 };
+	int blendMode { 0 };
 	float stretchFactor { 0.1f };		// extra length per unit of speed for velocity stretched quads
 	std::string texturePath { "None" };
 	int flipbookRows { 1 };
@@ -455,13 +455,16 @@ struct MYGRAPHICSENGINE_EXPORT ParticleEmitter {
 };
 
 // where a ribbon's points come from
-enum class RibbonMode : int { Trail = 0, Beam, Lightning, Count };
+enum class RibbonMode : int { Trail = 0, Beam, Lightning, Blade, Count };
+
+// how the texture runs along a ribbon, Tile repeats per unit of length, Stretch fits it once over the whole length
+enum class RibbonUVMode : int { Tile = 0, Stretch, Count };
 
 // a camera facing strip through a list of points, drawn after particles with the same blend modes
 struct MYGRAPHICSENGINE_EXPORT RibbonComponent {
 	RibbonComponent() = default;
 
-	int mode { 0 };						// RibbonMode
+	int mode { 0 };
 	bool isPlaying { true };
 
 	// look along the length, start is the entity end (trail head, beam and bolt origin)
@@ -471,8 +474,9 @@ struct MYGRAPHICSENGINE_EXPORT RibbonComponent {
 	glm::vec4 colorEnd { 1.0f, 1.0f, 1.0f, 0.0f };
 	int blendMode { 0 };				// ParticleBlendMode
 	std::string texturePath { "None" };
-	float textureTiling { 1.0f };		// texture repeats per unit of length
+	float textureTiling { 1.0f };		// texture repeats per unit of length, or over the whole length when stretched
 	float textureScroll { 0.0f };		// texture lengths per second, along the ribbon
+	int uvMode { 0 };					// RibbonUVMode
 
 	// trail: the entity's recent positions
 	float trailLifetime { 0.5f };		// seconds a recorded point lasts
@@ -491,12 +495,23 @@ struct MYGRAPHICSENGINE_EXPORT RibbonComponent {
 	float branchLength { 0.35f };		// fraction of the bolt length
 	float flicker { 0.4f };				// brightness variation between bolt shapes
 
+	// blade: the swept surface between two points on the entity, uses the trail lifetime and max points
+	glm::vec3 bladeBase { 0.0f, 0.0f, 0.0f };	// local space, usually the hilt end of the blade
+	glm::vec3 bladeTip { 0.0f, 1.0f, 0.0f };	// local space
+	int subdivisions { 4 };						// smoothed points added between recorded frames, fast swings stay round
+
 	// runtime state, not serialized
 	struct TrailPoint {
 		glm::vec3 position;
 		float age;
 	};
+	struct BladeSample {
+		glm::vec3 base;
+		glm::vec3 tip;
+		float age;
+	};
 	std::vector<TrailPoint> trailPoints;
+	std::vector<BladeSample> bladeSamples;
 	std::vector<std::vector<glm::vec3>> boltStrips;		// main bolt first, then branches
 	float regenerateTimer { 0.0f };
 	float boltBrightness { 1.0f };
@@ -515,6 +530,7 @@ struct MYGRAPHICSENGINE_EXPORT RibbonComponent {
 		member("texturePath", &RibbonComponent::texturePath),
 		member("textureTiling", &RibbonComponent::textureTiling),
 		member("textureScroll", &RibbonComponent::textureScroll),
+		member("uvMode", &RibbonComponent::uvMode),
 		member("trailLifetime", &RibbonComponent::trailLifetime),
 		member("minSegmentLength", &RibbonComponent::minSegmentLength),
 		member("maxPoints", &RibbonComponent::maxPoints),
@@ -525,7 +541,10 @@ struct MYGRAPHICSENGINE_EXPORT RibbonComponent {
 		member("regenerateInterval", &RibbonComponent::regenerateInterval),
 		member("branches", &RibbonComponent::branches),
 		member("branchLength", &RibbonComponent::branchLength),
-		member("flicker", &RibbonComponent::flicker)
+		member("flicker", &RibbonComponent::flicker),
+		member("bladeBase", &RibbonComponent::bladeBase),
+		member("bladeTip", &RibbonComponent::bladeTip),
+		member("subdivisions", &RibbonComponent::subdivisions)
 	)
 };
 

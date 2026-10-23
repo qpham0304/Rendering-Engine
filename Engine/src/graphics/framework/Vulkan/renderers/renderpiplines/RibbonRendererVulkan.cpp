@@ -12,6 +12,7 @@
 #include <core/features/Camera.h>
 #include <core/components/MComponent.h>
 #include <core/features/Timer.h>
+#include <core/features/Math.h>
 #include <glm/gtc/constants.hpp>
 #include <algorithm>
 
@@ -150,6 +151,14 @@ void RibbonRendererVulkan::render(Camera& camera)
                 break;
             }
 
+            case RibbonMode::Blade: {
+                glm::vec3 base = glm::vec3(model * glm::vec4(ribbon.bladeBase, 1.0f));
+                glm::vec3 tip = glm::vec3(model * glm::vec4(ribbon.bladeTip, 1.0f));
+                _updateBlade(ribbon, base, tip, dt);
+                _appendBlade(ribbon, base, tip);
+                break;
+            }
+
             default:
                 break;
         }
@@ -218,9 +227,10 @@ void RibbonRendererVulkan::render(Camera& camera)
         pushConstant.firstPoint = draw.firstPoint;
         pushConstant.pointCount = draw.pointCount;
         pushConstant.textureID = draw.textureID;
+        pushConstant.flags = draw.flags;
         vkCmdPushConstants(cmd, pipeline->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(RibbonPushConstant), &pushConstant);
 
-        // six vertices per segment, the vertex shader pulls the two points of its segment
+        // six vertices per segment, the vertex shader pulls the two points (or pairs) of its segment
         vkCmdDraw(cmd, (draw.pointCount - 1) * 6, 1, 0, 0);
     }
 
@@ -296,9 +306,8 @@ std::vector<glm::vec3> RibbonRendererVulkan::_generateBolt(const glm::vec3& star
 
     float length = glm::distance(start, end);
     glm::vec3 axis = length > 1e-5f ? (end - start) / length : glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 helper = std::abs(axis.y) < 0.99f ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
-    glm::vec3 sideA = glm::normalize(glm::cross(axis, helper));
-    glm::vec3 sideB = glm::cross(axis, sideA);
+    glm::vec3 sideA, sideB;
+    Math::orthonormalBasis(axis, sideA, sideB);
 
     std::vector<glm::vec3> bolt { start, end };
     float offset = jitter * length;
@@ -351,8 +360,118 @@ void RibbonRendererVulkan::_appendStrip(const std::vector<glm::vec3>& positions,
         if(style.ages) {
             point.color.a *= 1.0f - std::clamp((*style.ages)[i] / lifetime, 0.0f, 1.0f);
         }
-        point.u = distances[i] * ribbon.textureTiling - time * ribbon.textureScroll;
+        float along = ribbon.uvMode == static_cast<int>(RibbonUVMode::Stretch) ? t : distances[i];
+        point.u = along * ribbon.textureTiling - time * ribbon.textureScroll;
         points.push_back(point);
+    }
+    draws.push_back(draw);
+}
+
+void RibbonRendererVulkan::_updateBlade(RibbonComponent& ribbon, const glm::vec3& base, const glm::vec3& tip, float dt)
+{
+    // same aging as the trail, oldest samples are at the front
+    for(auto& sample : ribbon.bladeSamples) {
+        sample.age += dt;
+    }
+    float lifetime = std::max(ribbon.trailLifetime, 0.01f);
+    auto expired = std::find_if(ribbon.bladeSamples.begin(), ribbon.bladeSamples.end(), [&](const RibbonComponent::BladeSample& s) {
+        return s.age < lifetime;
+    });
+    ribbon.bladeSamples.erase(ribbon.bladeSamples.begin(), expired);
+
+    if(!ribbon.isPlaying) {
+        return;
+    }
+
+    // either end moving counts, a blade turning around its tip still sweeps with its base
+    bool moved = ribbon.bladeSamples.empty()
+        || glm::distance(ribbon.bladeSamples.back().tip, tip) >= ribbon.minSegmentLength
+        || glm::distance(ribbon.bladeSamples.back().base, base) >= ribbon.minSegmentLength;
+    if(moved) {
+        ribbon.bladeSamples.push_back({ base, tip, 0.0f });
+    }
+
+    size_t maxPoints = static_cast<size_t>(std::clamp(ribbon.maxPoints, 2, MAX_SEGMENTS));
+    if(ribbon.bladeSamples.size() > maxPoints) {
+        ribbon.bladeSamples.erase(ribbon.bladeSamples.begin(), ribbon.bladeSamples.begin() + (ribbon.bladeSamples.size() - maxPoints));
+    }
+}
+
+void RibbonRendererVulkan::_appendBlade(const RibbonComponent& ribbon, const glm::vec3& base, const glm::vec3& tip)
+{
+    // newest first so the strip starts at the blade, a playing blade stays attached through its live position
+    std::vector<RibbonComponent::BladeSample> controls;
+    if(ribbon.isPlaying) {
+        controls.push_back({ base, tip, 0.0f });
+    }
+    for(auto it = ribbon.bladeSamples.rbegin(); it != ribbon.bladeSamples.rend(); ++it) {
+        bool sameAsLive = !controls.empty() && glm::distance(controls.back().tip, it->tip) < 1e-4f && glm::distance(controls.back().base, it->base) < 1e-4f;
+        if(!sameAsLive) {
+            controls.push_back(*it);
+        }
+    }
+    if(controls.size() < 2) {
+        return;
+    }
+
+    // one sample per frame turns a fast swing into a few straight chords, a spline through them keeps the arc round
+    size_t spans = controls.size() - 1;
+    int maxSubdivisions = std::max(static_cast<int>(MAX_SEGMENTS / spans) - 1, 0);
+    int subdivisions = std::clamp(ribbon.subdivisions, 0, std::min(maxSubdivisions, 16));
+
+    std::vector<RibbonComponent::BladeSample> samples;
+    samples.reserve(spans * (subdivisions + 1) + 1);
+    for(size_t i = 0; i < spans; i++) {
+        const auto& p0 = controls[i > 0 ? i - 1 : i];
+        const auto& p1 = controls[i];
+        const auto& p2 = controls[i + 1];
+        const auto& p3 = controls[std::min(i + 2, controls.size() - 1)];
+        for(int s = 0; s <= subdivisions; s++) {
+            float t = static_cast<float>(s) / (subdivisions + 1);
+            samples.push_back({
+                Math::catmullRom(p0.base, p1.base, p2.base, p3.base, t),
+                Math::catmullRom(p0.tip, p1.tip, p2.tip, p3.tip, t),
+                glm::mix(p1.age, p2.age, t)
+            });
+        }
+    }
+    samples.push_back(controls.back());
+
+    if(points.size() + samples.size() * 2 > MAX_POINTS) {
+        return;
+    }
+
+    // the tip sweeps the farthest, its path drives the start to end look and the texture coordinate
+    std::vector<float> distances(samples.size(), 0.0f);
+    for(size_t i = 1; i < samples.size(); i++) {
+        distances[i] = distances[i - 1] + glm::distance(samples[i - 1].tip, samples[i].tip);
+    }
+    float total = std::max(distances.back(), 1e-5f);
+
+    float lifetime = std::max(ribbon.trailLifetime, 0.01f);
+    StripDraw draw{};
+    draw.firstPoint = static_cast<uint32_t>(points.size());
+    draw.pointCount = static_cast<uint32_t>(samples.size());
+    draw.textureID = static_cast<int>(ribbon.textureID);
+    draw.blendMode = std::clamp(ribbon.blendMode, 0, static_cast<int>(pipelines.size()) - 1);
+    draw.flags = STRIP_FLAG_PAIRED;
+
+    for(size_t i = 0; i < samples.size(); i++) {
+        float t = distances[i] / total;
+
+        // width is the part of the blade covered, measured from the tip, so the tail can narrow toward the edge
+        float coverage = std::clamp(glm::mix(ribbon.widthStart, ribbon.widthEnd, t), 0.0f, 1.0f);
+
+        RibbonPointGPU edge{};
+        edge.color = glm::mix(ribbon.colorStart, ribbon.colorEnd, t);
+        edge.color.a *= 1.0f - std::clamp(samples[i].age / lifetime, 0.0f, 1.0f);
+        float along = ribbon.uvMode == static_cast<int>(RibbonUVMode::Stretch) ? t : distances[i];
+        edge.u = along * ribbon.textureTiling - time * ribbon.textureScroll;
+
+        edge.position = glm::mix(samples[i].tip, samples[i].base, coverage);
+        points.push_back(edge);
+        edge.position = samples[i].tip;
+        points.push_back(edge);
     }
     draws.push_back(draw);
 }

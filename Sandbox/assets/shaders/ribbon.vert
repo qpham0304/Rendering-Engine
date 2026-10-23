@@ -32,9 +32,12 @@ layout(buffer_reference, scalar) buffer RibbonPoints { RibbonPoint p[]; };
 layout(push_constant) uniform RibbonPushConstant {
     RibbonPoints pointsRef;
     uint firstPoint;    // this strip's points in the shared buffer
-    uint pointCount;
+    uint pointCount;    // pairs for a paired strip
     int textureID;
+    uint flags;
 } pc;
+
+const uint STRIP_FLAG_PAIRED = 1u;  // match STRIP_FLAG_PAIRED in RibbonRendererVulkan.h
 
 // one quad per segment, x picks the segment end, y the side
 const vec2 corners[6] = vec2[](
@@ -50,6 +53,15 @@ void main() {
     uint segment = gl_VertexIndex / 6;
     vec2 corner = corners[gl_VertexIndex % 6];
     uint index = segment + uint(corner.x);
+
+    // a blade sweep already has both edges in world space, inner edge then tip edge
+    if ((pc.flags & STRIP_FLAG_PAIRED) != 0u) {
+        RibbonPoint edge = pointAt(index * 2u + (corner.y > 0.0 ? 1u : 0u));
+        fragTexCoord = vec2(edge.u, corner.y * 0.5 + 0.5);
+        fragColor = edge.color;
+        gl_Position = ubo.proj * ubo.view * vec4(edge.position, 1.0);
+        return;
+    }
 
     RibbonPoint point = pointAt(index);
 

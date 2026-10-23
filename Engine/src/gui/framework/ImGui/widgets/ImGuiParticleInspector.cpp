@@ -374,18 +374,28 @@ void ImGuiParticleInspector::drawRibbon(RibbonComponent& ribbon, TextureManager*
     ImGui::SameLine();
     if (ImGui::Button("Clear", ImVec2(buttonWidth, 0.0f))) {
         ribbon.trailPoints.clear();
+        ribbon.bladeSamples.clear();
         ribbon.boltStrips.clear();
     }
     ImGui::Spacing();
 
     if (BeginSection("Source", true)) {
-        const char* modes[] = { "Trail (follows the entity)", "Beam (straight)", "Lightning" };
+        const char* modes[] = { "Trail (follows the entity)", "Beam (straight)", "Lightning", "Blade (sword slash)" };
         static_assert(IM_ARRAYSIZE(modes) == static_cast<int>(RibbonMode::Count));
         Row("Mode");
         ImGui::Combo("##mode", &ribbon.mode, modes, IM_ARRAYSIZE(modes));
 
         RibbonMode mode = static_cast<RibbonMode>(ribbon.mode);
-        if (mode == RibbonMode::Trail) {
+        if (mode == RibbonMode::Blade) {
+            Row("Base", "local point on the entity where the slash starts, usually near the hilt");
+            ImGui::DragFloat3("##bladeBase", &ribbon.bladeBase[0], 0.01f, -100.0f, 100.0f, "%.2f");
+            Row("Tip", "local point at the blade tip, the slash is swept between Base and Tip");
+            ImGui::DragFloat3("##bladeTip", &ribbon.bladeTip[0], 0.01f, -100.0f, 100.0f, "%.2f");
+            Row("Smoothing", "spline points added between recorded frames, keeps fast swings round");
+            ImGui::DragInt("##subdivisions", &ribbon.subdivisions, 0.1f, 0, 16);
+        }
+
+        if (mode == RibbonMode::Trail || mode == RibbonMode::Blade) {
             Row("Lifetime", "seconds a recorded point lasts, so how long the trail is");
             ImGui::DragFloat("##trailLifetime", &ribbon.trailLifetime, 0.01f, 0.01f, 10.0f, "%.2f s");
             Row("Min step", "the entity has to move this far before a new point is recorded");
@@ -420,13 +430,16 @@ void ImGuiParticleInspector::drawRibbon(RibbonComponent& ribbon, TextureManager*
     }
 
     if (BeginSection("Look", true)) {
-        Row("Width", "start is the entity end, end is the far end or the trail's tail");
+        bool blade = static_cast<RibbonMode>(ribbon.mode) == RibbonMode::Blade;
+        float widthMax = blade ? 1.0f : 50.0f;
+        Row("Width", blade ? "part of the blade covered from the tip, 1 is the full Base to Tip, start is at the blade, end at the tail"
+                           : "start is the entity end, end is the far end or the trail's tail");
         float half = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
         ImGui::SetNextItemWidth(half);
-        ImGui::DragFloat("##widthStart", &ribbon.widthStart, 0.005f, 0.0f, 50.0f, "start %.3f");
+        ImGui::DragFloat("##widthStart", &ribbon.widthStart, 0.005f, 0.0f, widthMax, "start %.3f");
         ImGui::SameLine();
         ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::DragFloat("##widthEnd", &ribbon.widthEnd, 0.005f, 0.0f, 50.0f, "end %.3f");
+        ImGui::DragFloat("##widthEnd", &ribbon.widthEnd, 0.005f, 0.0f, widthMax, "end %.3f");
 
         ImGuiColorEditFlags colorFlags = ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar;
         Row("Color start");
@@ -442,7 +455,13 @@ void ImGuiParticleInspector::drawRibbon(RibbonComponent& ribbon, TextureManager*
         Row("Texture", "without one the edges fade so a plain ribbon reads as a glow");
         TexturePicker(ribbon.texturePath, ribbon.loadedTexturePath, ribbon.textureID, ribbon.textureID, textureManager);
 
-        Row("Tiling", "texture repeats per unit of length");
+        const char* uvModes[] = { "Tile (per unit of length)", "Stretch (once over the length)" };
+        static_assert(IM_ARRAYSIZE(uvModes) == static_cast<int>(RibbonUVMode::Count));
+        Row("Texture UV", "slash and swoosh textures are painted to Stretch over the whole trail");
+        ImGui::Combo("##uvMode", &ribbon.uvMode, uvModes, IM_ARRAYSIZE(uvModes));
+
+        bool stretch = ribbon.uvMode == static_cast<int>(RibbonUVMode::Stretch);
+        Row("Tiling", stretch ? "texture repeats over the whole length" : "texture repeats per unit of length");
         ImGui::DragFloat("##tiling", &ribbon.textureTiling, 0.01f, 0.0f, 50.0f, "%.2f");
         Row("Scroll", "texture lengths per second along the ribbon");
         ImGui::DragFloat("##scroll", &ribbon.textureScroll, 0.05f, -50.0f, 50.0f, "%.2f");

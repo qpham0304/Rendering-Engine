@@ -463,7 +463,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
         }
 
         if (!entity.hasComponent<RibbonComponent>() && ImGui::BeginMenu("Ribbon")) {
-            const char* modes[] = { "Trail", "Beam", "Lightning" };
+            const char* modes[] = { "Trail", "Beam", "Lightning", "Blade" };
             for (int mode = 0; mode < IM_ARRAYSIZE(modes); mode++) {
                 if (ImGui::Selectable(modes[mode])) {
                     entity.addComponent<RibbonComponent>();
@@ -474,6 +474,15 @@ void ImGuiRightSidebarWidget::_componentsControl()
                         ribbon.widthEnd = 0.04f;
                         ribbon.colorStart = glm::vec4(2.0f, 2.4f, 4.0f, 1.0f);
                         ribbon.colorEnd = glm::vec4(1.2f, 1.5f, 3.0f, 0.8f);
+                    }
+                    if (mode == static_cast<int>(RibbonMode::Blade)) {          // a short bright slash, narrowing toward the edge
+                        ribbon.widthStart = 1.0f;
+                        ribbon.widthEnd = 0.4f;
+                        ribbon.colorStart = glm::vec4(2.5f, 2.5f, 3.0f, 1.0f);
+                        ribbon.colorEnd = glm::vec4(0.6f, 0.8f, 2.0f, 0.0f);
+                        ribbon.trailLifetime = 0.2f;
+                        ribbon.minSegmentLength = 0.01f;
+                        ribbon.uvMode = static_cast<int>(RibbonUVMode::Stretch);
                     }
                 }
             }
