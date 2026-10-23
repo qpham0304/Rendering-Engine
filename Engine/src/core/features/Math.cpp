@@ -93,3 +93,20 @@ Math::Quat Math::slerp(const Quat &a, const Quat &b, float t)
 
     return result;
 }
+
+// uniform Catmull-Rom between p1 and p2, p0 and p3 only shape the tangents
+glm::vec3 Math::catmullRom(const glm::vec3 &p0, const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec3 &p3, float t)
+{
+    float t2 = t * t;
+    float t3 = t2 * t;
+    return 0.5f * ((2.0f * p1) + (p2 - p0) * t + (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 + (3.0f * p1 - p0 - 3.0f * p2 + p3) * t3);
+}
+
+// two unit vectors perpendicular to a unit axis and to each other
+void Math::orthonormalBasis(const glm::vec3 &axis, glm::vec3 &sideA, glm::vec3 &sideB)
+{
+    // any helper not parallel to the axis works, up unless the axis is nearly vertical
+    glm::vec3 helper = std::abs(axis.y) < 0.99f ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+    sideA = glm::normalize(glm::cross(axis, helper));
+    sideB = glm::cross(axis, sideA);
+}

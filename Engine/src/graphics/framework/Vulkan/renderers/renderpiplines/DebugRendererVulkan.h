@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 class BufferVulkan;
+class GeometryPassVulkan;
 
 // draws debug lines and collider selection outlines on top of the current display image
 // outlines follow box3d samples: selected/hovered shapes are rasterized into a
@@ -19,8 +20,11 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void drawLine(const glm::vec3& start, const glm::vec3& end);
+	void setGridVisible(bool visible) { gridVisible = visible; }
+	bool isGridVisible() const { return gridVisible; }
 
 	bool hasOutlineMesh(uint32_t key) const;
 	void uploadOutlineMesh(uint32_t key, const std::vector<glm::vec3>& localTriangles);
@@ -49,6 +53,32 @@ private:
 			attributeDescriptions[0].location = 0;
 			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[0].offset = offsetof(DebugVertex, pos);
+			return attributeDescriptions;
+		}
+	};
+
+	struct GridVertex {
+		glm::vec3 pos;
+		glm::vec4 color;
+
+		static VkVertexInputBindingDescription getBindingDescription() {
+			VkVertexInputBindingDescription bindingDescription{};
+			bindingDescription.binding = 0;
+			bindingDescription.stride = sizeof(GridVertex);
+			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+			return bindingDescription;
+		}
+
+		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+			attributeDescriptions[0].binding = 0;
+			attributeDescriptions[0].location = 0;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[0].offset = offsetof(GridVertex, pos);
+			attributeDescriptions[1].binding = 0;
+			attributeDescriptions[1].location = 1;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+			attributeDescriptions[1].offset = offsetof(GridVertex, color);
 			return attributeDescriptions;
 		}
 	};
@@ -83,7 +113,16 @@ private:
 	};
 
 	const uint32_t MAX_DEBUG_VERTICES = 10000;
+	const uint32_t MAX_GRID_VERTICES = 8192;
+	
 	std::unique_ptr<VulkanPipeline> pipeline;
+	std::unique_ptr<VulkanPipeline> gridPipeline;
+	std::vector<GridVertex> m_gridVertices;
+	std::vector<BufferVulkan*> m_gridBuffers;
+	bool gridVisible { true };
+	GeometryPassVulkan* geometryPass { nullptr };
+	VkFormat depthFormat { VK_FORMAT_UNDEFINED };
+
 	std::unique_ptr<VulkanPipeline> maskPipeline;
 	std::unique_ptr<VulkanPipeline> combinePipeline;
 	TextureVulkan* debugImage;
@@ -115,6 +154,8 @@ private:
 	void _createDescriptors();
 	void _updateDescriptors();
 	void _clearDrawRequests();
+	void _buildGrid(const glm::vec3& cameraPosition);
+	void _renderGrid(VkCommandBuffer cmd, uint32_t currentFrame, TextureVulkan* depthImage);
 
 	virtual void _recreateResources() override;
 	virtual void _cleanupResources() override;

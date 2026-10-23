@@ -49,6 +49,7 @@ public:
 	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc) override;
 	
 	uint64_t getMaterialAddress();
+	uint32_t getFallbackAlbedoID() const { return fallback_albedoID; }
 	
 
 private:

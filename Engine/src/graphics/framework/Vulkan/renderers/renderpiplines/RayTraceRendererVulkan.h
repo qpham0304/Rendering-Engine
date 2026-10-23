@@ -65,6 +65,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 	
 	void writePostProcess(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeRayTracing(VkCommandBuffer cmd, uint32_t currentFrame);

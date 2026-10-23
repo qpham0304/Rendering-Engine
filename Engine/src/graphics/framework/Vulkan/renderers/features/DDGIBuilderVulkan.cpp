@@ -15,7 +15,6 @@
 #include "core/features/Camera.h"
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/constants.hpp>
-#include <imgui/imgui.h>
 #include <algorithm>
 #include <random>
 
@@ -76,17 +75,11 @@ bool DDGIBuilderVulkan::init(WindowConfig config)
     RendererVulkan* renderer = nullptr;
     renderer = rendererManagerVulkan->getRenderer("RayTraceRendererVulkan");
 	raytracer = dynamic_cast<RayTraceRendererVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("ShadowMapPassVulkan");
-	shadowMapPass = dynamic_cast<ShadowMapPassVulkan*>(renderer);
-	renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	deferredRenderer = dynamic_cast<DeferredRendererVulkan*>(renderer);
 	renderer = rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan");
 	imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(renderer);
-    assert(raytracer && shadowMapPass && deferredRenderer && imageBasedRenderer && "failed to retrieve renderer");
+    assert(raytracer && imageBasedRenderer && "failed to retrieve renderer");
 
-	ubo.hysteresis = 0.97f;
-	ubo.normalBias = 0.3f;
-	ubo.skyIntensity = 1.0f;
+	settings = &rendererManagerVulkan->getGraphicsSettings().add<DDGISettings>("DDGI");
 
 	// the scene can gain its probe grid later, render() resizes the atlases when it shows up
 	LightProbeComponent* probeGrid = findProbeGrid();
@@ -111,20 +104,24 @@ void DDGIBuilderVulkan::render(Camera &camera)
 {
 	RendererVulkan::render(camera);
 
-	// nothing here depends on the window size
-	needResize = false;
+	needResize = false;	// nothing in this pass needed resize
 
 	LightProbeComponent* probeGrid = findProbeGrid();
 	AccelStructureBufferVulkan* tlas = raytracer->m_rtBuilder.getTlas();
 	hasProbe = probeGrid && probeGrid->spacing > 0.0f && tlas;
-	if(!hasProbe || !enabled) {
-		return;
+
+	if(settings->resetProbes) {
+		resetHistory = true;
+		settings->resetProbes = false;
 	}
 
-	glm::uvec3 newProbeCounts = gridProbeCounts(*probeGrid, MAX_PROBES_PER_DIMENSION);
-	if(newProbeCounts != probeCounts) {
-		probeCounts = newProbeCounts;
-		_recreateResources();
+	settings->hasProbeGrid = hasProbe;
+	settings->probeCounts = hasProbe ? glm::ivec3(probeCounts) : glm::ivec3(0);
+	settings->irradianceAtlas = lastframeIrradianceAtlas->id();
+	settings->visibilityAtlas = lastFrameVisibilityAtlas->id();
+
+	if(!settings->isReady()) {
+		return;
 	}
 
 	// probes hold light for the place they were in, a moved grid has to start over
@@ -139,15 +136,29 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	pushConstant.probesResolution = IRRADIANCE_RES;
 	pushConstant.gridSpacing = probeGrid->spacing;
 
-	glm::vec3 sunDirection = shadowMapPass->lightDir;
+	// the grid this frame's atlases are built with, the combine pass samples them with it
+	settings->gridOrigin = pushConstant.gridOrigin;
+	settings->gridSpacing = pushConstant.gridSpacing;
+	settings->gridMin = glm::vec3(pushConstant.gridOrigin);
+	settings->gridMax = settings->gridMin + glm::vec3(probeCounts - 1u) * pushConstant.gridSpacing;
+
+	// same direction and color the light pass and the shadow map use
+	const GraphicsSettingsSerializer& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
+	const ShadowMapSettings* shadowSettings = graphicsSettings.get<ShadowMapSettings>();
+	const LightingSettings* lightingSettings = graphicsSettings.get<LightingSettings>();
+
+	glm::vec3 sunDirection = shadowSettings ? shadowSettings->lightDir : glm::vec3(0.0f);
 	if(glm::length(sunDirection) < 0.0001f) {
 		sunDirection = glm::vec3(0.0f, 1.0f, 0.0f);
 	}
 	ubo.randomRotation = randomRotation();
-	ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), 0.0f);	// same direction and color the light pass and the shadow map use
-	ubo.sunColor = deferredRenderer->sunColor * deferredRenderer->sunIntensity;
+	ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), 0.0f);
+	ubo.sunColor = lightingSettings ? lightingSettings->sunColor * lightingSettings->sunIntensity : glm::vec4(0.0f);
 	ubo.maxRayDistance = probeGrid->spacing * 1.5f;	// a bit less than the diagonal of a grid cell
 	ubo.clear = resetHistory ? 1 : 0;
+	ubo.hysteresis = settings->hysteresis;
+	ubo.normalBias = settings->normalBias;
+	ubo.skyIntensity = settings->skyIntensity;
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
@@ -238,44 +249,6 @@ void DDGIBuilderVulkan::writeUpdateVisibility(VkCommandBuffer cmd, uint32_t curr
     _copyToLastFrame(cmd, currentVisibilityAtlas, lastFrameVisibilityAtlas);
 }
 
-void DDGIBuilderVulkan::renderGui()
-{
-    ImGui::Begin("DDGI");
-	ImGui::Checkbox("enabled", &enabled);
-	ImGui::SameLine();
-	ImGui::Checkbox("indirect only", &showIndirectOnly);
-	ImGui::SameLine();
-	if(ImGui::Button("reset probes")) {
-		resetHistory = true;
-	}
-	ImGui::SliderFloat("intensity", &intensity, 0.0f, 5.0f);
-	ImGui::SliderFloat("sky intensity", &ubo.skyIntensity, 0.0f, 2.0f);
-	ImGui::SliderFloat("hysteresis", &ubo.hysteresis, 0.0f, 0.99f);
-	ImGui::SliderFloat("normal bias", &ubo.normalBias, 0.0f, 1.0f);
-
-	if(hasProbe) {
-		ImGui::Text("%u x %u x %u probes, %u rays each", probeCounts.x, probeCounts.y, probeCounts.z, raysPerProbe);
-		glm::vec3 gridMin = glm::vec3(pushConstant.gridOrigin);
-		glm::vec3 gridMax = gridMin + glm::vec3(probeCounts - 1u) * pushConstant.gridSpacing;
-		ImGui::Text("covers (%.1f, %.1f, %.1f) to (%.1f, %.1f, %.1f)", gridMin.x, gridMin.y, gridMin.z, gridMax.x, gridMax.y, gridMax.z);
-	} else {
-		ImGui::Text("no light probe grid in the scene");
-	}
-
-	// the atlases are Cx tiles wide and Cy * Cz tiles tall
-	float scale = 384.0f / static_cast<float>(visAtlasH);
-	ImGui::Image(
-		(ImTextureID)textureManagerVulkan->inspectTexture(lastframeIrradianceAtlas->id()),
-		ImVec2(visAtlasW * scale, visAtlasH * scale)
-	);
-	ImGui::SameLine();
-	ImGui::Image(
-		(ImTextureID)textureManagerVulkan->inspectTexture(lastFrameVisibilityAtlas->id()),
-		ImVec2(visAtlasW * scale, visAtlasH * scale)
-	);
-    ImGui::End();
-}
-
 TextureVulkan *DDGIBuilderVulkan::getAtlasImage()
 {
     return lastframeIrradianceAtlas;
@@ -286,47 +259,8 @@ TextureVulkan *DDGIBuilderVulkan::getVisibilityAtlasImage()
     return lastFrameVisibilityAtlas;
 }
 
-bool DDGIBuilderVulkan::isReady() const
-{
-    return hasProbe && enabled;
-}
-
-glm::vec4 DDGIBuilderVulkan::getGridOrigin() const
-{
-    return pushConstant.gridOrigin;
-}
-
-float DDGIBuilderVulkan::getGridSpacing() const
-{
-    return pushConstant.gridSpacing;
-}
-
-glm::uvec3 DDGIBuilderVulkan::getProbeCounts() const
-{
-    return probeCounts;
-}
-
-float DDGIBuilderVulkan::getSkyIntensity() const
-{
-    return ubo.skyIntensity;
-}
-
-float DDGIBuilderVulkan::getNormalBias() const
-{
-    return ubo.normalBias;
-}
-
-float DDGIBuilderVulkan::getIntensity() const
-{
-    return intensity;
-}
-
-bool DDGIBuilderVulkan::getShowIndirectOnly() const
-{
-    return showIndirectOnly;
-}
-
-void DDGIBuilderVulkan::_createResources()
+// true when the graph handed back new textures (first call or probe count change)
+bool DDGIBuilderVulkan::_createResources()
 {
 	if(uniformbuffersList.empty()) {
     	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
@@ -343,24 +277,35 @@ void DDGIBuilderVulkan::_createResources()
 	rayBufferW = raysPerProbe;
 	rayBufferH = totalProbes;
 
-    auto createTexture = [&] (TextureVulkan*& texture, uint32_t w, uint32_t h, VkFormat format, VkImageUsageFlags extraUsage = 0) {
-        TextureSamplerConfig samplerConfig = { VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_MIPMAP_MODE_LINEAR };
-        TextureConfig imageConfig { .width = w, .height = h, .format = format};
-		imageConfig.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | extraUsage;	// transfer dst for the clear below
-
-        uint32_t id = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
-        texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
+    // owned by the render graph, sized by the probe count. the graph hands back the same textures every
+    // frame and recreates them when the probe count (so the size) changes
+    RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
+    uint32_t previousAtlasID = currentIrradianceAtlas ? currentIrradianceAtlas->id() : 0;
+    auto createTexture = [&] (const char* name, RGHandle& handle, uint32_t w, uint32_t h, VkFormat format, VkImageUsageFlags extraUsage = 0) {
+        RGTextureDesc desc{};
+        desc.config.width = w;
+        desc.config.height = h;
+        desc.config.format = format;
+        desc.config.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | extraUsage;	// transfer dst for the clear below
+        desc.sampler = { VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_MIPMAP_MODE_LINEAR };
+        handle = graph.createRenderTexture(name, desc);
+        return graph.getTexture(handle);
     };
 
     // Width = Rays, Height = Total Probes
-    createTexture(rayColorBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16B16A16_SFLOAT);
-    createTexture(rayDistanceBuffer, rayBufferW, rayBufferH, VK_FORMAT_R16G16_SFLOAT);
-    createTexture(currentIrradianceAtlas, irrAtlasW, irrAtlasH, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-    createTexture(lastframeIrradianceAtlas, irrAtlasW, irrAtlasH, VK_FORMAT_R16G16B16A16_SFLOAT);
-    createTexture(currentVisibilityAtlas, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-    createTexture(lastFrameVisibilityAtlas, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT);
+    rayColorBuffer = createTexture("DDGI.RayColor", rayColorHandle, rayBufferW, rayBufferH, VK_FORMAT_R16G16B16A16_SFLOAT);
+    rayDistanceBuffer = createTexture("DDGI.RayDistance", rayDistanceHandle, rayBufferW, rayBufferH, VK_FORMAT_R16G16_SFLOAT);
+    currentIrradianceAtlas = createTexture("DDGI.Irradiance", currentIrradianceHandle, irrAtlasW, irrAtlasH, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    lastframeIrradianceAtlas = createTexture("DDGI.IrradianceLastFrame", lastIrradianceHandle, irrAtlasW, irrAtlasH, VK_FORMAT_R16G16B16A16_SFLOAT);
+    currentVisibilityAtlas = createTexture("DDGI.Visibility", currentVisibilityHandle, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    lastFrameVisibilityAtlas = createTexture("DDGI.VisibilityLastFrame", lastVisibilityHandle, visAtlasW, visAtlasH, VK_FORMAT_R16G16_SFLOAT);
 
-	// new images hold garbage and the atlases feed back into themselves every frame
+    // all six change together, nothing else to do while they are the same textures as last frame
+    // (by id, a recreated texture can land at the same address)
+    if(currentIrradianceAtlas->id() == previousAtlasID) {
+        return false;
+    }
+
 	VkClearColorValue clearColor = {{ 0.0f, 0.0f, 0.0f, 0.0f }};
 	VkImageSubresourceRange range = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
@@ -385,14 +330,8 @@ void DDGIBuilderVulkan::_createResources()
 	}
 	renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
 
-    rendererManagerVulkan->addRenderTexture("rayColorBuffer", {rayColorBuffer->id()});
-    rendererManagerVulkan->addRenderTexture("rayDistanceBuffer", {rayDistanceBuffer->id()});
-    rendererManagerVulkan->addRenderTexture("currentIrradianceAtlas", {currentIrradianceAtlas->id()});
-    rendererManagerVulkan->addRenderTexture("lastframeIrradianceAtlas", {lastframeIrradianceAtlas->id()});
-    rendererManagerVulkan->addRenderTexture("currentVisibilityAtlas", {currentVisibilityAtlas->id()});
-    rendererManagerVulkan->addRenderTexture("lastFrameVisibilityAtlas", {lastFrameVisibilityAtlas->id()});
-
 	resetHistory = true;
+	return true;
 }
 
 void DDGIBuilderVulkan::_createPipeline()
@@ -533,12 +472,6 @@ void DDGIBuilderVulkan::_recreateResources()
 
 void DDGIBuilderVulkan::_cleanupResources()
 {
-	textureManagerVulkan->destroy(rayColorBuffer->id());
-	textureManagerVulkan->destroy(rayDistanceBuffer->id());
-	textureManagerVulkan->destroy(currentIrradianceAtlas->id());
-	textureManagerVulkan->destroy(lastframeIrradianceAtlas->id());
-	textureManagerVulkan->destroy(currentVisibilityAtlas->id());
-	textureManagerVulkan->destroy(lastFrameVisibilityAtlas->id());
 }
 
 // the textures rest in SHADER_READ_ONLY between passes, these two wrap a compute pass that writes one.
@@ -607,9 +540,55 @@ void DDGIBuilderVulkan::_copyToLastFrame(VkCommandBuffer cmd, TextureVulkan* cur
 
 bool DDGIBuilderVulkan::onClose()
 {
+    rendererManagerVulkan->getGraphicsSettings().remove<DDGISettings>();
+    settings = nullptr;
+
     probTracePipeline->destroy();
     updateIrradiancePipeline->destroy();
     updateVisibilityPipeline->destroy();
 
     return true;
+}
+
+void DDGIBuilderVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+    needResize = false;	// nothing here depends on the window size
+
+    // the probe count decides the atlas size, settle it before the graph records anything this frame
+    LightProbeComponent* probeGrid = findProbeGrid();
+    if(probeGrid && probeGrid->spacing > 0.0f) {
+        probeCounts = gridProbeCounts(*probeGrid, MAX_PROBES_PER_DIMENSION);
+    }
+
+    if(_createResources()) {
+        for(int i = 0; i < VulkanUtils::numFrames(); i++) {
+            _updateDescriptor(i);
+        }
+    }
+
+    RenderPassNode node{};
+    node.name = "DDGI";
+    node.reads = {};
+    
+    node.writes = {
+        { rayColorHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { rayDistanceHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { currentIrradianceHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { lastIrradianceHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { currentVisibilityHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { lastVisibilityHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
+    };
+
+    node.execute = [this] (VkCommandBuffer cmd, uint32_t currentFrame){
+        Scene* scene = SceneManager::getInstance().getActiveScene();
+        Camera* camera = SceneManager::cameraController;
+
+        if(!camera) {
+            return;
+        }
+
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }

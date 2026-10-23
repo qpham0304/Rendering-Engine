@@ -46,6 +46,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer);
 	void endRecording(void* cmdBuffer);
@@ -55,7 +56,6 @@ public:
 private:
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	void recordDrawToTextureCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-	void renderGui(void* commandBuffer);
 
 
 	void _createPipeline();

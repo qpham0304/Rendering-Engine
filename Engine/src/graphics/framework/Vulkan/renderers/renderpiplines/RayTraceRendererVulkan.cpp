@@ -22,7 +22,6 @@
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
 #include <graphics/framework/Vulkan/resources/buffers/AccelStructureBufferVulkan.h>
 #include <core/scene/SceneManager.h>
-#include <imgui.h>
 #include <glm/gtx/string_cast.hpp>
 
 RayTraceRendererVulkan::RayTraceRendererVulkan() 
@@ -666,3 +665,7 @@ void RayTraceRendererVulkan::updateTlas() {
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 #pragma endregion setup
+
+void RayTraceRendererVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+}

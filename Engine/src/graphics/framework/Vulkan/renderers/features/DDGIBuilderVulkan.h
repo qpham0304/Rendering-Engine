@@ -7,8 +7,6 @@
 
 
 class RayTraceRendererVulkan;
-class ShadowMapPassVulkan;
-class DeferredRendererVulkan;
 class ImageBasedRendererVulkan;
 
 // Dynamic diffuse global illumination, one probe grid (LightProbeComponent) per scene.
@@ -51,23 +49,13 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void writeTrace(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeUpdateVisibility(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeUpdateIrradiance(VkCommandBuffer cmd, uint32_t currentFrame);
-	void renderGui();
 	TextureVulkan* getAtlasImage();
 	TextureVulkan* getVisibilityAtlasImage();
-
-	// data required to sample the atlases
-	bool isReady() const;
-	glm::vec4 getGridOrigin() const;
-	float getGridSpacing() const;
-	glm::uvec3 getProbeCounts() const;
-	float getSkyIntensity() const;
-	float getNormalBias() const;
-	float getIntensity() const;
-	bool getShowIndirectOnly() const;
 
 private:
 	TextureVulkan* rayColorBuffer { nullptr };
@@ -76,6 +64,13 @@ private:
 	TextureVulkan* lastframeIrradianceAtlas { nullptr };
 	TextureVulkan* currentVisibilityAtlas { nullptr };
 	TextureVulkan* lastFrameVisibilityAtlas { nullptr };
+
+	RGHandle rayColorHandle {};
+	RGHandle rayDistanceHandle {};
+	RGHandle currentIrradianceHandle {};
+	RGHandle lastIrradianceHandle {};
+	RGHandle currentVisibilityHandle {};
+	RGHandle lastVisibilityHandle {};
 
 	uint32_t probTracePipelineLayoutID;
 	uint32_t probTracePipelinePoolID;
@@ -97,8 +92,6 @@ private:
 	UniformBufferObject ubo{};
 	PushConstant pushConstant{};
     RayTraceRendererVulkan* raytracer { nullptr };
-	ShadowMapPassVulkan* shadowMapPass { nullptr };
-	DeferredRendererVulkan* deferredRenderer { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 
 	// these three must match the constants in assets/shaders/common/ddgi.glsl
@@ -119,11 +112,9 @@ private:
 	bool hasProbe { false };
 	bool resetHistory { true };
 
-	bool enabled { true };
-	bool showIndirectOnly { false };
-	float intensity { 1.0f };
+	DDGISettings* settings { nullptr };
 
-	void _createResources();
+	bool _createResources();
 	void _createPipeline();
 	void _createDescriptor();
 	void _updateDescriptor(uint32_t index);

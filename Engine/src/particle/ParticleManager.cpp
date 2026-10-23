@@ -1,13 +1,13 @@
 #include "ParticleManager.h"
 #include "core/components/MComponent.h"
-#include "core/features/Random.h"
 #include "core/resources/managers/BufferManager.h"
 #include "core/features/ServiceLocator.h"
+#include <algorithm>
 
 ParticleManager::ParticleManager()
     : Manager("ParticleManager")
 {
-    
+
 }
 
 ParticleManager::~ParticleManager()
@@ -18,8 +18,8 @@ ParticleManager::~ParticleManager()
 bool ParticleManager::init(WindowConfig config)
 {
     Service::init(config);
-    
-    BufferManager* bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
+
+    m_bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
 
     return true;
 }
@@ -31,7 +31,7 @@ bool ParticleManager::onClose()
 
 void ParticleManager::destroy(uint32_t id)
 {
-    if(id >= m_containers.size() || id < 0) {
+    if(id == 0 || id >= m_containers.size()) {
         m_logger->error("particle container id: {} does not exist", id);
     } else {    //TODO: not thread safe, 2 request to delete the same id will causes issues
         m_toBeDestroyed.emplace_back(id);
@@ -47,12 +47,13 @@ std::vector<uint32_t> ParticleManager::listIDs() const
 
 void ParticleManager::onUpdate(const FrameTime& frameTime)
 {
-    if(!m_toBeDestroyed.empty()) {
-        for(auto& containerID : m_toBeDestroyed) {
-            m_containers.erase(m_containers.begin() + containerID);
-            m_containerData.erase(m_containerData.begin() + containerID);
-        }
+    // slots are emptied instead of erased so the ids held by emitters stay valid
+    for(auto& containerID : m_toBeDestroyed) {
+        _releaseBuffers(m_containerData[containerID]);
+        m_containers[containerID] = {};
+        m_version++;
     }
+    m_toBeDestroyed.clear();
 }
 
 const ParticleManager::ContainerData& ParticleManager::getContainerData(uint32_t id) const
@@ -78,53 +79,76 @@ ParticleContainer ParticleManager::getContainer(uint32_t id)
     return m_containers[id];
 }
 
-uint32_t ParticleManager::createContainer(uint32_t size, glm::vec3 minSpacing, glm::vec3 maxSpacing)
+uint32_t ParticleManager::createContainer(uint32_t capacity)
 {
     //NOTE: m_ids starts at 1 which matches container's index 1 with dummy container at 0
-    m_containers.push_back(ParticleContainer(size));
-    ParticleContainer& container = m_containers[m_ids];
-    size_t lifetimeSize = container.m_lifetime.size() * sizeof(double);
-    size_t positionsSize = container.m_positions.size() * sizeof(glm::vec3);
-    size_t scalesSize = container.m_scales.size() * sizeof(glm::vec3);
-    size_t velocitiesSize = container.m_velocities.size() * sizeof(glm::vec3);
-    size_t colorsSize = container.m_colors.size() * sizeof(glm::vec4);
-
-    BufferManager* bufferManager = &ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
-    
+    capacity = std::max(capacity, 1u);
+    m_containers.push_back(ParticleContainer(capacity));
     m_containerData.push_back(ContainerData());
+
     ContainerData& data = m_containerData[m_ids];
-    data.lifetimeBufferID = bufferManager->createBufferDeviceAddress(lifetimeSize);
-    data.positionsBufferID = bufferManager->createBufferDeviceAddress(positionsSize);
-    data.scalesBufferID = bufferManager->createBufferDeviceAddress(scalesSize);
-    data.velocitiesBufferID = bufferManager->createBufferDeviceAddress(velocitiesSize);
-    data.colorsBufferID = bufferManager->createBufferDeviceAddress(colorsSize);
-
-
-    for(int i = 0; i < container.m_positions.size(); i++) {
-        float x = Random::GenFloat(minSpacing.x, maxSpacing.x);
-        float y = Random::GenFloat(minSpacing.y, maxSpacing.y);
-        float z = Random::GenFloat(minSpacing.z, maxSpacing.z);
-        container.m_positions[i] = glm::vec3(x, y ,z);
-        
-        float r = Random::GenFloat(0.0f, 1.0f);
-        float g = Random::GenFloat(0.0f, 1.0f);
-        float b = Random::GenFloat(0.0f, 1.0f);
-        float a = Random::GenFloat(0.25f, 1.0f);
-        container.m_colors[i] = glm::vec4(r, g, b, a);
-    }
-    
-    bufferManager->updateBufferDeviceAddress(data.lifetimeBufferID, container.m_lifetime.data(), lifetimeSize);
-    bufferManager->updateBufferDeviceAddress(data.positionsBufferID, container.m_positions.data(), positionsSize);
-    bufferManager->updateBufferDeviceAddress(data.scalesBufferID, container.m_scales.data(), scalesSize);
-    bufferManager->updateBufferDeviceAddress(data.velocitiesBufferID, container.m_velocities.data(), velocitiesSize);
-    bufferManager->updateBufferDeviceAddress(data.colorsBufferID, container.m_colors.data(), colorsSize);
-
-    //TODO: ideally after uploaded to gpu cpu side containers can be clearned up but keep them for now
-    container.m_lifetime.clear();
-    container.m_positions.clear();
-    container.m_scales.clear();
-    container.m_velocities.clear();
-    container.m_colors.clear();
+    _allocateBuffers(data, capacity);
+    _uploadInitialState(data, capacity);
+    m_version++;
 
     return _assignID();
+}
+
+void ParticleManager::resizeContainer(uint32_t id, uint32_t capacity)
+{
+    if(id == 0 || id >= m_containers.size()) {
+        m_logger->error("particle container id: {} does not exist", id);
+        return;
+    }
+
+    capacity = std::max(capacity, 1u);
+    ContainerData& data = m_containerData[id];
+    _releaseBuffers(data);
+    _allocateBuffers(data, capacity);
+    _uploadInitialState(data, capacity);
+    m_containers[id].m_size = capacity;
+    m_version++;
+}
+
+void ParticleManager::resetContainer(uint32_t id)
+{
+    if(id == 0 || id >= m_containers.size()) {
+        m_logger->error("particle container id: {} does not exist", id);
+        return;
+    }
+    _uploadInitialState(m_containerData[id], m_containers[id].m_size);
+}
+
+void ParticleManager::_allocateBuffers(ContainerData& data, uint32_t capacity)
+{
+    data.particlesBufferID = m_bufferManager->createBufferDeviceAddress(capacity * sizeof(ParticleGPU));
+    data.aliveListBufferID = m_bufferManager->createBufferDeviceAddress(particleSortSize(capacity) * sizeof(ParticleDrawEntry));
+    data.deadListBufferID = m_bufferManager->createBufferDeviceAddress(capacity * sizeof(uint32_t));
+    data.countersBufferID = m_bufferManager->createBufferDeviceAddress(sizeof(ParticleCounters));
+}
+
+void ParticleManager::_releaseBuffers(ContainerData& data)
+{
+    for(uint32_t* bufferID : { &data.particlesBufferID, &data.aliveListBufferID, &data.deadListBufferID, &data.countersBufferID }) {
+        if(*bufferID != 0) {
+            m_bufferManager->destroy(*bufferID);
+            *bufferID = 0;
+        }
+    }
+}
+
+void ParticleManager::_uploadInitialState(const ContainerData& data, uint32_t capacity)
+{
+    // every slot starts dead and on the free stack
+    std::vector<ParticleGPU> particles(capacity);
+    std::vector<uint32_t> deadList(capacity);
+    for(uint32_t i = 0; i < capacity; i++) {
+        deadList[i] = capacity - 1 - i;     // low slots get popped first
+    }
+    ParticleCounters counters{};
+    counters.deadCount = static_cast<int32_t>(capacity);
+
+    m_bufferManager->updateBufferDeviceAddress(data.particlesBufferID, particles.data(), particles.size() * sizeof(ParticleGPU));
+    m_bufferManager->updateBufferDeviceAddress(data.deadListBufferID, deadList.data(), deadList.size() * sizeof(uint32_t));
+    m_bufferManager->updateBufferDeviceAddress(data.countersBufferID, &counters, sizeof(ParticleCounters));
 }

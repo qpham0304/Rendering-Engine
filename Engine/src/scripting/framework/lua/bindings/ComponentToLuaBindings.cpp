@@ -49,6 +49,7 @@ void ComponentToLuaBindings::exportComponents(sol::state& luaState, Logger* logg
     _registerComponent<ScriptComponent>(luaState);
     _registerComponent<ColliderComponent>(luaState);
     _registerComponent<ParticleEmitter>(luaState);
+    _registerComponent<RibbonComponent>(luaState);
 
     // fields are edited in place, the model matrix has to be rebuilt after changing them
     auto transform = _registerComponent<TransformComponent>(luaState);

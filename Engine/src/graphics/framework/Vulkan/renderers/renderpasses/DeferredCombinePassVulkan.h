@@ -40,6 +40,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
     void writeCombinedImage(VkCommandBuffer cmd, uint32_t currentFrame);
 
@@ -53,6 +54,7 @@ private: // TODO: consider make private
 	TextureVulkan* bloomImage;
 	TextureVulkan* atlasImageGI;
 	TextureVulkan* visibilityAtlasImageGI;
+	RGHandle outputHandle {};
 
 protected:
 	void _createResources();

@@ -51,7 +51,7 @@ void ImGuiConsoleLogWidget::_renderConsole()
 {
 	ImGuiIO& io = ImGui::GetIO();
 
-	ImGui::Begin("Console");
+	ImGui::Begin("Console", &m_isVisible);
 
     ImGui::SetNextItemWidth(200);
     ImGui::InputTextWithHint("Search", ICON_FA_SEARCH " Search...", searchFilter, IM_ARRAYSIZE(searchFilter));

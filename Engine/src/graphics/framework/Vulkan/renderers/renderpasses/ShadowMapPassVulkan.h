@@ -32,6 +32,7 @@ public:
 	virtual bool onClose() override;
 	virtual void onUpdate() override;
 	virtual void render(Camera& camera) override;
+	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void beginRecording(void* cmdBuffer, void* renderPass, void* frameBuffer, void* pipeline);
 	void endRecording(void* cmdBuffer);
@@ -47,20 +48,14 @@ public:
 	TextureVulkan* blueNoiseImage;
 	VkRenderPass shadowRenderPass;
 	VkFramebuffer shadowFramebuffer;
-	float sunAzimuth = 0.0f;   // Horizontal rotation
-	float sunElevation = 0.5f; // Vertical height
+	ShadowMapSettings* settings { nullptr };
 
 	//TODO: allow client spcify the shadow map size
 	uint32_t width = 1024;
 	uint32_t height = 1024;
 
-	glm::mat4 lightSpaceMatrix;
 	glm::vec3 lightPos;
-	glm::vec3 lightDir;
 	glm::mat4 lightView;
-	float s;
-	float zNear;
-	float zFar;
 
 	std::unique_ptr<VulkanPipeline> computePipeline;
 	uint32_t compDescriptorLayoutID;
@@ -69,7 +64,6 @@ public:
 	uint32_t compDescSetTtoM_ID;
 
 	ComputePushConstant pushconstant;
-	bool useOrtho = true;
 
 private:
 	void _createDepthMap();

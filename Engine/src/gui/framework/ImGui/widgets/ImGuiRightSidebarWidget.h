@@ -55,7 +55,9 @@ private:
 	void _animationControl(const Entity& entity);
 	void _scriptControl(const Entity& entity);
 	void _colliderControl(const Entity& entity);
+	void _lightControl(const Entity& entity);
 	void _particleControl(const Entity& entity);
+	void _ribbonControl(const Entity& entity);
 	void _scenesControl();
 };
 

@@ -40,5 +40,6 @@ private:
 	void createLightProbes();
 	void createScriptableCamera();
 	void createParticle();
+	void createRibbons();
 	
 };

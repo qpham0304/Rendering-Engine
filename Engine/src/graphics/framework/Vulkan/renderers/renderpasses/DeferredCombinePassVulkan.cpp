@@ -69,11 +69,14 @@ void DeferredCombinePassVulkan::onUpdate()
 
 void DeferredCombinePassVulkan::render(Camera &camera)
 {
-    RendererVulkan* renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-	
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+	const GraphicsSettingsSerializer& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
+	const DeferredSettings* deferredSettings = graphicsSettings.get<DeferredSettings>();
+	const DDGISettings* ddgiSettings = graphicsSettings.get<DDGISettings>();	// null without ray tracing, the pass then combines without ddgi
+
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     _fetchInputImages(currentFrame);
+    _createResources();     // same output unless the render size changed
 
     if(needResize) {
 		_recreateResources();
@@ -81,19 +84,19 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 		return;
 	}
 
-    pushConstant.shouldCombine = deferredRendererVulkan->shouldCombine ? 1 : 0;
+    pushConstant.shouldCombine = (deferredSettings && deferredSettings->combine) ? 1 : 0;
 
-    // the grid values come from the ddgi renderer so they always match what the atlases were built with
+    // the grid values are published by the ddgi builder so they always match what the atlases were built with
     pushConstant.ddgiMode = 0;
-    if(ddgiRenderer && ddgiRenderer->isReady()) {
-        pushConstant.gridSpacing = ddgiRenderer->getGridSpacing();
-        pushConstant.gridOrigin = ddgiRenderer->getGridOrigin();
-        pushConstant.probeCounts = glm::ivec4(ddgiRenderer->getProbeCounts(), 0);
-        pushConstant.skyIntensity = ddgiRenderer->getSkyIntensity();
+    if(ddgiSettings && ddgiSettings->isReady()) {
+        pushConstant.gridSpacing = ddgiSettings->gridSpacing;
+        pushConstant.gridOrigin = ddgiSettings->gridOrigin;
+        pushConstant.probeCounts = glm::ivec4(ddgiSettings->probeCounts, 0);
+        pushConstant.skyIntensity = ddgiSettings->skyIntensity;
         pushConstant.probesResolution = 8;
-        pushConstant.normalBias = ddgiRenderer->getNormalBias();
-        pushConstant.ddgiIntensity = ddgiRenderer->getIntensity();
-        pushConstant.ddgiMode = ddgiRenderer->getShowIndirectOnly() ? 2 : 1;
+        pushConstant.normalBias = ddgiSettings->normalBias;
+        pushConstant.ddgiIntensity = ddgiSettings->intensity;
+        pushConstant.ddgiMode = ddgiSettings->indirectOnly ? 2 : 1;
     }
 
     ubo.view = camera.getViewMatrix();
@@ -103,7 +106,7 @@ void DeferredCombinePassVulkan::render(Camera &camera)
     ubo.invView = glm::inverse(ubo.view);
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
-	pushConstant.screenRes = { deferredRendererVulkan->renderTarget.width, deferredRendererVulkan->renderTarget.height };
+	pushConstant.screenRes = { geometryPass->renderTarget.width, geometryPass->renderTarget.height };
     pushConstant.time = AppWindow::getTime();
     pushConstant.frameSeed = rand() % 32768;
 
@@ -121,8 +124,9 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
 {
     RendererVulkan* renderer = nullptr;
-    renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
+	const DeferredSettings* deferredSettings = rendererManagerVulkan->getGraphicsSettings().get<DeferredSettings>();
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+	auto lightingPass = dynamic_cast<LightingPassVulkan*>(rendererManagerVulkan->getRenderer("LightingPassVulkan"));
     renderer = rendererManagerVulkan->getRenderer("TemporalPassVulkan");
 	auto temporalPassRenderer = dynamic_cast<TemporalPassVulkan*>(renderer);
     renderer = rendererManagerVulkan->getRenderer("SSRGIPassVulkan");
@@ -130,17 +134,17 @@ void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
     renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
 	auto bloomPassRenderer = dynamic_cast<BloomPassVulkan*>(renderer);
 
-    if(deferredRendererVulkan->denoiserOn) {
+    if(deferredSettings && deferredSettings->temporalReprojection) {
         denoisedGIImage = temporalPassRenderer->getOutputImage();
     } else {
         denoisedGIImage = SSRGIPassRenderer->getOutputImage();
     }
 
-    sceneImage = deferredRendererVulkan->renderTarget.colorTextures[currentFrame];
-    albedoImage = deferredRendererVulkan->renderTarget.gBufferAlbedo[currentFrame];
-    positionImage = deferredRendererVulkan->renderTarget.gBufferPos[currentFrame];
-    normalImage = deferredRendererVulkan->renderTarget.gBufferNorm[currentFrame];
-    pbrImage = deferredRendererVulkan->renderTarget.gPBR[currentFrame];
+    sceneImage = lightingPass->renderTarget.colorTexture;
+    albedoImage = geometryPass->renderTarget.gBufferAlbedo;
+    positionImage = geometryPass->renderTarget.gBufferPos;
+    normalImage = geometryPass->renderTarget.gBufferNorm;
+    pbrImage = geometryPass->renderTarget.gPBR;
 	bloomImage = bloomPassRenderer->getOutputImage();
 
     // without the ddgi renderer the shader never samples the atlases (ddgiMode 0), the bindings still need an image
@@ -150,10 +154,7 @@ void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
 
 void DeferredCombinePassVulkan::writeCombinedImage(VkCommandBuffer cmd, uint32_t currentFrame)
 {
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,  1, 1, renderDeviceVulkan);
-
+    // the graph moves outputImage to GENERAL before this node and to SHADER_READ_ONLY at the end of the frame
     pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
     
     auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(setsID)[currentFrame];
@@ -163,90 +164,33 @@ void DeferredCombinePassVulkan::writeCombinedImage(VkCommandBuffer cmd, uint32_t
     vkCmdPushConstants(cmd, pipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 
         0, sizeof(PushConstant), &pushConstant);
 
-    auto renderer = rendererManagerVulkan->getRenderer("DeferredRendererVulkan");
-	auto deferredRendererVulkan = dynamic_cast<DeferredRendererVulkan*>(renderer);
-    uint32_t width = deferredRendererVulkan->renderTarget.width;
-    uint32_t height = deferredRendererVulkan->renderTarget.height;
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+    uint32_t width = geometryPass->renderTarget.width;
+    uint32_t height = geometryPass->renderTarget.height;
     uint32_t groupX = (width  + 15) / 16;
     uint32_t groupY = (height + 15) / 16;
 
     vkCmdDispatch(cmd, groupX, groupY, 1);
-
-    
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan);
 }
 
 void DeferredCombinePassVulkan::_createResources()
 {
-    auto createTexture = [this] (uint32_t& id, TextureVulkan*& texture){
-        id = textureManagerVulkan->createTexture();
-        texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-        
-        assert(texture && "failed to cast texture into vulkan texture");
-        
-        VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-        VkDevice device = renderDeviceVulkan->device;
-        
-        TextureManagerVulkan::createImage(
-            swapchain.swapChainExtent.width,
-            swapchain.swapChainExtent.height,
-            VK_FORMAT_R16G16B16A16_SFLOAT,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            texture->textureImage,
-            texture->textureImageMemory,
-            1,
-            renderDeviceVulkan->device
-        );
+    RGTextureDesc desc{};
+    desc.config.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        TextureManagerVulkan::createImageView(
-            texture->textureImage,
-            texture->textureImageView,
-            VK_FORMAT_R16G16B16A16_SFLOAT,
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            1,
-            renderDeviceVulkan->device
-        );
+    RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
+    uint32_t previousOutputID = outputImageID;
+    outputHandle = graph.createRenderTexture("DeferredCombine.Output", desc);
+    outputImage = graph.getTexture(outputHandle);
+    outputImageID = outputImage->id();
 
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerInfo.anisotropyEnable = VK_FALSE;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias = 0.0f;
-        samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = 1.0f;
-
-        TextureManagerVulkan::createTextureSampler(
-            texture->textureSampler, 
-            renderDeviceVulkan->device,
-            samplerInfo
-        );
-    };
- 
-    createTexture(outputImageID, outputImage);
-    rendererManagerVulkan->addRenderTexture("deferredCombineOut", {outputImage->id()});
-    // ApplicationRendererVulkan draws the display image through the bindless set when the gui is hidden
-    textureManagerVulkan->registerBindlessTexture(outputImage->id());
-
-    auto cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
-    TextureManagerVulkan::transitionImageLayout(
-        cmd, outputImage->textureImage, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1, renderDeviceVulkan
-    );
-    renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
-
+    // compared by id, a recreated texture can land at the same address as the one it replaced
+    if(outputImageID != previousOutputID) {
+        // ApplicationRendererVulkan draws the display image through the bindless set when the gui is hidden,
+        // the debug pass also reads the scene through it
+        textureManagerVulkan->registerBindlessTexture(outputImageID);
+    }
 }
 
 void DeferredCombinePassVulkan::_createPipelines()
@@ -381,6 +325,56 @@ void DeferredCombinePassVulkan::_recreateResources()
 
 void DeferredCombinePassVulkan::_cleanupResources()
 {
-    textureManagerVulkan->destroy(outputImage->id());
     pipeline->destroy();
+}
+
+void DeferredCombinePassVulkan::addToGraph(RenderGraphVulkan& graph)
+{
+    // the gi image depends on the denoiser toggle and the taa ping-pong, look it up before importing
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    _fetchInputImages(currentFrame);
+    _createResources();     // same output unless the render size changed
+
+    if(needResize) {
+		_recreateResources();
+		needResize = false;
+		return;
+	}
+
+    auto gi = graph.importTexture(denoisedGIImage);
+    auto scene = graph.importTexture(sceneImage);
+    auto albedo = graph.importTexture(albedoImage);
+    auto bloom = graph.importTexture(bloomImage);
+    auto atlas = graph.importTexture(atlasImageGI);
+    auto position = graph.importTexture(positionImage);
+    auto normal = graph.importTexture(normalImage);
+    auto visibility = graph.importTexture(visibilityAtlasImageGI);
+    auto pbr = graph.importTexture(pbrImage);
+
+    RenderPassNode node{};
+    node.name = "DeferredCombine";
+    node.reads = {
+        { gi, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { scene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { albedo, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { bloom, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { atlas, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { position, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { normal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { visibility, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { pbr, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+    };
+    node.writes = {
+        { outputHandle, VK_IMAGE_LAYOUT_GENERAL },
+    };
+
+    node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
+        Camera* camera = SceneManager::cameraController;
+        if(!camera) {
+            return;
+        }
+        render(*camera);
+    };
+
+    graph.addPass(node);
 }

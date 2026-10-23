@@ -17,10 +17,18 @@
     {
       "overrides": {
         "components": {
+          "ColliderComponent": {
+            "shapeID": 1
+          },
           "TransformComponent": {
             "rotateVec": [
-              0.0,
-              2.75,
+              3.1415927410125732,
+              0.39159277081489563,
+              3.1415927410125732
+            ],
+            "translateVec": [
+              -1.4398545026779175,
+              -0.5000171065330505,
               0.0
             ]
           }
@@ -43,35 +51,35 @@
             0.0
           ],
           "scaleVec": [
-            0.01,
-            0.01,
-            0.01
+            0.009999999776482582,
+            0.009999999776482582,
+            0.009999999776482582
           ],
           "translateVec": [
-            0,
+            0.0,
             -2.5,
-            0
+            0.0
           ]
         }
       }
     },
     {
       "components": {
+        "ColliderComponent": {
+          "bodyType": "Cube",
+          "colliderType": 0,
+          "shapeID": 2
+        },
         "ModelComponent": {
           "path": "assets/models/cube/cube-notex.gltf"
         },
         "NameComponent": {
           "name": "plane"
         },
-        "ColliderComponent": {
-          "shapeID": 0,
-          "colliderType": 0,
-          "bodyType": "Cube"
-        },
         "TransformComponent": {
           "rotateVec": [
             0.0,
-            0.0,
+            -0.0,
             0.0
           ],
           "scaleVec": [
@@ -80,9 +88,9 @@
             9.0
           ],
           "translateVec": [
-            0,
+            0.0,
             -2.5,
-            0
+            0.0
           ]
         }
       }
@@ -107,9 +115,223 @@
             1.0
           ],
           "translateVec": [
-            0,
+            0.0,
             -2.5,
-            0
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "NameComponent": {
+          "name": "probe manager"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translateVec": [
+            -0.605189323425293,
+            3.8971657752990723,
+            -0.3869051933288574
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "NameComponent": {
+          "name": "particleEntity"
+        },
+        "ParticleEmitter": {
+          "angularVelocityMax": 90.0,
+          "angularVelocityMin": -90.0,
+          "attractStrength": 0.0,
+          "blendMode": 0,
+          "burstCount": 0,
+          "burstInterval": 1.0,
+          "colorEnd": [
+            1.0,
+            0.20000000298023224,
+            0.05000000074505806,
+            0.0
+          ],
+          "colorStart": [
+            1.0,
+            0.800000011920929,
+            0.4000000059604645,
+            1.0
+          ],
+          "direction": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "drag": 0.0,
+          "emitFromShell": false,
+          "emitRate": 1000.0,
+          "fadeIn": 0.10000000149011612,
+          "fadeOut": 0.0,
+          "flipbookCols": 1,
+          "flipbookFPS": 0.0,
+          "flipbookRows": 1,
+          "force": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "gravityScale": 0.0,
+          "isPlaying": true,
+          "lifetimeMax": 3.0,
+          "lifetimeMin": 1.5,
+          "localSpace": false,
+          "maxParticles": 5000,
+          "meshDoubleSided": false,
+          "meshPath": "$prim$Cube",
+          "meshShading": 0.5,
+          "renderMode": 0,
+          "rotationMax": 0.0,
+          "rotationMin": 0.0,
+          "shapeConeAngle": 25.0,
+          "shapeExtents": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "shapeRadius": 1.0,
+          "sizeEndScale": 0.20000000298023224,
+          "sizeMax": 0.4000000059604645,
+          "sizeMin": 0.20000000298023224,
+          "spawnShape": 5,
+          "speedMax": 3.0,
+          "speedMin": 1.0,
+          "spreadAngle": 10.0,
+          "stretchFactor": 0.10000000149011612,
+          "texturePath": "assets/textures/mobi-padoru.png",
+          "turbulenceFrequency": 1.0,
+          "turbulenceStrength": 2.0,
+          "useModelTexture": true,
+          "velocityFromShape": false,
+          "vortexStrength": 0.0
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translateVec": [
+            -5.0,
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "NameComponent": {
+          "name": "particleEntity2"
+        },
+        "ParticleEmitter": {
+          "angularVelocityMax": 540.0,
+          "angularVelocityMin": 180.0,
+          "attractStrength": 1.350000023841858,
+          "blendMode": 0,
+          "burstCount": 500,
+          "burstInterval": 2.0,
+          "colorEnd": [
+            0.20000000298023224,
+            0.30000001192092896,
+            1.0,
+            1.0
+          ],
+          "colorStart": [
+            0.6000000238418579,
+            0.800000011920929,
+            1.0,
+            1.0
+          ],
+          "direction": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "drag": 1.25,
+          "emitFromShell": false,
+          "emitRate": 0.0,
+          "fadeIn": 0.0,
+          "fadeOut": 0.30000001192092896,
+          "flipbookCols": 1,
+          "flipbookFPS": 0.0,
+          "flipbookRows": 1,
+          "force": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "gravityScale": 1.0,
+          "isPlaying": true,
+          "lifetimeMax": 2.0,
+          "lifetimeMin": 1.5,
+          "localSpace": false,
+          "maxParticles": 5000,
+          "meshDoubleSided": false,
+          "meshPath": "$prim$Cube",
+          "meshShading": 0.5,
+          "renderMode": 5,
+          "rotationMax": 0.0,
+          "rotationMin": 0.0,
+          "shapeConeAngle": 0.0,
+          "shapeExtents": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "shapeRadius": 0.33000001311302185,
+          "sizeEndScale": 1.0,
+          "sizeMax": 0.25,
+          "sizeMin": 0.10000000149011612,
+          "spawnShape": 4,
+          "speedMax": 20.0,
+          "speedMin": 15.0,
+          "spreadAngle": 0.0,
+          "stretchFactor": 0.10000000149011612,
+          "texturePath": "None",
+          "turbulenceFrequency": 1.0,
+          "turbulenceStrength": 1.0499999523162842,
+          "useModelTexture": true,
+          "velocityFromShape": true,
+          "vortexStrength": 17.549999237060547
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translateVec": [
+            -1.5120028257369995,
+            13.15613842010498,
+            0.0
           ]
         }
       }
