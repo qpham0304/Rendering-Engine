@@ -85,6 +85,7 @@ set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(extern/SDL)
 add_subdirectory(extern/nlohmann)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)    # its unit tests would show up in ctest and Test Explorer next to ours
 add_subdirectory(extern/assimp)
 add_subdirectory(extern/lua)
 add_subdirectory(extern/box3d)
@@ -152,4 +153,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /bigobj /utf-8 /MP)
+endif()
+
+if(WK_TESTS_ENABLED)
+    add_subdirectory(tests)
 endif()
