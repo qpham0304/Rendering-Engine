@@ -66,6 +66,9 @@ public:
 	void drawObjects(VkCommandBuffer cmd);
 	uint64_t getObjectsAddress() const;
 	uint64_t getFrameNumber() const { return m_frameNumber; }
+	void collectLights();
+	uint64_t getLightsAddress() const;
+	uint32_t getLightCount() const { return static_cast<uint32_t>(m_lights.size()); }
 
 
 protected:
@@ -89,6 +92,9 @@ protected:
 	std::vector<glm::mat4> m_prevModels;
 	std::vector<VkDrawIndirectCommand> m_drawCommands;
 	std::vector<uint32_t> m_drawCommandsBufferIDs;
+	std::vector<Common::PointLight> m_lights;
+	std::vector<uint32_t> m_lightsBufferIDs;
+	std::vector<uint64_t> m_lightsAddresses;
 
 	ApplicationRendererVulkan* applicationRenderer { nullptr };
 	ForwardRendererVulkan* forwardRenderer { nullptr };

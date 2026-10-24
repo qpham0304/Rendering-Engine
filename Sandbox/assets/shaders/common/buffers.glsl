@@ -57,6 +57,17 @@ struct Object {
 };
 
 layout(buffer_reference, scalar) buffer ObjectsBuffer{ Object objects[]; };
+
+struct PointLight {
+    vec4 color;
+    vec4 position;
+    float intensity;
+    float padding0;
+    float padding1;
+    float padding2;
+};
+
+layout(buffer_reference, scalar) readonly buffer LightsBuffer { PointLight lights[]; };
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
 layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 layout(buffer_reference, scalar) buffer MaterialsBuffer{ Material m[]; };

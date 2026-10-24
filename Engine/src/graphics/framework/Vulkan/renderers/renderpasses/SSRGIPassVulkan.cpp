@@ -12,6 +12,7 @@
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <graphics/framework/vulkan/renderers/renderpiplines/RayTraceRendererVulkan.h>
 #include <graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h>
+#include <graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h>
 #include <graphics/framework/Vulkan/resources/buffers/AccelStructureBufferVulkan.h>
 #include <window/AppWindow.h>
 #include <math.h>
@@ -115,6 +116,15 @@ void SSRGIPassVulkan::render(Camera &camera)
     ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), 0.0f);
     ubo.sunColor = lightingSettings ? lightingSettings->sunColor * lightingSettings->sunIntensity : glm::vec4(0.0f);
     ubo.skyIntensity = ddgiSettings ? ddgiSettings->skyIntensity : 1.0f;	// traced hits see the same sky as the ddgi probes
+    // tlas hits take their bounce light from last frame's probes, same grid the combine pass samples
+    ubo.ddgiReady = (ddgiSettings && ddgiSettings->isReady() && ddgiIrradianceAtlas) ? 1 : 0;
+    if(ubo.ddgiReady) {
+        ubo.ddgiGridOrigin = ddgiSettings->gridOrigin;
+        ubo.ddgiProbeCounts = glm::ivec4(ddgiSettings->probeCounts, 0);
+        ubo.ddgiSpacing = ddgiSettings->gridSpacing;
+        ubo.ddgiNormalBias = ddgiSettings->normalBias;
+        ubo.ddgiIntensity = ddgiSettings->intensity;
+    }
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
 	pushConstant.screenRes = { traceWidth, traceHeight };
@@ -125,6 +135,8 @@ void SSRGIPassVulkan::render(Camera &camera)
     pushConstant.frameSeed = rand() % 32768;
     pushConstant.maxSteps = settings->maxSteps;
     pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
+    pushConstant.lightsRef = rendererManagerVulkan->getLightsAddress();
+    pushConstant.lightCount = rendererManagerVulkan->getLightCount();
     pushConstant.useTLAS = 0;
 
     // only switch to the ray query pipeline when it can actually trace, otherwise skip the tlas update entirely
@@ -239,8 +251,11 @@ void SSRGIPassVulkan::_createDescriptors()
     if(rtSupported) {
         bindings.push_back({ 10, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });
         bindings.push_back({ 11, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });
+        bindings.push_back({ 12, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });	// ddgi irradiance
+        bindings.push_back({ 13, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });	// ddgi visibility
         poolSizes.push_back({ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, frameCount });
         poolSizes.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount });
+        poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 2 });
     }
 
     SSRGILayoutID = descriptorManagerVulkan->createLayout(bindings);
@@ -356,6 +371,14 @@ void SSRGIPassVulkan::_updateRayQueryDescriptor(uint32_t index, AccelStructureBu
 	std::vector<VkWriteDescriptorSet> writes;
 	descriptorManagerVulkan->writeAccelStruct(&writes, descriptorSets[index], 10, bindings, tlasInfo);
 	descriptorManagerVulkan->writeStorage(&writes, descriptorSets[index], 11, shInfo);
+
+    // the shader only samples these when ddgiReady, the bindings still need an image
+    TextureVulkan* irradiance = ddgiIrradianceAtlas ? ddgiIrradianceAtlas : albedoImage;
+    TextureVulkan* visibility = ddgiVisibilityAtlas ? ddgiVisibilityAtlas : albedoImage;
+    VkDescriptorImageInfo irradianceInfo{ irradiance->textureSampler, irradiance->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+    VkDescriptorImageInfo visibilityInfo{ visibility->textureSampler, visibility->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 12, irradianceInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 13, visibilityInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
@@ -407,7 +430,16 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
         { pbrImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
         { emissiveImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
     };
-    
+
+    // the tlas fallback samples last frame's probes, picked here so the reads and the descriptors agree
+    auto ddgiRenderer = dynamic_cast<DDGIBuilderVulkan*>(rendererManagerVulkan->getRenderer("DDGIBuilderVulkan"));
+    ddgiIrradianceAtlas = ddgiRenderer ? ddgiRenderer->getAtlasImage() : nullptr;
+    ddgiVisibilityAtlas = ddgiRenderer ? ddgiRenderer->getVisibilityAtlasImage() : nullptr;
+    if(rayQueryPipeline && settings->useTLAS && ddgiIrradianceAtlas && ddgiVisibilityAtlas) {
+        node.reads.push_back({ graph.importTexture(ddgiIrradianceAtlas), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+        node.reads.push_back({ graph.importTexture(ddgiVisibilityAtlas), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+    }
+
     node.writes = {
         { outputHandle, VK_IMAGE_LAYOUT_GENERAL }
     };

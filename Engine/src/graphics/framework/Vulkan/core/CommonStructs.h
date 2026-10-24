@@ -4,6 +4,14 @@
 
 namespace Common {
     const int MAX_INSTANCES = 1024 * 10;
+    const int MAX_LIGHTS = 1000;
+
+    struct PointLight {
+        glm::vec4 color;
+        glm::vec4 position;
+        float intensity = 0.0f;
+        float padding[3] = {};
+    };
 
     struct PushBDA {
         uint64_t objectsRef;

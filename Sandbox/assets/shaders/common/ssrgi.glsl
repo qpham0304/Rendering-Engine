@@ -18,7 +18,13 @@ layout(set = 0, binding = 4) uniform CameraData {
     mat4 invView;
     vec4 sunDirection;      // xyz: toward the sun
     vec4 sunColor;          // rgb: color * intensity
+    vec4 ddgiGridOrigin;
+    ivec4 ddgiProbeCounts;
     float skyIntensity;
+    float ddgiSpacing;
+    float ddgiNormalBias;
+    float ddgiIntensity;
+    int ddgiReady;          // the probe atlases hold usable light
 } camera;
 
 layout(set = 0, binding = 5) uniform sampler2D depthImage;
@@ -37,6 +43,8 @@ layout(push_constant) uniform Constants {
     int maxSteps;
     int useTLAS;
     uint64_t objectsRef;
+    uint64_t lightsRef;
+    uint lightCount;
 } pc;
 
 #ifdef SSR_RAY_QUERY
@@ -44,33 +52,16 @@ layout(set = 0, binding = 10) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = 11) readonly buffer SHData {
     vec4 shCoeffs[9];
 } sh;
+layout(set = 0, binding = 12) uniform sampler2D lastFrameIrradianceAtlas;
+layout(set = 0, binding = 13) uniform sampler2D lastFrameVisibilityAtlas;
 layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 
-// same SH the light pass uses for its diffuse ibl
-vec3 getSkyIrradiance(vec3 N) {
-    return max(vec3(0.0),
-        0.886227 * sh.shCoeffs[0].xyz +
-        1.023328 * sh.shCoeffs[1].xyz * N.y +
-        1.023328 * sh.shCoeffs[2].xyz * N.z +
-        1.023328 * sh.shCoeffs[3].xyz * N.x +
-        0.858086 * sh.shCoeffs[4].xyz * N.x * N.y +
-        0.858086 * sh.shCoeffs[5].xyz * N.y * N.z +
-        0.247708 * sh.shCoeffs[6].xyz * (3.0 * N.z * N.z - 1.0) +
-        0.858086 * sh.shCoeffs[7].xyz * N.x * N.z +
-        0.429043 * sh.shCoeffs[8].xyz * (N.x * N.x - N.y * N.y)
-    );
-}
-
-float traceSunVisibility(vec3 origin, vec3 L) {
-    rayQueryEXT shadowQuery;
-    rayQueryInitializeEXT(shadowQuery, topLevelAS, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.001, L, 10000.0);
-    while (rayQueryProceedEXT(shadowQuery)) {}
-
-    return rayQueryGetIntersectionTypeEXT(shadowQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT ? 1.0 : 0.0;
-}
+#include "ddgi.glsl"
+#include "rayQueryLighting.glsl"
 
 // the reflected surface is off screen or hidden, so there is no lit color to read back:
-// shade the hit the way the ddgi probes do (sun with a shadow ray, sky irradiance, emissive). world space in and out
+// shade the hit the way the ddgi probes do (sun and light components with shadow rays, probe bounce or sky, emissive).
+// world space in and out
 bool traceScene(vec3 origin, vec3 dir, float maxDistance, out vec3 radiance, out float hitT) {
     radiance = vec3(0.0);
     hitT = 0.0;
@@ -122,12 +113,20 @@ bool traceScene(vec3 origin, vec3 dir, float maxDistance, out vec3 radiance, out
     float NdotL = max(dot(N, L), 0.0);
     vec3 sunIrradiance = vec3(0.0);
     if (NdotL > 0.0) {
-        sunIrradiance = camera.sunColor.rgb * NdotL * traceSunVisibility(hitPos + N * 0.01, L);
+        sunIrradiance = camera.sunColor.rgb * NdotL * traceVisibility(hitPos + N * 0.01, L, 10000.0);
     }
-    vec3 skyIrradiance = getSkyIrradiance(N) * PI * camera.skyIntensity;   // getSkyIrradiance carries a 1 / PI
+    vec3 localIrradiance = localLightIrradiance(hitPos + N * 0.01, N, pc.lightsRef, pc.lightCount);
+
+    // bounce light from last frame's probes, the open sky outside the grid or without ddgi. getSkyIrradiance carries a 1 / PI
+    vec3 ambientIrradiance = getSkyIrradiance(N) * PI * camera.skyIntensity;
+    if (camera.ddgiReady != 0) {
+        DDGIVolume volume = DDGIVolume(camera.ddgiGridOrigin.xyz, camera.ddgiSpacing, camera.ddgiProbeCounts.xyz, camera.ddgiNormalBias);
+        vec4 ddgi = ddgiSampleIrradiance(hitPos, N, -dir, volume, lastFrameIrradianceAtlas, lastFrameVisibilityAtlas);
+        ambientIrradiance = mix(ambientIrradiance, ddgi.rgb * camera.ddgiIntensity, ddgi.a);
+    }
 
     // same emissive boost as the screen space hits
-    radiance = albedo * (sunIrradiance + skyIrradiance) / PI + emissive * 10.0;
+    radiance = albedo * (sunIrradiance + localIrradiance + ambientIrradiance) / PI + emissive * 10.0;
     return true;
 }
 #endif

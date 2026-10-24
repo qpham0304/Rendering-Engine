@@ -18,6 +18,8 @@ public:
 		alignas(4) int maxSteps;
 		alignas(4) int useTLAS;
 		alignas(8) uint64_t objectsRef;
+		alignas(8) uint64_t lightsRef;
+		alignas(4) uint32_t lightCount;
 	};
 
 	struct UniformBufferObject {
@@ -27,7 +29,13 @@ public:
 		glm::mat4 invView;
 		glm::vec4 sunDirection;
 		glm::vec4 sunColor;
+		glm::vec4 ddgiGridOrigin;
+		glm::ivec4 ddgiProbeCounts;
 		float skyIntensity;
+		float ddgiSpacing;
+		float ddgiNormalBias;
+		float ddgiIntensity;
+		int ddgiReady;
 	};
 
 public:
@@ -72,6 +80,8 @@ protected:
 	bool rtSupported { false };
 	std::unique_ptr<VulkanPipeline> rayQueryPipeline;
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
+	TextureVulkan* ddgiIrradianceAtlas { nullptr };
+	TextureVulkan* ddgiVisibilityAtlas { nullptr };
 	uint32_t hizImageID { 0 };
 	uint32_t traceWidth { 0 };
 	uint32_t traceHeight { 0 };

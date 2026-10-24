@@ -70,6 +70,10 @@ bool RendererManagerVulkan::init(WindowConfig config)
         m_objectsAddresses.push_back(bufferManagerVulkan->getVirtualMemoryAddress(objectsID));
 
         m_drawCommandsBufferIDs.push_back(bufferManagerVulkan->createIndirectBuffer(Common::MAX_INSTANCES * sizeof(VkDrawIndirectCommand)));
+
+        uint32_t lightsID = bufferManagerVulkan->createBufferDeviceAddress(Common::MAX_LIGHTS * sizeof(Common::PointLight));
+        m_lightsBufferIDs.push_back(lightsID);
+        m_lightsAddresses.push_back(bufferManagerVulkan->getVirtualMemoryAddress(lightsID));
     }
 
 
@@ -238,6 +242,7 @@ void RendererManagerVulkan::render()
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
     collectMeshDraws();
+    collectLights();
 	lastViewProj = ubo.proj * ubo.view;
 
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
@@ -372,6 +377,40 @@ void RendererManagerVulkan::drawObjects(VkCommandBuffer cmd)
 
     BufferVulkan* commands = bufferManagerVulkan->getBuffer(m_drawCommandsBufferIDs[renderDeviceVulkan->getCurrentFrameIndex()]);
     vkCmdDrawIndirect(cmd, static_cast<VkBuffer>(*commands), 0, static_cast<uint32_t>(m_meshDraws.size()), sizeof(VkDrawIndirectCommand));
+}
+
+// same values the light pass uploads, as a bda table for the traced passes (ddgi probes, ssr tlas hits)
+void RendererManagerVulkan::collectLights()
+{
+    m_lights.clear();
+
+    Scene* scene = SceneManager::getInstance().getActiveScene();
+    if(!scene) {
+        return;
+    }
+
+    scene->forEnitiesWith<TransformComponent, LightComponent>([this](Entity entity) {
+        if(m_lights.size() >= Common::MAX_LIGHTS) {
+            return;
+        }
+
+        auto& transform = entity.getComponent<TransformComponent>();
+        auto& light = entity.getComponent<LightComponent>();
+
+        Common::PointLight pointLight{};
+        pointLight.color = light.color;
+        pointLight.position = glm::vec4(transform.translateVec, 1.0f);
+        pointLight.intensity = light.intensity * transform.scaleVec.x;
+        m_lights.push_back(pointLight);
+    });
+
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    bufferManagerVulkan->updateBufferDeviceAddress(m_lightsBufferIDs[currentFrame], m_lights.data(), m_lights.size() * sizeof(Common::PointLight));
+}
+
+uint64_t RendererManagerVulkan::getLightsAddress() const
+{
+    return m_lightsAddresses[renderDeviceVulkan->getCurrentFrameIndex()];
 }
 
 uint64_t RendererManagerVulkan::getObjectsAddress() const

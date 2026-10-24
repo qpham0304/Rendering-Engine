@@ -36,39 +36,15 @@ layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 
 layout(push_constant) uniform PushConstant {
     uint64_t objectsRef;
-    uint64_t padding;
+    uint64_t lightsRef;
     vec4 gridOrigin;
     ivec4 probeCounts;      // xyz: probes per axis, w: total
     float gridSpacing;
     uint probesResolution;
+    uint lightCount;
 } pc;
 
-// same SH the light pass uses for its diffuse ibl
-vec3 getSkyIrradiance(vec3 N) {
-    return max(vec3(0.0),
-        0.886227 * sh.shCoeffs[0].xyz +
-        1.023328 * sh.shCoeffs[1].xyz * N.y +
-        1.023328 * sh.shCoeffs[2].xyz * N.z +
-        1.023328 * sh.shCoeffs[3].xyz * N.x +
-        0.858086 * sh.shCoeffs[4].xyz * N.x * N.y +
-        0.858086 * sh.shCoeffs[5].xyz * N.y * N.z +
-        0.247708 * sh.shCoeffs[6].xyz * (3.0 * N.z * N.z - 1.0) +
-        0.858086 * sh.shCoeffs[7].xyz * N.x * N.z +
-        0.429043 * sh.shCoeffs[8].xyz * (N.x * N.x - N.y * N.y)
-    );
-}
-
-float traceSunVisibility(vec3 origin, vec3 L) {
-    rayQueryEXT shadowQuery;
-    rayQueryInitializeEXT(
-        shadowQuery, topLevelAS,
-        gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT,
-        0xFF, origin, 0.001, L, DDGI_MISS_DISTANCE
-    );
-    while (rayQueryProceedEXT(shadowQuery)) {}
-
-    return rayQueryGetIntersectionTypeEXT(shadowQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT ? 1.0 : 0.0;
-}
+#include "common/rayQueryLighting.glsl"
 
 void main() {
     int probeIdx = int(gl_WorkGroupID.x);
@@ -133,7 +109,7 @@ void main() {
             float NdotL = max(dot(N, L), 0.0);
             vec3 sunIrradiance = vec3(0.0);
             if (NdotL > 0.0) {
-                sunIrradiance = ubo.sunColor.rgb * NdotL * traceSunVisibility(hitPos + N * 0.01, L);
+                sunIrradiance = ubo.sunColor.rgb * NdotL * traceVisibility(hitPos + N * 0.01, L, DDGI_MISS_DISTANCE);
             }
 
             // last frame's probes light this hit, that is where the extra bounces (and the occluded sky) come from.
@@ -145,7 +121,10 @@ void main() {
                 ambientIrradiance = mix(ambientIrradiance, ddgi.rgb, ddgi.a);
             }
 
-            vec3 diffuse = albedo * (sunIrradiance + ambientIrradiance) / DDGI_PI;
+            // light component lights, so their bounce ends up in the probes too
+            vec3 localIrradiance = localLightIrradiance(hitPos + N * 0.01, N, pc.lightsRef, pc.lightCount);
+
+            vec3 diffuse = albedo * (sunIrradiance + localIrradiance + ambientIrradiance) / DDGI_PI;
             radiance = diffuse + emissive;
         }
     }

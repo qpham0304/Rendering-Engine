@@ -131,7 +131,8 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	}
 
 	pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
-	pushConstant.padding = 0;
+	pushConstant.lightsRef = rendererManagerVulkan->getLightsAddress();
+	pushConstant.lightCount = rendererManagerVulkan->getLightCount();
 	pushConstant.gridOrigin = probeGrid->gridOrigin;
 	pushConstant.probeCounts = glm::ivec4(probeCounts, totalProbes);
 	pushConstant.probesResolution = IRRADIANCE_RES;
