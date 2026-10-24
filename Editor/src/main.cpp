@@ -14,7 +14,7 @@ int main()
         windowConfig.height = 1080;
         windowConfig.vsync = false;
 #ifdef WK_WORKING_DIR
-        windowConfig.WorkDir = WK_WORKING_DIR;  // game project dir, the editor works on its source assets
+        windowConfig.WorkDir = WK_WORKING_DIR;      // game project dir, the editor works on its source assets
 #endif
 
         Engine app(windowConfig);
