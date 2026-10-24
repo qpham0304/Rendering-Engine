@@ -42,7 +42,9 @@ protected:
 	uint32_t hiZPoolID;
 	uint32_t hiZSetsID;
 	uint32_t mipLevels;
-	uint32_t mapSize{ 1024 };
+	uint32_t width { 0 };
+	uint32_t height { 0 };
+	bool hizRecreated { false };
 
 	std::vector<VkImageView> HiZMipViews;
 	std::vector<VkDescriptorSet> HiZMipSets;

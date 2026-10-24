@@ -10,6 +10,9 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
+#include <graphics/framework/vulkan/renderers/renderpiplines/RayTraceRendererVulkan.h>
+#include <graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h>
+#include <graphics/framework/Vulkan/resources/buffers/AccelStructureBufferVulkan.h>
 #include <window/AppWindow.h>
 #include <math.h>
 #include <algorithm>
@@ -46,6 +49,8 @@ bool SSRGIPassVulkan::init(WindowConfig config)
     emissiveImage = geometryPass->renderTarget.gBufferEmissive;
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
+    settings = &rendererManagerVulkan->getGraphicsSettings().add<SSRSettings>("Screen Space Reflections");
+    rtSupported = rendererManagerVulkan->getRenderer("RayTraceRendererVulkan") != nullptr;
 
     _createResources();
     _createDescriptors();
@@ -57,9 +62,14 @@ bool SSRGIPassVulkan::init(WindowConfig config)
 bool SSRGIPassVulkan::onClose()
 {
     PostProcessRendererVulkan::onClose();
-    
+    rendererManagerVulkan->getGraphicsSettings().remove<SSRSettings>();
+    settings = nullptr;
+
     pipeline->destroy();
-    
+    if(rayQueryPipeline) {
+        rayQueryPipeline->destroy();
+    }
+
     return true;
 }
 
@@ -92,37 +102,65 @@ void SSRGIPassVulkan::render(Camera &camera)
     ubo.projection[1][1] *= -1.0f; 
     ubo.invProj = glm::inverse(ubo.projection);
     ubo.invView = glm::inverse(ubo.view);
+
+    // same sun the light pass, the shadow map and ddgi use, the tlas fallback shades its hits with it
+    const GraphicsSettingsSerializer& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
+    const ShadowMapSettings* shadowSettings = graphicsSettings.get<ShadowMapSettings>();
+    const LightingSettings* lightingSettings = graphicsSettings.get<LightingSettings>();
+    const DDGISettings* ddgiSettings = graphicsSettings.get<DDGISettings>();
+    glm::vec3 sunDirection = shadowSettings ? shadowSettings->lightDir : glm::vec3(0.0f, 1.0f, 0.0f);
+    if(glm::length(sunDirection) < 0.0001f) {
+        sunDirection = glm::vec3(0.0f, 1.0f, 0.0f);
+    }
+    ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), 0.0f);
+    ubo.sunColor = lightingSettings ? lightingSettings->sunColor * lightingSettings->sunIntensity : glm::vec4(0.0f);
+    ubo.skyIntensity = ddgiSettings ? ddgiSettings->skyIntensity : 1.0f;	// traced hits see the same sky as the ddgi probes
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
-	pushConstant.screenRes = { geometryPass->renderTarget.width, geometryPass->renderTarget.height };
-    pushConstant.maxDistance = 500.0f;
-    pushConstant.maxMip = 11;          
-    pushConstant.thickness = 0.05f;
+	pushConstant.screenRes = { traceWidth, traceHeight };
+    pushConstant.maxDistance = settings->maxDistance;
+    pushConstant.mostDetailedMip = std::clamp(settings->downsample, 0, 2);
+    pushConstant.thickness = settings->thickness;
     pushConstant.time = AppWindow::getTime();
     pushConstant.frameSeed = rand() % 32768;
+    pushConstant.maxSteps = settings->maxSteps;
+    pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
+    pushConstant.useTLAS = 0;
+
+    // only switch to the ray query pipeline when it can actually trace, otherwise skip the tlas update entirely
+    VulkanPipeline* activePipeline = pipeline.get();
+    if(settings->useTLAS && rayQueryPipeline) {
+        auto raytracer = dynamic_cast<RayTraceRendererVulkan*>(rendererManagerVulkan->getRenderer("RayTraceRendererVulkan"));
+        raytracer->updateTlas();
+        if(AccelStructureBufferVulkan* tlas = raytracer->m_rtBuilder.getTlas()) {
+            _updateRayQueryDescriptor(currentFrame, tlas);
+            activePipeline = rayQueryPipeline.get();
+            pushConstant.useTLAS = 1;
+        }
+    }
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     renderDeviceVulkan->beginLabel(cmd, "SSRGI Pass");
-    writeSSRGI(cmd, currentFrame);
+    writeSSRGI(cmd, currentFrame, activePipeline);
     renderDeviceVulkan->endLabel(cmd);
 
 }
 
-void SSRGIPassVulkan::writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame)
+void SSRGIPassVulkan::writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame, VulkanPipeline* activePipeline)
 {
-    pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
-    auto descriptorSet = descriptorManagerVulkan->getDescriptorSet(SSRGISetsID)[currentFrame];
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, 
-        pipeline->pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+    activePipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+    std::vector<VkDescriptorSet> sets = { descriptorManagerVulkan->getDescriptorSet(SSRGISetsID)[currentFrame] };
+    if(rtSupported) {
+        sets.push_back(descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0]);	// materials of the tlas hits
+    }
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+        activePipeline->pipelineLayout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
 
-    vkCmdPushConstants(cmd, pipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 
+    vkCmdPushConstants(cmd, activePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
         0, sizeof(PushConstant), &pushConstant);
 
-	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-    uint32_t width = geometryPass->renderTarget.width;
-    uint32_t height = geometryPass->renderTarget.height;
-    uint32_t groupX = (width  + 7) / 8;
-    uint32_t groupY = (height + 7) / 8;
+    uint32_t groupX = (traceWidth  + 7) / 8;
+    uint32_t groupY = (traceHeight + 7) / 8;
 
     vkCmdDispatch(cmd, groupX, groupY, 1);
 }
@@ -131,9 +169,17 @@ void SSRGIPassVulkan::_createResources()
 {
     // one graph owned output: nothing reads last frame's ssrgi, so it needs no per frame copies.
     // same texture every frame, the graph recreates it when the render size changes
+    // traced at 1, 1/2 or 1/4 of the render size, the passes reading it sample with uvs so it upscales on read
+    int downsample = settings ? std::clamp(settings->downsample, 0, 2) : 0;
+    VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
+
     RGTextureDesc desc{};
     desc.config.format = VK_FORMAT_R16G16B16A16_SFLOAT;	// usage defaults to storage | sampled
     desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    desc.scale = 1.0f / static_cast<float>(1 << downsample);
+    // same rounding as the graph so the dispatch covers the texture exactly
+    traceWidth = std::max(1u, static_cast<uint32_t>(swapchain.swapChainExtent.width * desc.scale));
+    traceHeight = std::max(1u, static_cast<uint32_t>(swapchain.swapChainExtent.height * desc.scale));
 
     RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
     outputHandle = graph.createRenderTexture("SSRGI.Output", desc);
@@ -144,18 +190,32 @@ void SSRGIPassVulkan::_createResources()
 void SSRGIPassVulkan::_createPipelines()
 {
     VkDescriptorSetLayout layout = descriptorManagerVulkan->getDescriptorLayout(SSRGILayoutID);
-    
+    std::vector<VkDescriptorSetLayout> layouts = { layout };
+    if(rtSupported) {
+        layouts.push_back(descriptorManagerVulkan->getDescriptorLayout(textureManagerVulkan->getBindlessTextureLayout()));
+    }
+
+    // both share the layout, the plain one just never touches the tlas bindings
 	pipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
     pipeline->createComputePipeline(
-		"assets/shaders/spv/SSRGI.comp.spv", 
-		{ layout }, 
+		"assets/shaders/spv/SSRGI.comp.spv",
+		layouts,
 		sizeof(PushConstant)
 	);
+
+    if(rtSupported) {
+        rayQueryPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+        rayQueryPipeline->createComputePipeline(
+            "assets/shaders/spv/SSRGIRayQuery.comp.spv",
+            layouts,
+            sizeof(PushConstant)
+        );
+    }
 }
 
 void SSRGIPassVulkan::_createDescriptors()
 {
-    std::vector<VkDescriptorSetLayoutBinding> bindings {
+    bindings = {
         { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
@@ -174,7 +234,15 @@ void SSRGIPassVulkan::_createDescriptors()
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
 	};
-	
+
+    // tlas and sky sh for the ray query fallback, written every frame it is used
+    if(rtSupported) {
+        bindings.push_back({ 10, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });
+        bindings.push_back({ 11, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });
+        poolSizes.push_back({ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, frameCount });
+        poolSizes.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount });
+    }
+
     SSRGILayoutID = descriptorManagerVulkan->createLayout(bindings);
     SSRGIPoolID = descriptorManagerVulkan->createPool(poolSizes, frameCount);
 	SSRGISetsID = descriptorManagerVulkan->createSets(SSRGILayoutID, SSRGIPoolID, frameCount);
@@ -193,6 +261,7 @@ void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
 	auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(renderer);
 	
     depthImageHiZ = highZRendererVulkan->hizImage;
+    hizImageID = depthImageHiZ->id();
     depthImageRaw = geometryPass->renderTarget.depthTexture;
     normalImage = geometryPass->renderTarget.gBufferNorm;
     colorImage = lightingPass->renderTarget.colorTexture;
@@ -276,14 +345,32 @@ void SSRGIPassVulkan::_recreateResources()
 	_createPipelines();
 }
 
+void SSRGIPassVulkan::_updateRayQueryDescriptor(uint32_t index, AccelStructureBufferVulkan* tlas)
+{
+    // the tlas can be rebuilt and the environment reloaded between frames
+    auto imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan"));
+    const VkDescriptorBufferInfo& shInfo = imageBasedRenderer->finalSumBuffers[index]->getDescStorageBufferInfo();
+    const VkWriteDescriptorSetAccelerationStructureKHR& tlasInfo = tlas->getDescAccelStructInfo();
+
+	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(SSRGISetsID);
+	std::vector<VkWriteDescriptorSet> writes;
+	descriptorManagerVulkan->writeAccelStruct(&writes, descriptorSets[index], 10, bindings, tlasInfo);
+	descriptorManagerVulkan->writeStorage(&writes, descriptorSets[index], 11, shInfo);
+	descriptorManagerVulkan->updateDescriptorSets(&writes);
+}
+
 void SSRGIPassVulkan::_cleanupResources()
 {
     pipeline->destroy();
+    if(rayQueryPipeline) {
+        rayQueryPipeline->destroy();
+    }
 }
 
 void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
-    // same output as last frame unless the render size changed, then the graph recreated it
+    // same output as last frame unless the render size or downsample changed, then the graph recreated it
+    uint32_t previousOutputID = outputImageID;
     _createResources();
 
     if(needResize) {
@@ -291,6 +378,14 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
 		needResize = false;
 		return;
 	}
+
+    // compared by id, a recreated texture can land at the same address
+    auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(rendererManagerVulkan->getRenderer("HiZPassVulkan"));
+    if(outputImageID != previousOutputID || highZRendererVulkan->hizImage->id() != hizImageID) {
+        for(uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
+            _updateDescriptor(i);
+        }
+    }
 
    
     auto depthImageHiZHandle = graph.importTexture(depthImageHiZ);

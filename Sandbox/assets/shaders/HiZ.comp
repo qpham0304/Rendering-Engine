@@ -2,7 +2,7 @@
 
 layout(local_size_x = 16, local_size_y = 16) in;
 
-// the previous finer mip level
+// mip 0: the scene depth, mips 1+: the previous (finer) hiz mip
 layout(binding = 0) uniform sampler2D u_PreviousLevel;
 
 // the current coarser mip level being written to
@@ -13,28 +13,42 @@ layout(push_constant) uniform PushConstants {
     int u_MipLevel;
 } params;
 
+// closest depth (standard z, 0 = near) so a ray in front of a cell's value can safely skip the whole cell
 void main() {
     ivec2 currCoord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 currSize = imageSize(u_CurrentLevel);
+    if (currCoord.x >= currSize.x || currCoord.y >= currSize.y) {
+        return;
+    }
+
     ivec2 prevSize = ivec2(params.u_PreviousLevelDimensions);
-    
-    float depth;
 
     if (params.u_MipLevel == 0) {
-        // map 0-1023 range to 0.0-1.0 range
-        vec2 uv = (vec2(currCoord) + 0.5) / 1024.0; 
-        depth = texture(u_PreviousLevel, uv).r; 
-    } else {
-        // for all other mips, the ratio is exactly 2:1, so texelFetch is better
-        ivec2 prevCoord = currCoord * 2;
-        
-        float d0 = texelFetch(u_PreviousLevel, prevCoord, 0).r;
-        float d1 = texelFetch(u_PreviousLevel, min(prevCoord + ivec2(1, 0), prevSize - 1), 0).r;
-        float d2 = texelFetch(u_PreviousLevel, min(prevCoord + ivec2(0, 1), prevSize - 1), 0).r;
-        float d3 = texelFetch(u_PreviousLevel, min(prevCoord + ivec2(1, 1), prevSize - 1), 0).r;
-
-        // using MAX for Reverse-Z (Closest point)
-        depth = max(max(d0, d1), max(d2, d3));
+        // same size as the depth buffer, a straight copy
+        imageStore(u_CurrentLevel, currCoord, vec4(texelFetch(u_PreviousLevel, currCoord, 0).r));
+        return;
     }
-    
+
+    ivec2 prevCoord = currCoord * 2;
+    float depth = texelFetch(u_PreviousLevel, prevCoord, 0).r;
+    depth = min(depth, texelFetch(u_PreviousLevel, min(prevCoord + ivec2(1, 0), prevSize - 1), 0).r);
+    depth = min(depth, texelFetch(u_PreviousLevel, min(prevCoord + ivec2(0, 1), prevSize - 1), 0).r);
+    depth = min(depth, texelFetch(u_PreviousLevel, min(prevCoord + ivec2(1, 1), prevSize - 1), 0).r);
+
+    // odd sized previous level: the last row / column also covers the texel the 2x2 footprint misses
+    bool extraX = (prevSize.x & 1) != 0 && currCoord.x == currSize.x - 1;
+    bool extraY = (prevSize.y & 1) != 0 && currCoord.y == currSize.y - 1;
+    if (extraX) {
+        depth = min(depth, texelFetch(u_PreviousLevel, prevCoord + ivec2(2, 0), 0).r);
+        depth = min(depth, texelFetch(u_PreviousLevel, min(prevCoord + ivec2(2, 1), prevSize - 1), 0).r);
+    }
+    if (extraY) {
+        depth = min(depth, texelFetch(u_PreviousLevel, prevCoord + ivec2(0, 2), 0).r);
+        depth = min(depth, texelFetch(u_PreviousLevel, min(prevCoord + ivec2(1, 2), prevSize - 1), 0).r);
+    }
+    if (extraX && extraY) {
+        depth = min(depth, texelFetch(u_PreviousLevel, prevCoord + ivec2(2, 2), 0).r);
+    }
+
     imageStore(u_CurrentLevel, currCoord, vec4(depth));
 }

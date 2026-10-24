@@ -1,0 +1,7 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+// same pass with the tlas fallback, only loaded on gpus with ray query support
+#define SSR_RAY_QUERY
+#include "common/ssrgi.glsl"

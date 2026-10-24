@@ -90,6 +90,22 @@ struct AmbientOcclusionSettings {
 	)
 };
 
+struct SSRSettings {
+	int downsample { 0 };
+	int maxSteps { 64 };
+	float thickness { 0.25f };
+	float maxDistance { 500.0f };
+	bool useTLAS { false };
+
+	DEFINE_TYPE(SSRSettings,
+		member("downsample", &SSRSettings::downsample, FieldMeta{ .min = 0.0f, .max = 2.0f, .tooltip = "0 full, 1 half, 2 quarter resolution" }),
+		member("maxSteps", &SSRSettings::maxSteps, FieldMeta{ .min = 8.0f, .max = 256.0f, .tooltip = "hi-z traversal iterations per ray" }),
+		member("thickness", &SSRSettings::thickness, FieldMeta{ .min = 0.01f, .max = 5.0f, .tooltip = "view space depth a hit may be behind the surface" }),
+		member("maxDistance", &SSRSettings::maxDistance, FieldMeta{ .min = 1.0f, .max = 1000.0f }),
+		member("useTLAS", &SSRSettings::useTLAS, FieldMeta{ .tooltip = "rays that leave the screen continue against the scene, needs ray tracing support" })
+	)
+};
+
 struct ImageBasedSettings {
 	std::string environmentMap { "assets/textures/hdr/farm_field_puresky_2k.hdr" };
 	// "assets/textures/hdr/newport_loft.hdr",

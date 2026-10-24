@@ -65,6 +65,7 @@ public:
 
 	void drawObjects(VkCommandBuffer cmd);
 	uint64_t getObjectsAddress() const;
+	uint64_t getFrameNumber() const { return m_frameNumber; }
 
 
 protected:
@@ -114,6 +115,7 @@ protected:
 private:
 	RenderGraphVulkan m_renderGraph;
 	bool needResize{ false };
+	uint64_t m_frameNumber { 0 };
 	bool swapchainOutdated{ false };
 
 	//friend class renderer vulkan should not be able to call these

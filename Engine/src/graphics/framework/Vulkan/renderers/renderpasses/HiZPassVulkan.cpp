@@ -35,6 +35,7 @@ bool HiZPassVulkan::init(WindowConfig config)
     _createResources();
     _createDescriptors();
     _createPipelines();
+    hizRecreated = false;
 
     return true;
 }
@@ -76,17 +77,13 @@ void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 
-    auto depthPrepass = dynamic_cast<DepthPrepassVulkan*>(rendererManagerVulkan->getRenderer("DepthPrepassVulkan"));
-
     for (uint32_t i = 0; i < mipLevels; i++) {
-        uint32_t currentWidth  = std::max(1u, mapSize >> i);
-        uint32_t currentHeight = std::max(1u, mapSize >> i);
-        glm::vec2 prevDims;
-        if (i == 0) {
-            prevDims = glm::vec2(depthPrepass->renderTarget.width, depthPrepass->renderTarget.height);
-        } else {
-            prevDims = glm::vec2(std::max(1u, mapSize >> (i - 1)));
-        }
+        uint32_t currentWidth  = std::max(1u, width >> i);
+        uint32_t currentHeight = std::max(1u, height >> i);
+        // mip 0 copies the depth buffer, which is the same size
+        glm::vec2 prevDims = i == 0
+            ? glm::vec2(width, height)
+            : glm::vec2(std::max(1u, width >> (i - 1)), std::max(1u, height >> (i - 1)));
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipelineLayout, 0, 1, &HiZMipSets[i], 0, nullptr);
         pushConstant.u_PreviousLevelDimensions = prevDims;
         pushConstant.u_MipLevel = i;
@@ -123,12 +120,13 @@ void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)
 
 void HiZPassVulkan::_createResources()
 {
-	mipLevels = static_cast<uint32_t>(std::floor(std::log2(mapSize))) + 1;
+	// render sized so mip 0 lines up with the depth buffer texel for texel, the graph resizes it with the window
+	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
+	width = swapchain.swapChainExtent.width;
+	height = swapchain.swapChainExtent.height;
+	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
-	// fixed size, owned by the render graph: created once, never touched by a window resize
 	RGTextureDesc desc{};
-	desc.config.width = mapSize;
-	desc.config.height = mapSize;
 	desc.config.format = VK_FORMAT_R32_SFLOAT;
 	desc.config.mipLevels = mipLevels;
 	desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -144,6 +142,7 @@ void HiZPassVulkan::_createResources()
 	if(hizImage->id() == previousImageID) {
 		return;
 	}
+	hizRecreated = true;
 
 	// a new texture, rebuild the per mip views every level of the chain is written through
 	for (auto view : HiZMipViews) {
@@ -245,11 +244,13 @@ void HiZPassVulkan::addToGraph(RenderGraphVulkan& graph)
 	auto depthPrepass = dynamic_cast<DepthPrepassVulkan*>(rendererManagerVulkan->getRenderer("DepthPrepassVulkan"));
 	depthImage = depthPrepass->renderTarget.depthTexture;
 	depthHandle = depthPrepass->renderTarget.depthHandle;
-	_createResources();		// fixed size, the graph hands back the same texture every frame
+	_createResources();
 
-	if(needResize) {
+	// the per mip sets point at the old views, and the mip count follows the render size
+	if(needResize || hizRecreated) {
 		_recreateResources();
 		needResize = false;
+		hizRecreated = false;
 	}
 
 	RenderPassNode node{};

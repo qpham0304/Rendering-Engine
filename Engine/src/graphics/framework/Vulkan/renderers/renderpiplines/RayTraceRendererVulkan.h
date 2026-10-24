@@ -77,6 +77,7 @@ public:	//TODO: make private once done testing
 	bool showGui { true };
 	uint32_t frameCounter { 0 };
 	bool m_tlasInitialized { false };
+	uint64_t m_lastTlasFrame { 0 };
 	bool clear { false };
 	bool explicitPass { false };
 

@@ -12,6 +12,7 @@ ImGuiGraphicsSettingsWidget::ImGuiGraphicsSettingsWidget(std::string name)
     m_drawers.add<ShadowMapSettings>();
     m_drawers.add<LightingSettings>();
     m_drawers.add<AmbientOcclusionSettings>();
+    m_drawers.add<SSRSettings>();
     m_drawers.add<ImageBasedSettings>();
     m_drawers.add<DeferredSettings>();
     m_drawers.add<DDGISettings>();

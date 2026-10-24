@@ -217,6 +217,7 @@ void RendererManagerVulkan::render()
     m_renderGraph.setRenderSize(renderExtent.width, renderExtent.height);
 
     beginFrame();
+    m_frameNumber++;
 
     if (firstFrame) {
         lastViewProj = camera->getProjectionMatrix() * camera->getViewMatrix();

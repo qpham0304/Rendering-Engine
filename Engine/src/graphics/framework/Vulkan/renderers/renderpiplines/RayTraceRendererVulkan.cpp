@@ -628,6 +628,13 @@ void RayTraceRendererVulkan::_buildNewBlas()
 }
 
 void RayTraceRendererVulkan::updateTlas() {
+    // ssr and ddgi can both ask in one frame, the build is a blocking submit so do it once
+    uint64_t frameNumber = rendererManagerVulkan->getFrameNumber();
+    if(m_tlasInitialized && m_lastTlasFrame == frameNumber) {
+        return;
+    }
+    m_lastTlasFrame = frameNumber;
+
     _buildNewBlas();
 
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
