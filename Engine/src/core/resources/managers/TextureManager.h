@@ -20,6 +20,8 @@ public:
 		}
 		return list;
 	}
+	static constexpr uint32_t FULL_MIP_CHAIN = 0;
+
 	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels = 1, bool isDataTexture = false) = 0;
 	virtual uint32_t loadTextureFromMemory(const void *data, size_t size, std::string_view cacheKey, uint32_t mipLevels, bool isDataTexture) = 0;
 	virtual uint32_t createTexture() = 0;

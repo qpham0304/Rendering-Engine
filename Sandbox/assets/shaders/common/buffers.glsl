@@ -72,6 +72,25 @@ Vertex fetchVertex(Object obj, uint vertexIndex) {
     return Vertices(obj.vertexAddress).v[index];
 }
 
+// orthonormal tangent frame, survives missing tangents (meshes without uvs) and the nan tangents assimp writes for degenerate uvs
+mat3 buildTBN(mat3 normalMatrix, Vertex vert) {
+    vec3 N = normalize(normalMatrix * vert.normal);
+    vec3 T = normalMatrix * vert.tangent;
+    T -= N * dot(N, T);
+
+    float lengthT = length(T);
+    if (isnan(lengthT) || lengthT < 1e-6) {
+        vec3 axis = abs(N.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+        T = normalize(cross(axis, N));
+    } else {
+        T /= lengthT;
+    }
+
+    // mirrored uvs flip the bitangent, keep that instead of the raw (possibly skewed or nan) bitangent
+    float handedness = dot(cross(N, T), normalMatrix * vert.biTangent) < 0.0 ? -1.0 : 1.0;
+    return mat3(T, cross(N, T) * handedness, N);
+}
+
 mat4 getSkinMatrix(BoneMatrixArrayTable boneTable, uint boneMatricesIdx, Vertex vert) {
     if(boneMatricesIdx == 0) {
         return mat4(1.0);

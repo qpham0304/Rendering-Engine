@@ -42,11 +42,8 @@ void main() {
     outWorldPos = worldPos.xyz;
 
     mat3 normalMatrix = transpose(inverse(mat3(obj.model * skinMatrix)));
-    vec3 T = normalize(normalMatrix * vert.tangent);
-    vec3 B = normalize(normalMatrix * vert.biTangent);
-    vec3 N = normalize(normalMatrix * vert.normal);
-    outTBN = mat3(T, B, N);
-    outNormal = N;
+    outTBN = buildTBN(normalMatrix, vert);
+    outNormal = outTBN[2];
     outTexCoord = vert.uv;
     outObjIdx = gl_InstanceIndex;
 

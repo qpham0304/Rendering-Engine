@@ -19,6 +19,18 @@ layout(location = 3) out vec4 outPBR;
 layout(location = 4) out vec4 outEmissive;
 layout(location = 5) out vec4 outMotion;
 
+layout(set = 0, binding = 0) uniform UniformBufferObject {
+    mat4 invNormal;
+    mat4 view;
+    mat4 prevViewProj;
+    mat4 proj;
+    vec4 cameraPos;
+    mat4 invView;
+    mat4 invProj;
+    float width;
+    float height;
+} ubo;
+
 layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 
 layout(push_constant) uniform PushConstant {
@@ -27,7 +39,7 @@ layout(push_constant) uniform PushConstant {
 } pc;
 
 
-vec3 getNormalFromMap(vec4 normalMap, Material mat) {
+vec3 getNormalFromMap(vec4 normalMap, Material mat, mat3 TBN) {
     vec3 texNormal = normalMap.xyz * 2.0 - 1.0;
 
     float ripple = sin(inWorldPos.x * 5.0 + inWorldPos.z * 5.0 + mat.emissiveFactor * 10.0); 
@@ -37,7 +49,7 @@ vec3 getNormalFromMap(vec4 normalMap, Material mat) {
         texNormal.z
     );
 
-    return normalize(inTBN * normalize(animatedNormal));
+    return normalize(TBN * normalize(animatedNormal));
 }
 
 void main() {
@@ -50,8 +62,14 @@ void main() {
 
     outPos = vec4(inWorldPos, 1.0);
     
+    // culling is off, the back face of thin geometry is lit like its front instead of from behind
+    mat3 TBN = inTBN;
+    if (dot(inNormal, ubo.cameraPos.xyz - inWorldPos) < 0.0) {
+        TBN = -TBN;
+    }
+
     vec4 normalMap = texture(samplerImages[mat.normalIdx], inTexCoord + mat.uvOffset);
-    vec3 N = getNormalFromMap(normalMap, mat);
+    vec3 N = getNormalFromMap(normalMap, mat, TBN);
     outNorm = vec4(N, 1.0);
     
     outAlbedo = texture(samplerImages[mat.albedoIdx], inTexCoord + mat.uvOffset) * mat.albedoFactor;

@@ -203,10 +203,13 @@ void TextureManagerVulkan::_loadTexture(
 
 	VkDeviceSize imageSize = texWidth * texHeight * 4 * bytesPerChannel;
 
+	// float formats are not guaranteed to support the linear blit generateMipmaps uses
+	if (mipLevels == FULL_MIP_CHAIN) {
+		mipLevels = isHDR ? 1 : static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+	}
+
 	if (!pixels) {
 		m_logger->error("TextureManagerVulkan::loadTexture: failed to load texture image {}", path.data());
-		// std::string message = "TextureManagerVulkan::loadTexture: failed to load texture image ";
-		// throw std::runtime_error(message + path.data());
 		return;
 	}
 
@@ -274,7 +277,8 @@ void TextureManagerVulkan::_loadTexture(
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	if (isDataTexture) {
+	// single level data textures (blue noise, lookup maps) are read texel exact, mipmapped ones (material maps) are filtered like colour
+	if (isDataTexture && mipLevels == 1) {
         samplerInfo.magFilter = VK_FILTER_NEAREST;
         samplerInfo.minFilter = VK_FILTER_NEAREST;
         samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST; // No blending between mips
@@ -294,6 +298,8 @@ void TextureManagerVulkan::_loadTexture(
 		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	}
+	samplerInfo.minLod = 0.0f;
+	samplerInfo.maxLod = static_cast<float>(mipLevels);
 	createTextureSampler(texture->textureSampler, renderDeviceVulkan->device, samplerInfo);
 	m_logger->debug("Texture loaded {}, id: {}", path.data(), static_cast<uint32_t>(m_ids.load()));
 }

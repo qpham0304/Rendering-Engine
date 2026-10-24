@@ -49,9 +49,10 @@ void main() {
 
     mat3 normalMatrix = transpose(inverse(mat3(obj.model * skinMatrix)));
 
-    outNormal = normalize(normalMatrix * vert.normal);
-    outTangent   = normalize(normalMatrix * vert.tangent);
-    outBitangent = normalize(normalMatrix * vert.biTangent);
+    mat3 TBN = buildTBN(normalMatrix, vert);
+    outNormal    = TBN[2];
+    outTangent   = TBN[0];
+    outBitangent = TBN[1];
 
     fragColor = vert.col;
     fragTexCoord = vert.uv;
