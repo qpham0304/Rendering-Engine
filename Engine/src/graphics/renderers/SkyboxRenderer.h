@@ -3,10 +3,11 @@
 #include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
 #include <algorithm>
 #include "../framework/OpenGL/core/skybox.h"
+#include "core/features/Object.h"
 
 class Camera;
 
-class SkyboxRenderer
+class SkyboxRenderer : public Object
 {
 private:
 	void setup();

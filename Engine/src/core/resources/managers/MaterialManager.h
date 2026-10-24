@@ -22,6 +22,6 @@ public:
 	virtual bool updateMaterial(uint32_t id, const MaterialDesc& materialDesc) = 0;
 
 protected:
-    MaterialManager(std::string serviceName = "MaterialManager") : Manager(serviceName) {};
+    MaterialManager(std::string serviceName = "MaterialManager") : Manager(serviceName) { setFootprint("MaterialManager", sizeof(MaterialManager), MemorySystem::Resource); };
 
 };

@@ -1,5 +1,5 @@
 #include <core/Engine.h>
-#include "SandboxLayer.h"
+#include "SandboxGame.h"
 
 int main()
 {
@@ -17,9 +17,12 @@ int main()
         windowConfig.vsync = false;
         windowConfig.targetRenderFPS = 144.0f;
         windowConfig.targetUpdateFPS = 144.0f;
+#ifdef WK_WORKING_DIR
+        windowConfig.WorkDir = WK_WORKING_DIR;  // dev build: share assets from the project source dir
+#endif
 
         Engine app(windowConfig);
-        app.pushLayer(new SandBoxLayer("Sandbox Layer"));
+        wkGameLoad(app);
         app.init();
         app.start();
         app.run();

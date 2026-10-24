@@ -14,6 +14,7 @@ public:
         glm::vec3 worldPosition { 0.0f }; // redundant, only for debug draw atm
 
 		std::vector<uint32_t> childrenNodes{};
+        std::vector<uint32_t> meshIDs{};
 
         bool isBone { false };
     };

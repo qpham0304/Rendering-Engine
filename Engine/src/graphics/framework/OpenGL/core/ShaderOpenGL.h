@@ -9,13 +9,14 @@
 #include<glm/glm.hpp>
 #include<unordered_map>
 #include<cstring>
+#include "core/features/Object.h"
 
 struct UniformData {
 	std::string type;
 	std::string name;
 };
 
-class ShaderOpenGL
+class ShaderOpenGL : public Object
 {
 public:
 	// Reference ID of the Shader Program

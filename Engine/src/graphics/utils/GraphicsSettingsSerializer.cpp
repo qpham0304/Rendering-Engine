@@ -17,6 +17,7 @@
 GraphicsSettingsSerializer::GraphicsSettingsSerializer()
 	: Serializable()
 {
+	setFootprint("GraphicsSettingsSerializer", sizeof(GraphicsSettingsSerializer), MemorySystem::Graphics);
 	RegisterSettings();
 }
 

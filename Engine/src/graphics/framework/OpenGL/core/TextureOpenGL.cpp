@@ -50,6 +50,7 @@ void TextureOpenGL::loadTexture(const char* path, bool flip)
 
 TextureOpenGL::TextureOpenGL(const char* path, const char* texType)
 {
+	setFootprint("TextureOpenGL", sizeof(TextureOpenGL), MemorySystem::Graphics);
 	this->m_type = texType;
 	this->m_path = path;
 
@@ -58,6 +59,7 @@ TextureOpenGL::TextureOpenGL(const char* path, const char* texType)
 
 TextureOpenGL::TextureOpenGL(const char* fileName, const char* texType, const std::string& directory)
 {
+	setFootprint("TextureOpenGL", sizeof(TextureOpenGL), MemorySystem::Graphics);
 	std::string finalPath = std::string(fileName);
 	finalPath = directory + '/' + finalPath;
 	this->m_type = texType;

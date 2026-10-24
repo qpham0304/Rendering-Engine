@@ -192,6 +192,7 @@ void ImageBasedRenderer::renderBRDF()
 
 ImageBasedRenderer::ImageBasedRenderer()
 {
+    setFootprint("ImageBasedRenderer", sizeof(ImageBasedRenderer), MemorySystem::Graphics);
     equirectToCubeMapShader.Init("assets/Shaders/cubemap-hdr.vert", "assets/Shaders/equireRectToCubemap.frag");
     irradianceShader.Init("assets/Shaders/cubemap-hdr.vert", "assets/Shaders/irradianceConvolution.frag");
     backgroundShader.Init("assets/Shaders/background.vert", "assets/Shaders/background.frag");

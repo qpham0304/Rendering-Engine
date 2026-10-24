@@ -59,6 +59,7 @@ int MeshOpenGL::GetNumVertices()
 
 MeshOpenGL::MeshOpenGL(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<TextureOpenGL> textures)
 {
+	setFootprint("MeshOpenGL", sizeof(MeshOpenGL), MemorySystem::Graphics);
 	this->vertices = vertices;
 	this->indices = indices;
 	this->textures = textures;

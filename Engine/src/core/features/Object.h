@@ -1,7 +1,8 @@
 #pragma once
 #include <string>
+#include "core/memory/MemoryTrackable.h"
 
-class Object 
+class Object : public MemoryTrackable
 {
 public:
     std::string name();

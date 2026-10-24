@@ -36,6 +36,24 @@
             "cwd": "${workspaceFolder}/Sandbox/bin/windows-ninja/Release",
             "console": "integratedTerminal",
             "preLaunchTask": "build Sandbox Release (ninja)"
+        },
+        {
+            "name": "Debug Editor (MSVC)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Editor/bin/windows-msvc/Debug/Editor.exe",
+            "cwd": "${workspaceFolder}/Sandbox",
+            "console": "integratedTerminal",
+            "preLaunchTask": "build Editor Debug (msvc)"
+        },
+        {
+            "name": "Release Editor (MSVC)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Editor/bin/windows-msvc/Release/Editor.exe",
+            "cwd": "${workspaceFolder}/Sandbox",
+            "console": "integratedTerminal",
+            "preLaunchTask": "build Editor Release (msvc)"
         }
     ]
 }

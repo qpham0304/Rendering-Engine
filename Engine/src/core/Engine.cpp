@@ -17,12 +17,47 @@
 #include <core/resources/managers/DescriptorManager.h>
 #include <core/resources/managers/MaterialManager.h>
 #include <graphics/renderers/Renderer.h>
+#include <filesystem>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
+static std::filesystem::path getExecutableDir()
+{
+#ifdef _WIN32
+	wchar_t buffer[MAX_PATH];
+	DWORD length = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+	return std::filesystem::path(std::wstring(buffer, length)).parent_path();
+#else
+	return std::filesystem::canonical("/proc/self/exe").parent_path();
+#endif
+}
+
+// must run before any service touches the file system
+static void setupWorkingDirectory(WindowConfig& config)
+{
+	std::filesystem::path workDir = config.WorkDir.empty() ? getExecutableDir() : std::filesystem::path(config.WorkDir);
+	std::error_code ec;
+	std::filesystem::current_path(workDir, ec);
+	if (ec) {
+		std::cerr << "Engine: failed to set working directory to " << workDir << ": " << ec.message() << std::endl;
+		return;
+	}
+	config.WorkDir = std::filesystem::current_path().string();
+	if (!std::filesystem::exists(config.AssetsDir)) {
+		std::cerr << "Engine: assets directory not found: " << (workDir / config.AssetsDir) << std::endl;
+	}
+}
 
 Engine::Engine(WindowConfig config)
 	: windowConfig(config),
 	sceneManager(SceneManager::getInstance()),
 	eventManager(EventManager::getInstance())
 {
+	setupWorkingDirectory(windowConfig);
+	setFootprint("Engine", sizeof(Engine), MemorySystem::Core);
 	ServiceLocator::setContext(&serviceLocator);
 	engineLogger = platformFactory.Create(LoggerPlatform::SPDLOG, "Engine");
 	clientLogger = platformFactory.Create(LoggerPlatform::SPDLOG, "Client");
@@ -67,6 +102,21 @@ Engine::Engine(WindowConfig config)
 void Engine::pushLayer(Layer* layer)
 {
 	layerManager->addLayer(layer);
+	
+	// layers pushed after init will miss LayerManager::init call
+	if (isInitialized && !layer->init()) {
+		engineLogger->error("Layer Initilize failed: {}", layer->getName());
+	}
+}
+
+void Engine::removeLayer(Layer* layer)
+{
+	layerManager->removeLayer(layer);
+}
+
+void Engine::addFrameCallback(std::function<void()> callback)
+{
+	frameCallbacks.push_back(std::move(callback));
 }
 
 void Engine::init()
@@ -84,7 +134,7 @@ void Engine::init()
 			engineLogger->debug("Initilize Service: {}", service->getServiceName());
 		}
 	}
-	
+	isInitialized = true;
 }
 
 void Engine::start()
@@ -124,6 +174,10 @@ void Engine::run() {
 		double currentTime = AppWindow::getTime();
 		double deltaTime = std::min(currentTime - lastTime, maxFrameTime);
 		lastTime = currentTime;
+
+		for (auto& callback : frameCallbacks) {
+			callback();
+		}
 
 		bool isPlaying = EngineState::isPlaying();
 		if (isPlaying && !wasPlaying) {

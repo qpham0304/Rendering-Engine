@@ -23,7 +23,7 @@ public:
 	virtual std::vector<uint32_t> listIDs() const = 0;
 
 protected:
-	Manager(std::string serviceName = "Manager") : Service(serviceName) {};
+	Manager(std::string serviceName = "Manager") : Service(serviceName) { setFootprint("Manager", sizeof(Manager), MemorySystem::Resource); };
 
 	uint32_t _assignID() { return m_ids.fetch_add(1, std::memory_order_relaxed); }
 

@@ -14,6 +14,7 @@
 AppWindowGLFW::AppWindowGLFW() 
 	: AppWindow(), m_windowHandle(nullptr), m_sharedWindowHandle(nullptr)
 {
+	setFootprint("AppWindowGLFW", sizeof(AppWindowGLFW), MemorySystem::Window);
 	window = &*this;
 	m_input = std::make_unique<InputGLFW>();
 }

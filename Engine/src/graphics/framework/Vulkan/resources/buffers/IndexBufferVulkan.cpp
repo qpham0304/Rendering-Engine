@@ -4,6 +4,7 @@
 IndexBufferVulkan::IndexBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory)
 	: BufferVulkan(id, buffer, bufferMemory)
 {
+	setFootprint("IndexBufferVulkan", sizeof(IndexBufferVulkan), MemorySystem::Graphics);
 }
 
 IndexBufferVulkan::~IndexBufferVulkan()

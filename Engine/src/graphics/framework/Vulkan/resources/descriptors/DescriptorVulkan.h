@@ -1,10 +1,11 @@
 #include <vector>
+#include "core/features/Object.h"
 
 class BufferVulkan;
 class BufferManagerVulkan;
 class DescriptorManagerVulkan;
 
-class DescriptorVulkan {
+class DescriptorVulkan : public Object {
 public:
 	DescriptorVulkan();
 	~DescriptorVulkan() = default;

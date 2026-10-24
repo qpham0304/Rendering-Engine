@@ -11,6 +11,7 @@
 MaterialManagerVulkan::MaterialManagerVulkan(std::string serviceName)
 	: MaterialManager(serviceName)
 {
+	setFootprint("MaterialManagerVulkan", sizeof(MaterialManagerVulkan), MemorySystem::Graphics);
 
 }
 

@@ -12,6 +12,7 @@
 SharedFunctionsLua::SharedFunctionsLua(Logger* logger)
     : m_logger(logger)
 {
+    setFootprint("SharedFunctionsLua", sizeof(SharedFunctionsLua), MemorySystem::Scripting);
 
 }
 

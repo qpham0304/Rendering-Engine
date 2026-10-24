@@ -11,6 +11,7 @@ StorageBufferVulkan::StorageBufferVulkan(
 )
 	: BufferVulkan(id, buffer, bufferMemory), bufferSize(size)
 {
+    setFootprint("StorageBufferVulkan", sizeof(StorageBufferVulkan), MemorySystem::Graphics);
 }
 
 StorageBufferVulkan::~StorageBufferVulkan()

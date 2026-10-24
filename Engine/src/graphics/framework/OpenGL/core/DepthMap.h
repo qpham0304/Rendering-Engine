@@ -6,8 +6,9 @@
 #include<glm/gtc/type_ptr.hpp>
 #include<glm/gtx/rotate_vector.hpp>
 #include<glm/gtx/vector_angle.hpp>
+#include "core/features/Object.h"
 
-class DepthMap {
+class DepthMap : public Object {
 protected:
 	void setup(unsigned int width, unsigned int height);
 	const unsigned int DEFAULT_HEIGHT = 2048;

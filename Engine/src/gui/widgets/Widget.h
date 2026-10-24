@@ -12,8 +12,9 @@
 #include "core/resources/managers/SkeletonManager.h"
 #include "animation/AnimationManager.h"
 #include "logging/logger.h"
+#include "core/features/Object.h"
 
-class Widget {
+class Widget : public Object {
 public:
     virtual ~Widget() = default;
 	virtual void render() = 0;
@@ -25,6 +26,7 @@ public:
 
 protected:
     Widget(std::string name = "widget") : m_isVisible(true), m_name(name), m_firstFrame(true) {
+        setFootprint("Widget", sizeof(Widget), MemorySystem::Gui);
         //TODO: might be better to move to a cpp file 
         m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
         textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");

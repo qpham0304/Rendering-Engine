@@ -23,6 +23,7 @@
 DeferredCombinePassVulkan::DeferredCombinePassVulkan(std::string serviceName)
 	:	PostProcessRendererVulkan(serviceName)
 {
+    setFootprint("DeferredCombinePassVulkan", sizeof(DeferredCombinePassVulkan), MemorySystem::Graphics);
 
 }
 

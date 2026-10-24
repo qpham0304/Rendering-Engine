@@ -2,8 +2,9 @@
 #define VBO_CLASS_H
 
 #include<glad/glad.h>
+#include "core/features/Object.h"
 
-class VBO {
+class VBO : public Object {
 public:
 	GLuint ID;
 	VBO();

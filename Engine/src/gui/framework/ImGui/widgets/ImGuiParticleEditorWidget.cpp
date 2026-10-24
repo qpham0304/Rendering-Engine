@@ -12,6 +12,7 @@
 ImGuiParticleEditorWidget::ImGuiParticleEditorWidget(std::string name)
     : ImGuiWidget(name)
 {
+    setFootprint("ImGuiParticleEditorWidget", sizeof(ImGuiParticleEditorWidget), MemorySystem::Gui);
     particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
 }
 

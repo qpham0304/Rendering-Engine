@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/features/Math.h"
+#include "core/features/Object.h"
 
 class SceneManager;
 class ModelManager;
@@ -9,7 +10,7 @@ class Logger;
 class SkeletonManager;
 struct Track;
 
-class SkinAnimator {
+class SkinAnimator : public Object {
 public:
     SkinAnimator();
 	~SkinAnimator();

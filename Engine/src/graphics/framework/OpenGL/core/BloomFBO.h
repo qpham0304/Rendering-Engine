@@ -4,6 +4,7 @@
 #include<glad/glad.h>
 #include<vector>
 #include<iostream>
+#include "core/features/Object.h"
 
 struct bloomMip
 {
@@ -13,7 +14,7 @@ struct bloomMip
 };
 
 
-class bloomFBO
+class bloomFBO : public Object
 {
 public:
 	bloomFBO();

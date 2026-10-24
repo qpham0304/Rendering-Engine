@@ -95,6 +95,7 @@ namespace {
 
 InputSDL::InputSDL() : Input()
 {
+	setFootprint("InputSDL", sizeof(InputSDL), MemorySystem::Window);
 
 }
 

@@ -14,6 +14,7 @@
 SkinAnimator::SkinAnimator()
     : sceneManager(SceneManager::getInstance())
 {
+    setFootprint("SkinAnimator", sizeof(SkinAnimator), MemorySystem::Animation);
 }
 
 SkinAnimator::~SkinAnimator()

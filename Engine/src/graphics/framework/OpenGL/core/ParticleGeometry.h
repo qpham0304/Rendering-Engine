@@ -4,6 +4,7 @@
 
 
 #include <memory>
+#include "core/features/Object.h"
 
 struct ParticleControl {
 	glm::vec2 randomRange;
@@ -34,7 +35,7 @@ struct ParticleControl {
 
 class Camera;
 
-class ParticleGeometry
+class ParticleGeometry : public Object
 {
 private:
 	//TODO: verify if array of structure is actually faster?

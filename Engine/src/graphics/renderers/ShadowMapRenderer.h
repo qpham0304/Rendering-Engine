@@ -4,8 +4,9 @@
 #include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
 #include "core/components/LightComponent.h"
 #include "graphics/framework/OpenGL/core/DepthMap.h"
+#include "core/features/Object.h"
 
-class ShadowMapRenderer
+class ShadowMapRenderer : public Object
 {
 
 private:
@@ -13,7 +14,7 @@ private:
 	std::unique_ptr<DepthMap> depthMap;
 
 public:
-	ShadowMapRenderer() = default;
+	ShadowMapRenderer() { setFootprint("ShadowMapRenderer", sizeof(ShadowMapRenderer), MemorySystem::Graphics); };
 	ShadowMapRenderer(unsigned int width, unsigned int height);
 
 	void renderShadow(Light& light, std::vector<ModelOpenGL>& models, std::vector<glm::mat4>& modelMatrices);

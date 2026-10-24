@@ -4,6 +4,7 @@
 #include <format>
 #include <queue>
 #include <mutex>
+#include "core/features/Object.h"
 
 enum class LogLevel {
     Trace,
@@ -16,7 +17,7 @@ enum class LogLevel {
 
 class WindowConfig;
 
-class Logger
+class Logger : public Object
 {
 public:
     virtual ~Logger() = default;
@@ -66,8 +67,8 @@ protected:
     inline static std::queue<std::tuple<LogLevel, std::string>> messageQueue; 
     inline static std::mutex queueMutex;
 
-    Logger() : m_name("Logger") {};
-    Logger(std::string loggerType, std::string loggerName = "Logger") : m_name("Logger") {};
+    Logger() : m_name("Logger") { setFootprint("Logger", sizeof(Logger), MemorySystem::Logging); };
+    Logger(std::string loggerType, std::string loggerName = "Logger") : m_name("Logger") { setFootprint("Logger", sizeof(Logger), MemorySystem::Logging); };
 
     std::string m_name;
 

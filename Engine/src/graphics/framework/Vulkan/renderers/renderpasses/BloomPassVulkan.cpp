@@ -16,6 +16,7 @@
 BloomPassVulkan::BloomPassVulkan(std::string serviceName)
 	:	PostProcessRendererVulkan(serviceName)
 {
+    setFootprint("BloomPassVulkan", sizeof(BloomPassVulkan), MemorySystem::Graphics);
 
 }
 

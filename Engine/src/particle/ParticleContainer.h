@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstdint>
 #include "core/features/MathIncludes.h"
+#include "core/features/Object.h"
 
 class ParticleManager;
 
@@ -42,10 +43,10 @@ struct ParticleCounters {
     uint32_t pad[3] {};
 };
 
-class ParticleContainer
+class ParticleContainer : public Object
 {
 public:
-    ParticleContainer() = default;
+    ParticleContainer() { setFootprint("ParticleContainer", sizeof(ParticleContainer), MemorySystem::Particle); };
 	ParticleContainer(uint32_t size);
 
     uint32_t m_size { 0 };  // capacity, particles live entirely on the gpu

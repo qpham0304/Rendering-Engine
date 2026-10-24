@@ -10,7 +10,7 @@ private:
 	int id;
 
 public:
-	EntityControlWidget() : Widget("EntityControlWidget") {}
+	EntityControlWidget() : Widget("EntityControlWidget") { setFootprint("EntityControlWidget", sizeof(EntityControlWidget), MemorySystem::Gui); }
 
 	void render() override = 0;
 

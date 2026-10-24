@@ -12,6 +12,7 @@
 SpriteAnimator::SpriteAnimator()
     : sceneManager(SceneManager::getInstance())
 {
+    setFootprint("SpriteAnimator", sizeof(SpriteAnimator), MemorySystem::Animation);
 
 }
 

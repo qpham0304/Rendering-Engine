@@ -5,6 +5,7 @@
 UniformBufferVulkan::UniformBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory)
 	: BufferVulkan(id, buffer, bufferMemory)
 {
+	setFootprint("UniformBufferVulkan", sizeof(UniformBufferVulkan), MemorySystem::Graphics);
 }
 
 UniformBufferVulkan::~UniformBufferVulkan()

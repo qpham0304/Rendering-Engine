@@ -10,6 +10,6 @@ public:
 	virtual void render() = 0;
 
 protected:
-    ImGuiWidget(std::string name = "widget") : Widget(name) {}
+    ImGuiWidget(std::string name = "widget") : Widget(name) { setFootprint("ImGuiWidget", sizeof(ImGuiWidget), MemorySystem::Gui); }
 
 };

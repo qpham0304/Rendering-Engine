@@ -47,16 +47,28 @@ add_library(${PROJECT_NAME} ${WK_LIB_TYPE}
     ${IMGUI_SOURCES}
 )
 
+if(WK_BUILD_SHARED)
+    set_target_properties(${PROJECT_NAME} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    if(MSVC)
+        target_compile_options(${PROJECT_NAME} PRIVATE /Yl-)
+        target_link_options(${PROJECT_NAME} PRIVATE /IGNORE:4197)
+    endif()
+endif()
+
 include(GenerateExportHeader)
 generate_export_header(${PROJECT_NAME}
     EXPORT_FILE_NAME include/Engine/EngineCoreAPI.h
 )
 
-# Output folders
+if(BUILD_PLATFORM)
+    set(ENGINE_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bin/${BUILD_PLATFORM}/$<CONFIG>")
+else()
+    set(ENGINE_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>")
+endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>"
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ARCH}/$<CONFIG>"
+    RUNTIME_OUTPUT_DIRECTORY "${ENGINE_OUTPUT_DIR}"
+    LIBRARY_OUTPUT_DIRECTORY "${ENGINE_OUTPUT_DIR}"
+    ARCHIVE_OUTPUT_DIRECTORY "${ENGINE_OUTPUT_DIR}"
 )
 add_definitions(-DNOMINMAX)
 

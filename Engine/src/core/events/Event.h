@@ -4,6 +4,7 @@
 #include "core/features/Serializable.h"
 #include "core/entities/Entity.h"
 #include "core/components/MComponent.h"
+#include "core/features/Object.h"
 
 enum class EventType
 {
@@ -16,9 +17,11 @@ enum class EventType
 	CameraUpdateEvent
 };
 
-class Event
+class Event : public Object
 {
 public:
+	Event() { setFootprint("Event", sizeof(Event), MemorySystem::Core); }
+
 	bool Handled = false;
 
 	virtual ~Event() = default;
@@ -35,7 +38,7 @@ public:
     int keyCode = 0;
     bool isRepeat = false;
 
-    KeyPressedEvent(int keyCode, bool isRepeat = false) : keyCode(keyCode), isRepeat(isRepeat) {}
+    KeyPressedEvent(int keyCode, bool isRepeat = false) : keyCode(keyCode), isRepeat(isRepeat) { setFootprint("KeyPressedEvent", sizeof(KeyPressedEvent), MemorySystem::Core); }
 
     EventType GetEventType() const override { return EventType::KeyPressed; }
     const char* GetName() const override { return "KeyPressedEvent"; }
@@ -52,7 +55,7 @@ public:
 	double m_x = 0;
 	double m_y = 0;
 
-	MouseMoveEvent(double x, double y) : m_x(x), m_y(y) {}
+	MouseMoveEvent(double x, double y) : m_x(x), m_y(y) { setFootprint("MouseMoveEvent", sizeof(MouseMoveEvent), MemorySystem::Core); }
 
 	EventType GetEventType() const override { return EventType::MouseMoved; }
 	const char* GetName() const override { return "MouseMoveEvent"; };
@@ -69,7 +72,7 @@ public:
 	double m_x = 0;
 	double m_y = 0;
 
-	MouseScrollEvent(double x, double y) : m_x(x), m_y(y){}
+	MouseScrollEvent(double x, double y) : m_x(x), m_y(y){ setFootprint("MouseScrollEvent", sizeof(MouseScrollEvent), MemorySystem::Core); }
 
 	EventType GetEventType() const override { return EventType::MouseScrolled; }
 	const char* GetName() const override { return "MouseScrollEvent"; };
@@ -85,7 +88,7 @@ class KeyCombinedEvent : public Event
 public:
 	std::vector<int> keyCodes;
 
-	KeyCombinedEvent(std::vector<int> keys) : keyCodes(keys) {}
+	KeyCombinedEvent(std::vector<int> keys) : keyCodes(keys) { setFootprint("KeyCombinedEvent", sizeof(KeyCombinedEvent), MemorySystem::Core); }
 
 	EventType GetEventType() const override { return EventType::KeyCombined; }
 	const char* GetName() const override { return "KeyCombinedEvent"; };
@@ -98,7 +101,7 @@ public:
 class WindowCloseEvent : public Event
 {
 public:
-	WindowCloseEvent() = default;
+	WindowCloseEvent() { setFootprint("WindowCloseEvent", sizeof(WindowCloseEvent), MemorySystem::Core); };
 
 	EventType GetEventType() const override { return EventType::WindowClose; }
 	const char* GetName() const override { return "WindowCloseEvent"; };
@@ -111,7 +114,7 @@ public:
 	int m_width;
 	int m_height;
 
-	WindowResizeEvent(int width, int height) : m_width(width), m_height(height){}
+	WindowResizeEvent(int width, int height) : m_width(width), m_height(height){ setFootprint("WindowResizeEvent", sizeof(WindowResizeEvent), MemorySystem::Core); }
 
 	EventType GetEventType() const override { return EventType::WindowResize; }
 	const char* GetName() const override { return "WindowResizeEvent"; };
@@ -126,11 +129,13 @@ public:
 	
 	AsyncEvent() : isCompleted(false), id("")
 	{
+		setFootprint("AsyncEvent", sizeof(AsyncEvent), MemorySystem::Core);
 
 	};
 
 	AsyncEvent(const std::string id) : isCompleted(false), id(id)
 	{
+		setFootprint("AsyncEvent", sizeof(AsyncEvent), MemorySystem::Core);
 
 	};
 
@@ -144,9 +149,10 @@ class ModelLoadAsyncEvent : public AsyncEvent
 public:
 	std::string path = "None";
 
-	ModelLoadAsyncEvent() = default;
+	ModelLoadAsyncEvent() { setFootprint("ModelLoadAsyncEvent", sizeof(ModelLoadAsyncEvent), MemorySystem::Core); };
 	ModelLoadAsyncEvent(const std::string path) : path(path)
 	{
+		setFootprint("ModelLoadAsyncEvent", sizeof(ModelLoadAsyncEvent), MemorySystem::Core);
 
 	};
 
@@ -161,9 +167,10 @@ public:
 	std::string path = "None";
 	Entity entity;
 
-	ModelLoadEvent() = default;
+	ModelLoadEvent() { setFootprint("ModelLoadEvent", sizeof(ModelLoadEvent), MemorySystem::Core); };
 	ModelLoadEvent(const std::string path, const Entity entity) : path(path), entity(entity)
 	{
+		setFootprint("ModelLoadEvent", sizeof(ModelLoadEvent), MemorySystem::Core);
 
 	};
 
@@ -178,9 +185,10 @@ public:
 	std::string path = "None";
 	Entity entity = {};
 
-	AnimationLoadEvent() = default;
+	AnimationLoadEvent() { setFootprint("AnimationLoadEvent", sizeof(AnimationLoadEvent), MemorySystem::Core); };
 	AnimationLoadEvent(const std::string path, const Entity entity) : path(path), entity(entity)
 	{
+		setFootprint("AnimationLoadEvent", sizeof(AnimationLoadEvent), MemorySystem::Core);
 
 	};
 
@@ -194,9 +202,10 @@ class GuiMessageEvent : public Event
 public:
 	std::string message = "None";
 
-	GuiMessageEvent() = default;
+	GuiMessageEvent() { setFootprint("GuiMessageEvent", sizeof(GuiMessageEvent), MemorySystem::Core); };
 	GuiMessageEvent(std::string_view msg) : message(msg)
 	{
+		setFootprint("GuiMessageEvent", sizeof(GuiMessageEvent), MemorySystem::Core);
 
 	};
 
@@ -210,9 +219,10 @@ class GuiFocusEvent : public Event
 public:
 	bool isFocused = false;
 
-	GuiFocusEvent() = default;
+	GuiFocusEvent() { setFootprint("GuiFocusEvent", sizeof(GuiFocusEvent), MemorySystem::Core); };
 	GuiFocusEvent(bool focus) : isFocused(focus)
 	{
+		setFootprint("GuiFocusEvent", sizeof(GuiFocusEvent), MemorySystem::Core);
 
 	};
 
@@ -226,8 +236,8 @@ class CameraUpdateEvent : public Event
 public:
 	Entity entity;
 
-	CameraUpdateEvent() = default;
-	CameraUpdateEvent(Entity entt) : entity(entt) {};
+	CameraUpdateEvent() { setFootprint("CameraUpdateEvent", sizeof(CameraUpdateEvent), MemorySystem::Core); };
+	CameraUpdateEvent(Entity entt) : entity(entt) { setFootprint("CameraUpdateEvent", sizeof(CameraUpdateEvent), MemorySystem::Core); };
 
 	EventType GetEventType() const override { return EventType::CameraUpdateEvent; }
 	const char* GetName() const override { return "CameraUpdateEvent"; };

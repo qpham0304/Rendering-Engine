@@ -19,6 +19,7 @@
 BufferManagerVulkan::BufferManagerVulkan(std::string serviceName)
 	: BufferManager(serviceName)
 {
+	setFootprint("BufferManagerVulkan", sizeof(BufferManagerVulkan), MemorySystem::Graphics);
 }
 
 BufferManagerVulkan::~BufferManagerVulkan()
@@ -76,6 +77,7 @@ uint32_t BufferManagerVulkan::createInstanceBuffer(const VkAccelerationStructure
 
 	copyBuffer(stagingBuffer, buffer, bufferSize);
 
+	MEMORY_UNTRACK(stagingBufferMemory);
 	vmaDestroyBuffer(renderDeviceVulkan->device.getAllocator(), stagingBuffer, stagingBufferMemory);
 
 	auto bufferObject = std::make_shared<BufferVulkan>(m_ids, buffer, bufferMemory);
@@ -182,12 +184,14 @@ void BufferManagerVulkan::createBuffer(
 		allocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT; // pointer is in VmaAllocationInfo::pMappedData; VMA unmaps on destroy
 	}
 
+	VmaAllocationInfo allocationInfo{};
 	VkResult result = vmaCreateBuffer(
-		renderDeviceVulkan->device.getAllocator(), &bufferInfo, &allocInfo, &buffer, &bufferMemory, nullptr
+		renderDeviceVulkan->device.getAllocator(), &bufferInfo, &allocInfo, &buffer, &bufferMemory, &allocationInfo
 	);
 	if (result != VK_SUCCESS) {
 		throw std::runtime_error("failed to create buffer!");
 	}
+	MEMORY_TRACK(bufferMemory, allocationInfo.size, MemorySystem::Graphics, "VkBuffer");
 }
 
 uint32_t BufferManagerVulkan::createVertexBuffer(const void* vertices, int size)
@@ -225,6 +229,7 @@ uint32_t BufferManagerVulkan::createVertexBuffer(const void* vertices, int size)
 
 	copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 
+	MEMORY_UNTRACK(stagingBufferMemory);
 	vmaDestroyBuffer(renderDeviceVulkan->device.getAllocator(), stagingBuffer, stagingBufferMemory);
 
 	buffers[m_ids] = std::make_shared<VertexBufferVulkan>(
@@ -271,6 +276,7 @@ uint32_t BufferManagerVulkan::createIndexBuffer(const uint32_t* indices, int siz
 
 	copyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
+	MEMORY_UNTRACK(stagingBufferMemory);
 	vmaDestroyBuffer(renderDeviceVulkan->device.getAllocator(), stagingBuffer, stagingBufferMemory);
 
 	buffers[m_ids] = std::make_shared<IndexBufferVulkan>(m_ids, indexBuffer, indexBufferMemory);

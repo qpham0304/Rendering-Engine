@@ -1,6 +1,7 @@
 #pragma once
 
 #include "VulkanDevice.h"
+#include "core/features/Object.h"
 
 // TODO this should be the param to create pipeline
 struct PipelineConfigInfo {
@@ -50,7 +51,7 @@ struct AttachmentsInfo {
 	VkFormat stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 };
 
-class VulkanPipeline
+class VulkanPipeline : public Object
 {
 public:
 	VkPipelineLayout pipelineLayout;

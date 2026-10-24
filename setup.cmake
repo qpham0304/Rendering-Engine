@@ -34,28 +34,28 @@ if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
     endif()
 endif()
 
-# option to build as static library
-option(BUILD_AS_SHARED "Build as shared library" OFF)   # libraries are built static by default
-option(USE_MSVC "Build as shared library" ON)           # msvc is used by default
+option(USE_MSVC "Use the Visual Studio 2022 generator instead of Ninja" ON)   # msvc is used by default
 
+function(configure_preset preset)
+    message(STATUS "Configuring preset ${preset}...")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} --preset ${preset}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        RESULT_VARIABLE PRESET_RESULT
+    )
+    if(NOT PRESET_RESULT EQUAL "0")
+        message(FATAL_ERROR "Configuring preset ${preset} failed")
+    endif()
+endfunction()
+
+# dev build only: engine + Sandbox game as dlls, the editor hot reloads the game
+# the standalone static game has its own build dir, configured by scripts/export-game.cmake when exporting
 if(WIN32)
     message(STATUS "Configuring for Windows...")
-    if(BUILD_AS_SHARED) # NOTE: shared library build not properly configured yet
-        if(USE_MSVC)
-            message(STATUS "Configuring for shared library using msvc...")
-            execute_process(COMMAND cmake --preset windows-msvc-shared) 
-        else()
-            message(STATUS "Configuring for shared library using ninja...")
-            execute_process(COMMAND cmake --preset windows-ninja-shared)
-        endif()
-    else()
-        if(USE_MSVC)
-            message(STATUS "Configuring for static library using msvc...")
-            execute_process(COMMAND cmake --preset windows-msvc)
-        else()  # NOTE: ninja build is not properly configured yet
-            message(STATUS "Configuring for static library using ninja...")
-            execute_process(COMMAND cmake --preset windows-ninja)
-        endif()
+    if(USE_MSVC)
+        configure_preset(windows-msvc)
+    else()  # NOTE: ninja build is not properly configured yet
+        configure_preset(windows-ninja)
     endif()
 elseif(APPLE)
     message(STATUS "Configuring for macOS...")

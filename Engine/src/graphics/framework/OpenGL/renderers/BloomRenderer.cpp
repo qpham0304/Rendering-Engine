@@ -3,7 +3,7 @@
 #include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
 
 
-BloomRenderer::BloomRenderer() : mInit(false) {}
+BloomRenderer::BloomRenderer() : mInit(false) { setFootprint("BloomRenderer", sizeof(BloomRenderer), MemorySystem::Graphics); }
 BloomRenderer::~BloomRenderer() {}
 
 bool BloomRenderer::Init(unsigned int windowWidth, unsigned int windowHeight)

@@ -13,12 +13,14 @@
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
+	setFootprint("ImGuiManager", sizeof(ImGuiManager), MemorySystem::Gui);
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 }
 
 ImGuiManager::ImGuiManager(bool darkTheme) : GuiManager()
 {
+	setFootprint("ImGuiManager", sizeof(ImGuiManager), MemorySystem::Gui);
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	this->darkTheme = darkTheme;
@@ -39,7 +41,7 @@ bool ImGuiManager::init(WindowConfig config)
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;			// Enable Multi-Viewport / Platform Windows
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
 
-	// io.IniFilename = "Assets/imgui.ini";
+	io.IniFilename = "assets/imgui.ini";
 
 	float fontSize = 16.0f;
 

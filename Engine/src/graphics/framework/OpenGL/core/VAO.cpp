@@ -2,6 +2,7 @@
 #include <iostream>
 
 VAO::VAO() {
+	setFootprint("VAO", sizeof(VAO), MemorySystem::Graphics);
 	glGenVertexArrays(1, &ID);
 }
 

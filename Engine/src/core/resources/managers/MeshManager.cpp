@@ -7,6 +7,7 @@
 MeshManager::MeshManager()
     :   Manager("MeshManager")
 {
+    setFootprint("MeshManager", sizeof(MeshManager), MemorySystem::Resource);
 
 }
 

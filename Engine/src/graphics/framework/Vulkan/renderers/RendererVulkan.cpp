@@ -24,6 +24,7 @@
 RendererVulkan::RendererVulkan(std::string name) 
 	:	Renderer(name)
 {
+	setFootprint("RendererVulkan", sizeof(RendererVulkan), MemorySystem::Graphics);
 
 }
 

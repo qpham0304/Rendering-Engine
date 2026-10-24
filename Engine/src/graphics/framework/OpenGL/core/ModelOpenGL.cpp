@@ -2,6 +2,7 @@
 
 ModelOpenGL::ModelOpenGL(const char* path)
 {
+    setFootprint("ModelOpenGL", sizeof(ModelOpenGL), MemorySystem::Graphics);
     this->path = path;
     size_t dotPosition = this->path.find_last_of('.');
     extension = this->path.substr(dotPosition);
@@ -11,6 +12,7 @@ ModelOpenGL::ModelOpenGL(const char* path)
 
 ModelOpenGL::ModelOpenGL(const ModelOpenGL& other)
 {
+    setFootprint("ModelOpenGL", sizeof(ModelOpenGL), MemorySystem::Graphics);
     int m_BoneCounter = 0;
     std::string path = other.path;
     std::string directory = other.path;
@@ -25,6 +27,7 @@ ModelOpenGL::ModelOpenGL(const ModelOpenGL& other)
 
 ModelOpenGL::ModelOpenGL(std::vector<MeshOpenGL> meshes, std::string path)
 {
+    setFootprint("ModelOpenGL", sizeof(ModelOpenGL), MemorySystem::Graphics);
     this->meshes = std::move(meshes);
 
     for (auto& mesh : this->meshes) {

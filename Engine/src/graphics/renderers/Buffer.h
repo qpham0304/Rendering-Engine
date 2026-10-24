@@ -1,7 +1,8 @@
 #pragma once
 #include <cstdint>
+#include "core/features/Object.h"
 
-class Buffer
+class Buffer : public Object
 {
 public:
 	enum class Type {
@@ -20,7 +21,7 @@ public:
 	uint32_t id() { return m_id; }
 
 protected:
-	Buffer(uint32_t id = 0) : m_id(id) {}
+	Buffer(uint32_t id = 0) : m_id(id) { setFootprint("Buffer", sizeof(Buffer), MemorySystem::Graphics); }
 
 protected:
 	uint32_t m_id{ 0 };

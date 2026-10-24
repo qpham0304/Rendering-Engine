@@ -1,6 +1,7 @@
 #include "VBO.h"
 
 VBO::VBO() {
+	setFootprint("VBO", sizeof(VBO), MemorySystem::Graphics);
 
 }
 
@@ -12,6 +13,7 @@ VBO& VBO::operator=(const VBO& other) {
 }
 
 VBO::VBO(GLfloat* vertices, GLsizeiptr size) {
+	setFootprint("VBO", sizeof(VBO), MemorySystem::Graphics);
 	glGenBuffers(1, &ID);
 	glBindBuffer(GL_ARRAY_BUFFER, ID);
 	glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);

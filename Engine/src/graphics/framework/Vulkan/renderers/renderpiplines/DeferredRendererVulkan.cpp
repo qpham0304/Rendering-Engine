@@ -26,6 +26,7 @@
 DeferredRendererVulkan::DeferredRendererVulkan()
 	: RendererVulkan("DeferredRendererVulkan")
 {
+	setFootprint("DeferredRendererVulkan", sizeof(DeferredRendererVulkan), MemorySystem::Graphics);
 
 }
 

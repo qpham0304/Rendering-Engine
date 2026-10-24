@@ -25,6 +25,7 @@
 ImageBasedRendererVulkan::ImageBasedRendererVulkan()
 	: RendererVulkan("ImageBasedRendererVulkan")
 {
+	setFootprint("ImageBasedRendererVulkan", sizeof(ImageBasedRendererVulkan), MemorySystem::Graphics);
 
 }
 

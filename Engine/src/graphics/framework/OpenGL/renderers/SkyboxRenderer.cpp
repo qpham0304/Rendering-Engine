@@ -61,6 +61,7 @@ void SkyboxRenderer::setup()
 
 SkyboxRenderer::SkyboxRenderer()
 {
+	setFootprint("SkyboxRenderer", sizeof(SkyboxRenderer), MemorySystem::Graphics);
 	skybox.init(faces);
 	shaderProgram.Init("assets/Shaders/skybox.vert", "assets/Shaders/skybox.frag");
 
@@ -70,6 +71,7 @@ SkyboxRenderer::SkyboxRenderer()
 // receive path to the skybox folder and process all six files at once
 SkyboxRenderer::SkyboxRenderer(const char* path)
 {
+	setFootprint("SkyboxRenderer", sizeof(SkyboxRenderer), MemorySystem::Graphics);
 
 	auto replacePath = [path](std::string& str) {
 		size_t pos = str.find_last_of('/');

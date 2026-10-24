@@ -1,11 +1,12 @@
 #pragma once
 
 #include "services/Service.h"
+#include "core/features/Object.h"
 
 class Camera;
 class Scene;
 
-class Renderer
+class Renderer : public Object
 {
 public:
 	virtual ~Renderer() = default;
@@ -21,7 +22,7 @@ public:
 	virtual void render(Camera& camera) = 0;
 
 protected:
-	Renderer(std::string name = "Renderer") : m_name(name) {};
+	Renderer(std::string name = "Renderer") : m_name(name) { setFootprint("Renderer", sizeof(Renderer), MemorySystem::Graphics); };
 
 	std::string m_name;
 };

@@ -3,6 +3,7 @@
 SkeletonManager::SkeletonManager()
     : Manager("SkeletonManager")
 {
+    setFootprint("SkeletonManager", sizeof(SkeletonManager), MemorySystem::Resource);
 
 }
 

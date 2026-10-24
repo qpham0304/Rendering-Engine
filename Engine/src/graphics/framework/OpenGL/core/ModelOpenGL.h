@@ -19,6 +19,7 @@
 #include <map>
 #include <vector>
 #include <chrono>
+#include "core/features/Object.h"
 
 
 struct BoneInfo
@@ -31,7 +32,7 @@ struct BoneInfo
 
 };
 
-class ModelOpenGL
+class ModelOpenGL : public Object
 {
 public:
     ModelOpenGL(const char* path);

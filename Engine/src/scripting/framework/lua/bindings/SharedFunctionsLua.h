@@ -2,11 +2,12 @@
 
 #include <sol/sol.hpp>
 #include "core/events/Event.h"
+#include "core/features/Object.h"
 
 class Logger;
 
 // engine functions that will be shared down to lua runtime scripting
-class SharedFunctionsLua
+class SharedFunctionsLua : public Object
 {
 public:
     SharedFunctionsLua(Logger* logger);

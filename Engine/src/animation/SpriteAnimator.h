@@ -1,8 +1,9 @@
 #pragma once
+#include "core/features/Object.h"
 
 class SceneManager;
 class AnimationManager;
-class SpriteAnimator {
+class SpriteAnimator : public Object {
 public:
     SpriteAnimator();
 	~SpriteAnimator();

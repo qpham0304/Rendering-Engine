@@ -24,6 +24,7 @@ void DepthMap::setup(unsigned int width, unsigned int height) {
 
 DepthMap::DepthMap()
 {
+	setFootprint("DepthMap", sizeof(DepthMap), MemorySystem::Graphics);
 	setup(DEFAULT_WIDTH, DEFAULT_HEIGHT);
 	this->width = DEFAULT_WIDTH;
 	this->height = DEFAULT_HEIGHT;
@@ -31,6 +32,7 @@ DepthMap::DepthMap()
 
 DepthMap::DepthMap(unsigned int width, unsigned int height)
 {
+	setFootprint("DepthMap", sizeof(DepthMap), MemorySystem::Graphics);
 	this->width = width;
 	this->height = height;
 	setup(width, height);

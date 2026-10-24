@@ -17,6 +17,7 @@ AppWindow::AppWindow(std::string serviceName)
 	m_height(0),
 	m_input(nullptr)
 {
+	setFootprint("AppWindow", sizeof(AppWindow), MemorySystem::Window);
 }
 
 const WindowConfig& AppWindow::getWindowConfig()

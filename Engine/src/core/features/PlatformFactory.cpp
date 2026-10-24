@@ -18,6 +18,7 @@
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)
 {
+    setFootprint("PlatformFactory", sizeof(PlatformFactory), MemorySystem::Core);
     GetFactory<AppWindow, WindowPlatform>().Register(
         WindowPlatform::GLFW,
         RegisterConstructor<AppWindow, AppWindowGLFW>()

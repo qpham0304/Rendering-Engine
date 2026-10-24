@@ -10,6 +10,7 @@
 #include <string_view>
 #include <functional>
 #include "graphics/framework/Vulkan/resources/textures/TextureVulkan.h"
+#include "core/features/Object.h"
 
 struct RGHandle { 
     uint32_t index; 
@@ -42,7 +43,7 @@ struct RGTextureDesc {
     float scale { 1.0f };   // 0.5 = half the render size, ignored for fixed size
 };
 
-class RenderGraphVulkan {
+class RenderGraphVulkan : public Object {
 public:
     RenderGraphVulkan();
     void addPass(RenderPassNode node);

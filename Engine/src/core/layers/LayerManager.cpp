@@ -15,6 +15,7 @@ bool LayerManager::boundCheck(const int& index) const {
 LayerManager::LayerManager()
 	: m_SelectedLayer(-1), Manager("LayerManager")
 {
+	setFootprint("LayerManager", sizeof(LayerManager), MemorySystem::Core);
 }
 
 LayerManager::~LayerManager()
@@ -59,6 +60,15 @@ bool LayerManager::removeLayer(const int& index)
 
 	m_Layers.erase(m_Layers.begin() + index);
 	return true;
+}
+
+bool LayerManager::removeLayer(Layer* layer)
+{
+	auto it = std::find(m_Layers.begin(), m_Layers.end(), layer);
+	if (it == m_Layers.end()) {
+		return false;
+	}
+	return removeLayer(static_cast<int>(it - m_Layers.begin()));
 }
 
 void LayerManager::enableLayer(const int& index)

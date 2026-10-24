@@ -14,6 +14,7 @@
 PostProcessRendererVulkan::PostProcessRendererVulkan(std::string serviceName)
 	:	RendererVulkan(serviceName)
 {
+    setFootprint("PostProcessRendererVulkan", sizeof(PostProcessRendererVulkan), MemorySystem::Graphics);
 
 }
 

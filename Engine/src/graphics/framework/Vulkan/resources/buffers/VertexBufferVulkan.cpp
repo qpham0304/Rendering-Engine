@@ -4,6 +4,7 @@
 VertexBufferVulkan::VertexBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory)
 	: BufferVulkan(id, buffer, bufferMemory)
 {
+	setFootprint("VertexBufferVulkan", sizeof(VertexBufferVulkan), MemorySystem::Graphics);
 }
 
 VertexBufferVulkan::~VertexBufferVulkan()

@@ -14,6 +14,7 @@
 BilateralBlurPassVulkan::BilateralBlurPassVulkan(std::string serviceName)
 	:	RendererVulkan(serviceName)
 {
+	setFootprint("BilateralBlurPassVulkan", sizeof(BilateralBlurPassVulkan), MemorySystem::Graphics);
 
 }
 

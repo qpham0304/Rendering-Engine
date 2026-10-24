@@ -17,6 +17,7 @@
 SSRGIPassVulkan::SSRGIPassVulkan(std::string serviceName)
 	:	PostProcessRendererVulkan(serviceName)
 {
+    setFootprint("SSRGIPassVulkan", sizeof(SSRGIPassVulkan), MemorySystem::Graphics);
 
 }
 

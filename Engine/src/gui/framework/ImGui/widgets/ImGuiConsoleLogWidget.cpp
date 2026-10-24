@@ -29,6 +29,7 @@ bool ButtonCenteredOnLine(const char* label, float alignment = 0.5f)
 
 ImGuiConsoleLogWidget::ImGuiConsoleLogWidget() : ConsoleLogWidget()
 {
+	setFootprint("ImGuiConsoleLogWidget", sizeof(ImGuiConsoleLogWidget), MemorySystem::Gui);
 
 }
 

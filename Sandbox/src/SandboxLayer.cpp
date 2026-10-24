@@ -21,6 +21,7 @@
 SandBoxLayer::SandBoxLayer(const std::string& name)
     : Layer(name)
 {
+    setFootprint("SandBoxLayer", sizeof(SandBoxLayer), MemorySystem::General);
     m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::CameraUpdateEvent, [this](Event& event) {
         auto& cameraUpdateEvent = static_cast<CameraUpdateEvent&>(event);
         auto& cameraComponent = cameraUpdateEvent.entity.getComponent<CameraComponent>();
@@ -39,25 +40,25 @@ bool SandBoxLayer::init()
     physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
     particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
 
-    Scene* scene = SceneManager::getInstance().addScene("sandbox-scene");
-    scene->loadScene("assets/data/sandbox-scene.json");
-    // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
-    // scene1->loadScene("assets/data/Level1.json");
-    // Scene* scene2 = SceneManager::getInstance().addScene("Level2");
-    // scene2->loadScene("assets/data/Level2.json");
-    // Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
-    // scene3->loadScene("assets/data/default-scene.json");
+    // only build it on first load, reloading dll wont recreate scene;
+    if (!SceneManager::getInstance().getScene("sandbox-scene")) {
+        Scene* scene = SceneManager::getInstance().addScene("sandbox-scene");
+        scene->loadScene("assets/data/sandbox-scene.json");
+        // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
+        // scene1->loadScene("assets/data/Level1.json");
+        // Scene* scene2 = SceneManager::getInstance().addScene("Level2");
+        // scene2->loadScene("assets/data/Level2.json");
+        // Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
+        // scene3->loadScene("assets/data/default-scene.json");
 
-    EventManager& eventManager = EventManager::getInstance();
-    SceneManager::getInstance().setActiveScene(scene->getName());
+        SceneManager::getInstance().setActiveScene(scene->getName());
+        createLightProbes();
+        // createParticle();
+        createRibbons();
+    }
 
     // createScriptableCamera();
     // createLights();
-	createLightProbes();
-    // createParticle();
-    createRibbons();
-
-    // rendererManager->addRenderer();
 
 	return true;
 }
@@ -65,6 +66,7 @@ bool SandBoxLayer::init()
 void SandBoxLayer::onAttach(LayerManager *manager)
 {
     Layer::onAttach(manager);
+    // Log().critical("atached");
 }
 
 void SandBoxLayer::onDetach()
@@ -73,10 +75,10 @@ void SandBoxLayer::onDetach()
 }
 
 void SandBoxLayer::onUpdate(const FrameTime& frameTime)
-{
-    if(EngineState::isPlaying()) {
+{    if(EngineState::isPlaying()) {
         // SceneManager::cameraController = camera.get();
     }
+    // Log().warn("sandbox updating");
 }
 
 void SandBoxLayer::onGuiUpdate()

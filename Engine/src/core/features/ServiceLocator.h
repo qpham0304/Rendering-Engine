@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <functional>
 #include <memory>
+#include "core/features/Object.h"
 
 // might want to use enum over string name for each supported service
 // but then how to extend the support for them later on? (prob never)
@@ -16,14 +17,14 @@ enum class AvailableServices {
     
 };
 
-class MYGRAPHICSENGINE_EXPORT ServiceLocator {
+class MYGRAPHICSENGINE_EXPORT ServiceLocator : public Object {
 
 public:
     static void setContext(ServiceLocator* other);
     static void supportingServices();
 
 public:
-    ServiceLocator() = default;
+    ServiceLocator() { setFootprint("ServiceLocator", sizeof(ServiceLocator), MemorySystem::Core); };
 
     template<typename T>
     void Register(std::string_view serviceName, T& serviceRef) {

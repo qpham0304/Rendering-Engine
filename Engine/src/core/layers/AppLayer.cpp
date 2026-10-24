@@ -51,6 +51,7 @@ void AppLayer::renderApplication(const int& fboTexture)
 AppLayer::AppLayer(const std::string& name) 
 	: Layer(name), isActive(false), VAO(0), VBO(0)
 {
+	setFootprint("AppLayer", sizeof(AppLayer), MemorySystem::Core);
 }
 
 AppLayer::~AppLayer()

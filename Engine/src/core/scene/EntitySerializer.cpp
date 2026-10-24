@@ -46,6 +46,7 @@ EntitySerializer::EntitySerializer(entt::registry& registry, EntityMap& entities
 	  m_entities(entities),
 	  m_logger(ServiceLocator::GetService<Logger>("Engine_LoggerSPD"))
 {
+	setFootprint("EntitySerializer", sizeof(EntitySerializer), MemorySystem::Scene);
 	RegisterComponents();
 }
 

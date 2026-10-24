@@ -25,7 +25,7 @@ protected:
 	bool guiActive { false };
 
 protected:
-	GuiManager(std::string serviceName = "GuiManager") : Service(serviceName) {};
+	GuiManager(std::string serviceName = "GuiManager") : Service(serviceName) { setFootprint("GuiManager", sizeof(GuiManager), MemorySystem::Gui); };
 
 public:
 	virtual bool init(WindowConfig config) override = 0;

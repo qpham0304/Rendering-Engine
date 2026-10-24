@@ -14,6 +14,7 @@
 AmbientOcclusionPassVulkan::AmbientOcclusionPassVulkan(std::string serviceName)
 	:	PostProcessRendererVulkan(serviceName)
 {
+    setFootprint("AmbientOcclusionPassVulkan", sizeof(AmbientOcclusionPassVulkan), MemorySystem::Graphics);
 
 }
 

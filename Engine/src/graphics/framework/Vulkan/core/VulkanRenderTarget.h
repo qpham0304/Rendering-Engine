@@ -5,10 +5,13 @@
 #include "core/features/ServiceLocator.h"
 #include "core/resources/managers/TextureManager.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureVulkan.h"
+#include "core/features/Object.h"
 
-class VulkanRenderTarget 
+class VulkanRenderTarget : public Object
 {
 public:
+    VulkanRenderTarget() : width(), height(), renderPass() { setFootprint("VulkanRenderTarget", sizeof(VulkanRenderTarget), MemorySystem::Graphics); }
+
     uint32_t width;
     uint32_t height;
     VkRenderPass renderPass;

@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Vulkan REQUIRED)
 
+# game code only, runtime/ holds the exe entry point
 file(GLOB_RECURSE SANDBOX_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
@@ -26,15 +27,67 @@ file(GLOB_RECURSE SHADER_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/common/*.glsl
 )
 
-add_executable(${PROJECT_NAME} ${SANDBOX_SOURCES})
-target_link_libraries(${PROJECT_NAME} PRIVATE MyGraphicsEngine)
-
 set(OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bin/${BUILD_PLATFORM}/$<CONFIG>")
+set(GAME_TARGET ${PROJECT_NAME}Game)
+
+# dll the editor hot reloads in the dev build, a static lib in the export
+add_library(${GAME_TARGET} ${WK_LIB_TYPE} ${SANDBOX_SOURCES})
+target_link_libraries(${GAME_TARGET} PUBLIC MyGraphicsEngine)
+target_include_directories(${GAME_TARGET} PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}/include
+)
+
+include(GenerateExportHeader)
+generate_export_header(${GAME_TARGET}
+    BASE_NAME SANDBOX
+    EXPORT_FILE_NAME include/Sandbox/SandboxAPI.h
+)
+
+set_target_properties(${GAME_TARGET} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}"
+    LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}"
+    ARCHIVE_OUTPUT_DIRECTORY "${OUTPUT_DIR}"
+)
+
+# embed only the pdb file name, the editor loads a copy of dll + pdb so the originals stay free to relink
+if(MSVC AND NOT WK_EXPORT_GAME)
+    target_link_options(${GAME_TARGET} PRIVATE /PDBALTPATH:%_PDB%)
+endif()
+
+# exported runtime, the installed game
+add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/runtime/main.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${GAME_TARGET})
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}"
 )
 
-set(SPV_OUTPUT_DIR "${OUTPUT_DIR}/assets/shaders/spv")
+# standalone game reads assets next to the exe, scripts/export-game.cmake installs this component
+if(WK_EXPORT_GAME)
+    install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION . COMPONENT game)
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets DESTINATION . COMPONENT game
+        PATTERN "*.vert" EXCLUDE
+        PATTERN "*.frag" EXCLUDE
+        PATTERN "*.comp" EXCLUDE
+        PATTERN "*.rgen" EXCLUDE
+        PATTERN "*.rmiss" EXCLUDE
+        PATTERN "*.rchit" EXCLUDE
+        PATTERN "*.glsl" EXCLUDE
+        PATTERN "common" EXCLUDE
+        PATTERN "compile.bat" EXCLUDE
+    )
+else()
+    # dev build reads the source assets in place, nothing gets copied
+    target_compile_definitions(${PROJECT_NAME} PRIVATE WK_WORKING_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}> $<TARGET_FILE_DIR:${PROJECT_NAME}>
+        COMMAND_EXPAND_LISTS
+        COMMENT "Copying engine dlls next to ${PROJECT_NAME}"
+    )
+endif()
+
+set(SPV_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/spv")
 set(SPIRV_BINARY_FILES "")
 
 foreach(SHADER_SOURCE ${SHADER_SOURCES})
@@ -52,12 +105,4 @@ foreach(SHADER_SOURCE ${SHADER_SOURCES})
 endforeach()
 
 add_custom_target(${PROJECT_NAME}_Shaders DEPENDS ${SPIRV_BINARY_FILES})
-add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_Shaders)
-
-add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_CURRENT_SOURCE_DIR}/assets
-            ${OUTPUT_DIR}/assets
-    COMMENT "Syncing assets to build directory"
-)
+add_dependencies(${GAME_TARGET} ${PROJECT_NAME}_Shaders)

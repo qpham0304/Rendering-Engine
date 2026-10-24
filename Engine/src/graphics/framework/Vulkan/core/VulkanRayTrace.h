@@ -3,6 +3,7 @@
 #include <volk.h>
 #include <vulkan/vulkan_core.h>
 #include <vector>
+#include "core/features/Object.h"
 
 class VulkanDevice;
 class RenderDeviceVulkan;
@@ -18,15 +19,18 @@ struct BlasInput
     VkBuildAccelerationStructureFlagsKHR                  flags{0};
 };
 
-class RaytracingBuilderKHR
+class RaytracingBuilderKHR : public Object
 {
 public:
+    RaytracingBuilderKHR() : renderDevice(), bufferManager(), m_device(), m_scratch1(), m_scratch2(), m_tlas() { setFootprint("RaytracingBuilderKHR", sizeof(RaytracingBuilderKHR), MemorySystem::Graphics); }
+
     RenderDeviceVulkan* renderDevice;
     BufferManagerVulkan* bufferManager;
     VulkanDevice* m_device;
     uint32_t m_queueIndex{0};
     uint32_t m_scratch1_ID{0};
     uint32_t m_scratch2_ID{0};
+    uint32_t m_tlasInstanceCount{0};    // what the current tlas and scratch were sized for
     AccelStructureBufferVulkan* m_scratch1;
     AccelStructureBufferVulkan* m_scratch2;
 
@@ -45,6 +49,7 @@ public:
     
     // Return the Acceleration Structure Device Address of a BLAS Id
     VkDeviceAddress getBlasDeviceAddress(uint32_t blasId);
+    size_t getBlasCount() const;
 
     // Create all the BLAS from the vector of BlasInput
     void buildBlas(

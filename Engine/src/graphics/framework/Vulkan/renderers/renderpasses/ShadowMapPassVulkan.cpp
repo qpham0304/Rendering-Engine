@@ -25,6 +25,7 @@
 ShadowMapPassVulkan::ShadowMapPassVulkan() 
 	: RendererVulkan("ShadowMapPassVulkan")
 {
+	setFootprint("ShadowMapPassVulkan", sizeof(ShadowMapPassVulkan), MemorySystem::Graphics);
 
 
 }

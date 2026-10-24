@@ -15,7 +15,6 @@
 #include "gui/framework/ImGui/widgets/ImGuiMenuWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiMathWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiResourcesInspectorWidget.h"
-#include "gui/framework/ImGui/widgets/ImGuiAnimationWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiAssetBrowserWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiParticleEditorWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiGraphicsSettingsWidget.h"
@@ -38,6 +37,7 @@ void EditorLayer::renderGuizmo()
 EditorLayer::EditorLayer(const std::string& name, GuiManager& controller)
 	: Layer (name), guiController(controller)
 {
+	setFootprint("EditorLayer", sizeof(EditorLayer), MemorySystem::Core);
 
 }
 
@@ -55,7 +55,6 @@ bool EditorLayer::init()
 	guiController.addWidget<ImGuiRightSidebarWidget>();
 	guiController.addWidget<ImGuiResourceInspectorWidget>();
 	guiController.addWidget<ImGuiConsoleLogWidget>();
-	guiController.addWidget<ImGuiAnimationWidget>();
 	guiController.addWidget<ImGuiAssetBrowserWidget>();
 	guiController.addWidget<ImGuiParticleEditorWidget>();
 	guiController.addWidget<ImGuiGraphicsSettingsWidget>();

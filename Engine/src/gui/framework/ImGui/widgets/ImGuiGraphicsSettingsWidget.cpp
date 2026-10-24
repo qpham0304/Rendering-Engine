@@ -6,6 +6,7 @@
 ImGuiGraphicsSettingsWidget::ImGuiGraphicsSettingsWidget(std::string name)
     : ImGuiWidget(name)
 {
+    setFootprint("ImGuiGraphicsSettingsWidget", sizeof(ImGuiGraphicsSettingsWidget), MemorySystem::Gui);
     // every settings type a renderer can register, only the ones registered at runtime are drawn
     m_drawers.add<BloomSettings>();
     m_drawers.add<ShadowMapSettings>();

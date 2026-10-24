@@ -22,6 +22,7 @@
 LightingPassVulkan::LightingPassVulkan(std::string serviceName)
 	: RendererVulkan(serviceName)
 {
+	setFootprint("LightingPassVulkan", sizeof(LightingPassVulkan), MemorySystem::Graphics);
 
 }
 
@@ -374,12 +375,19 @@ void LightingPassVulkan::_updateLightDescriptor()
 
 	auto lightingDescriptorSets = descriptorManagerVulkan->getDescriptorSet(lightSetsID);
 	for(int i = 0; i < VulkanUtils::numFrames(); i++) {
+		// writeImage keeps a pointer to the info, so they have to outlive updateDescriptorSets
+		VkDescriptorImageInfo posInfo = sampledInfo(gBuffer.gBufferPos);
+		VkDescriptorImageInfo normInfo = sampledInfo(gBuffer.gBufferNorm);
+		VkDescriptorImageInfo albedoInfo = sampledInfo(gBuffer.gBufferAlbedo);
+		VkDescriptorImageInfo pbrInfo = sampledInfo(gBuffer.gPBR);
+		VkDescriptorImageInfo emissiveInfo = sampledInfo(gBuffer.gBufferEmissive);
+
 		std::vector<VkWriteDescriptorSet> writes;
-		descriptorManagerVulkan->writeImage(&writes, lightingDescriptorSets[i], 0, sampledInfo(gBuffer.gBufferPos));
-		descriptorManagerVulkan->writeImage(&writes, lightingDescriptorSets[i], 1, sampledInfo(gBuffer.gBufferNorm));
-		descriptorManagerVulkan->writeImage(&writes, lightingDescriptorSets[i], 2, sampledInfo(gBuffer.gBufferAlbedo));
-		descriptorManagerVulkan->writeImage(&writes, lightingDescriptorSets[i], 3, sampledInfo(gBuffer.gPBR));
-		descriptorManagerVulkan->writeImage(&writes, lightingDescriptorSets[i], 4, sampledInfo(gBuffer.gBufferEmissive));
+		descriptorManagerVulkan->writeImage(&writes, lightingDescriptorSets[i], 0, posInfo);
+		descriptorManagerVulkan->writeImage(&writes, lightingDescriptorSets[i], 1, normInfo);
+		descriptorManagerVulkan->writeImage(&writes, lightingDescriptorSets[i], 2, albedoInfo);
+		descriptorManagerVulkan->writeImage(&writes, lightingDescriptorSets[i], 3, pbrInfo);
+		descriptorManagerVulkan->writeImage(&writes, lightingDescriptorSets[i], 4, emissiveInfo);
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 

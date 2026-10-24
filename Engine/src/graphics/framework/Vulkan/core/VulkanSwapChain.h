@@ -4,10 +4,11 @@
 #include <vk_mem_alloc.h>
 #include <vector>
 #include "VulkanDevice.h"
+#include "core/features/Object.h"
 
 class RenderDeviceVulkan;
 
-class VulkanSwapChain
+class VulkanSwapChain : public Object
 {
 public:
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;

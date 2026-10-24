@@ -18,10 +18,11 @@
 #include "core/resources/managers/RendererManager.h"
 #include "scripting/ScriptManager.h"
 #include "physics/PhysicsManager.h"
+#include "core/features/Object.h"
 
 // one single file to register and create all subsystems and services
 // might separate into files per subsystem but good enough for now
-class PlatformFactory
+class PlatformFactory : public Object
 {
 	// generic constructor function for each service interface
 	template<typename Interface, typename PlatformEnum, typename... Args>

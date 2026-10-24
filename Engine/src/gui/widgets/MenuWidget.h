@@ -5,7 +5,7 @@
 class MenuWidget : public Widget
 {
 protected:
-	MenuWidget(std::string name = "MenuWidget") : Widget(name) {}
+	MenuWidget(std::string name = "MenuWidget") : Widget(name) { setFootprint("MenuWidget", sizeof(MenuWidget), MemorySystem::Gui); }
 
 public:
 	~MenuWidget() = default;

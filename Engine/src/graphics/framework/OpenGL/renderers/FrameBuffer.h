@@ -2,8 +2,9 @@
 
 #include <glad/glad.h>
 #include <iostream>
+#include "core/features/Object.h"
 
-class FrameBuffer
+class FrameBuffer : public Object
 {
 public:
 	//NOTE: this framebuffer is not flexible with only one texture, only use it to render the general scene
@@ -13,7 +14,7 @@ public:
 	unsigned int RBO;
 	unsigned int texture;
 
-	FrameBuffer() = default;
+	FrameBuffer() : FBO(), RBO(), texture() { setFootprint("FrameBuffer", sizeof(FrameBuffer), MemorySystem::Graphics); };
 	FrameBuffer(int width, int height);
 	FrameBuffer(int width, int height, int size);
 	~FrameBuffer();

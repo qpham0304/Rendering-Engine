@@ -6,6 +6,7 @@
 VulkanCommandPool::VulkanCommandPool(VulkanDevice& deviceRef)
 	: device(deviceRef)
 {
+	setFootprint("VulkanCommandPool", sizeof(VulkanCommandPool), MemorySystem::Graphics);
 
 }
 

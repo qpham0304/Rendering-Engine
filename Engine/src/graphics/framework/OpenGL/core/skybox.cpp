@@ -2,6 +2,7 @@
 
 
 Skybox::Skybox(std::vector<std::string> faces) {
+    setFootprint("Skybox", sizeof(Skybox), MemorySystem::Graphics);
     ID = loadCubeMap(faces);
 }
 

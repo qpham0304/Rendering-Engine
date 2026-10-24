@@ -5,12 +5,15 @@
 #include "Logging/Logger.h"
 #include "core/features/FrameTime.h"
 #include "core/events/EventSubscription.h"
+#include "core/features/Object.h"
 
 class Engine;
-class Service
+class Service : public Object
 {
 public:
 	virtual ~Service();
+	Service(const Service&) = delete;
+	Service& operator=(const Service&) = delete;
 
 	const std::string& getServiceName() const;
 

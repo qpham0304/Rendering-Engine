@@ -1,8 +1,9 @@
 #pragma once
 
 #include "VulkanDevice.h"
+#include "core/features/Object.h"
 
-class VulkanCommandPool {
+class VulkanCommandPool : public Object {
 
 public:
     VulkanCommandPool(VulkanDevice& deviceRef);

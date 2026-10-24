@@ -6,7 +6,7 @@
 class ImGuiMathWidget : public Widget
 {
 public:
-    ImGuiMathWidget() = default;
+    ImGuiMathWidget() { setFootprint("ImGuiMathWidget", sizeof(ImGuiMathWidget), MemorySystem::Gui); };
     ~ImGuiMathWidget() override = default;
 
 	virtual void render() override;

@@ -28,6 +28,7 @@ glm::mat3 b3ToGlmMat3(b3Matrix3 mat) {
 PhysicsManagerBox3D::PhysicsManagerBox3D(std::string serviceName)
     : PhysicsManager(serviceName)
 {
+    setFootprint("PhysicsManagerBox3D", sizeof(PhysicsManagerBox3D), MemorySystem::Physics);
     
 }
 

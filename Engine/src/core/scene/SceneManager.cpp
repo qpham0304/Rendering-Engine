@@ -13,6 +13,7 @@ std::string SceneManager::selectedID = "";
 SceneManager::SceneManager() 
 	: Manager("SceneManager")
 {
+	setFootprint("SceneManager", sizeof(SceneManager), MemorySystem::Scene);
 	
 }
 

@@ -3,8 +3,9 @@
 #include <string>
 #include <memory>
 #include "graphics/framework/OpenGL/core/ShaderOpenGL.h"
+#include "core/features/Object.h"
 
-class ImageBasedRenderer
+class ImageBasedRenderer : public Object
 {
 private:
 	unsigned int cubeVAO = 0;

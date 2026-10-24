@@ -5,6 +5,7 @@
 BufferVulkan::BufferVulkan(uint32_t id, VkBuffer vkBuffer, VmaAllocation vkBufferMemory) 
 	: Buffer(id), buffer(vkBuffer), bufferMemory(vkBufferMemory)
 {
+    setFootprint("BufferVulkan", sizeof(BufferVulkan), MemorySystem::Graphics);
 
 }
 
@@ -35,6 +36,7 @@ BufferVulkan::operator VkBuffer() const
 
 void BufferVulkan::destroy(VkDevice device, VmaAllocator allocator) {
     if (buffer != VK_NULL_HANDLE) {
+        MEMORY_UNTRACK(bufferMemory);
         vmaDestroyBuffer(allocator, buffer, bufferMemory);
         buffer = VK_NULL_HANDLE;
         bufferMemory = VK_NULL_HANDLE;

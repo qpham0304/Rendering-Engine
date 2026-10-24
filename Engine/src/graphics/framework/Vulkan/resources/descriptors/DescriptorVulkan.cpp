@@ -9,6 +9,7 @@
 
 DescriptorVulkan::DescriptorVulkan()
 {
+	setFootprint("DescriptorVulkan", sizeof(DescriptorVulkan), MemorySystem::Graphics);
 	BufferManager& bufferManagerTemp = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
 	bufferManager = &dynamic_cast<BufferManagerVulkan&>(bufferManagerTemp);
 	DescriptorManager& descriptorManagerTemp = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
