@@ -8,7 +8,7 @@
   "configurePresets": [
     {
       "name": "windows-ninja",
-      "displayName": "Windows Ninja",
+      "displayName": "Windows Ninja (dev, dll build)",
       "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/build/ninja",
       "architecture": { "value": "x64", "strategy": "external" },
@@ -16,20 +16,30 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl",
-        "WK_BUILD_SHARED": "OFF",
         "BUILD_PLATFORM": "windows-ninja"
       }
     },
     {
       "name": "windows-msvc",
-      "displayName": "Windows MSVC",
+      "displayName": "Windows MSVC (dev, dll build)",
       "generator": "Visual Studio 17 2022",
       "binaryDir": "${sourceDir}/build/msvc",
       "architecture": "x64",
       "toolset": "host=x64",
       "cacheVariables": {
-        "WK_BUILD_SHARED": "OFF",
         "BUILD_PLATFORM": "windows-msvc"
+      }
+    },
+    {
+      "name": "windows-export",
+      "displayName": "Windows Export (standalone static game, use scripts/export-game.cmake)",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/export-windows",
+      "architecture": "x64",
+      "toolset": "host=x64",
+      "cacheVariables": {
+        "WK_EXPORT_GAME": "ON",
+        "BUILD_PLATFORM": "windows-export"
       }
     }
   ],
@@ -57,6 +67,32 @@
       "configurePreset": "windows-msvc",
       "configuration": "Release",
       "targets": ["Sandbox"]
+    },
+    {
+      "name": "window-msvc-editor-debug",
+      "configurePreset": "windows-msvc",
+      "configuration": "Debug",
+      "targets": ["Editor"]
+    },
+    {
+      "name": "window-msvc-editor-release",
+      "configurePreset": "windows-msvc",
+      "configuration": "Release",
+      "targets": ["Editor"]
+    },
+    {
+      "name": "window-msvc-game-debug",
+      "displayName": "Rebuild game dll only (hot reload while editor runs)",
+      "configurePreset": "windows-msvc",
+      "configuration": "Debug",
+      "targets": ["SandboxGame"]
+    },
+    {
+      "name": "window-msvc-game-release",
+      "displayName": "Rebuild game dll only (hot reload while editor runs)",
+      "configurePreset": "windows-msvc",
+      "configuration": "Release",
+      "targets": ["SandboxGame"]
     }
   ]
 }

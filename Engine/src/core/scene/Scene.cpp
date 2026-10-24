@@ -33,8 +33,7 @@ Scene::Scene(std::string name)
 
 		if(keyCode == KEY_S) {
 			if(controlPressed){
-				std::string directory = "../../../";
-				saveScene(directory + "assets/data/" + sceneName + ".json");
+				saveScene("assets/data/" + sceneName + ".json");	// relative to WindowConfig::WorkDir
 				controlPressed = false;
 			}
 		}

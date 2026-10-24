@@ -17,6 +17,8 @@ public:
 
 public:
 	virtual ~Layer() = default;
+	Layer(const Layer&) = delete;
+	Layer& operator=(const Layer&) = delete;
 
 	virtual bool init() = 0;
 	virtual void onAttach(LayerManager* manager);

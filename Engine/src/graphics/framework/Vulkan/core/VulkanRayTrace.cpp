@@ -3,7 +3,7 @@
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include <graphics/framework/Vulkan/resources/buffers/AccelStructureBufferVulkan.h>
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
     // the ## before __VA_ARGS__ handles cases where pass no extra arguments is passed
@@ -73,6 +73,11 @@ VkDeviceAddress RaytracingBuilderKHR::getBlasDeviceAddress(uint32_t blasId)
     return vkGetAccelerationStructureDeviceAddressKHR(*m_device, &addressInfo);
 }
 
+size_t RaytracingBuilderKHR::getBlasCount() const
+{
+    return m_blas.size();
+}
+
 // Create all the BLAS from the vector of BlasInput
 // - There will be one BLAS per input-vector entry
 // - There will be as many BLAS as input.size()
@@ -81,7 +86,10 @@ VkDeviceAddress RaytracingBuilderKHR::getBlasDeviceAddress(uint32_t blasId)
 // - if flag has the 'Compact' flag, the BLAS will be compacted
 void RaytracingBuilderKHR::buildBlas(const std::vector<BlasInput>& input, VkBuildAccelerationStructureFlagsKHR flags)
 {
-    auto         nbBlas = static_cast<uint32_t>(input.size());
+    auto nbBlas = static_cast<uint32_t>(input.size());
+    if(nbBlas == 0) {
+        return;
+    }
     VkDeviceSize asTotalSize{0};     // Memory size of all allocated BLAS
     uint32_t     nbCompactions{0};   // Nb of BLAS requesting compaction
     VkDeviceSize maxScratchSize{0};  // Largest scratch size
@@ -186,6 +194,9 @@ void RaytracingBuilderKHR::buildBlas(const std::vector<BlasInput>& input, VkBuil
     if (queryPool) {
         PRINT_DEBUG("  vkDestroyQueryPool\n");
         vkDestroyQueryPool(*m_device, queryPool, nullptr); }
+
+    // the builds above already waited for completion, and every call makes its own scratch
+    bufferManager->destroy(m_scratch1_ID);
 }
 
 AccelStructureBufferVulkan* createAcceleration(
@@ -245,7 +256,8 @@ void RaytracingBuilderKHR::_cmdCreateBlas(
         // starting the next one.
         VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
         barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        // next build writes the same scratch memory, so wait for writes too (write-after-write)
+        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
         PRINT_DEBUG("        vkCmdPipelineBarrier\n");
         vkCmdPipelineBarrier(cmdBuf, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
                                 VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
@@ -438,6 +450,16 @@ void RaytracingBuilderKHR::buildTlas(
     // this will cause driver halt and crash the gpu
     assert((!update || m_tlas != nullptr) && "Cannot update before creating TLAS");
     uint32_t countInstance = static_cast<uint32_t>(instances.size());
+
+    // a refit needs the same instance count, entities spawned or removed at runtime need a new tlas
+    if(update && countInstance != m_tlasInstanceCount) {
+        vkDeviceWaitIdle(*m_device);
+        destroyTlas();
+        bufferManager->destroy(m_scratch2_ID);
+        m_scratch2_ID = 0;
+        update = false;
+    }
+    m_tlasInstanceCount = countInstance;
 
     // Command buffer to create the TLAS
     VkCommandBuffer cmdBuf = renderDevice->commandPool.beginSingleTimeCommand();

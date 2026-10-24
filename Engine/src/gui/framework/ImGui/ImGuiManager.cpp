@@ -41,7 +41,7 @@ bool ImGuiManager::init(WindowConfig config)
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;			// Enable Multi-Viewport / Platform Windows
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
 
-	// io.IniFilename = "Assets/imgui.ini";
+	io.IniFilename = "assets/imgui.ini";
 
 	float fontSize = 16.0f;
 

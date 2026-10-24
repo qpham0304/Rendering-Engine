@@ -21,6 +21,7 @@ public:
 
 	bool addLayer(Layer* layer);
 	bool removeLayer(const int& index);
+	bool removeLayer(Layer* layer);
 	void enableLayer(const int& index);
 	void disableLayer(const int& index);
 	int size() const;

@@ -44,8 +44,8 @@ struct MYGRAPHICSENGINE_EXPORT WindowConfig {
 	bool vsync = true;
 	float targetRenderFPS = 60.0f;
 	float targetUpdateFPS = 60.0f;
-	std::string WorkDir = "./src";
-	std::string AssetsDir = "./assets";
+	std::string WorkDir = "";			// empty = same directory as the executable
+	std::string AssetsDir = "./assets";	// relative to WorkDir
 };
 
 struct AppConfig {

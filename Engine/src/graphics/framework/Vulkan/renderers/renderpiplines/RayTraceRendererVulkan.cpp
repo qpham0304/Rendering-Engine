@@ -502,6 +502,7 @@ void RayTraceRendererVulkan::_createAccelStructure()
 {
     Timer timer("acceleration strucure build time", true);
 	auto meshIDs = meshManager->listIDs();
+    std::sort(meshIDs.begin(), meshIDs.end());  // blas index is meshID - 1, listIDs comes from an unordered_map
     // BLAS - Storing each primitive in a geometry
     std::vector<BlasInput> allBlas;
     allBlas.reserve(meshIDs.size());
@@ -643,7 +644,24 @@ void RayTraceRendererVulkan::_createShaderBindingTable()
 	bufferManagerVulkan->destroy(stagingBufferID);
 }
 
+// meshes loaded after the startup build get their blas here, before any tlas instance references them
+void RayTraceRendererVulkan::_buildNewBlas()
+{
+    auto meshIDs = meshManager->listIDs();
+    std::sort(meshIDs.begin(), meshIDs.end());
+
+    std::vector<BlasInput> newBlas;
+    for (uint32_t id : meshIDs) {
+        if (id > m_rtBuilder.getBlasCount()) {  // blas index is meshID - 1
+            newBlas.emplace_back(_toVkGeometry(id));
+        }
+    }
+    m_rtBuilder.buildBlas(newBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
+}
+
 void RayTraceRendererVulkan::updateTlas() {
+    _buildNewBlas();
+
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
 
     int objectsIndex = 0;

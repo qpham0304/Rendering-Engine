@@ -148,5 +148,6 @@ public:	//TODO: make private once done testing
 
 	BlasInput _toVkGeometry(uint32_t meshID);
 	void _createAccelStructure();
+	void _buildNewBlas();
 	void _createShaderBindingTable();
 };

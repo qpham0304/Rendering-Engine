@@ -12,6 +12,8 @@ class Service : public Object
 {
 public:
 	virtual ~Service();
+	Service(const Service&) = delete;
+	Service& operator=(const Service&) = delete;
 
 	const std::string& getServiceName() const;
 

@@ -62,6 +62,15 @@ bool LayerManager::removeLayer(const int& index)
 	return true;
 }
 
+bool LayerManager::removeLayer(Layer* layer)
+{
+	auto it = std::find(m_Layers.begin(), m_Layers.end(), layer);
+	if (it == m_Layers.end()) {
+		return false;
+	}
+	return removeLayer(static_cast<int>(it - m_Layers.begin()));
+}
+
 void LayerManager::enableLayer(const int& index)
 {
 	if (!boundCheck(index)) {

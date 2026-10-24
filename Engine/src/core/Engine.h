@@ -10,6 +10,7 @@
 #include <particle/ParticleManager.h>
 #include <core/resources/managers/SkeletonManager.h>
 #include "core/features/Object.h"
+#include <functional>
 
 class Layer;
 class EventManager;
@@ -18,8 +19,12 @@ class MYGRAPHICSENGINE_EXPORT Engine : public Object
 {
 public:
     Engine(WindowConfig config);
+    Engine(const Engine&) = delete;
+    Engine& operator=(const Engine&) = delete;
 
     void pushLayer(Layer* layer);
+    void removeLayer(Layer* layer);
+    void addFrameCallback(std::function<void()> callback); // start of every frame, outside dll layers to add/remove
     void init();
     void start();
     void run();
@@ -57,5 +62,7 @@ private:
 private:
     std::vector<Service*> services;
     std::vector<EventSubscription> m_eventSubscriptions;
+    std::vector<std::function<void()>> frameCallbacks;
+    bool isInitialized = false;
 
 };

@@ -30,6 +30,7 @@ public:
     uint32_t m_queueIndex{0};
     uint32_t m_scratch1_ID{0};
     uint32_t m_scratch2_ID{0};
+    uint32_t m_tlasInstanceCount{0};    // what the current tlas and scratch were sized for
     AccelStructureBufferVulkan* m_scratch1;
     AccelStructureBufferVulkan* m_scratch2;
 
@@ -48,6 +49,7 @@ public:
     
     // Return the Acceleration Structure Device Address of a BLAS Id
     VkDeviceAddress getBlasDeviceAddress(uint32_t blasId);
+    size_t getBlasCount() const;
 
     // Create all the BLAS from the vector of BlasInput
     void buildBlas(

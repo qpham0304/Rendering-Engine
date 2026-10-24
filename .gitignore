@@ -389,3 +389,6 @@ notes/
 
 vma_stats.json
 memory_stats.json
+
+# exported standalone game
+export/

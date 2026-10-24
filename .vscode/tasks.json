@@ -35,6 +35,60 @@
             "preset": "window-msvc-release",
             "group": "build",
             "problemMatcher": "$msvc"
+        },
+        {
+            "type": "shell",
+            "label": "build Editor Debug (msvc)",
+            "command": "powershell",
+            "args": [
+                "-Command",
+                "cmake --build --preset window-msvc-editor-debug 2>&1 | Tee-Object -FilePath build.log; exit $LASTEXITCODE"
+            ],
+            "group": "build",
+            "problemMatcher": "$msvc"
+        },
+        {
+            "type": "shell",
+            "label": "build Editor Release (msvc)",
+            "command": "powershell",
+            "args": [
+                "-Command",
+                "cmake --build --preset window-msvc-editor-release 2>&1 | Tee-Object -FilePath build.log; exit $LASTEXITCODE"
+            ],
+            "group": "build",
+            "problemMatcher": "$msvc"
+        },
+        {
+            // game dll only, safe while the editor is running, it picks the new build up by itself
+            "type": "shell",
+            "label": "hot reload Sandbox game Debug (msvc)",
+            "command": "powershell",
+            "args": [
+                "-Command",
+                "cmake --build --preset window-msvc-game-debug 2>&1 | Tee-Object -FilePath build.log; exit $LASTEXITCODE"
+            ],
+            "group": "build",
+            "problemMatcher": "$msvc"
+        },
+        {
+            "type": "shell",
+            "label": "hot reload Sandbox game Release (msvc)",
+            "command": "powershell",
+            "args": [
+                "-Command",
+                "cmake --build --preset window-msvc-game-release 2>&1 | Tee-Object -FilePath build.log; exit $LASTEXITCODE"
+            ],
+            "group": "build",
+            "problemMatcher": "$msvc"
+        },
+        {
+            // standalone statically linked game into export/<preset>, separate build dir from the dll dev build
+            "type": "shell",
+            "label": "export Sandbox game (static)",
+            "command": "cmake",
+            "args": ["-P", "${workspaceFolder}/scripts/export-game.cmake"],
+            "group": "build",
+            "problemMatcher": "$msvc"
         }
     ]
 }
