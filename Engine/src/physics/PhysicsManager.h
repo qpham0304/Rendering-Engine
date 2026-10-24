@@ -33,7 +33,7 @@ struct MotionLocks {
 class MYGRAPHICSENGINE_EXPORT PhysicsManager : public Manager
 {
 public:
-	PhysicsManager(std::string serviceName = "PhysicsManager") : Manager(serviceName) {};	
+	PhysicsManager(std::string serviceName = "PhysicsManager") : Manager(serviceName) { setFootprint("PhysicsManager", sizeof(PhysicsManager), MemorySystem::Physics); };	
 	virtual ~PhysicsManager() = default;
 
 	virtual bool init(WindowConfig config) = 0;

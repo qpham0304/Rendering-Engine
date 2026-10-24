@@ -1,7 +1,10 @@
 #include <string>
+#include "core/features/Object.h"
 
-class Resource {
+class Resource : public Object {
 public:
+    Resource() { setFootprint("Resource", sizeof(Resource), MemorySystem::Resource); }
+
     bool isLoaded() {return m_loaded; }
 
     bool load() { 

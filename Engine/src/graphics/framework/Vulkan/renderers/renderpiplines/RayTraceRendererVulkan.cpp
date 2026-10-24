@@ -27,6 +27,7 @@
 RayTraceRendererVulkan::RayTraceRendererVulkan() 
 	: RendererVulkan("RayTraceRendererVulkan")
 {
+    setFootprint("RayTraceRendererVulkan", sizeof(RayTraceRendererVulkan), MemorySystem::Graphics);
 
 }
 

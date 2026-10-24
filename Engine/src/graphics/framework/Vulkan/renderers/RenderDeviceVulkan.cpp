@@ -6,6 +6,7 @@ RenderDeviceVulkan::RenderDeviceVulkan()
 	commandPool(device),
 	transferPool(device)
 {
+	setFootprint("RenderDeviceVulkan", sizeof(RenderDeviceVulkan), MemorySystem::Graphics);
 
 }
 

@@ -13,7 +13,7 @@ public:
 
 
 protected:
-	UniformBuffer(uint32_t id) : Buffer(id) {};
+	UniformBuffer(uint32_t id) : Buffer(id) { setFootprint("UniformBuffer", sizeof(UniformBuffer), MemorySystem::Graphics); };
 
 	std::vector<void*> uniformBuffersMapped;
 };

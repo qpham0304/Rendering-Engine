@@ -7,8 +7,9 @@
 #include<glm/gtc/type_ptr.hpp>
 #include<glm/gtx/rotate_vector.hpp>
 #include<glm/gtx/vector_angle.hpp>
+#include "core/features/Object.h"
 
-class Line {
+class Line : public Object {
     int shaderProgram;
     unsigned int VBO, VAO;
     std::vector<float> vertices;
@@ -18,6 +19,7 @@ class Line {
     glm::vec3 lineColor;
 public:
     Line(glm::vec3 start, glm::vec3 end) {
+        setFootprint("Line", sizeof(Line), MemorySystem::Graphics);
 
         startPoint = start;
         endPoint = end;

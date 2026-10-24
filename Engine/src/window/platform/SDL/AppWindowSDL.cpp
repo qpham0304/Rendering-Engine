@@ -9,6 +9,7 @@
 AppWindowSDL::AppWindowSDL()
 	: AppWindow(), m_windowHandle(nullptr), m_minimized(false)
 {
+	setFootprint("AppWindowSDL", sizeof(AppWindowSDL), MemorySystem::Window);
 	window = &*this;
 	m_input = std::make_unique<InputSDL>();
 }

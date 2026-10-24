@@ -22,6 +22,7 @@
 LightingPassVulkan::LightingPassVulkan(std::string serviceName)
 	: RendererVulkan(serviceName)
 {
+	setFootprint("LightingPassVulkan", sizeof(LightingPassVulkan), MemorySystem::Graphics);
 
 }
 

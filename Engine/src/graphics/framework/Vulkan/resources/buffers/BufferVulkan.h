@@ -9,7 +9,7 @@ class BufferVulkan : public Buffer
 public:
     friend class BufferManagerVulkan;
 
-    BufferVulkan() = default;
+    BufferVulkan() { setFootprint("BufferVulkan", sizeof(BufferVulkan), MemorySystem::Graphics); };
     BufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory);
 
     virtual ~BufferVulkan() override;

@@ -7,7 +7,7 @@ class Texture;
 class MYGRAPHICSENGINE_EXPORT TextureManager : public Manager
 {
 public:
-	TextureManager(std::string serviceName = "TextureManager") : Manager(serviceName) {};
+	TextureManager(std::string serviceName = "TextureManager") : Manager(serviceName) { setFootprint("TextureManager", sizeof(TextureManager), MemorySystem::Resource); };
 	virtual ~TextureManager() = default;
 
 	virtual bool init(WindowConfig config) override = 0;

@@ -5,6 +5,7 @@
 
 InputGLFW::InputGLFW() : Input()
 {
+	setFootprint("InputGLFW", sizeof(InputGLFW), MemorySystem::Window);
 
 }
 

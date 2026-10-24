@@ -1,6 +1,7 @@
 #include "EBO.h"
 
 EBO::EBO() {
+	setFootprint("EBO", sizeof(EBO), MemorySystem::Graphics);
 
 }
 
@@ -14,6 +15,7 @@ EBO& EBO::operator=(const EBO& other) {
 // Constructor that generates a Elements Buffer Object and links it to indices
 EBO::EBO(GLuint* indices, GLsizeiptr size)
 {
+	setFootprint("EBO", sizeof(EBO), MemorySystem::Graphics);
 	glGenBuffers(1, &ID);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, indices, GL_STATIC_DRAW);

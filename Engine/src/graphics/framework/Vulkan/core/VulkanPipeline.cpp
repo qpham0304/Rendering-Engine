@@ -4,6 +4,7 @@
 VulkanPipeline::VulkanPipeline(VulkanDevice& deviceRef)
 	: device(deviceRef)
 {
+	setFootprint("VulkanPipeline", sizeof(VulkanPipeline), MemorySystem::Graphics);
 
 }
 

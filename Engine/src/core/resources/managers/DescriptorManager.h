@@ -17,7 +17,7 @@ public:
     virtual std::vector<uint32_t> listPoolIDs() const = 0;
 
 protected:
-    DescriptorManager(std::string serviceName = "DescriptorManager") : Manager(serviceName) {};
+    DescriptorManager(std::string serviceName = "DescriptorManager") : Manager(serviceName) { setFootprint("DescriptorManager", sizeof(DescriptorManager), MemorySystem::Resource); };
 
 private:
 

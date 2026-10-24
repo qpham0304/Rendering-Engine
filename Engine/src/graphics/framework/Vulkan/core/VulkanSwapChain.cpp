@@ -7,6 +7,7 @@
 VulkanSwapChain::VulkanSwapChain(VulkanDevice& deviceRef, RenderDeviceVulkan& renderDeviceRef)
 	: device(deviceRef), renderDevice(renderDeviceRef)
 {
+	setFootprint("VulkanSwapChain", sizeof(VulkanSwapChain), MemorySystem::Graphics);
 
 }
 
@@ -322,6 +323,7 @@ VkExtent2D VulkanSwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& cap
 void VulkanSwapChain::cleanupSwapChain()
 {
 	vkDestroyImageView(device, depthImageView, nullptr);
+	MEMORY_UNTRACK(depthImageMemory);
 	vmaDestroyImage(device.getAllocator(), depthImage, depthImageMemory);
 
 	for (auto framebuffer : swapChainFramebuffers) {

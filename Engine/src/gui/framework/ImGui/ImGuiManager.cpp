@@ -13,12 +13,14 @@
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
+	setFootprint("ImGuiManager", sizeof(ImGuiManager), MemorySystem::Gui);
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 }
 
 ImGuiManager::ImGuiManager(bool darkTheme) : GuiManager()
 {
+	setFootprint("ImGuiManager", sizeof(ImGuiManager), MemorySystem::Gui);
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	this->darkTheme = darkTheme;

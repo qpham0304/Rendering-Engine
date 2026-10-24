@@ -3,6 +3,7 @@
 ImGuiMenuWidget::ImGuiMenuWidget(std::span<std::shared_ptr<Widget>> widgets) 
 	: MenuWidget("ImGuiMenuWidget")
 {
+	setFootprint("ImGuiMenuWidget", sizeof(ImGuiMenuWidget), MemorySystem::Gui);
 	m_widgetRefs.assign(widgets.begin(), widgets.end());
 
 }

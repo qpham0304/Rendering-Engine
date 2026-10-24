@@ -9,6 +9,7 @@
 #include <optional>
 #include <array>
 #include <unordered_map>
+#include "core/features/Object.h"
 
 #define VALIDATE(vkFunc) \
     if((vkFunc) != VK_SUCCESS) { \
@@ -47,7 +48,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     return VK_FALSE;
 }
 
-class VulkanDevice
+class VulkanDevice : public Object
 {
 public:
 	VulkanDevice();

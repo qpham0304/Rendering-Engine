@@ -1,8 +1,9 @@
 #pragma once
 #include<glad/glad.h>
 #include "VBO.h"
+#include "core/features/Object.h"
 
-class VAO
+class VAO : public Object
 {
 public:
 	GLuint ID;

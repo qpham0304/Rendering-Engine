@@ -29,6 +29,7 @@ LoggerSpd::LoggerSpd(std::string name)
     :   Logger("LoggerSPD", name + std::string("_LoggerSPD")),
         m_logger(std::make_unique<SpdLogHandle>())        
 {
+    setFootprint("LoggerSpd", sizeof(LoggerSpd), MemorySystem::Logging);
     m_logger->logger = spdlog::stdout_color_mt(name.data());
     m_logger->logger->set_pattern("%^[%H:%M:%S %z] [%n] [%l] [thread %t] %v%$");
     m_name = name + std::string("_LoggerSPD");
@@ -41,6 +42,7 @@ LoggerSpd::~LoggerSpd()
 
 LoggerSpd::LoggerSpd() : Logger("LoggerSPD")
 {
+    setFootprint("LoggerSpd", sizeof(LoggerSpd), MemorySystem::Logging);
 
 }
 

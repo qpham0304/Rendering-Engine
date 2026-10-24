@@ -7,7 +7,7 @@ class TextureOpenGL : public Texture
 public:
 	TextureOpenGL(const char* path, const char* texType);
 	TextureOpenGL(const char* fileName, const char* texType, const std::string& directory);
-	TextureOpenGL() = default;
+	TextureOpenGL() { setFootprint("TextureOpenGL", sizeof(TextureOpenGL), MemorySystem::Graphics); };
 
 	//TextureOpenGL(const TextureOpenGL& other) = default;
 	//TextureOpenGL& operator=(const TextureOpenGL& other) = default;

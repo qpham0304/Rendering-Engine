@@ -7,6 +7,7 @@ namespace {
 
 EventManager::EventManager() : Manager("EventManager")
 {
+	setFootprint("EventManager", sizeof(EventManager), MemorySystem::Core);
 	s_eventManagerAlive = true;
 }
 

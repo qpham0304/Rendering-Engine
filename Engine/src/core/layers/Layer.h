@@ -6,15 +6,18 @@
 #include "core/features/FrameTime.h"
 #include "core/events/EventSubscription.h"
 #include <vector>
+#include "core/features/Object.h"
 
 class LayerManager;
 
-class MYGRAPHICSENGINE_EXPORT Layer
+class MYGRAPHICSENGINE_EXPORT Layer : public Object
 {
 public:
 	bool m_Enabled;
 
 public:
+	virtual ~Layer() = default;
+
 	virtual bool init() = 0;
 	virtual void onAttach(LayerManager* manager);
 	virtual void onDetach() = 0;

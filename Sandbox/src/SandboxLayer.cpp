@@ -21,6 +21,7 @@
 SandBoxLayer::SandBoxLayer(const std::string& name)
     : Layer(name)
 {
+    setFootprint("SandBoxLayer", sizeof(SandBoxLayer), MemorySystem::General);
     m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::CameraUpdateEvent, [this](Event& event) {
         auto& cameraUpdateEvent = static_cast<CameraUpdateEvent&>(event);
         auto& cameraComponent = cameraUpdateEvent.entity.getComponent<CameraComponent>();

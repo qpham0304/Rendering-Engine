@@ -11,6 +11,7 @@ static bool validateFormat(const char* str) {
 
 ShaderOpenGL::ShaderOpenGL(const char* vertexFile, const char* fragmentFile) : ID(0)
 {
+	setFootprint("ShaderOpenGL", sizeof(ShaderOpenGL), MemorySystem::Graphics);
 	try {
 		ID = createShader(vertexFile, fragmentFile);
 	}
@@ -21,6 +22,7 @@ ShaderOpenGL::ShaderOpenGL(const char* vertexFile, const char* fragmentFile) : I
 
 ShaderOpenGL::ShaderOpenGL(const char* vertexFile, const char* fragmentFile, const char* geometryFile)  : ID(0)
 {
+	setFootprint("ShaderOpenGL", sizeof(ShaderOpenGL), MemorySystem::Graphics);
 	try {
 		ID = createShader(vertexFile, fragmentFile, geometryFile);
 	}
@@ -31,6 +33,7 @@ ShaderOpenGL::ShaderOpenGL(const char* vertexFile, const char* fragmentFile, con
 
 ShaderOpenGL::ShaderOpenGL() : ID(0)
 {
+	setFootprint("ShaderOpenGL", sizeof(ShaderOpenGL), MemorySystem::Graphics);
 	type = "";
 }
 

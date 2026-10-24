@@ -37,6 +37,7 @@ void EditorLayer::renderGuizmo()
 EditorLayer::EditorLayer(const std::string& name, GuiManager& controller)
 	: Layer (name), guiController(controller)
 {
+	setFootprint("EditorLayer", sizeof(EditorLayer), MemorySystem::Core);
 
 }
 

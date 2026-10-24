@@ -23,6 +23,7 @@ Engine::Engine(WindowConfig config)
 	sceneManager(SceneManager::getInstance()),
 	eventManager(EventManager::getInstance())
 {
+	setFootprint("Engine", sizeof(Engine), MemorySystem::Core);
 	ServiceLocator::setContext(&serviceLocator);
 	engineLogger = platformFactory.Create(LoggerPlatform::SPDLOG, "Engine");
 	clientLogger = platformFactory.Create(LoggerPlatform::SPDLOG, "Client");

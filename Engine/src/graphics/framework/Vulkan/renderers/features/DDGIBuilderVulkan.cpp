@@ -62,6 +62,7 @@ static glm::mat4 randomRotation()
 
 DDGIBuilderVulkan::DDGIBuilderVulkan()
 {
+	setFootprint("DDGIBuilderVulkan", sizeof(DDGIBuilderVulkan), MemorySystem::Graphics);
 }
 
 DDGIBuilderVulkan::~DDGIBuilderVulkan()

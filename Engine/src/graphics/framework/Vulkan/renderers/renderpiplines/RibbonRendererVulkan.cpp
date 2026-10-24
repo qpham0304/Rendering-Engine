@@ -19,6 +19,7 @@
 RibbonRendererVulkan::RibbonRendererVulkan(std::string serviceName)
 	:	RendererVulkan(serviceName)
 {
+    setFootprint("RibbonRendererVulkan", sizeof(RibbonRendererVulkan), MemorySystem::Graphics);
 
 }
 

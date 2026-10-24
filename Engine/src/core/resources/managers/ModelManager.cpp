@@ -31,6 +31,7 @@ const std::unordered_map<std::string, std::function<std::pair<std::string, Mesh>
 ModelManager::ModelManager()
     :   Manager("ModelManager")
 {
+    setFootprint("ModelManager", sizeof(ModelManager), MemorySystem::Resource);
 
 }
 

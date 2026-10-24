@@ -6,6 +6,7 @@
 
 Camera::Camera()
 {
+	setFootprint("Camera", sizeof(Camera), MemorySystem::Scene);
 	width = DEFAULT_WIDTH;
 	height = DEFAULT_HEIGHT;
 	position = glm::vec3(0.0);
@@ -15,12 +16,14 @@ Camera::Camera()
 
 Camera::Camera(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation)
 {
+	setFootprint("Camera", sizeof(Camera), MemorySystem::Scene);
 	setup(width, height, position);
 	setupOrientation(orientation);
 }
 
 Camera::Camera(unsigned int width, unsigned int height, glm::vec3 position)
 {
+	setFootprint("Camera", sizeof(Camera), MemorySystem::Scene);
 	setup(width, height, position);
 }
 

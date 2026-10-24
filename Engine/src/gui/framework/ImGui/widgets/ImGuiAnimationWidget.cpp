@@ -6,6 +6,7 @@
 ImGuiAnimationWidget::ImGuiAnimationWidget(std::string name)
     : ImGuiWidget(name)
 {
+    setFootprint("ImGuiAnimationWidget", sizeof(ImGuiAnimationWidget), MemorySystem::Gui);
     
 }
 

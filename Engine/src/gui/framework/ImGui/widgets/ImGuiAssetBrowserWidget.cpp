@@ -14,6 +14,7 @@ namespace {
 ImGuiAssetBrowserWidget::ImGuiAssetBrowserWidget(std::string name)
     : ImGuiWidget(name)
 {
+    setFootprint("ImGuiAssetBrowserWidget", sizeof(ImGuiAssetBrowserWidget), MemorySystem::Gui);
 
 }
 

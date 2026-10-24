@@ -6,6 +6,7 @@
 
 RenderGraphVulkan::RenderGraphVulkan()
 {
+    setFootprint("RenderGraphVulkan", sizeof(RenderGraphVulkan), MemorySystem::Graphics);
     
 }
 

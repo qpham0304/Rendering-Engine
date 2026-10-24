@@ -53,7 +53,7 @@ public:
 
 
 protected:
-	RenderDevice(std::string name = "RenderDevice") : Service(name) {};
+	RenderDevice(std::string name = "RenderDevice") : Service(name) { setFootprint("RenderDevice", sizeof(RenderDevice), MemorySystem::Graphics); };
 
 
 protected:

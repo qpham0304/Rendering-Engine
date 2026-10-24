@@ -4,6 +4,7 @@
 
 ScriptableCamera::ScriptableCamera()
 {
+	setFootprint("ScriptableCamera", sizeof(ScriptableCamera), MemorySystem::Scene);
 
 }
 

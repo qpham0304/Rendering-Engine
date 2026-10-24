@@ -5,7 +5,7 @@
 class RightSidebarWidget : public Widget
 {
 protected:
-	RightSidebarWidget() : Widget("RightSidebarWidget") {}
+	RightSidebarWidget() : Widget("RightSidebarWidget") { setFootprint("RightSidebarWidget", sizeof(RightSidebarWidget), MemorySystem::Gui); }
 
 public:
 	virtual void layersControl() = 0;

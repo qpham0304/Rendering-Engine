@@ -29,6 +29,7 @@ static_assert(static_cast<size_t>(ParticleBlendMode::Count) == 2, "one particle 
 ParticleRendererVulkan::ParticleRendererVulkan(std::string serviceName)
 	:	RendererVulkan(serviceName)
 {
+    setFootprint("ParticleRendererVulkan", sizeof(ParticleRendererVulkan), MemorySystem::Graphics);
 
 }
 

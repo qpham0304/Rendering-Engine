@@ -27,6 +27,7 @@
 RendererManagerVulkan::RendererManagerVulkan(std::string serviceName)
     : RendererManager(serviceName) 
 {
+    setFootprint("RendererManagerVulkan", sizeof(RendererManagerVulkan), MemorySystem::Graphics);
 }
 
 RendererManagerVulkan::~RendererManagerVulkan()

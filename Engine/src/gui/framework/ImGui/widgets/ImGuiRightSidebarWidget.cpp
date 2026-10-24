@@ -23,6 +23,7 @@ ImGuiRightSidebarWidget::ImGuiRightSidebarWidget()
         errorPopupOpen(false),
         selectedTexture(0)
 {
+    setFootprint("ImGuiRightSidebarWidget", sizeof(ImGuiRightSidebarWidget), MemorySystem::Gui);
     m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
 
 }

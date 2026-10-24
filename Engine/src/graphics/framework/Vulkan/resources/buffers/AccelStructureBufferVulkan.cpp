@@ -5,6 +5,7 @@
 AccelStructureBufferVulkan::AccelStructureBufferVulkan(uint32_t id, VkBuffer buffer, VmaAllocation bufferMemory)
 	: BufferVulkan(id, buffer, bufferMemory)
 {
+    setFootprint("AccelStructureBufferVulkan", sizeof(AccelStructureBufferVulkan), MemorySystem::Graphics);
 }
 
 AccelStructureBufferVulkan::~AccelStructureBufferVulkan()

@@ -9,11 +9,12 @@
 #include <animation/AnimationManager.h>
 #include <particle/ParticleManager.h>
 #include <core/resources/managers/SkeletonManager.h>
+#include "core/features/Object.h"
 
 class Layer;
 class EventManager;
 
-class MYGRAPHICSENGINE_EXPORT Engine
+class MYGRAPHICSENGINE_EXPORT Engine : public Object
 {
 public:
     Engine(WindowConfig config);

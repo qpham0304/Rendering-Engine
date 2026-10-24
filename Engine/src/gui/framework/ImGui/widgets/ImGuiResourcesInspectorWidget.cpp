@@ -7,6 +7,7 @@
 ImGuiResourceInspectorWidget::ImGuiResourceInspectorWidget(std::string name)
     : ImGuiWidget(name)
 {
+    setFootprint("ImGuiResourceInspectorWidget", sizeof(ImGuiResourceInspectorWidget), MemorySystem::Gui);
 
 }
 
@@ -92,6 +93,48 @@ void ImGuiResourceInspectorWidget::render()
             ImGui::EndTable();
         }
     }
+
+#if MEMORY_TRACKING_ENABLED
+    if (ImGui::CollapsingHeader("Memory Data", ImGuiTreeNodeFlags_DefaultOpen)) {
+        MemoryTracker& tracker = MemoryTracker::getInstance();
+        if (ImGui::Button("Report Memory")) {
+            tracker.reportUsage();
+        }
+
+        if (ImGui::BeginTable("##Memory", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("System");
+            ImGui::TableSetupColumn("Allocated");
+            ImGui::TableSetupColumn("Peak");
+            ImGui::TableSetupColumn("Allocs");
+            ImGui::TableSetupColumn("Objects");
+            ImGui::TableSetupColumn("Peak");
+            ImGui::TableSetupColumn("Count");
+            ImGui::TableHeadersRow();
+
+            for (size_t i = 0; i < static_cast<size_t>(MemorySystem::Count); i++) {
+                MemorySystem system = static_cast<MemorySystem>(i);
+                MemoryTracker::SystemStats stats = tracker.getStats(system);
+
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(MemoryTracker::systemName(system));
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%zu", stats.allocatedBytes);
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%zu", stats.peakAllocatedBytes);
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%zu", stats.allocationCount);
+                ImGui::TableSetColumnIndex(4);
+                ImGui::Text("%zu", stats.objectBytes);
+                ImGui::TableSetColumnIndex(5);
+                ImGui::Text("%zu", stats.peakObjectBytes);
+                ImGui::TableSetColumnIndex(6);
+                ImGui::Text("%zu", stats.objectCount);
+            }
+            ImGui::EndTable();
+        }
+    }
+#endif
 
     ImGui::End();
 }

@@ -5,6 +5,7 @@
 #include "window/AppWindow.h"
 
 OrbitCamera::OrbitCamera() {
+    setFootprint("OrbitCamera", sizeof(OrbitCamera), MemorySystem::Scene);
     width = DEFAULT_WIDTH;
     height = DEFAULT_HEIGHT;
     position = glm::vec3(0.0f, 0.0f, 5.0f);
@@ -17,6 +18,7 @@ OrbitCamera::OrbitCamera() {
 }
 
 OrbitCamera::OrbitCamera(unsigned int width, unsigned int height, glm::vec3 position, glm::vec3 orientation) {
+    setFootprint("OrbitCamera", sizeof(OrbitCamera), MemorySystem::Scene);
     setup(width, height, position);
     setupOrientation(orientation);
     this->target = position + orientation * 5.0f; // guess a target based on orientation
@@ -26,6 +28,7 @@ OrbitCamera::OrbitCamera(unsigned int width, unsigned int height, glm::vec3 posi
 }
 
 OrbitCamera::OrbitCamera(unsigned int width, unsigned int height, glm::vec3 position) {
+    setFootprint("OrbitCamera", sizeof(OrbitCamera), MemorySystem::Scene);
     setup(width, height, position);
     this->target = glm::vec3(0.0f);
     this->distance = glm::distance(position, target);

@@ -7,6 +7,7 @@
 ParticleManager::ParticleManager()
     : Manager("ParticleManager")
 {
+    setFootprint("ParticleManager", sizeof(ParticleManager), MemorySystem::Particle);
 
 }
 

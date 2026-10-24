@@ -11,7 +11,7 @@ public:
         int repeatCount { 0 };
     };
 
-    ImGuiLogger() : Logger("ImGuiInternal"), m_logLevel("DEBUG") {}
+    ImGuiLogger() : Logger("ImGuiInternal"), m_logLevel("DEBUG") { setFootprint("ImGuiLogger", sizeof(ImGuiLogger), MemorySystem::Gui); }
     virtual ~ImGuiLogger() override;
 
     void setLevel(LogLevel level) override;

@@ -14,6 +14,7 @@
 TextureManagerVulkan::TextureManagerVulkan(std::string serviceName)
 	: TextureManager(serviceName), renderDeviceVulkan(nullptr)
 {
+	setFootprint("TextureManagerVulkan", sizeof(TextureManagerVulkan), MemorySystem::Graphics);
 
 }
 
@@ -259,6 +260,7 @@ void TextureManagerVulkan::_loadTexture(
 	copyBufferToImage(stagingBuffer, texture->textureImage, texWidth, texHeight, renderDeviceVulkan);
 	generateMipmaps(texture->textureImage, format, texWidth, texHeight, mipLevels, renderDeviceVulkan);
 
+	MEMORY_UNTRACK(stagingBufferMemory);
 	vmaDestroyBuffer(renderDeviceVulkan->device.getAllocator(), stagingBuffer, stagingBufferMemory);
 
 	createImageView(
@@ -474,9 +476,11 @@ void TextureManagerVulkan::createImage(
 	allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 	allocInfo.requiredFlags = properties;
 
-	if (vmaCreateImage(device.getAllocator(), &imageInfo, &allocInfo, &image, &imageMemory, nullptr) != VK_SUCCESS) {
+	VmaAllocationInfo allocationInfo{};
+	if (vmaCreateImage(device.getAllocator(), &imageInfo, &allocInfo, &image, &imageMemory, &allocationInfo) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create image!");
 	}
+	MEMORY_TRACK(imageMemory, allocationInfo.size, MemorySystem::Graphics, "VkImage");
 }
 
 void TextureManagerVulkan::createImageView(

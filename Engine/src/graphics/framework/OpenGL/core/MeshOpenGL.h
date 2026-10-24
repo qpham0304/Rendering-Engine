@@ -4,13 +4,14 @@
 #include <memory>
 #include <glm/glm.hpp>
 #include "graphics/framework/OpenGL/core/TextureOpenGL.h"
+#include "core/features/Object.h"
 
 #define MAX_BONE_INFLUENCE 4
 
 
 class ShaderOpenGL;
 
-class MeshOpenGL
+class MeshOpenGL : public Object
 {
 public:
 	struct Vertex {

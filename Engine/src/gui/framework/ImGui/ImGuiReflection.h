@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
+#include "core/features/Object.h"
 
 // Draws any DEFINE_TYPE struct (components, graphics settings, ...) as a label | value table.
 // Each field goes to the DrawField overload for its type, the FieldMeta passed to member(...) picks the widget.
@@ -63,8 +64,10 @@ namespace ImGuiReflection {
 
 // Draws objects whose type is only known at runtime (a type_index and a pointer).
 // Types are registered up front, like the component and event lua bindings.
-class ImGuiReflectionRegistry {
+class ImGuiReflectionRegistry : public Object {
 public:
+    ImGuiReflectionRegistry() { setFootprint("ImGuiReflectionRegistry", sizeof(ImGuiReflectionRegistry), MemorySystem::Gui); }
+
     template<typename T>
     void add() {
         m_drawers[typeid(T)] = [](void* object) { return ImGuiReflection::Draw(*static_cast<T*>(object)); };

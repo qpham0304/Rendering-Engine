@@ -11,6 +11,7 @@
 AnimationManager::AnimationManager()
     : Manager("AnimationManager")
 {
+    setFootprint("AnimationManager", sizeof(AnimationManager), MemorySystem::Animation);
     
 }
 

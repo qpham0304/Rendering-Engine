@@ -4,11 +4,13 @@
 
 Service::Service()
 {
+	setFootprint("Service", sizeof(Service), MemorySystem::Core);
 	
 }
 
 Service::Service(std::string_view name) : m_serviceName(name)
 {
+	setFootprint("Service", sizeof(Service), MemorySystem::Core);
 	
 }
 

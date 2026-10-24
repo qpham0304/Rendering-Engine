@@ -1,10 +1,11 @@
 #pragma once
 
 #include "InputKeyCode.h"
+#include "core/features/Object.h"
 
 class AppWindow;
 
-class Input 
+class Input : public Object
 {
 public:
 	virtual ~Input() = default;
@@ -19,6 +20,6 @@ public:
 	
 
 protected:
-	Input() = default;
+	Input() { setFootprint("Input", sizeof(Input), MemorySystem::Window); };
 
 };

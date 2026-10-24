@@ -18,7 +18,7 @@ public:
 	virtual void setAttributes(std::vector<VertexAttribute> attributes) = 0;
 
 protected:
-	VertexBuffer(uint32_t id) : Buffer(id) {};
+	VertexBuffer(uint32_t id) : Buffer(id) { setFootprint("VertexBuffer", sizeof(VertexBuffer), MemorySystem::Graphics); };
 
 };
 

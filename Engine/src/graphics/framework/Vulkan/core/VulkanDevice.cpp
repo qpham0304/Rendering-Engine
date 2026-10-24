@@ -62,6 +62,7 @@ VulkanDevice::VulkanDevice()
 		physicalDevice(VK_NULL_HANDLE),
 		device(VK_NULL_HANDLE)
 {
+	setFootprint("VulkanDevice", sizeof(VulkanDevice), MemorySystem::Graphics);
 	
 }
 

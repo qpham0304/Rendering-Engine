@@ -5,7 +5,7 @@
 class ConsoleLogWidget : public Widget
 {
 protected:
-	ConsoleLogWidget() : Widget("ConsoleLogWidget") {}
+	ConsoleLogWidget() : Widget("ConsoleLogWidget") { setFootprint("ConsoleLogWidget", sizeof(ConsoleLogWidget), MemorySystem::Gui); }
 	virtual ~ConsoleLogWidget() override = default;
 	
 public:

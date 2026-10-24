@@ -74,6 +74,7 @@ static void rightAlignedHint(const char* text)
 
 ImGuiLeftSidebarWidget::ImGuiLeftSidebarWidget() : LeftSidebarWidget()
 {
+    setFootprint("ImGuiLeftSidebarWidget", sizeof(ImGuiLeftSidebarWidget), MemorySystem::Gui);
 }
 
 void ImGuiLeftSidebarWidget::AddComponentDialog(Entity& entity) {

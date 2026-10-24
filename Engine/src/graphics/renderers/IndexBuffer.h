@@ -18,6 +18,6 @@ public:
 	virtual void bind(void* commandBuffer) override = 0;
 
 protected:
-	IndexBuffer(uint32_t id) : Buffer(id) {};
+	IndexBuffer(uint32_t id) : Buffer(id) { setFootprint("IndexBuffer", sizeof(IndexBuffer), MemorySystem::Graphics); };
 };
 

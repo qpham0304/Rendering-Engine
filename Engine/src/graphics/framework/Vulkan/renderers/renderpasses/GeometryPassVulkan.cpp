@@ -24,6 +24,7 @@
 GeometryPassVulkan::GeometryPassVulkan(std::string serviceName)
 	: RendererVulkan(serviceName)
 {
+	setFootprint("GeometryPassVulkan", sizeof(GeometryPassVulkan), MemorySystem::Graphics);
 
 }
 

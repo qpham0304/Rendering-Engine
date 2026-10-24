@@ -1,10 +1,11 @@
 #pragma once
 
 #include "../core/BloomFBO.h"
+#include "core/features/Object.h"
 
 class ShaderOpenGL;
 
-class BloomRenderer
+class BloomRenderer : public Object
 {
 public:
 	BloomRenderer();

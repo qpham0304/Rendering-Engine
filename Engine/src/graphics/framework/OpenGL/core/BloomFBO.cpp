@@ -1,6 +1,6 @@
 #include "BloomFBO.h"
 
-bloomFBO::bloomFBO() : mInit(false) {}
+bloomFBO::bloomFBO() : mInit(false) { setFootprint("bloomFBO", sizeof(bloomFBO), MemorySystem::Graphics); }
 bloomFBO::~bloomFBO() {}
 
 bool bloomFBO::Init(unsigned int windowWidth, unsigned int windowHeight, unsigned int mipChainLength)

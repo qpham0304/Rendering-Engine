@@ -2,6 +2,7 @@
 
 DepthCubeMap::DepthCubeMap()
 {
+	setFootprint("DepthCubeMap", sizeof(DepthCubeMap), MemorySystem::Graphics);
 	glGenFramebuffers(1, &FBO);
 
 	glGenTextures(1, &texture);

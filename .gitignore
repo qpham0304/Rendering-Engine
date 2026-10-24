@@ -386,3 +386,6 @@ compile_commands.json
 *.obj
 
 notes/
+
+vma_stats.json
+memory_stats.json

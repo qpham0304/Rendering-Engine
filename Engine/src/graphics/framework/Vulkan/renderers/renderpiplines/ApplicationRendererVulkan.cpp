@@ -29,6 +29,7 @@
 ApplicationRendererVulkan::ApplicationRendererVulkan(std::string serviceName) 
 	:	RendererVulkan(serviceName)
 {
+	setFootprint("ApplicationRendererVulkan", sizeof(ApplicationRendererVulkan), MemorySystem::Graphics);
 
 }
 

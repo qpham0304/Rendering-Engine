@@ -4,11 +4,12 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include "core/features/Object.h"
 
-class Skybox
+class Skybox : public Object
 {
 public:
-	Skybox() = default;
+	Skybox() : ID() { setFootprint("Skybox", sizeof(Skybox), MemorySystem::Graphics); };
 	Skybox(std::vector<std::string> faces);
 	~Skybox();
 

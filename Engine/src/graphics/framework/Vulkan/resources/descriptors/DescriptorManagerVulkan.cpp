@@ -9,6 +9,7 @@
 DescriptorManagerVulkan::DescriptorManagerVulkan(std::string serviceName)
 	: DescriptorManager(serviceName)
 {
+	setFootprint("DescriptorManagerVulkan", sizeof(DescriptorManagerVulkan), MemorySystem::Graphics);
 
 }
 

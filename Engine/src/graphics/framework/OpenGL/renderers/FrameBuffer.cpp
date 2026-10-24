@@ -35,11 +35,13 @@ void FrameBuffer::Init(
 
 FrameBuffer::FrameBuffer(int width, int height)
 {
+	setFootprint("FrameBuffer", sizeof(FrameBuffer), MemorySystem::Graphics);
 	Init(width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
 }
 
 FrameBuffer::FrameBuffer(int width, int height, int size)
 {
+	setFootprint("FrameBuffer", sizeof(FrameBuffer), MemorySystem::Graphics);
 	Init(width, height, size, GL_RGBA, GL_FLOAT, nullptr);
 }
 

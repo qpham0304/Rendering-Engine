@@ -3,6 +3,7 @@
 #include <volk.h>
 #include <vulkan/vulkan_core.h>
 #include <vector>
+#include "core/features/Object.h"
 
 class VulkanDevice;
 class RenderDeviceVulkan;
@@ -18,9 +19,11 @@ struct BlasInput
     VkBuildAccelerationStructureFlagsKHR                  flags{0};
 };
 
-class RaytracingBuilderKHR
+class RaytracingBuilderKHR : public Object
 {
 public:
+    RaytracingBuilderKHR() : renderDevice(), bufferManager(), m_device(), m_scratch1(), m_scratch2(), m_tlas() { setFootprint("RaytracingBuilderKHR", sizeof(RaytracingBuilderKHR), MemorySystem::Graphics); }
+
     RenderDeviceVulkan* renderDevice;
     BufferManagerVulkan* bufferManager;
     VulkanDevice* m_device;

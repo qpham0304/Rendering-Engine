@@ -17,6 +17,7 @@
 TemporalPassVulkan::TemporalPassVulkan(std::string serviceName)
 	:	PostProcessRendererVulkan(serviceName)
 {
+    setFootprint("TemporalPassVulkan", sizeof(TemporalPassVulkan), MemorySystem::Graphics);
 
 }
 

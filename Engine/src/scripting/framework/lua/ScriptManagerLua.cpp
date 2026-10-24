@@ -16,6 +16,7 @@
 ScriptManagerLua::ScriptManagerLua(std::string serviceName)
     : ScriptManager(serviceName)
 {
+    setFootprint("ScriptManagerLua", sizeof(ScriptManagerLua), MemorySystem::Scripting);
 
 }
 

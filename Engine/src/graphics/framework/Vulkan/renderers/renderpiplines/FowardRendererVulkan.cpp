@@ -26,6 +26,7 @@
 ForwardRendererVulkan::ForwardRendererVulkan(std::string serviceName) 
 	:	RendererVulkan(serviceName)
 {
+	setFootprint("ForwardRendererVulkan", sizeof(ForwardRendererVulkan), MemorySystem::Graphics);
 
 }
 

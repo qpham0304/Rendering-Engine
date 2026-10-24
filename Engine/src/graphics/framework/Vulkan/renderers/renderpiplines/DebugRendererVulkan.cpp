@@ -16,6 +16,7 @@
 DebugRendererVulkan::DebugRendererVulkan(std::string serviceName)
     : RendererVulkan(serviceName)
 {
+    setFootprint("DebugRendererVulkan", sizeof(DebugRendererVulkan), MemorySystem::Graphics);
 
 }
 

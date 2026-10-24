@@ -8,6 +8,7 @@ Layer::Layer(std::string_view name)
 		m_Enabled(true),
 		m_Manager(nullptr)
 {
+	setFootprint("Layer", sizeof(Layer), MemorySystem::Core);
 
 }
 

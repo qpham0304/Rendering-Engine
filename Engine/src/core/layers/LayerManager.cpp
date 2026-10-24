@@ -15,6 +15,7 @@ bool LayerManager::boundCheck(const int& index) const {
 LayerManager::LayerManager()
 	: m_SelectedLayer(-1), Manager("LayerManager")
 {
+	setFootprint("LayerManager", sizeof(LayerManager), MemorySystem::Core);
 }
 
 LayerManager::~LayerManager()

@@ -14,6 +14,7 @@
 HiZPassVulkan::HiZPassVulkan(std::string serviceName)
 	:	PostProcessRendererVulkan(serviceName)
 {
+	setFootprint("HiZPassVulkan", sizeof(HiZPassVulkan), MemorySystem::Graphics);
 
 }
 

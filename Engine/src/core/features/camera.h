@@ -2,8 +2,9 @@
 
 #include "Engine/EngineCoreAPI.h"
 #include <glm/glm.hpp>
+#include "core/features/Object.h"
 
-class MYGRAPHICSENGINE_EXPORT Camera
+class MYGRAPHICSENGINE_EXPORT Camera : public Object
 {
 public:
 	Camera();

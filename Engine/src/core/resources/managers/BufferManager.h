@@ -26,7 +26,7 @@ public:
 
 
 protected:
-    BufferManager(std::string serviceName = "BufferManager") : Manager(serviceName) {};
+    BufferManager(std::string serviceName = "BufferManager") : Manager(serviceName) { setFootprint("BufferManager", sizeof(BufferManager), MemorySystem::Resource); };
 
 private:
 

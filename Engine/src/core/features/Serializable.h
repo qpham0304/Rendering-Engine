@@ -5,6 +5,7 @@
 #include <concepts>
 #include <string>
 #include <nlohmann/json.hpp>
+#include "core/features/Object.h"
 
 // optional hook a reflected type can define to rebuild derived data after from_json
 template<typename T>
@@ -70,7 +71,7 @@ FieldMeta ResolveFieldMeta(const Meta&... meta) {
 
 class Logger;
 
-class MYGRAPHICSENGINE_EXPORT Serializable
+class MYGRAPHICSENGINE_EXPORT Serializable : public Object
 {
 public:
 	virtual ~Serializable() = default;
@@ -80,5 +81,5 @@ public:
 	static bool loadJson(const std::string& path, Logger& logger, nlohmann::json& json);
 
 protected:
-	Serializable() = default;
+	Serializable() { setFootprint("Serializable", sizeof(Serializable), MemorySystem::Scene); };
 };

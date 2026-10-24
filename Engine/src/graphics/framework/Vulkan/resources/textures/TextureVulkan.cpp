@@ -18,6 +18,7 @@ TextureVulkan::TextureVulkan() :
     aspectBits(VK_IMAGE_ASPECT_NONE),
     tiling(VK_IMAGE_TILING_OPTIMAL)
 {
+    setFootprint("TextureVulkan", sizeof(TextureVulkan), MemorySystem::Graphics);
 	
 }
 
@@ -33,6 +34,7 @@ TextureVulkan::TextureVulkan(uint32_t id) :
     aspectBits(VK_IMAGE_ASPECT_NONE),
     tiling(VK_IMAGE_TILING_OPTIMAL)
 {
+    setFootprint("TextureVulkan", sizeof(TextureVulkan), MemorySystem::Graphics);
 
 }
 
@@ -143,6 +145,7 @@ void TextureVulkan::destroy(VkDevice device, VmaAllocator allocator)
     if (textureImage != VK_NULL_HANDLE) {
         if (textureImageMemory != VK_NULL_HANDLE) {
             // image created through VMA: destroys the image and frees its allocation together
+            MEMORY_UNTRACK(textureImageMemory);
             vmaDestroyImage(allocator, textureImage, textureImageMemory);
             textureImageMemory = VK_NULL_HANDLE;
         } else {

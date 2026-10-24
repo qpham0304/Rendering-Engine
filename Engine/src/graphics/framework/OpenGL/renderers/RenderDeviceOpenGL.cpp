@@ -6,6 +6,7 @@
 RenderDeviceOpenGL::RenderDeviceOpenGL()
 	: RenderDevice("RenderDeviceOpenGL")
 {
+	setFootprint("RenderDeviceOpenGL", sizeof(RenderDeviceOpenGL), MemorySystem::Graphics);
 
 }
 

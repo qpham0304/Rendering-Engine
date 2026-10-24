@@ -20,6 +20,7 @@ Scene::Scene(std::string name)
 		id(0),
 		m_logger(ServiceLocator::GetService<Logger>("Engine_LoggerSPD"))
 {
+	setFootprint("Scene", sizeof(Scene), MemorySystem::Scene);
 	EventManager& eventManager = EventManager::getInstance();
 	m_eventSubscriptions.push_back(eventManager.subscribe(EventType::KeyPressed, [&](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);

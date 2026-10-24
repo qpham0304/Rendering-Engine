@@ -41,7 +41,7 @@ public:
 protected:
 	friend class Engine;
 	
-    RendererManager(std::string serviceName = "RendererManager") : Manager(serviceName) {};
+    RendererManager(std::string serviceName = "RendererManager") : Manager(serviceName) { setFootprint("RendererManager", sizeof(RendererManager), MemorySystem::Resource); };
 
 	std::vector<std::tuple<std::string, std::shared_ptr<Renderer>>> m_renderers;
 	GraphicsSettingsSerializer m_graphicsSettings;

@@ -22,8 +22,8 @@ public:
 
 
 protected:
-	Texture() = default;
-	Texture(uint32_t id) : m_id(id) {};
+	Texture() { setFootprint("Texture", sizeof(Texture), MemorySystem::Graphics); };
+	Texture(uint32_t id) : m_id(id) { setFootprint("Texture", sizeof(Texture), MemorySystem::Graphics); };
 
 	virtual void loadTexture(const char* m_path, bool flip) = 0;
 

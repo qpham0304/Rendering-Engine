@@ -7,7 +7,7 @@ class Entity;
 class ScriptManager : public Manager
 {
 public:
-	ScriptManager(std::string serviceName = "ScriptManager") : Manager(serviceName) {};	
+	ScriptManager(std::string serviceName = "ScriptManager") : Manager(serviceName) { setFootprint("ScriptManager", sizeof(ScriptManager), MemorySystem::Scripting); };	
 	virtual ~ScriptManager() = default;
 
 	virtual bool init(WindowConfig config) = 0;

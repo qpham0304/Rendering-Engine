@@ -26,6 +26,6 @@ protected:
 	std::string selectedModel;
 	bool errorPopupOpen = false;
 
-	LeftSidebarWidget() : Widget("LeftSidebarWidget") {}
+	LeftSidebarWidget() : Widget("LeftSidebarWidget") { setFootprint("LeftSidebarWidget", sizeof(LeftSidebarWidget), MemorySystem::Gui); }
 };
 
