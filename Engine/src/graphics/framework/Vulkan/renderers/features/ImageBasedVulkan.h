@@ -21,6 +21,8 @@ public:
 	void writeBRDF();
 	void computePrefilter(VkCommandBuffer cmd, uint32_t currentFrame);
 	void loadTexture(std::string_view path);
+	void setEnvironmentOverride(TextureVulkan* texture);
+	void requestUpdate() { environmentReady = false; }
 
 	uint32_t hdrImageID{0};
 	TextureVulkan* hdrImage{ nullptr };
@@ -35,6 +37,9 @@ public:
 protected:
 	bool environmentReady { false };
 	ImageBasedSettings* settings { nullptr };
+	TextureVulkan* fileEnvironment { nullptr };
+	TextureVulkan* environmentOverride { nullptr };
+	uint32_t maxWorkgroups { 0 };
 	std::string loadedEnvironmentMap;
 
 	void _loadEnvironmentIfChanged();

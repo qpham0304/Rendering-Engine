@@ -846,6 +846,8 @@ uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, Textur
 {
 	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);;
 	TextureVulkan* texture = dynamic_cast<TextureVulkan*>(m_textures[m_ids].get());
+	texture->m_width = textureConfig.width;
+	texture->m_height = textureConfig.height;
 
 	TextureManagerVulkan::createImage(
 		textureConfig.width,

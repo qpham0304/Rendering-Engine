@@ -16,6 +16,7 @@ class LightingPassVulkan;
 class RayTraceRendererVulkan;
 class ShadowMapPassVulkan;
 class ImageBasedRendererVulkan;
+class SkyAtmosphereVulkan;
 class DDGIBuilderVulkan;
 class AmbientOcclusionPassVulkan;
 class HiZPassVulkan;
@@ -105,6 +106,7 @@ protected:
 	RayTraceRendererVulkan* raytracingRenderer { nullptr };
 
 	ShadowMapPassVulkan* shadowMapPass { nullptr };
+	SkyAtmosphereVulkan* skyAtmosphereRenderer { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 	DDGIBuilderVulkan* ddgiPassRenderer { nullptr };
 	AmbientOcclusionPassVulkan* alchemyAORenderer { nullptr };

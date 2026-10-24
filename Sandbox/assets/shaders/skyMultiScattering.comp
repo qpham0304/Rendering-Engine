@@ -1,0 +1,86 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+#include "common/atmosphere.glsl"
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(binding = 0) uniform sampler2D transmittanceLut;
+layout(binding = 1, rgba16f) uniform writeonly image2D multiScatteringLut;
+
+const int SQRT_DIRECTIONS = 8;
+const int STEPS = 20;
+
+// the paper's psi_ms: second order light arriving at a point, isotropic, then every higher order as the
+// geometric series 1 / (1 - f_ms). computed for a sun of illuminance 1, the sky pass scales it
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(multiScatteringLut);
+    if (pixel.x >= size.x || pixel.y >= size.y) {
+        return;
+    }
+
+    float radius;
+    float cosSunZenith;
+    atmosphereLutParams((vec2(pixel) + 0.5) / vec2(size), radius, cosSunZenith);
+    vec3 pos = vec3(0.0, radius, 0.0);
+    vec3 sunDir = vec3(sqrt(max(0.0, 1.0 - cosSunZenith * cosSunZenith)), cosSunZenith, 0.0);
+
+    const float isotropicPhase = 1.0 / (4.0 * ATMOSPHERE_PI);
+    vec3 secondOrder = vec3(0.0);
+    vec3 transferFactor = vec3(0.0);
+
+    for (int i = 0; i < SQRT_DIRECTIONS; i++) {
+        for (int j = 0; j < SQRT_DIRECTIONS; j++) {
+            // equal area directions over the sphere
+            float u = (float(i) + 0.5) / float(SQRT_DIRECTIONS);
+            float v = (float(j) + 0.5) / float(SQRT_DIRECTIONS);
+            float cosTheta = 1.0 - 2.0 * v;
+            float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+            float phi = 2.0 * ATMOSPHERE_PI * u;
+            vec3 dir = vec3(sinTheta * cos(phi), cosTheta, sinTheta * sin(phi));
+
+            float tGround = raySphere(pos, dir, atmosphere.bottomRadius);
+            float tMax = tGround > 0.0 ? tGround : raySphere(pos, dir, atmosphere.topRadius);
+            float dt = max(tMax, 0.0) / float(STEPS);
+
+            vec3 throughput = vec3(1.0);
+            vec3 luminance = vec3(0.0);
+            vec3 transfer = vec3(0.0);
+            for (int s = 0; s < STEPS; s++) {
+                vec3 p = pos + dir * ((float(s) + 0.5) * dt);
+                MediumSample medium = sampleMedium(length(p) - atmosphere.bottomRadius);
+                vec3 extinction = max(medium.extinction, vec3(1e-7));
+                vec3 stepTransmittance = exp(-extinction * dt);
+
+                vec3 sunTransmittance = sampleAtmosphereLut(transmittanceLut, p, sunDir);
+                vec3 inScattering = medium.scattering * isotropicPhase * sunTransmittance;
+
+                // analytic integral over the step, the same as the sky raymarch
+                luminance += throughput * (inScattering - inScattering * stepTransmittance) / extinction;
+                transfer += throughput * (medium.scattering - medium.scattering * stepTransmittance) / extinction;
+                throughput *= stepTransmittance;
+            }
+
+            // light bounced off the ground
+            if (tGround > 0.0) {
+                vec3 groundPos = pos + dir * tGround;
+                vec3 groundNormal = normalize(groundPos);
+                float NdotL = max(dot(groundNormal, sunDir), 0.0);
+                luminance += throughput * sampleAtmosphereLut(transmittanceLut, groundPos, sunDir) * NdotL * atmosphere.groundAlbedo.rgb / ATMOSPHERE_PI;
+            }
+
+            secondOrder += luminance;
+            transferFactor += transfer;
+        }
+    }
+
+    // sphere integral times the isotropic phase reduces to the mean over the directions
+    float directionCount = float(SQRT_DIRECTIONS * SQRT_DIRECTIONS);
+    secondOrder /= directionCount;
+    transferFactor /= directionCount;
+
+    vec3 psi = secondOrder / max(vec3(1.0) - transferFactor, vec3(1e-4));
+    imageStore(multiScatteringLut, pixel, vec4(psi, 1.0));
+}

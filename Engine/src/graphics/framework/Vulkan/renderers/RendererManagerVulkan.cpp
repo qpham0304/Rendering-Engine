@@ -18,6 +18,7 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/DeferredCombinePassVulkan.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
+#include "graphics/framework/vulkan/renderers/features/SkyAtmosphereVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/DDGIBuilderVulkan.h"
 #include "RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
@@ -90,6 +91,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     applicationRenderer = addRenderer<ApplicationRendererVulkan>("ApplicationRendererVulkan");
 
     shadowMapPass = addRenderer<ShadowMapPassVulkan>("ShadowMapPassVulkan");
+    skyAtmosphereRenderer = addRenderer<SkyAtmosphereVulkan>("SkyAtmosphereVulkan");
     imageBasedRenderer = addRenderer<ImageBasedRendererVulkan>("ImageBasedRendererVulkan");
 
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
@@ -260,6 +262,7 @@ void RendererManagerVulkan::render()
 
         // passes run in the order they are added
         shadowMapPass->addToGraph(m_renderGraph);
+        skyAtmosphereRenderer->addToGraph(m_renderGraph);  // provides the environment the ibl builds from
         imageBasedRenderer->addToGraph(m_renderGraph);
         depthPrepassRenderer->addToGraph(m_renderGraph);
 

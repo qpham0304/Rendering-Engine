@@ -106,6 +106,35 @@ struct SSRSettings {
 	)
 };
 
+struct SkyAtmosphereSettings {
+	bool enabled { true };
+	float intensity { 1.0f };
+	float viewHeight { 0.2f };
+	glm::vec4 groundAlbedo { 0.3f, 0.3f, 0.3f, 1.0f };
+	float rayleighScale { 1.0f };
+	float mieScale { 1.0f };
+	float mieAnisotropy { 0.8f };
+	bool ozone { true };
+
+	uint32_t transmittance { 0 };
+	uint32_t multiScattering { 0 };
+	uint32_t environment { 0 };
+
+	DEFINE_TYPE(SkyAtmosphereSettings,
+		member("enabled", &SkyAtmosphereSettings::enabled, FieldMeta{ .tooltip = "light the scene from the atmosphere instead of the environment map" }),
+		member("intensity", &SkyAtmosphereSettings::intensity, FieldMeta{ .min = 0.0f, .max = 10.0f }),
+		member("viewHeight", &SkyAtmosphereSettings::viewHeight, FieldMeta{ .min = 0.0f, .max = 100.0f, .tooltip = "km above the ground the sky is seen from" }),
+		member("groundAlbedo", &SkyAtmosphereSettings::groundAlbedo, FieldMeta{ .widget = FieldWidget::Color }),
+		member("rayleighScale", &SkyAtmosphereSettings::rayleighScale, FieldMeta{ .min = 0.0f, .max = 10.0f }),
+		member("mieScale", &SkyAtmosphereSettings::mieScale, FieldMeta{ .min = 0.0f, .max = 10.0f }),
+		member("mieAnisotropy", &SkyAtmosphereSettings::mieAnisotropy, FieldMeta{ .min = 0.0f, .max = 0.99f }),
+		member("ozone", &SkyAtmosphereSettings::ozone),
+		member("transmittance", &SkyAtmosphereSettings::transmittance, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
+		member("multiScattering", &SkyAtmosphereSettings::multiScattering, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
+		member("environment", &SkyAtmosphereSettings::environment, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true })
+	)
+};
+
 struct ImageBasedSettings {
 	std::string environmentMap { "assets/textures/hdr/farm_field_puresky_2k.hdr" };
 	// "assets/textures/hdr/newport_loft.hdr",

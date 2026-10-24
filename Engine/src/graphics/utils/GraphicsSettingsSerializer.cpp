@@ -32,6 +32,7 @@ void GraphicsSettingsSerializer::RegisterSettings()
 	REGISTER_SETTINGS(LightingSettings);
 	REGISTER_SETTINGS(AmbientOcclusionSettings);
 	REGISTER_SETTINGS(SSRSettings);
+	REGISTER_SETTINGS(SkyAtmosphereSettings);
 	REGISTER_SETTINGS(ImageBasedSettings);
 	REGISTER_SETTINGS(DeferredSettings);
 	REGISTER_SETTINGS(DDGISettings);
