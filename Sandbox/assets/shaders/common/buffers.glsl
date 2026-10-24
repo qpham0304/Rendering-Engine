@@ -41,14 +41,33 @@ struct Vertex
     float m_Weights[MAX_BONE_INFLUENCE];
 };
 
+#define OBJECT_LIGHT_PROBE 1u
+
 struct Object {
     uint64_t vertexAddress;
     uint64_t indexAddress;
     uint64_t materialsRef;
     uint64_t materialIndicesRef;
+    mat4 model;
+    mat4 prevModel;
+    uint boneMatricesIdx;
+    uint materialIdx;
+    uint flags;
+    uint padding;
 };
 
 layout(buffer_reference, scalar) buffer ObjectsBuffer{ Object objects[]; };
+
+struct PointLight {
+    vec4 color;
+    vec4 position;
+    float intensity;
+    float padding0;
+    float padding1;
+    float padding2;
+};
+
+layout(buffer_reference, scalar) readonly buffer LightsBuffer { PointLight lights[]; };
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
 layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 layout(buffer_reference, scalar) buffer MaterialsBuffer{ Material m[]; };
@@ -58,10 +77,44 @@ layout(buffer_reference, scalar) readonly buffer MaterialIndicesBuffer { uint i[
 layout(buffer_reference, scalar) buffer BoneModelBuffer { mat4 boneMatrices[]; };
 layout(buffer_reference, scalar) buffer BoneMatrixArrayTable { BoneModelBuffer ptrs[]; };
 
-// Push constant to get the pointer to our object list
-// layout(push_constant) uniform ObjectRefsPushConstants {
-//     ObjectsBuffer objRef;
-//     uint objIdx; // The index for THIS draw call
-// } pc;
+// draws are non indexed, pass gl_VertexIndex
+Vertex fetchVertex(Object obj, uint vertexIndex) {
+    uint index = Indices(obj.indexAddress).i[vertexIndex];
+    return Vertices(obj.vertexAddress).v[index];
+}
+
+// orthonormal tangent frame, survives missing tangents (meshes without uvs) and the nan tangents assimp writes for degenerate uvs
+mat3 buildTBN(mat3 normalMatrix, Vertex vert) {
+    vec3 N = normalize(normalMatrix * vert.normal);
+    vec3 T = normalMatrix * vert.tangent;
+    T -= N * dot(N, T);
+
+    float lengthT = length(T);
+    if (isnan(lengthT) || lengthT < 1e-6) {
+        vec3 axis = abs(N.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+        T = normalize(cross(axis, N));
+    } else {
+        T /= lengthT;
+    }
+
+    // mirrored uvs flip the bitangent, keep that instead of the raw (possibly skewed or nan) bitangent
+    float handedness = dot(cross(N, T), normalMatrix * vert.biTangent) < 0.0 ? -1.0 : 1.0;
+    return mat3(T, cross(N, T) * handedness, N);
+}
+
+mat4 getSkinMatrix(BoneMatrixArrayTable boneTable, uint boneMatricesIdx, Vertex vert) {
+    if(boneMatricesIdx == 0) {
+        return mat4(1.0);
+    }
+
+    BoneModelBuffer modelBones = boneTable.ptrs[boneMatricesIdx];
+    mat4 skinMatrix = mat4(0.0);
+    for(uint i = 0; i < MAX_BONE_INFLUENCE; i++) {
+        if(vert.m_BoneIDs[i] >= 0) {
+            skinMatrix += modelBones.boneMatrices[vert.m_BoneIDs[i]] * vert.m_Weights[i];
+        }
+    }
+    return skinMatrix;
+}
 
 #endif

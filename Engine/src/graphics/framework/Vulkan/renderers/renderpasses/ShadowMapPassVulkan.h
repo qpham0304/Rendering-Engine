@@ -12,10 +12,9 @@ class ShadowMapPassVulkan : public RendererVulkan
 {
 private:
 	struct LightPushConstant {
-		glm::mat4 model;
 		glm::mat4 lightMVP;
+		uint64_t objectsRef;
 		uint64_t boneMatricesRef;
-		uint32_t boneMatricesIdx;
 	};
 
 	struct ComputePushConstant {

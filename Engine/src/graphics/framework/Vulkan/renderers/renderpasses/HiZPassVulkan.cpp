@@ -1,4 +1,5 @@
 #include "HiZPassVulkan.h"
+#include "DepthPrepassVulkan.h"
 #include <core/features/camera.h>
 #include <core/scene/SceneManager.h>
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
@@ -25,26 +26,16 @@ HiZPassVulkan::~HiZPassVulkan()
 
 bool HiZPassVulkan::init(WindowConfig config)
 {
-    // hack to preven double initilization by the deferred renderer and dependency cycle
-	// a depth prepass before gbuffer pass which will resolve the issue
-    if (m_initialized) {
-        return true;
-    }
-    m_initialized = true;
-
     PostProcessRendererVulkan::init(config);
-        
-    RendererVulkan* renderer = nullptr;
-	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-	
-    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImage = geometryPass->renderTarget.depthTexture;
-    normalImage = geometryPass->renderTarget.gBufferNorm;
 
-    
+	auto depthPrepass = dynamic_cast<DepthPrepassVulkan*>(rendererManagerVulkan->getRenderer("DepthPrepassVulkan"));
+    depthImage = depthPrepass->renderTarget.depthTexture;
+    depthHandle = depthPrepass->renderTarget.depthHandle;
+
     _createResources();
     _createDescriptors();
     _createPipelines();
+    hizRecreated = false;
 
     return true;
 }
@@ -86,18 +77,13 @@ void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     pipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 
-    auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-    glm::vec2 gBufferDimensions = { (float)geometryPass->renderTarget.width, (float)geometryPass->renderTarget.height };
-
     for (uint32_t i = 0; i < mipLevels; i++) {
-        uint32_t currentWidth  = std::max(1u, mapSize >> i);
-        uint32_t currentHeight = std::max(1u, mapSize >> i);
-        glm::vec2 prevDims;
-        if (i == 0) {
-            prevDims = glm::vec2(geometryPass->renderTarget.width, geometryPass->renderTarget.height);
-        } else {
-            prevDims = glm::vec2(std::max(1u, mapSize >> (i - 1)));
-        }
+        uint32_t currentWidth  = std::max(1u, width >> i);
+        uint32_t currentHeight = std::max(1u, height >> i);
+        // mip 0 copies the depth buffer, which is the same size
+        glm::vec2 prevDims = i == 0
+            ? glm::vec2(width, height)
+            : glm::vec2(std::max(1u, width >> (i - 1)), std::max(1u, height >> (i - 1)));
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipelineLayout, 0, 1, &HiZMipSets[i], 0, nullptr);
         pushConstant.u_PreviousLevelDimensions = prevDims;
         pushConstant.u_MipLevel = i;
@@ -134,12 +120,13 @@ void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)
 
 void HiZPassVulkan::_createResources()
 {
-	mipLevels = static_cast<uint32_t>(std::floor(std::log2(mapSize))) + 1;
+	// render sized so mip 0 lines up with the depth buffer texel for texel, the graph resizes it with the window
+	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
+	width = swapchain.swapChainExtent.width;
+	height = swapchain.swapChainExtent.height;
+	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
-	// fixed size, owned by the render graph: created once, never touched by a window resize
 	RGTextureDesc desc{};
-	desc.config.width = mapSize;
-	desc.config.height = mapSize;
 	desc.config.format = VK_FORMAT_R32_SFLOAT;
 	desc.config.mipLevels = mipLevels;
 	desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -155,6 +142,7 @@ void HiZPassVulkan::_createResources()
 	if(hizImage->id() == previousImageID) {
 		return;
 	}
+	hizRecreated = true;
 
 	// a new texture, rebuild the per mip views every level of the chain is written through
 	for (auto view : HiZMipViews) {
@@ -205,14 +193,13 @@ void HiZPassVulkan::_createDescriptors()
 	hiZSetsID = descriptorManagerVulkan->createSets(hiZLayoutID, hiZPoolID, mipLevels);
 	HiZMipSets = descriptorManagerVulkan->getDescriptorSet(hiZSetsID);
 
-	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-	TextureVulkan* depth = geometryPass->renderTarget.depthTexture;
+	TextureVulkan* depth = depthImage;
 
 	for (uint32_t i = 0; i < mipLevels; i++) {
 		VkDescriptorImageInfo sourceInfo{};
 		sourceInfo.sampler = hizImage->textureSampler;
 
-		if (i == 0) {   // Mip 0 reads from the actual G-Buffer Depth
+		if (i == 0) {   // Mip 0 reads from the depth prepass
 			sourceInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			sourceInfo.imageView = depth->textureImageView;
 		} else {        // Mips 1+ read from the PREVIOUS Hi-Z mip, which stays in GENERAL
@@ -254,22 +241,21 @@ void HiZPassVulkan::_cleanupResources()
 
 void HiZPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
-	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-	depthImage = geometryPass->renderTarget.depthTexture;
-	normalImage = geometryPass->renderTarget.gBufferNorm;
-	_createResources();		// fixed size, the graph hands back the same texture every frame
+	auto depthPrepass = dynamic_cast<DepthPrepassVulkan*>(rendererManagerVulkan->getRenderer("DepthPrepassVulkan"));
+	depthImage = depthPrepass->renderTarget.depthTexture;
+	depthHandle = depthPrepass->renderTarget.depthHandle;
+	_createResources();
 
-	if(needResize) {
+	// the per mip sets point at the old views, and the mip count follows the render size
+	if(needResize || hizRecreated) {
 		_recreateResources();
 		needResize = false;
-		return;
+		hizRecreated = false;
 	}
-
-	auto depth = graph.importTexture(depthImage);
 
 	RenderPassNode node{};
 	node.name = "HiZ";
-	node.reads  = { { depth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };	// mip 0 samples the g-buffer depth
+	node.reads  = { { depthHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };	// mip 0 samples the prepass depth
 	node.writes = { { hizHandle, VK_IMAGE_LAYOUT_GENERAL } };				// every mip is a storage image
 
 	node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {

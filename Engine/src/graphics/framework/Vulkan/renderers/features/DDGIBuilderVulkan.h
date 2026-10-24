@@ -22,11 +22,12 @@ class DDGIBuilderVulkan : public RendererVulkan
 private:
 	struct PushConstant {
 		uint64_t objectsRef;
-		uint64_t padding;
+		uint64_t lightsRef;
 		glm::vec4 gridOrigin;    // vec4 for alignment but this can be vec3
 		glm::ivec4 probeCounts;  // xyz: probes per axis, w: total
 		float gridSpacing;
 		uint32_t probesResolution;
+		uint32_t lightCount;
 	};
 
 	struct UniformBufferObject {

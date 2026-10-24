@@ -54,11 +54,15 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
     hdrImage->transitImage(cmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1);
     renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
 
+	fileEnvironment = hdrImage;
+
 	groupCountX = (hdrImage->width() + 15) / 16;
 	groupCountY = (hdrImage->height() + 15) / 16;
 	totalWorkgroups = groupCountX * groupCountY;
-	
-	size_t bufferSize = totalWorkgroups * 9 * sizeof(PartialSum);
+
+	// room for environments up to 4k x 2k, a different map or the sky can be swapped in without reallocating
+	maxWorkgroups = std::max(totalWorkgroups, ((4096u + 15u) / 16u) * ((2048u + 15u) / 16u));
+	size_t bufferSize = maxWorkgroups * 9 * sizeof(PartialSum);
 	bufferManagerVulkan->createStorageBuffers(partialSumBuffers, bufferSize);
 	bufferManagerVulkan->createStorageBuffers(finalSumBuffers, sizeof(FinalSH));
 
@@ -325,6 +329,14 @@ void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
 	hdrImage_temp = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(hdrImageID_temp));
 
 	if(hdrImage_temp) {
+		fileEnvironment = hdrImage_temp;
+
+		// while the sky provides the environment, the new map waits until the sky is turned off
+		if(environmentOverride) {
+			hdrImage_temp = nullptr;
+			return;
+		}
+
 		int32_t temp = hdrImageID;
 		hdrImage = hdrImage_temp;
 		hdrImageID = hdrImageID_temp;
@@ -334,8 +346,33 @@ void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
 	// sh and prefilter are recomputed by render() at the start of the next frame
 }
 
+ // another pass provides the environment for sky atmosphere, nullptr fall back to environment map
+void ImageBasedRendererVulkan::setEnvironmentOverride(TextureVulkan* texture)
+{
+	environmentOverride = texture;
+	TextureVulkan* target = texture ? texture : fileEnvironment;
+	if(!target || target->id() == hdrImageID) {
+		return;
+	}
+
+	// same path as loading a new map: render() swaps the descriptors once the frames in flight are done with them
+	hdrImage = target;
+	hdrImageID = target->id();
+	hdrImage_temp = target;
+}
+
 void ImageBasedRendererVulkan::_updateEnvironmentDescriptors()
 {
+	// the sh projection runs one workgroup per 16x16 texels of whatever environment is bound now
+	groupCountX = (hdrImage->width() + 15) / 16;
+	groupCountY = (hdrImage->height() + 15) / 16;
+	totalWorkgroups = groupCountX * groupCountY;
+	if(totalWorkgroups > maxWorkgroups) {
+		m_logger->error("environment {}x{} is larger than the sh buffers hold, sh only covers part of it", hdrImage->width(), hdrImage->height());
+		groupCountY = maxWorkgroups / groupCountX;
+		totalWorkgroups = groupCountX * groupCountY;
+	}
+
 	VkDescriptorImageInfo imageInfo{ hdrImage->textureSampler, hdrImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 
 	auto projectionSets = descriptorManagerVulkan->getDescriptorSet(projectionSH_descriptorSetID);

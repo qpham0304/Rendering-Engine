@@ -14,6 +14,7 @@ layout(location = 2) in vec3 fragWorldPos;
 layout(location = 3) in vec3 inNormal;
 layout(location = 4) in vec3 inTangent;
 layout(location = 5) in vec3 inBitangent;
+layout(location = 6) flat in uint inObjIdx;
 
 layout(location = 0) out vec4 outColor;
 
@@ -35,20 +36,20 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     float height;
 } ubo;
 
-layout(set = 0, binding = 2, std430) readonly buffer LightSSBO {
+layout(set = 0, binding = 1, std430) readonly buffer LightSSBO {
     Light lights[];
 } lightSSBO;
 
-layout(set = 0, binding = 3) uniform sampler2D shadowMap;
-layout(set = 0, binding = 4) uniform sampler2D blueNoise;
+layout(set = 0, binding = 2) uniform sampler2D shadowMap;
+layout(set = 0, binding = 3) uniform sampler2D blueNoise;
 
-layout(set = 0, binding = 5) readonly buffer SHData {
+layout(set = 0, binding = 4) readonly buffer SHData {
     vec4 shCoeffs[9];
 } sh;
 
-layout(set = 0, binding = 6) uniform sampler2D brdfLUT;
-layout(set = 0, binding = 7) uniform samplerCube prefilterMap;
-layout(set = 0, binding = 8) uniform sampler2D hdrImage;
+layout(set = 0, binding = 5) uniform sampler2D brdfLUT;
+layout(set = 0, binding = 6) uniform samplerCube prefilterMap;
+layout(set = 0, binding = 7) uniform sampler2D hdrImage;
 
 layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 // layout(set = 2, binding = 1) uniform image2D storageImages[];
@@ -63,8 +64,7 @@ layout(push_constant) uniform PushConstant {
     vec4 direction;
     // vec4 color;
     float numLights;
-    uint materialIdx;
-    uint boneMatricesIdx;
+    ObjectsBuffer objRef;
     BoneMatrixArrayTable boneTableRef;
 } pc;
 
@@ -212,7 +212,7 @@ float simpleNoise(vec3 p) {
 }
 
 void main() {
-    Material mat = pc.materialsRef.m[pc.materialIdx];
+    Material mat = pc.materialsRef.m[pc.objRef.objects[inObjIdx].materialIdx];
     
     vec2 frameUV = (fragTexCoord * mat.uvScale) + mat.uvOffset;
     if (any(lessThan(mat.uvScale, vec2(1.0 - 1e-4)))) { //treats binlinear filtering

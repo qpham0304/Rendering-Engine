@@ -283,12 +283,12 @@ void ImGuiRightSidebarWidget::textureInspector()
                     std::string path = Utils::fileDialog();
                     if(!path.empty()) {
                         switch (i) {    // assume that there are 6 materials in pbr pipelines
-                            case 0: materialDesc.albedoIDs[0] = textureManager->loadTexture(path, 1, false); break;
-                            case 1: materialDesc.normalIDs[0] = textureManager->loadTexture(path, 1, true); break;
-                            case 2: materialDesc.metallicIDs[0] = textureManager->loadTexture(path, 1, true); break;
-                            case 3: materialDesc.roughnessIDs[0] = textureManager->loadTexture(path, 1, true); break;
-                            case 4: materialDesc.aoIDs[0] = textureManager->loadTexture(path, 1, true); break;
-                            case 5: materialDesc.emissiveIDs[0] = textureManager->loadTexture(path, 1, false); break;
+                            case 0: materialDesc.albedoIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, false); break;
+                            case 1: materialDesc.normalIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
+                            case 2: materialDesc.metallicIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
+                            case 3: materialDesc.roughnessIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
+                            case 4: materialDesc.aoIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
+                            case 5: materialDesc.emissiveIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, false); break;
                             default: break;
                         }
                         

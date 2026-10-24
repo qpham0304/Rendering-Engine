@@ -6,7 +6,7 @@ class AmbientOcclusionPassVulkan : public PostProcessRendererVulkan
 {
 public:
 	struct PushConstantInfo {
-		alignas(64) glm::mat4 view;
+		alignas(64) glm::mat4 invProj;
     	alignas(4) 	float radius;
 		alignas(4) 	float bias;
 		alignas(4) 	float intensity;
@@ -14,6 +14,7 @@ public:
 	};
 
 	struct BlurPushConstantInfo {
+		glm::mat4 invProj;
 		float isVertical;
 		int blurRadius;
 		float scale;
@@ -36,7 +37,6 @@ public:
 protected:
 	BlurPushConstantInfo blurrPushConstant;
 	AmbientOcclusionSettings* settings { nullptr };
-	bool m_initialized { false };
 	void _createOcclusionMap();
 	void _createPipelines();
 	void _createDescriptors();
@@ -51,9 +51,8 @@ protected:
 	TextureVulkan* aoMapTemp { nullptr };
 	RGHandle aoMapHandle {};
 	RGHandle aoMapTempHandle {};
-	TextureVulkan* depthImage;
-	TextureVulkan* positionImage;
-	TextureVulkan* normalImage;
+	TextureVulkan* depthImage { nullptr };
+	RGHandle depthHandle {};
 
 	uint32_t occlusionDescriptorLayoutID;
 	uint32_t occlusionDescriptorPoolID;

@@ -383,6 +383,27 @@ uint32_t BufferManagerVulkan::createBufferDeviceAddress(size_t bufferSize)
     return _assignID();
 }
 
+uint32_t BufferManagerVulkan::createIndirectBuffer(size_t bufferSize)
+{
+	VkBuffer buffer;
+	VmaAllocation bufferMemory;
+
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		buffer,
+		bufferMemory
+	);
+
+	auto indirectBuffer = std::make_shared<BufferVulkan>(m_ids, buffer, bufferMemory);
+	{ VmaAllocationInfo mapInfo{}; vmaGetAllocationInfo(renderDeviceVulkan->device.getAllocator(), bufferMemory, &mapInfo); indirectBuffer->mappedBuffer = mapInfo.pMappedData; }
+
+	buffers[m_ids] = indirectBuffer;
+
+	return _assignID();
+}
+
 uint32_t BufferManagerVulkan::createAccelStructureBuffer(
 	uint64_t maxSize, 
 	VkAccelerationStructureCreateInfoKHR& accelInfo

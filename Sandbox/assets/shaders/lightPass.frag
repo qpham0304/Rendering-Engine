@@ -487,9 +487,12 @@ void main() {
     float metallic  = pbr.b;
     
     vec3 V = normalize(ubo.cameraPos.xyz - worldPos);
+    // back faces are already flipped in the g-buffer, what's left facing away is a normal map tipping past the silhouette:
+    // pull it back to just facing the viewer instead of mirroring it, mirroring makes the lighting jump at grazing angles
     vec3 N = normalize(worldNorm);
-    if (dot(N, V) < 0.0) {
-        N = -N;
+    float facing = dot(N, V);
+    if (facing < 0.0) {
+        N = normalize(N + V * (0.01 - facing));
     }
 
     N = normalize(mix(N, V, 0.015)); 

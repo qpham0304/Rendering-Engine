@@ -1,15 +1,27 @@
 #version 450
+
+#extension GL_GOOGLE_include_directive : require
+
+#include "common/mathUtils.glsl"
+
 layout (local_size_x = 16, local_size_y = 16) in;
 
 layout (binding = 0, r16f) uniform readonly image2D inputImage;
-layout (binding = 1, rgba16f) uniform readonly image2D inputPosition;
+layout (binding = 1) uniform sampler2D inputDepth;
 layout (binding = 2, r16f) uniform writeonly image2D outputImage;
 
 layout(push_constant) uniform BlurPushConstants {
+    mat4 invProj;
     float isVertical;
     int blurRadius;
     float scale;
 } pc;
+
+// view space distance so the edge weight is in world units no matter how far the pixel is
+float linearDepth(ivec2 p, ivec2 size) {
+    vec2 uv = (vec2(p) + 0.5) / vec2(size);
+    return -getPos(uv, texelFetch(inputDepth, p, 0).r, pc.invProj, mat4(1.0)).z;
+}
 
 void main() {
     ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
@@ -17,7 +29,7 @@ void main() {
     if (uv.x >= size.x || uv.y >= size.y) return;
 
     float centerAO = imageLoad(inputImage, uv).r;
-    float centerDepth = imageLoad(inputPosition, uv).r;
+    float centerDepth = linearDepth(uv, size);
 
     float totalAO = 0.0;
     float totalWeight = 0.0;
@@ -26,12 +38,12 @@ void main() {
 
     for (int i = -pc.blurRadius; i <= pc.blurRadius; i++) {
         ivec2 sampleUV = uv + (direction * i);
-        
+
         // Bounds check
         if (sampleUV.x < 0 || sampleUV.x >= size.x || sampleUV.y < 0 || sampleUV.y >= size.y) continue;
 
         float sampleAO = imageLoad(inputImage, sampleUV).r;
-        float sampleDepth = imageLoad(inputPosition, sampleUV).r;
+        float sampleDepth = linearDepth(sampleUV, size);
 
         // spatial Weight gaussian like
         float weight = exp(-(i * i) / (2.0 * pc.blurRadius * pc.blurRadius));
@@ -41,7 +53,7 @@ void main() {
         float rWeight = exp(-depthDiff * pc.scale);
 
         float finalWeight = weight * rWeight;
-        
+
         totalAO += sampleAO * finalWeight;
         totalWeight += finalWeight;
     }

@@ -48,12 +48,6 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
 	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
 	bufferManagerVulkan->createStorageBuffers(prevStoragebufferList, bufferSize);
 
-	objects.resize(Common::MAX_INSTANCES);
-	size_t objectsBufferSize = Common::MAX_INSTANCES * sizeof(ObjectDesc);
-	objDeviceAddressBufferID = bufferManagerVulkan->createBufferDeviceAddress(objectsBufferSize);
-	auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(objDeviceAddressBufferID));
-	objDeviceAddress = deviceAddress->getAddress();
-
 	lights.reserve(Common::MAX_INSTANCES);
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
@@ -170,14 +164,11 @@ void RayTraceRendererVulkan::render(Camera& camera)
 
 	StorageBufferVulkan* ssboPrev = prevStoragebufferList[currentFrame];
 	ssboPrev->update(instanceDataPrev.data(), instanceDataPrev.size() * sizeof(StorageBufferObject));
-	
-	size_t buffersize = Common::MAX_INSTANCES * sizeof(ObjectDesc);
-	bufferManagerVulkan->updateBufferDeviceAddress(objDeviceAddressBufferID, objects.data(), buffersize);
 
 
 	lastViewProj = ubo.proj * ubo.view;
 
-	pushConstant.objectsRef = objDeviceAddress; 
+	pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
 	pushConstant.objectIdx  = 0;//objectsIndex;
     pushConstant.explicitPass = explicitPass ? 1 : 0;
 
@@ -382,66 +373,43 @@ void RayTraceRendererVulkan::_cleanupResources()
 	postProcessPipeline->destroy();
 }
 
-void RayTraceRendererVulkan::_populateData(std::vector<VkAccelerationStructureInstanceKHR>& tlas, int& objectsIndex)
-{	
-    SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if(!scene){
-		m_logger->error("No scene to render");
-	}
+void RayTraceRendererVulkan::_populateData(std::vector<VkAccelerationStructureInstanceKHR>& tlas)
+{
 	lights.clear();
-    
-    auto entities = scene->getEntitiesWith<TransformComponent, ModelComponent>();
-    for (auto& entity : entities) {
-        auto& transform = entity.getComponent<TransformComponent>();
-        uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-        const Model* model = modelManager->getModel(modelID);
-        
-        for (uint32_t meshID : model->meshIDs) {
-			const MeshManager::MeshData& meshData = meshManager->getMeshData(meshID);
-			
-			ObjectDesc desc{};
-			desc.vertexAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.vertexBDA_ID))->getAddress();
-			desc.indexAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID))->getAddress();
-			desc.materialsRef = materialsAddress;
-			desc.materialIndicesRef = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.matIndicesBDA_ID))->getAddress();
-			objects[objectsIndex] = desc;	//blas per mesh not per entity
 
-            VkAccelerationStructureInstanceKHR inst{};
-            inst.transform = toTransformMatrixKHR(transform.getModelMatrix());
-            inst.instanceCustomIndex = objectsIndex;
-            inst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(meshID - 1);
-            inst.mask = 0xFF;
-            inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-            
-            tlas.push_back(inst);
+	// blas per mesh not per entity
+	for (const auto& draw : rendererManagerVulkan->getMeshDraws()) {
+		VkAccelerationStructureInstanceKHR inst{};
+		inst.transform = toTransformMatrixKHR(draw.model);
+		inst.instanceCustomIndex = draw.objectIdx;
+		inst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(draw.meshID - 1);
+		inst.mask = 0xFF;
+		inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
 
-            Mesh* mesh = meshManager->getMesh(meshID);
-            MaterialDesc mat = materialManager->getMaterial(mesh->materialID);
-            if (mat.emissive > 0.01f) {
-                LightSSBO light{};
-                
-                // light.color = mat.albedo;
-                // light.color.a = mat.emissive; 
+		tlas.push_back(inst);
 
-                glm::mat4 modelMatrix = transform.getModelMatrix();
+		Mesh* mesh = meshManager->getMesh(draw.meshID);
+		MaterialDesc mat = materialManager->getMaterial(mesh->materialID);
+		if (mat.emissive > 0.01f) {
+			LightSSBO light{};
 
-                glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
-                glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
-                glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
+			// light.color = mat.albedo;
+			// light.color.a = mat.emissive; 
 
-                light.v0 = modelMatrix * glm::vec4(localV0, 1.0f);
-                light.v1 = modelMatrix * glm::vec4(localV1, 1.0f);
-                light.v2 = modelMatrix * glm::vec4(localV2, 1.0f);
+			glm::vec3 localV0 = mesh->vertices[mesh->indices[0]].positions;
+			glm::vec3 localV1 = mesh->vertices[mesh->indices[1]].positions;
+			glm::vec3 localV2 = mesh->vertices[mesh->indices[2]].positions;
 
-                light.instanceIdx = objectsIndex; 
-                light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
-                
-                lights.push_back(light);
-            }
-            objectsIndex++;
-        }
-    }
+			light.v0 = draw.model * glm::vec4(localV0, 1.0f);
+			light.v1 = draw.model * glm::vec4(localV1, 1.0f);
+			light.v2 = draw.model * glm::vec4(localV2, 1.0f);
+
+			light.instanceIdx = draw.objectIdx; 
+			light.triangleCount = static_cast<uint32_t>(mesh->indices.size() / 3);
+
+			lights.push_back(light);
+		}
+	}
 }
 
 BlasInput RayTraceRendererVulkan::_toVkGeometry(uint32_t meshID) {
@@ -520,8 +488,8 @@ void RayTraceRendererVulkan::_createAccelStructure()
 
     m_rtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 
-    int objectsIndex = 0;
-	_populateData(tlas, objectsIndex);
+    rendererManagerVulkan->collectMeshDraws();
+	_populateData(tlas);
 
     // first frame tlas must be built first before it can be updated or get a screen flash
     m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR, m_tlasInitialized, false);
@@ -660,17 +628,21 @@ void RayTraceRendererVulkan::_buildNewBlas()
 }
 
 void RayTraceRendererVulkan::updateTlas() {
+    // ssr and ddgi can both ask in one frame, the build is a blocking submit so do it once
+    uint64_t frameNumber = rendererManagerVulkan->getFrameNumber();
+    if(m_tlasInitialized && m_lastTlasFrame == frameNumber) {
+        return;
+    }
+    m_lastTlasFrame = frameNumber;
+
     _buildNewBlas();
 
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
 
-    int objectsIndex = 0;
-    _populateData(tlas, objectsIndex);
+    _populateData(tlas);
 
     m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR, m_tlasInitialized, false);
     
-    size_t bufferSize = objectsIndex * sizeof(ObjectDesc);
-    bufferManagerVulkan->updateBufferDeviceAddress(objDeviceAddressBufferID, objects.data(), bufferSize);
 
 	VkWriteDescriptorSetAccelerationStructureKHR descASInfo{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
 	descASInfo.accelerationStructureCount = 1;

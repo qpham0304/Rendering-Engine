@@ -1,4 +1,5 @@
 #include "AmbientOcclusionPassVulkan.h"
+#include "DepthPrepassVulkan.h"
 #include <core/scene/SceneManager.h>
 #include <core/features/camera.h>
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
@@ -25,23 +26,12 @@ AmbientOcclusionPassVulkan::~AmbientOcclusionPassVulkan()
 
 bool AmbientOcclusionPassVulkan::init(WindowConfig config) 
 {
-    // hack to preven double initilization by the deferred renderer and dependency cycle
-	// a depth prepass before gbuffer pass which will resolve the issue
-    if (m_initialized) {
-        return true;
-    }
-    m_initialized = true;
-
     PostProcessRendererVulkan::init(config);
-    
-    RendererVulkan* renderer = nullptr;
-	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-	
-    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    depthImage = geometryPass->renderTarget.depthTexture;
-    positionImage = geometryPass->renderTarget.gBufferPos;
-    normalImage = geometryPass->renderTarget.gBufferNorm;
-    
+
+	auto depthPrepass = dynamic_cast<DepthPrepassVulkan*>(rendererManagerVulkan->getRenderer("DepthPrepassVulkan"));
+    depthImage = depthPrepass->renderTarget.depthTexture;
+    depthHandle = depthPrepass->renderTarget.depthHandle;
+
     _createOcclusionMap();
     _createDescriptors();
 	_createPipelines();
@@ -74,7 +64,11 @@ void AmbientOcclusionPassVulkan::render(Camera& camera)
 {
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 
-	pushConstant.view = camera.getViewMatrix();
+    // same y flip as the projection the depth was rendered with
+    glm::mat4 proj = camera.getProjectionMatrix();
+    proj[1][1] *= -1.0f;
+	pushConstant.invProj = glm::inverse(proj);
+    blurrPushConstant.invProj = pushConstant.invProj;
     pushConstant.projScale = camera.getViewHeight() / (2.0 * tan(camera.getFOV() / 2));
     
     float fovRadians = glm::radians(camera.getFOV()); 
@@ -115,10 +109,8 @@ void AmbientOcclusionPassVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFr
         0, nullptr
     );
 
-	RendererVulkan* renderer = nullptr;
-	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-    uint32_t groupX = (geometryPass->renderTarget.width + 15) / 16;
-    uint32_t groupY = (geometryPass->renderTarget.height + 15) / 16;
+    uint32_t groupX = (swapchain.swapChainExtent.width + 15) / 16;
+    uint32_t groupY = (swapchain.swapChainExtent.height + 15) / 16;
 	vkCmdDispatch(cmd, groupX, groupY, 1);
 }
 
@@ -188,13 +180,13 @@ void AmbientOcclusionPassVulkan::_createDescriptors()
 {
     occlusionDescriptorLayoutID = descriptorManagerVulkan->createLayout({
 		{ 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-		{ 2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }
+		{ 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }	// depth
 	}, VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT);
 
 	uint32_t frameCount = VulkanUtils::numFrames();
 	std::vector<VkDescriptorPoolSize> poolSizes {
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 3},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount },
 	};
 	
 	occlusionDescriptorPoolID = descriptorManagerVulkan->createPool(poolSizes, frameCount, VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT);
@@ -207,12 +199,13 @@ void AmbientOcclusionPassVulkan::_createDescriptors()
 
     blurDescriptorLayoutID = descriptorManagerVulkan->createLayout({
         { 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }, // Input
-        { 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }, // Depth (for bilateral)
+        { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }, // Depth (for bilateral)
         { 2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }  // Output
     });
 
     std::vector<VkDescriptorPoolSize> blurPoolSizes {
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 6}, // 3 for each pass
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 4}, // 2 for each pass
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 2}, // 1 for each pass
     };
 
     blurDescriptorPoolID = descriptorManagerVulkan->createPool(blurPoolSizes, frameCount * 2);
@@ -240,8 +233,8 @@ void AmbientOcclusionPassVulkan::_createPipelines()
 	blurPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	blurPipeline->createComputePipeline(
 		"assets/shaders/spv/bilateralBlur.comp.spv", 
-		{ blurDescriptorLayout }, 
-		sizeof(PushConstantInfo)
+		{ blurDescriptorLayout },
+		sizeof(BlurPushConstantInfo)
 	);
 }
 
@@ -253,20 +246,14 @@ void AmbientOcclusionPassVulkan::_updateDescriptorSetsAO(uint32_t index)
 	aoImageInfo.imageView = aoMap->textureImageView;
 	aoImageInfo.sampler = aoMap->textureSampler;
 
-    VkDescriptorImageInfo positionImageInfo{};
-	positionImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	positionImageInfo.imageView = positionImage->textureImageView;
-	positionImageInfo.sampler = positionImage->textureSampler;
-
-    VkDescriptorImageInfo normalImageInfo{};
-	normalImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	normalImageInfo.imageView = normalImage->textureImageView;
-	normalImageInfo.sampler = normalImage->textureSampler;
+    VkDescriptorImageInfo depthImageInfo{};
+	depthImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	depthImageInfo.imageView = depthImage->textureImageView;
+	depthImageInfo.sampler = depthImage->textureSampler;
 
 	std::vector<VkWriteDescriptorSet> writes;
 	descriptorManagerVulkan->writeStorageImage(&writes, lutDescriptorSets[index], 0, aoImageInfo);
-	descriptorManagerVulkan->writeStorageImage(&writes, lutDescriptorSets[index], 1, positionImageInfo);
-	descriptorManagerVulkan->writeStorageImage(&writes, lutDescriptorSets[index], 2, normalImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, lutDescriptorSets[index], 1, depthImageInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
@@ -278,18 +265,18 @@ void AmbientOcclusionPassVulkan::_updateDescriptorSetsBlur(uint32_t index)
     // layout MUST match what the image is in during vkCmdDispatch
     VkImageLayout computeLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-    VkDescriptorImageInfo posInfo{ positionImage->textureSampler, positionImage->textureImageView, computeLayout };
+    VkDescriptorImageInfo depthInfo{ depthImage->textureSampler, depthImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
     VkDescriptorImageInfo aoInputInfo{ aoMap->textureSampler, aoMap->textureImageView, computeLayout };
     VkDescriptorImageInfo tempInfo{ aoMapTemp->textureSampler, aoMapTemp->textureImageView, computeLayout };
 
     std::vector<VkWriteDescriptorSet> writes;
-    
+
     descriptorManagerVulkan->writeStorageImage(&writes, mToT_Sets[index], 0, aoInputInfo);
-    descriptorManagerVulkan->writeStorageImage(&writes, mToT_Sets[index], 1, posInfo);
+    descriptorManagerVulkan->writeImage(&writes, mToT_Sets[index], 1, depthInfo);
     descriptorManagerVulkan->writeStorageImage(&writes, mToT_Sets[index], 2, tempInfo);
 
     descriptorManagerVulkan->writeStorageImage(&writes, tToM_Sets[index], 0, tempInfo);
-    descriptorManagerVulkan->writeStorageImage(&writes, tToM_Sets[index], 1, posInfo);
+    descriptorManagerVulkan->writeImage(&writes, tToM_Sets[index], 1, depthInfo);
     descriptorManagerVulkan->writeStorageImage(&writes, tToM_Sets[index], 2, aoInputInfo);
 
     descriptorManagerVulkan->updateDescriptorSets(&writes);
@@ -313,24 +300,16 @@ void AmbientOcclusionPassVulkan::_cleanupResources()
 void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
     // anything that changes which textures are used must happen before importing
-    auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
-    positionImage = geometryPass->renderTarget.gBufferPos;
-    normalImage = geometryPass->renderTarget.gBufferNorm;
+    auto depthPrepass = dynamic_cast<DepthPrepassVulkan*>(rendererManagerVulkan->getRenderer("DepthPrepassVulkan"));
+    depthImage = depthPrepass->renderTarget.depthTexture;
+    depthHandle = depthPrepass->renderTarget.depthHandle;
 
     _createOcclusionMap();
-
-    // g-buffer was just recreated and is empty, skip this one frame
-    if(needResize) {
-        needResize = false;
-        return;
-    }
-
-    auto pos = graph.importTexture(positionImage);
-    auto norm = graph.importTexture(normalImage);
+    needResize = false;
 
     RenderPassNode node{};
     node.name = "AO";
-    node.reads  = { {pos, VK_IMAGE_LAYOUT_GENERAL}, {norm, VK_IMAGE_LAYOUT_GENERAL} };
+    node.reads  = { {depthHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL} };
     node.writes = { {aoMapHandle, VK_IMAGE_LAYOUT_GENERAL}, {aoMapTempHandle, VK_IMAGE_LAYOUT_GENERAL} };
 
     node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {

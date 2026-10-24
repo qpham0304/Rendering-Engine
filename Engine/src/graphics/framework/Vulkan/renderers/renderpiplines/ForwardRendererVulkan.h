@@ -14,10 +14,6 @@ class ForwardRendererVulkan : public RendererVulkan
 {
 
 private:
-	struct StorageBufferObject {
-		glm::mat4 model;
-	};
-
 	struct PushConstantLight {
 		uint64_t materialRef;
 		float bias;
@@ -26,8 +22,7 @@ private:
 		glm::vec4 direction;
 		// glm::vec4 color;
 		float numLights;
-		uint32_t materialIdx;
-		uint32_t boneMatricesIdx;
+		uint64_t objectsRef;
 		uint64_t boneMatricesRef;
 	};
 
@@ -68,15 +63,12 @@ private:
 	void _cleanupResources();
 
 private:
-	const int numInstances = 1;
 	const int numLights = 100;
 
 	bool showGui{ true };
 	PushConstantLight pushConstantLight;
 
-	std::vector<StorageBufferVulkan*> storagebuffersList;
 	std::vector<StorageBufferVulkan*> lightStoragebuffers;
-	std::vector<StorageBufferObject> instanceData;
 	std::vector<LightSSBO> lights;
 
 	VkDescriptorSetLayout descriptorSetLayout;

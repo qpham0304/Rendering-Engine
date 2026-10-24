@@ -23,12 +23,11 @@ public:
 
     void writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame);
 
-	//TODO: turn this into private
+	//TODO:make these private
 	TextureVulkan* hizImage { nullptr };
 	RGHandle hizHandle {};
 
 protected:
-	bool m_initialized { false };
 	void _createResources();
 	void _createPipelines();
 	void _createDescriptors();
@@ -36,14 +35,16 @@ protected:
 	void _recreateResources();
 	void _cleanupResources();
 
-	TextureVulkan* depthImage;
-	TextureVulkan* normalImage;
+	TextureVulkan* depthImage { nullptr };
+	RGHandle depthHandle {};
 
 	uint32_t hiZLayoutID;
 	uint32_t hiZPoolID;
 	uint32_t hiZSetsID;
 	uint32_t mipLevels;
-	uint32_t mapSize{ 1024 };
+	uint32_t width { 0 };
+	uint32_t height { 0 };
+	bool hizRecreated { false };
 
 	std::vector<VkImageView> HiZMipViews;
 	std::vector<VkDescriptorSet> HiZMipSets;

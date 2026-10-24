@@ -406,7 +406,7 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, const aiScene
                    
     std::vector<uint32_t> textureIDs;
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
-        const int defaultMipLevel = 1;
+        const uint32_t defaultMipLevel = TextureManager::FULL_MIP_CHAIN;
 
         aiString str;
         mat->GetTexture(type, i, &str);

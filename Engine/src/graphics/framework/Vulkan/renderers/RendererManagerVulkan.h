@@ -10,11 +10,13 @@ class TextureVulkan;
 class ApplicationRendererVulkan;
 class ForwardRendererVulkan;
 class DeferredRendererVulkan;
+class DepthPrepassVulkan;
 class GeometryPassVulkan;
 class LightingPassVulkan;
 class RayTraceRendererVulkan;
 class ShadowMapPassVulkan;
 class ImageBasedRendererVulkan;
+class SkyAtmosphereVulkan;
 class DDGIBuilderVulkan;
 class AmbientOcclusionPassVulkan;
 class HiZPassVulkan;
@@ -27,8 +29,20 @@ class ParticleRendererVulkan;
 class RibbonRendererVulkan;
 class DebugRendererVulkan;
 
+class MeshManager;
+class ModelManager;
+class BufferManagerVulkan;
+class MaterialManagerVulkan;
+
 class RendererManagerVulkan : public RendererManager
 {
+public:
+	struct MeshDraw {
+		glm::mat4 model;
+		uint32_t meshID;
+		uint32_t objectIdx;
+	};
+
 public:
 	RendererManagerVulkan(std::string serviceName = "RendererManagerVulkan");
 	virtual ~RendererManagerVulkan() override;
@@ -46,6 +60,17 @@ public:
 	const Common::UniformBufferObject& getUBO() const;
 	const std::vector<UniformBufferVulkan*>& getBufferUBO() const;
 
+	//mostly for ray tracing only
+	void collectMeshDraws();
+	const std::vector<MeshDraw>& getMeshDraws() const { return m_meshDraws; }
+
+	void drawObjects(VkCommandBuffer cmd);
+	uint64_t getObjectsAddress() const;
+	uint64_t getFrameNumber() const { return m_frameNumber; }
+	void collectLights();
+	uint64_t getLightsAddress() const;
+	uint32_t getLightCount() const { return static_cast<uint32_t>(m_lights.size()); }
+
 
 protected:
 	uint32_t currentRenderMode { 1 };
@@ -55,22 +80,33 @@ protected:
 	Common::UniformBufferObject ubo {};
 	glm::mat4 lastViewProj{};
 	bool firstFrame { true };
-	
-	//Common::PushBDA pushBDA;
-	//uint32_t objDeviceAddressBufferID;
-	//uint64_t objDeviceAddress;
-	//uint64_t materialsAddress;
-	//std::vector<Common::ObjectRefs> objects;
 
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
+	MeshManager* meshManager { nullptr };
+	ModelManager* modelManager { nullptr };
+	BufferManagerVulkan* bufferManagerVulkan { nullptr };
+	MaterialManagerVulkan* materialManagerVulkan { nullptr };
+	std::vector<MeshDraw> m_meshDraws;
+	std::vector<Common::Object> m_objects;
+	std::vector<uint32_t> m_objectsBufferIDs;
+	std::vector<uint64_t> m_objectsAddresses;
+	std::vector<glm::mat4> m_prevModels;
+	std::vector<VkDrawIndirectCommand> m_drawCommands;
+	std::vector<uint32_t> m_drawCommandsBufferIDs;
+	std::vector<Common::PointLight> m_lights;
+	std::vector<uint32_t> m_lightsBufferIDs;
+	std::vector<uint64_t> m_lightsAddresses;
+
 	ApplicationRendererVulkan* applicationRenderer { nullptr };
 	ForwardRendererVulkan* forwardRenderer { nullptr };
 	DeferredRendererVulkan* deferredRenderer { nullptr };
+	DepthPrepassVulkan* depthPrepassRenderer { nullptr };
 	GeometryPassVulkan* geometryPassRenderer { nullptr };
 	LightingPassVulkan* lightingPassRenderer { nullptr };
 	RayTraceRendererVulkan* raytracingRenderer { nullptr };
 
 	ShadowMapPassVulkan* shadowMapPass { nullptr };
+	SkyAtmosphereVulkan* skyAtmosphereRenderer { nullptr };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 	DDGIBuilderVulkan* ddgiPassRenderer { nullptr };
 	AmbientOcclusionPassVulkan* alchemyAORenderer { nullptr };
@@ -87,6 +123,7 @@ protected:
 private:
 	RenderGraphVulkan m_renderGraph;
 	bool needResize{ false };
+	uint64_t m_frameNumber { 0 };
 	bool swapchainOutdated{ false };
 
 	//friend class renderer vulkan should not be able to call these

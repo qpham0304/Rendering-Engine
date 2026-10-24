@@ -57,10 +57,6 @@ bool ForwardRendererVulkan::init(WindowConfig config)
 	descriptorPool = descriptorManagerVulkan->getDescriptorPool(poolID);
 	
 
-	instanceData.resize(Common::MAX_INSTANCES);
-	size_t bufferSize = Common::MAX_INSTANCES * sizeof(StorageBufferObject);
-	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
-
 	lights.reserve(numLights);
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
@@ -100,28 +96,24 @@ void ForwardRendererVulkan::render(Camera& camera)
 	}
 
 
-	instanceData.clear(); 
     lights.clear();
 
 	SceneManager& sceneManager = SceneManager::getInstance();
 	Scene* scene = sceneManager.getActiveScene();
 	if(!scene){
 		m_logger->error("No scene to render");
+		return;
 	}
-    auto entities = scene->getEntitiesWith<TransformComponent>();
-    for (auto& entity : entities) {
-        auto& transform = entity.getComponent<TransformComponent>();
-        instanceData.push_back({ transform.getModelMatrix() });
 
-        if (entity.hasComponent<LightComponent>()) {
-            auto& light = entity.getComponent<LightComponent>();
-			lights.push_back(LightSSBO(
-				light.color, 
-				glm::vec4(transform.translateVec, 1.0), 
-				light.intensity * transform.scaleVec.x
-			));
-        }
-    }
+	scene->forEnitiesWith<TransformComponent, LightComponent>([this](Entity entity) {
+		auto& transform = entity.getComponent<TransformComponent>();
+		auto& light = entity.getComponent<LightComponent>();
+		lights.push_back(LightSSBO(
+			light.color,
+			glm::vec4(transform.translateVec, 1.0),
+			light.intensity * transform.scaleVec.x
+		));
+	});
 	
 	// pushConstantLight.color = sunColor * sunIntensity;
 	if(const ShadowMapSettings* shadowSettings = rendererManagerVulkan->getGraphicsSettings().get<ShadowMapSettings>()) {
@@ -132,9 +124,6 @@ void ForwardRendererVulkan::render(Camera& camera)
 	pushConstantLight.numLights = lights.size();
 
 	uint32_t frame = renderDeviceVulkan->getCurrentFrameIndex();
-
-	StorageBufferVulkan* ssbo = storagebuffersList[frame];
-	ssbo->update(instanceData.data(), instanceData.size() * sizeof(StorageBufferObject));
 
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[frame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
@@ -168,15 +157,6 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 			nullptr
 		);
 
-		SceneManager& sceneManager = SceneManager::getInstance();
-		Scene* scene = sceneManager.getActiveScene();
-		if (!scene) {
-			m_logger->error("No scene to render");
-		}
-
-		int index = 0;
-		int lightIndex = 0;
-
 		// materialManager->bindMaterial(cmd, (void*)offscreenPipeline.get());
 		vkCmdBindDescriptorSets(
 			cmd,
@@ -190,58 +170,21 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 		);
 
 		auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
+		auto materialManagerVulkan = (MaterialManagerVulkan*)materialManager;
+		pushConstantLight.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID());
+		pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
+		pushConstantLight.objectsRef = rendererManagerVulkan->getObjectsAddress();
 
-		for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
-			TransformComponent& transform = entity.getComponent<TransformComponent>();
-			const glm::mat4& entityTransform = transform.getModelMatrix();
-			glm::vec3& translation = transform.translateVec;
-			
-			if(index >= instanceData.size()) {
-				instanceData.push_back({entityTransform});
-				continue;
-			}
+		vkCmdPushConstants(
+			cmd,
+			offscreenPipeline->pipelineLayout,
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(PushConstantLight),
+			&pushConstantLight
+		);
 
-			if(entity.hasComponent<ModelComponent>()) {
-				uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-				const Model* model = modelManager->getModel(modelID);
-
-				if (!model) {
-					continue;
-				}
-				
-				auto materialManagerVulkan = (MaterialManagerVulkan*)materialManager;
-				for (uint32_t meshID : model->meshIDs) {
-					const Mesh* mesh = meshManager->getMesh(meshID);
-					
-					uint32_t bufferID = animationManager->getAnimationBufferAddressID();
-					pushConstantLight.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(bufferID);
-					pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
-					pushConstantLight.materialIdx = mesh->materialID;
-					
-					if(entity.hasComponent<SkinningComponent>()) {
-						auto& skinningComponent = entity.getComponent<SkinningComponent>();
-						pushConstantLight.boneMatricesIdx = skinningComponent.boneMatricesID;
-					} else {
-						pushConstantLight.boneMatricesIdx = 0;
-					}
-					meshManager->bindMesh(meshID);
-
-					vkCmdPushConstants(
-						cmd,
-						offscreenPipeline->pipelineLayout,
-						VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-						0,
-						sizeof(PushConstantLight),
-						&pushConstantLight
-					);
-					
-
-					uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-					renderDeviceVulkan->draw(indexCount, numInstances, index);
-				}
-			}
-			index++;
-		}
+		rendererManagerVulkan->drawObjects(cmd);
 	}
 	endRecording(cmd);
 }
@@ -297,14 +240,8 @@ void ForwardRendererVulkan::_createPipeline()
 	PipelineConfigInfo config = VulkanPipeline::defaultPipelineConfigInfo(1);
 	config.renderPass = renderTarget.renderPass;
 
-	auto bindingDescription = VulkanDevice::VertexVulkan::getBindingDescription();
-	auto attributeDescriptions = VulkanDevice::VertexVulkan::getAttributeDescriptions();
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	offscreenPipeline->createGraphicsPipeline(
 		"assets/shaders/spv/forwardLightPass.vert.spv",
@@ -454,14 +391,13 @@ void ForwardRendererVulkan::_createDescriptorSetLayout()
 {
     std::vector<VkDescriptorSetLayoutBinding> bindings = { 
 		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr },
-		{ 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+		{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 		{ 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+		{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+		{ 5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 		{ 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 	};
 	
 	layoutID = descriptorManagerVulkan->createLayout(bindings);
@@ -472,7 +408,7 @@ void ForwardRendererVulkan::_createDescriptorPool()
 	uint32_t frameCount = VulkanUtils::numFrames();
 	std::vector<VkDescriptorPoolSize> poolSizes = {
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 3 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 2 },
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 5 }
 	};
 
@@ -502,7 +438,6 @@ void ForwardRendererVulkan::_updateDescriptor()
 	for (size_t i = 0; i < VulkanSwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
 		DescriptorWriter writer{{}, descriptorSets[i] };
 		descriptorManagerVulkan->writeUniform2(writer, uniformBuffersList[i]->getDescUniformBufferInfo());
-		descriptorManagerVulkan->writeStorage2(writer, storagebuffersList[i]->getDescStorageBufferInfo());
 		descriptorManagerVulkan->writeStorage2(writer, lightStoragebuffers[i]->getDescStorageBufferInfo());
 		descriptorManagerVulkan->writeImage2(writer, depthMap->getDescImageInfoReadOnly());
 		descriptorManagerVulkan->writeImage2(writer, blueNoiseImage->getDescImageInfoReadOnly());

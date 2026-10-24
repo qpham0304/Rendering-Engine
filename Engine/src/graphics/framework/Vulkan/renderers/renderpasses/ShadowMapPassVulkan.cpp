@@ -191,79 +191,25 @@ void ShadowMapPassVulkan::endRecording(void* cmdBuffer)
 
 void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-
 	auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
-	uint64_t boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID());
+
+	LightPushConstant push{};
+	push.lightMVP = settings->lightSpaceMatrix;
+	push.objectsRef = rendererManagerVulkan->getObjectsAddress();
+	push.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID());
 
 	beginRecording(commandBuffer, shadowRenderPass, shadowFramebuffer, shadowPipeline.get());
 	{
-		for (auto& entity : scene->getEntitiesWith<TransformComponent, ModelComponent>()) {
-			auto& transform = entity.getComponent<TransformComponent>();
-			auto& modelComp = entity.getComponent<ModelComponent>();
+		vkCmdPushConstants(
+			commandBuffer,
+			shadowPipeline->pipelineLayout,
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+			0,
+			sizeof(LightPushConstant),
+			&push
+		);
 
-			if(entity.hasComponent<LightProbeComponent>()) {
-				continue;
-			}
-
-			LightPushConstant push{};
-			push.model = transform.getModelMatrix();
-			push.lightMVP = settings->lightSpaceMatrix;
-			
-			push.boneMatricesRef = boneMatricesRef;
-			if(entity.hasComponent<SkinningComponent>()) {
-				push.boneMatricesIdx = entity.getComponent<SkinningComponent>().boneMatricesID;
-			}
-
-			vkCmdPushConstants(
-				commandBuffer,
-				shadowPipeline->pipelineLayout,
-				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-				0,
-				sizeof(LightPushConstant),
-				&push
-			);
-
-			const Model* model = modelManager->getModel(modelComp.modelID);
-			if (!model) {
-				continue;
-			}
-			
-			for (uint32_t meshID : model->meshIDs) {
-				const Mesh* mesh = meshManager->getMesh(meshID);
-				meshManager->bindMesh(meshID);
-
-				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
-			}
-		}
-
-		for (auto& entity : scene->getEntitiesWith<TransformComponent, MeshComponent>()) {
-			auto& transform = entity.getComponent<TransformComponent>();
-			auto& meshComp = entity.getComponent<MeshComponent>();
-
-			LightPushConstant push{};
-			push.model = transform.getModelMatrix();
-			push.lightMVP = settings->lightSpaceMatrix;
-
-			vkCmdPushConstants(
-				commandBuffer,
-				shadowPipeline->pipelineLayout,
-				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-				0,
-				sizeof(LightPushConstant),
-				&push
-			);
-			
-			for (uint32_t meshID : meshComp.meshIDs) {
-				const Mesh* mesh = meshManager->getMesh(meshID);
-				meshManager->bindMesh(meshID);
-
-				uint32_t indexCount = static_cast<uint32_t>(mesh->indices.size());
-				vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
-			}
-		}	
+		rendererManagerVulkan->drawObjects(commandBuffer);
 	}
 	endRecording(commandBuffer);
 }
@@ -384,15 +330,8 @@ void ShadowMapPassVulkan::_createShadowPipeline()
 
 	pipelineConfig.renderPass = shadowRenderPass;
 
-	auto bindingDescription = VulkanDevice::VertexVulkan::getBindingDescription();
-	auto attributeDescriptions = VulkanDevice::VertexVulkan::getAttributeDescriptions();
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
 
 	std::vector<VkDescriptorSetLayout> layouts = { };
 

@@ -1,0 +1,40 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+#include "common/atmosphere.glsl"
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(binding = 0, rgba16f) uniform writeonly image2D transmittanceLut;
+
+const int STEPS = 40;
+
+// fraction of light that reaches the top of the atmosphere from this height in this direction
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(transmittanceLut);
+    if (pixel.x >= size.x || pixel.y >= size.y) {
+        return;
+    }
+
+    vec3 pos;
+    vec3 dir;
+    atmosphereLutRay((vec2(pixel) + 0.5) / vec2(size), pos, dir);
+
+    // looking into the planet, nothing gets through
+    if (raySphere(pos, dir, atmosphere.bottomRadius) > 0.0) {
+        imageStore(transmittanceLut, pixel, vec4(0.0, 0.0, 0.0, 1.0));
+        return;
+    }
+
+    float tMax = raySphere(pos, dir, atmosphere.topRadius);
+    float dt = tMax / float(STEPS);
+    vec3 opticalDepth = vec3(0.0);
+    for (int i = 0; i < STEPS; i++) {
+        vec3 p = pos + dir * ((float(i) + 0.5) * dt);
+        opticalDepth += sampleMedium(length(p) - atmosphere.bottomRadius).extinction * dt;
+    }
+
+    imageStore(transmittanceLut, pixel, vec4(exp(-opticalDepth), 1.0));
+}
