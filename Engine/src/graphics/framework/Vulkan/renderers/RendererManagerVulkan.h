@@ -10,6 +10,7 @@ class TextureVulkan;
 class ApplicationRendererVulkan;
 class ForwardRendererVulkan;
 class DeferredRendererVulkan;
+class DepthPrepassVulkan;
 class GeometryPassVulkan;
 class LightingPassVulkan;
 class RayTraceRendererVulkan;
@@ -27,8 +28,20 @@ class ParticleRendererVulkan;
 class RibbonRendererVulkan;
 class DebugRendererVulkan;
 
+class MeshManager;
+class ModelManager;
+class BufferManagerVulkan;
+class MaterialManagerVulkan;
+
 class RendererManagerVulkan : public RendererManager
 {
+public:
+	struct MeshDraw {
+		glm::mat4 model;
+		uint32_t meshID;
+		uint32_t objectIdx;
+	};
+
 public:
 	RendererManagerVulkan(std::string serviceName = "RendererManagerVulkan");
 	virtual ~RendererManagerVulkan() override;
@@ -46,6 +59,13 @@ public:
 	const Common::UniformBufferObject& getUBO() const;
 	const std::vector<UniformBufferVulkan*>& getBufferUBO() const;
 
+	//mostly for ray tracing only
+	void collectMeshDraws();
+	const std::vector<MeshDraw>& getMeshDraws() const { return m_meshDraws; }
+
+	void drawObjects(VkCommandBuffer cmd);
+	uint64_t getObjectsAddress() const;
+
 
 protected:
 	uint32_t currentRenderMode { 1 };
@@ -55,17 +75,24 @@ protected:
 	Common::UniformBufferObject ubo {};
 	glm::mat4 lastViewProj{};
 	bool firstFrame { true };
-	
-	//Common::PushBDA pushBDA;
-	//uint32_t objDeviceAddressBufferID;
-	//uint64_t objDeviceAddress;
-	//uint64_t materialsAddress;
-	//std::vector<Common::ObjectRefs> objects;
 
 	RenderDeviceVulkan* renderDeviceVulkan{ nullptr };
+	MeshManager* meshManager { nullptr };
+	ModelManager* modelManager { nullptr };
+	BufferManagerVulkan* bufferManagerVulkan { nullptr };
+	MaterialManagerVulkan* materialManagerVulkan { nullptr };
+	std::vector<MeshDraw> m_meshDraws;
+	std::vector<Common::Object> m_objects;
+	std::vector<uint32_t> m_objectsBufferIDs;
+	std::vector<uint64_t> m_objectsAddresses;
+	std::vector<glm::mat4> m_prevModels;
+	std::vector<VkDrawIndirectCommand> m_drawCommands;
+	std::vector<uint32_t> m_drawCommandsBufferIDs;
+
 	ApplicationRendererVulkan* applicationRenderer { nullptr };
 	ForwardRendererVulkan* forwardRenderer { nullptr };
 	DeferredRendererVulkan* deferredRenderer { nullptr };
+	DepthPrepassVulkan* depthPrepassRenderer { nullptr };
 	GeometryPassVulkan* geometryPassRenderer { nullptr };
 	LightingPassVulkan* lightingPassRenderer { nullptr };
 	RayTraceRendererVulkan* raytracingRenderer { nullptr };

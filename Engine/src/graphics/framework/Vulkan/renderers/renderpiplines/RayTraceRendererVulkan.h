@@ -106,10 +106,7 @@ public:	//TODO: make private once done testing
 	uint32_t postProcessPoolID;
 	uint32_t postProcessSetID;
 
-	uint32_t objDeviceAddressBufferID;
-	uint64_t objDeviceAddress;
 	uint64_t materialsAddress;
-	std::vector<ObjectDesc> objects;
 
 	uint32_t currWidth;
 	uint32_t currHeight;
@@ -134,7 +131,7 @@ public:	//TODO: make private once done testing
 	void _updateDescriptor(uint32_t index);
 	void _recreateResources();
 	void _cleanupResources();
-	void _populateData(std::vector<VkAccelerationStructureInstanceKHR>& tlas, int& objectsIndex);
+	void _populateData(std::vector<VkAccelerationStructureInstanceKHR>& tlas);
 
 	
 	// VkTransformMatrixKHR uses a row-major layout, while glm::mat4's

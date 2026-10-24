@@ -1,35 +1,60 @@
 #version 450
+
+#extension GL_GOOGLE_include_directive : require
+
+#include "common/mathUtils.glsl"
+
 layout (local_size_x = 16, local_size_y = 16) in;
 
 layout (binding = 0, r16f) uniform writeonly image2D outputRawAO;
-layout (binding = 1, rgba16f) uniform readonly image2D inputPos;
-layout (binding = 2, rgba16f) uniform readonly image2D inputNorm;
+layout (binding = 1) uniform sampler2D inputDepth;    // depth prepass, only needs depth so ao runs before the g-buffer
 
 layout (push_constant) uniform Params {
-    mat4 view;
+    mat4 invProj;    // y flipped like ubo.invProj
     float radius;    // World space radius
     float bias;      // Small value like 0.01
     float intensity; // 1.0 to 2.0
     float projScale;
 } n;
 
+vec3 viewPosAt(ivec2 p, ivec2 size) {
+    vec2 uv = (vec2(p) + 0.5) / vec2(size);
+    return getPos(uv, texelFetch(inputDepth, p, 0).r, n.invProj, mat4(1.0));
+}
+
+// picks the neighbor closer in depth on each axis so edges don't bleed the background into the normal
+vec3 reconstructNormal(ivec2 uv, ivec2 size, vec3 P) {
+    vec3 right = viewPosAt(min(uv + ivec2(1, 0), size - 1), size);
+    vec3 left  = viewPosAt(max(uv - ivec2(1, 0), ivec2(0)), size);
+    vec3 down  = viewPosAt(min(uv + ivec2(0, 1), size - 1), size);
+    vec3 up    = viewPosAt(max(uv - ivec2(0, 1), ivec2(0)), size);
+
+    vec3 dx = abs(right.z - P.z) < abs(P.z - left.z) ? right - P : P - left;
+    vec3 dy = abs(down.z - P.z) < abs(P.z - up.z) ? down - P : P - up;
+
+    vec3 N = normalize(cross(dx, dy));
+    return dot(N, P) > 0.0 ? -N : N;    // face the camera, it sits at the view space origin
+}
+
 void main() {
     ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = imageSize(inputPos);
+    ivec2 size = imageSize(outputRawAO);
     if (uv.x >= size.x || uv.y >= size.y) return;
 
-    vec3 worldP = imageLoad(inputPos, uv).rgb;
-    vec3 worldN = imageLoad(inputNorm, uv).rgb;
+    // sky, nothing to occlude
+    if (texelFetch(inputDepth, uv, 0).r >= 1.0) {
+        imageStore(outputRawAO, uv, vec4(1.0));
+        return;
+    }
 
-    // position is in world space so convert to view space or use depth map construction
-    vec3 P = (n.view * vec4(worldP, 1.0)).xyz;
-    vec3 N = mat3(n.view) * worldN;
+    vec3 P = viewPosAt(uv, size);
+    vec3 N = reconstructNormal(uv, size, P);
 
     float sum = 0.0;
-    const int SAMPLES = 16; 
-    
+    const int SAMPLES = 16;
+
     // McGuire's suggested constants
-    const float epsilon = 0.0001; 
+    const float epsilon = 0.0001;
     const float radius2 = n.radius * n.radius;
 
     // Random rotation per pixel to hide banding
@@ -38,17 +63,16 @@ void main() {
     for (int i = 0; i < SAMPLES; i++) {
         float alpha = (float(i) + 0.5) / float(SAMPLES);        // Spiral Step
         float angle = alpha * (7.0 * 6.283185) + randomAngle;   // 7 revolutions
-        
+
         // Screen-space offset scaled by projection and distance
         // n.projScale / P.z turns world-space radius into screen-space pixels
         float screenRadius = (n.projScale * n.radius) / -P.z;
         vec2 offset = vec2(cos(angle), sin(angle)) * (alpha * screenRadius);
-        
+
         ivec2 sampleUV = uv + ivec2(offset);
         sampleUV = clamp(sampleUV, ivec2(0), size - 1);
 
-        vec3 worldQ = imageLoad(inputPos, sampleUV).rgb;
-        vec3 Q = (n.view * vec4(worldQ, 1.0)).xyz;
+        vec3 Q = viewPosAt(sampleUV, size);
 
         // better estimator
         vec3 v = Q - P;
@@ -64,7 +88,7 @@ void main() {
     float sigma = 2.0;
     float k = 1.0;
     float ao = max(0.0, 1.0 - (2.0 * sigma / float(SAMPLES)) * sum);
-    
+
     ao = pow(ao, n.intensity);
 
     imageStore(outputRawAO, uv, vec4(ao));

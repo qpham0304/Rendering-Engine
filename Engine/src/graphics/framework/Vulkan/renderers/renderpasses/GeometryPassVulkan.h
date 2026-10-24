@@ -6,14 +6,10 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-// writes the g-buffer (position, normal, albedo, pbr, emissive, motion, depth) with dynamic rendering
+// writes the g-buffer (position, normal, albedo, pbr, emissive, motion) with dynamic rendering,
 class GeometryPassVulkan : public RendererVulkan
 {
 public:
-	struct StorageBufferObject {
-		glm::mat4 model;
-	};
-
 	// single copy, gpu only images, the frame boundary barrier protects them instead of per frame copies
 	struct RenderTarget {
 		uint32_t width { 0 };
@@ -50,12 +46,6 @@ public:
 	RenderTarget renderTarget;
 
 protected:
-	const int numInstances = 1;
-
-	std::vector<StorageBufferVulkan*> storagebuffersList;
-	std::vector<StorageBufferVulkan*> prevStoragebufferList;
-	std::vector<StorageBufferObject> instanceData;
-	std::vector<StorageBufferObject> instanceDataPrev;
 	Common::PushBDA pushConstant;
 
 	uint32_t layoutID;
@@ -63,13 +53,6 @@ protected:
 	uint32_t setsID;
 	std::unique_ptr<VulkanPipeline> gPassPipeline;
 
-	// one objects table per frame in flight, the cpu rewrites it every frame while the gpu may still read the previous one
-	std::vector<uint32_t> objDeviceAddressBufferIDs;
-	std::vector<uint64_t> objDeviceAddresses;
-	uint64_t materialsAddress;
-	std::vector<Common::ObjectRefs> objects;
-
-	void _updateSceneData(uint32_t currentFrame);
 	void _renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _createRenderTargets();
 	void _createDescriptor();

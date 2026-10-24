@@ -8,15 +8,23 @@ namespace Common {
     struct PushBDA {
         uint64_t objectsRef;
 		uint64_t boneMatricesRef;
-        uint32_t objectIdx;
-		uint32_t boneMatricesIdx;
     };
 
-    struct ObjectRefs {
+    enum ObjectFlags : uint32_t {
+        OBJECT_LIGHT_PROBE = 1 << 0,    // for the shader to know what the object is
+    };
+
+    struct Object {
         uint64_t vertexAddress = 0;
         uint64_t indexAddress = 0;
         uint64_t materialsRef = 0;
         uint64_t materialIndicesRef = 0;
+        glm::mat4 model;
+        glm::mat4 prevModel;
+        uint32_t boneMatricesIdx = 0;
+        uint32_t materialIdx = 0;
+        uint32_t flags = 0;
+        uint32_t padding = 0;
     };
 
     

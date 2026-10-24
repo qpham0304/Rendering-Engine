@@ -130,7 +130,7 @@ void DDGIBuilderVulkan::render(Camera &camera)
 		resetHistory = true;
 	}
 
-	pushConstant.objectsRef = raytracer->objDeviceAddress;
+	pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
 	pushConstant.padding = 0;
 	pushConstant.gridOrigin = probeGrid->gridOrigin;
 	pushConstant.probeCounts = glm::ivec4(probeCounts, totalProbes);
@@ -165,7 +165,6 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
-	// also refreshes raytracer->objects, which is what objectsRef points at
 	raytracer->updateTlas();
 
 	// the atlases, the tlas and the environment can all be recreated between frames

@@ -52,6 +52,12 @@ struct Object {
     uint64_t indexAddress;
     uint64_t materialsRef; 
     uint64_t materialIndiciesRef;
+    mat4 model;
+    mat4 prevModel;
+    uint boneMatricesIdx;
+    uint materialIdx;
+    uint flags;
+    uint padding;
 };
 
 

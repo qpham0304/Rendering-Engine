@@ -1,4 +1,5 @@
 #include "GeometryPassVulkan.h"
+#include "DepthPrepassVulkan.h"
 #include <window/AppWindow.h>
 #include <core/resources/managers/TextureManager.h>
 #include <core/resources/managers/MeshManager.h>
@@ -38,27 +39,8 @@ bool GeometryPassVulkan::init(WindowConfig config)
 	RendererVulkan::init(config);
 
 	_createRenderTargets();
-
-	size_t bufferSize = Common::MAX_INSTANCES * sizeof(StorageBufferObject);
-	instanceData.resize(Common::MAX_INSTANCES);
-	instanceDataPrev.resize(Common::MAX_INSTANCES);
-	bufferManagerVulkan->createStorageBuffers(storagebuffersList, bufferSize);
-	bufferManagerVulkan->createStorageBuffers(prevStoragebufferList, bufferSize);
-
-	objects.resize(Common::MAX_INSTANCES);
-	size_t objectsBufferSize = Common::MAX_INSTANCES * sizeof(Common::ObjectRefs);
-	for(uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
-		uint32_t bufferID = bufferManagerVulkan->createBufferDeviceAddress(objectsBufferSize);
-		auto deviceAddress = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(bufferID));
-		objDeviceAddressBufferIDs.push_back(bufferID);
-		objDeviceAddresses.push_back(deviceAddress->getAddress());
-	}
-
 	_createDescriptor();
 	_createPipelines();
-
-	auto materialManagerVulkan = static_cast<MaterialManagerVulkan*>(materialManager);
-	materialsAddress = materialManagerVulkan->getMaterialAddress();
 
 	return true;
 }
@@ -80,10 +62,7 @@ void GeometryPassVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 
-	
-
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	_updateSceneData(currentFrame);
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	renderDeviceVulkan->beginLabel(cmd, "Geometry Pass");
@@ -113,9 +92,8 @@ void GeometryPassVulkan::render(Camera& camera)
 	depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 	depthAttachment.imageView = renderTarget.depthTexture->textureImageView;
 	depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;	// written by the depth prepass, only tested here
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	depthAttachment.clearValue.depthStencil = { 1.0f, 0 };
 
 	VkRenderingInfo renderingInfo{};
 	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -140,15 +118,14 @@ void GeometryPassVulkan::addToGraph(RenderGraphVulkan& graph)
 
 	RenderPassNode node{};
     node.name = "gBuffer";
-    node.reads  = { };	//TODO: add a depth prepass before everything
+    node.reads  = { { renderTarget.depthHandle, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL } };	// depth test only, writes are off
     node.writes = {
 		{ renderTarget.posHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
 		{ renderTarget.normHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
 		{ renderTarget.albedoHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
 		{ renderTarget.pbrHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
 		{ renderTarget.emissiveHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
-		{ renderTarget.motionHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL },
-		{ renderTarget.depthHandle, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL }
+		{ renderTarget.motionHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }
 	};
 
     node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
@@ -163,69 +140,6 @@ void GeometryPassVulkan::addToGraph(RenderGraphVulkan& graph)
     };
 
     graph.addPass(node);
-}
-
-void GeometryPassVulkan::_updateSceneData(uint32_t currentFrame)
-{
-	instanceDataPrev = std::move(instanceData);
-	instanceData.clear();
-
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if(!scene){
-		m_logger->error("No scene to render");
-		return;
-	}
-	auto entities = scene->getEntitiesWith<TransformComponent>();
-	int currentDrawIdx = 0;
-
-	for (auto& entity : entities) {
-		auto& transform = entity.getComponent<TransformComponent>();
-
-		if(entity.hasComponent<ModelComponent>()) {
-			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-			const Model* model = modelManager->getModel(modelID);
-
-			uint32_t meshIdx = 0;
-			for (uint32_t meshID : model->meshIDs) {
-				glm::mat4 worldMatrix = transform.getModelMatrix();
-
-				if(entity.hasComponent<LightProbeComponent>()) {	//TODO: this couple the probe data to the renderer so it need to be handled better
-					auto& lightProbeComponent = entity.getComponent<LightProbeComponent>();
-					worldMatrix = glm::translate(worldMatrix, glm::vec3(lightProbeComponent.probeGrid[meshIdx]));
-				}
-				instanceData.push_back({ worldMatrix });
-
-				Common::ObjectRefs desc{};
-				desc.materialsRef = materialsAddress;
-				const MeshManager::MeshData& meshData = meshManager->getMeshData(meshID);
-				auto* bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.matIndicesBDA_ID));
-				desc.materialIndicesRef = bdaBuffer->getAddress();
-				bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.vertexBDA_ID));
-				desc.vertexAddress = bdaBuffer->getAddress();
-				bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID));
-				desc.indexAddress = bdaBuffer->getAddress();
-
-				objects[currentDrawIdx] = desc;
-				currentDrawIdx++;
-				meshIdx++;
-			}
-		}
-		else {
-			instanceData.push_back({ transform.getModelMatrix() });
-			objects[currentDrawIdx] = {};
-			currentDrawIdx++;
-		}
-	}
-
-	StorageBufferVulkan* ssbo = storagebuffersList[currentFrame];
-	ssbo->update(instanceData.data(), instanceData.size() * sizeof(StorageBufferObject));
-
-	StorageBufferVulkan* ssboPrev = prevStoragebufferList[currentFrame];
-	ssboPrev->update(instanceDataPrev.data(), instanceDataPrev.size() * sizeof(StorageBufferObject));
-
-	size_t buffersize = Common::MAX_INSTANCES * sizeof(Common::ObjectRefs);
-	bufferManagerVulkan->updateBufferDeviceAddress(objDeviceAddressBufferIDs[currentFrame], objects.data(), buffersize);
 }
 
 void GeometryPassVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t currentFrame)
@@ -247,55 +161,22 @@ void GeometryPassVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t curre
 		nullptr
 	);
 
-	SceneManager& sceneManager = SceneManager::getInstance();
-	Scene* scene = sceneManager.getActiveScene();
-	if (!scene) {
-		m_logger->error("No scene to render");
-		return;
-	}
-
-	int objectsIndex = 0;
-
 	materialManager->bindMaterial(cmd, (void*)gPassPipeline.get());
+
 	auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
+	pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
+	pushConstant.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID());
 
-	// same traversal as _updateSceneData so objectsIndex lines up with the objects table
-	for (auto& entity : scene->getEntitiesWith<TransformComponent>()) {
-		if(entity.hasComponent<ModelComponent>()) {
-			uint32_t modelID = entity.getComponent<ModelComponent>().modelID;
-			const Model* model = modelManager->getModel(modelID);
+	vkCmdPushConstants(
+		cmd,
+		gPassPipeline->pipelineLayout,
+		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		sizeof(Common::PushBDA),
+		&pushConstant
+	);
 
-			uint32_t boneMatricesIdx = 0;
-			if(entity.hasComponent<SkinningComponent>()) {
-				boneMatricesIdx = entity.getComponent<SkinningComponent>().boneMatricesID;
-			}
-
-			for (uint32_t meshID : model->meshIDs) {
-				uint32_t bufferID = animationManager->getAnimationBufferAddressID();
-				pushConstant.objectsRef = objDeviceAddresses[currentFrame];
-				pushConstant.objectIdx  = objectsIndex;
-				pushConstant.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(bufferID);
-				pushConstant.boneMatricesIdx = boneMatricesIdx;
-
-				vkCmdPushConstants(
-					cmd,
-					gPassPipeline->pipelineLayout,
-					VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-					0,
-					sizeof(Common::PushBDA),
-					&pushConstant
-				);
-
-				Mesh* mesh = const_cast<Mesh*>(meshManager->getMesh(meshID));
-				meshManager->bindMesh(meshID);
-				renderDeviceVulkan->draw(mesh->indices.size(), numInstances, objectsIndex);
-
-				objectsIndex++;
-			}
-		} else {
-			objectsIndex++;
-		}
-	}
+	rendererManagerVulkan->drawObjects(cmd);
 }
 
 
@@ -332,24 +213,22 @@ void GeometryPassVulkan::_createRenderTargets()
 		colorUsage | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_ASPECT_COLOR_BIT, renderTarget.emissiveHandle);
 	renderTarget.gBufferMotion = createTexture("GBuffer.Motion", VK_FORMAT_R16G16_SFLOAT,
 		colorUsage | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_ASPECT_COLOR_BIT, renderTarget.motionHandle);
-	renderTarget.depthTexture = createTexture("GBuffer.Depth", renderTarget.depthFormat,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-		VK_IMAGE_ASPECT_DEPTH_BIT, renderTarget.depthHandle);
+
+	auto depthPrepass = dynamic_cast<DepthPrepassVulkan*>(rendererManagerVulkan->getRenderer("DepthPrepassVulkan"));
+	renderTarget.depthTexture = depthPrepass->renderTarget.depthTexture;
+	renderTarget.depthHandle = depthPrepass->renderTarget.depthHandle;
 }
 
 void GeometryPassVulkan::_createDescriptor()
 {
 	std::vector<VkDescriptorSetLayoutBinding> bindings = {
 		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
-		{ 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 	};
 	layoutID = descriptorManagerVulkan->createLayout(bindings);
 
 	uint32_t frameCount = VulkanUtils::numFrames();
 	std::vector<VkDescriptorPoolSize> poolSizes = {
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 2 },
 	};
 
 	poolID = descriptorManagerVulkan->createPool(poolSizes, frameCount);
@@ -369,20 +248,8 @@ void GeometryPassVulkan::_updateDescriptor()
 		bufferInfo.offset = 0;
 		bufferInfo.range = VK_WHOLE_SIZE;
 
-		VkDescriptorBufferInfo ssboInfo{};
-		ssboInfo.buffer = static_cast<VkBuffer>(*storagebuffersList[i]);
-		ssboInfo.offset = 0;
-		ssboInfo.range = VK_WHOLE_SIZE;
-
-		VkDescriptorBufferInfo ssboInfoPrev{};
-		ssboInfoPrev.buffer = static_cast<VkBuffer>(*prevStoragebufferList[i]);
-		ssboInfoPrev.offset = 0;
-		ssboInfoPrev.range = VK_WHOLE_SIZE;
-
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
-		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 1, ssboInfo);
-		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 2, ssboInfoPrev);
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 }
@@ -391,6 +258,9 @@ void GeometryPassVulkan::_createPipelines()
 {
 	PipelineConfigInfo gBufferConfig = VulkanPipeline::defaultPipelineConfigInfo(6);
 	gBufferConfig.renderPass = VK_NULL_HANDLE;
+	// depth is final after the prepass, only the visible surface passes (gl_Position is invariant in both shaders)
+	gBufferConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
+	gBufferConfig.depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 	AttachmentsInfo attachmentsInfo{};
 	attachmentsInfo.colorAttachmentFormats = {
@@ -404,14 +274,8 @@ void GeometryPassVulkan::_createPipelines()
 	attachmentsInfo.depthAttachmentFormat = renderTarget.depthFormat;
 	attachmentsInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
-	auto bindingDescription = VulkanDevice::VertexVulkan::getBindingDescription();
-	auto attributeDescriptions = VulkanDevice::VertexVulkan::getAttributeDescriptions();
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	VkDescriptorSetLayout descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
 

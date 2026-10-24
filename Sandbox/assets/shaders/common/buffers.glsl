@@ -41,11 +41,19 @@ struct Vertex
     float m_Weights[MAX_BONE_INFLUENCE];
 };
 
+#define OBJECT_LIGHT_PROBE 1u
+
 struct Object {
     uint64_t vertexAddress;
     uint64_t indexAddress;
     uint64_t materialsRef;
     uint64_t materialIndicesRef;
+    mat4 model;
+    mat4 prevModel;
+    uint boneMatricesIdx;
+    uint materialIdx;
+    uint flags;
+    uint padding;
 };
 
 layout(buffer_reference, scalar) buffer ObjectsBuffer{ Object objects[]; };
@@ -58,10 +66,25 @@ layout(buffer_reference, scalar) readonly buffer MaterialIndicesBuffer { uint i[
 layout(buffer_reference, scalar) buffer BoneModelBuffer { mat4 boneMatrices[]; };
 layout(buffer_reference, scalar) buffer BoneMatrixArrayTable { BoneModelBuffer ptrs[]; };
 
-// Push constant to get the pointer to our object list
-// layout(push_constant) uniform ObjectRefsPushConstants {
-//     ObjectsBuffer objRef;
-//     uint objIdx; // The index for THIS draw call
-// } pc;
+// draws are non indexed, pass gl_VertexIndex
+Vertex fetchVertex(Object obj, uint vertexIndex) {
+    uint index = Indices(obj.indexAddress).i[vertexIndex];
+    return Vertices(obj.vertexAddress).v[index];
+}
+
+mat4 getSkinMatrix(BoneMatrixArrayTable boneTable, uint boneMatricesIdx, Vertex vert) {
+    if(boneMatricesIdx == 0) {
+        return mat4(1.0);
+    }
+
+    BoneModelBuffer modelBones = boneTable.ptrs[boneMatricesIdx];
+    mat4 skinMatrix = mat4(0.0);
+    for(uint i = 0; i < MAX_BONE_INFLUENCE; i++) {
+        if(vert.m_BoneIDs[i] >= 0) {
+            skinMatrix += modelBones.boneMatrices[vert.m_BoneIDs[i]] * vert.m_Weights[i];
+        }
+    }
+    return skinMatrix;
+}
 
 #endif

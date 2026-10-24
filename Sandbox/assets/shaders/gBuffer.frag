@@ -10,6 +10,7 @@ layout(location = 2) in vec3 inWorldPos;
 layout(location = 3) in mat3 inTBN;       // mat3 takes locations 3, 4, 5
 layout(location = 6) in vec4 outCurNDC ;
 layout(location = 7) in vec4 outPrevNDC;
+layout(location = 8) flat in uint inObjIdx;
 
 layout(location = 0) out vec4 outPos;    
 layout(location = 1) out vec4 outNorm;   
@@ -23,8 +24,6 @@ layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 layout(push_constant) uniform PushConstant {
     ObjectsBuffer objRef;
     BoneMatrixArrayTable boneTableRef;
-    uint objIdx;
-    uint boneMatricesIdx;
 } pc;
 
 
@@ -42,7 +41,7 @@ vec3 getNormalFromMap(vec4 normalMap, Material mat) {
 }
 
 void main() {
-    Object obj = pc.objRef.objects[pc.objIdx];
+    Object obj = pc.objRef.objects[inObjIdx];
 
     MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
     MaterialIndicesBuffer matIndices = MaterialIndicesBuffer(obj.materialIndicesRef);

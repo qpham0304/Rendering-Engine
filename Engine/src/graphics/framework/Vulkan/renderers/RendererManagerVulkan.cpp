@@ -9,6 +9,7 @@
 #include "graphics/framework/vulkan/renderers/renderpiplines/RibbonRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DebugRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/DepthPrepassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
@@ -22,6 +23,11 @@
 #include "core/features/ServiceLocator.h"
 #include "core/features/camera.h"
 #include "core/events/EventManager.h"
+#include <core/resources/managers/MeshManager.h>
+#include <core/resources/managers/ModelManager.h>
+#include <core/features/Mesh.h>
+#include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
+#include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
 #include <filesystem>
 
 RendererManagerVulkan::RendererManagerVulkan(std::string serviceName)
@@ -39,15 +45,32 @@ bool RendererManagerVulkan::init(WindowConfig config)
     Service::init(config);
 	RenderDevice& renderDevice = ServiceLocator::GetService<RenderDevice>("RenderDeviceVulkan");
 	renderDeviceVulkan = dynamic_cast<RenderDeviceVulkan*>(&renderDevice);
-    
+	meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
+	modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
+    m_meshDraws.reserve(Common::MAX_INSTANCES);
+
 	m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
 		this->needResize = true;
 		this->swapchainOutdated = true;
 	}));
     
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
-	BufferManagerVulkan* bufferManagerVulkan = &dynamic_cast<BufferManagerVulkan&>(bufferManager);
+	bufferManagerVulkan = &dynamic_cast<BufferManagerVulkan&>(bufferManager);
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(Common::UniformBufferObject));
+
+	MaterialManager& materialManager = ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
+	materialManagerVulkan = &dynamic_cast<MaterialManagerVulkan&>(materialManager);
+
+    // one copy per frame in flight, the cpu rewrites them every frame while the gpu may still read the previous one
+    m_objects.resize(Common::MAX_INSTANCES);
+    m_drawCommands.resize(Common::MAX_INSTANCES);
+    for(uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
+        uint32_t objectsID = bufferManagerVulkan->createBufferDeviceAddress(Common::MAX_INSTANCES * sizeof(Common::Object));
+        m_objectsBufferIDs.push_back(objectsID);
+        m_objectsAddresses.push_back(bufferManagerVulkan->getVirtualMemoryAddress(objectsID));
+
+        m_drawCommandsBufferIDs.push_back(bufferManagerVulkan->createIndirectBuffer(Common::MAX_INSTANCES * sizeof(VkDrawIndirectCommand)));
+    }
 
 
     VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
@@ -67,14 +90,15 @@ bool RendererManagerVulkan::init(WindowConfig config)
 
     forwardRenderer = addRenderer<ForwardRendererVulkan>("ForwardRendererVulkan");
     
+    depthPrepassRenderer = addRenderer<DepthPrepassVulkan>("DepthPrepassVulkan");
     geometryPassRenderer = addRenderer<GeometryPassVulkan>("GeometryPassVulkan");
+    alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");   //TODO: only ui atm, remove soon
     lightingPassRenderer = addRenderer<LightingPassVulkan>("LightingPassVulkan");
     if(rtSupported) {
         raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
     }
 
-    alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
     hiZPassRenderer = addRenderer<HiZPassVulkan>("HiZPassVulkan");
     SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
     bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
@@ -148,6 +172,7 @@ void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
             alchemyAORenderer->onUpdate();
         }
         deferredRenderer->onUpdate();
+        depthPrepassRenderer->onUpdate();
         geometryPassRenderer->onUpdate();
         lightingPassRenderer->onUpdate();
         hiZPassRenderer->onUpdate();
@@ -210,6 +235,8 @@ void RendererManagerVulkan::render()
 
 	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
+
+    collectMeshDraws();
 	lastViewProj = ubo.proj * ubo.view;
 
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
@@ -228,12 +255,14 @@ void RendererManagerVulkan::render()
         // passes run in the order they are added
         shadowMapPass->addToGraph(m_renderGraph);
         imageBasedRenderer->addToGraph(m_renderGraph);
-        geometryPassRenderer->addToGraph(m_renderGraph);
+        depthPrepassRenderer->addToGraph(m_renderGraph);
 
         if(m_graphicsSettings.get<LightingSettings>()->ambientOcclusion) {
             alchemyAORenderer->addToGraph(m_renderGraph);
         }
-        
+
+        geometryPassRenderer->addToGraph(m_renderGraph);
+
         lightingPassRenderer->addToGraph(m_renderGraph);
         hiZPassRenderer->addToGraph(m_renderGraph);
         particleRenderer->addToGraph(m_renderGraph);
@@ -267,6 +296,86 @@ void RendererManagerVulkan::drawDebug(glm::vec3 start, glm::vec3 end)
     }
 
     debugRenderer->drawLine(start, end);
+}
+
+void RendererManagerVulkan::collectMeshDraws()
+{
+    m_prevModels.resize(m_meshDraws.size());
+    for(const MeshDraw& draw : m_meshDraws) {
+        m_prevModels[draw.objectIdx] = draw.model;
+    }
+    m_meshDraws.clear();
+
+    Scene* scene = SceneManager::getInstance().getActiveScene();
+    if(!scene) {
+        return;
+    }
+
+    uint64_t materialsAddress = materialManagerVulkan->getMaterialAddress();
+    scene->forEnitiesWith<TransformComponent, ModelComponent>([this, materialsAddress](Entity entity) {
+        const Model* model = modelManager->getModel(entity.getComponent<ModelComponent>().modelID);
+        if(!model) {
+            return;
+        }
+
+        glm::mat4 worldMatrix = entity.getComponent<TransformComponent>().getModelMatrix();
+        uint32_t boneMatricesIdx = entity.hasComponent<SkinningComponent>() ? entity.getComponent<SkinningComponent>().boneMatricesID : 0;
+        const LightProbeComponent* probe = entity.hasComponent<LightProbeComponent>() ? &entity.getComponent<LightProbeComponent>() : nullptr;
+
+        for(uint32_t i = 0; i < model->meshIDs.size(); i++) {
+            if(m_meshDraws.size() >= Common::MAX_INSTANCES) {
+                m_logger->warn("Scene has more than {} meshes, the rest are not drawn", Common::MAX_INSTANCES);
+                return;
+            }
+
+            MeshDraw draw{};
+            draw.model = probe ? glm::translate(worldMatrix, glm::vec3(probe->probeGrid[i])) : worldMatrix;	//TODO: this couple the probe data to the renderer
+            draw.meshID = model->meshIDs[i];
+            draw.objectIdx = static_cast<uint32_t>(m_meshDraws.size());
+            m_meshDraws.push_back(draw);
+
+            const Mesh* mesh = meshManager->getMesh(draw.meshID);
+            const MeshManager::MeshData& meshData = meshManager->getMeshData(draw.meshID);
+
+            Common::Object& object = m_objects[draw.objectIdx];
+            object.vertexAddress = bufferManagerVulkan->getVirtualMemoryAddress(meshData.vertexBDA_ID);
+            object.indexAddress = bufferManagerVulkan->getVirtualMemoryAddress(meshData.indexBDA_ID);
+            object.materialsRef = materialsAddress;
+            object.materialIndicesRef = bufferManagerVulkan->getVirtualMemoryAddress(meshData.matIndicesBDA_ID);
+            object.model = draw.model;
+            object.prevModel = draw.objectIdx < m_prevModels.size() ? m_prevModels[draw.objectIdx] : draw.model;
+            object.boneMatricesIdx = boneMatricesIdx;
+            object.materialIdx = mesh->materialID;
+            object.flags = probe ? Common::OBJECT_LIGHT_PROBE : 0;
+
+            VkDrawIndirectCommand& command = m_drawCommands[draw.objectIdx];
+            command.vertexCount = static_cast<uint32_t>(mesh->indices.size());
+            command.instanceCount = 1;
+            command.firstVertex = 0;
+            command.firstInstance = draw.objectIdx;
+        }
+    });
+
+    uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
+    size_t count = m_meshDraws.size();
+    bufferManagerVulkan->updateBufferDeviceAddress(m_objectsBufferIDs[currentFrame], m_objects.data(), count * sizeof(Common::Object));
+    bufferManagerVulkan->getBuffer(m_drawCommandsBufferIDs[currentFrame])->update(m_drawCommands.data(), count * sizeof(VkDrawIndirectCommand));
+}
+
+// one indirect draw for every object, gl_InstanceIndex is the object index, shaders pull vertices through the objects table
+void RendererManagerVulkan::drawObjects(VkCommandBuffer cmd)
+{
+    if(m_meshDraws.empty()) {
+        return;
+    }
+
+    BufferVulkan* commands = bufferManagerVulkan->getBuffer(m_drawCommandsBufferIDs[renderDeviceVulkan->getCurrentFrameIndex()]);
+    vkCmdDrawIndirect(cmd, static_cast<VkBuffer>(*commands), 0, static_cast<uint32_t>(m_meshDraws.size()), sizeof(VkDrawIndirectCommand));
+}
+
+uint64_t RendererManagerVulkan::getObjectsAddress() const
+{
+    return m_objectsAddresses[renderDeviceVulkan->getCurrentFrameIndex()];
 }
 
 void RendererManagerVulkan::_cleanupResources()

@@ -320,6 +320,8 @@ void VulkanDevice::createLogicalDevice() {
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
 	deviceFeatures.geometryShader = VK_TRUE;
 	deviceFeatures.shaderInt64 = VK_TRUE;
+	deviceFeatures.multiDrawIndirect = VK_TRUE;
+	deviceFeatures.drawIndirectFirstInstance = VK_TRUE;
 
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -400,8 +402,10 @@ bool VulkanDevice::isDeviceSuitable(VkPhysicalDevice device) {
 
 	return indices.isComplete() 
 		&& extensionsSupported 
-		&& swapChainAdequate 
-		&& supportedFeatures.samplerAnisotropy;
+		&& swapChainAdequate
+		&& supportedFeatures.samplerAnisotropy
+		&& supportedFeatures.multiDrawIndirect
+		&& supportedFeatures.drawIndirectFirstInstance;
 }
 
 VulkanDevice::QueueFamilyIndices VulkanDevice::findQueueFamilies(VkPhysicalDevice device) const {

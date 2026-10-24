@@ -62,12 +62,6 @@ bool DeferredRendererVulkan::init(WindowConfig config)
 		&& "failed to retrieve renderer"
 	);
 
-	// TODO: add a depth prepass to fix this 
-	// the geometry pass is registered before this renderer so the g-buffer exists already,
-	// ao has to exist before the lighting pass (registered after this) builds its descriptors
-	ambientOcclusionPass->init(config);
-	hiZPass->init(config);
-
 	settings = &rendererManagerVulkan->getGraphicsSettings().add<DeferredSettings>("Deferred");
 
 	return true;
