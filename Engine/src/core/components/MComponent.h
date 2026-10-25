@@ -291,6 +291,13 @@ enum class ParticleRenderMode : int { Billboard = 0, AxisLockedY, VelocityStretc
 enum class ParticleBlendMode : int { Additive = 0, Alpha, Count };
 enum class ParticleTextureSource : int { None = 0, Emitter, Sprite, Model };	// where the drawn texture came from, highest priority first after None
 
+// a one shot spawn at a world position, queued from gameplay code and consumed by the next emit pass
+struct ParticleBurst {
+	glm::vec3 position { 0.0f };
+	glm::vec3 direction { 0.0f };		// world space, zero keeps the emitter direction
+	int count { 0 };
+};
+
 struct MYGRAPHICSENGINE_EXPORT ParticleEmitter {
 	ParticleEmitter() = default;
 
@@ -368,6 +375,7 @@ struct MYGRAPHICSENGINE_EXPORT ParticleEmitter {
 	float emitAccumulator { 0.0f };
 	float burstTimer { 0.0f };
 	int pendingBurst { 0 };
+	std::vector<ParticleBurst> bursts;	// each spawns at its own position, any number per frame
 	bool resetRequested { false };
 
 	DEFINE_TYPE(ParticleEmitter,

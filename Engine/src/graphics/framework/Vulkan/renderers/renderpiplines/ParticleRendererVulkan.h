@@ -2,6 +2,7 @@
 
 #include "graphics/framework/vulkan/renderers/RendererVulkan.h"
 #include "particle/ParticleManager.h"
+#include "core/components/MComponent.h"
 #include <array>
 #include <unordered_map>
 #include <unordered_set>
@@ -74,6 +75,7 @@ private:
 		uint32_t sortSize { 0 };	// power of two draw list size, 0 when the emitter does not need sorting
 		int blendMode { 0 };
 		bool cullBackFaces { false };
+		std::vector<ParticleBurst> bursts;
 	};
 
 public:
@@ -96,7 +98,11 @@ public:
 		uint32_t stage;				// STAGE_* below
 		uint32_t sortBlock;			// bitonic sequence size k
 		uint32_t sortStride;		// compare distance j
+		uint32_t burstPad[2];		// vec4 below is 16 byte aligned in glsl
+		glm::vec4 burstPosition { 0.0f };	// w > 0 while emitting a positioned burst
+		glm::vec4 burstDirection { 0.0f };
 	};
+	static_assert(sizeof(ParticlePushConstant) == 96, "ParticlePushConstant must match ParticlePushConstant in particles.glsl");
 
 	ParticleRendererVulkan(std::string serviceName = "ParticleRendererVulkan");
 	virtual ~ParticleRendererVulkan() override;

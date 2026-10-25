@@ -217,7 +217,13 @@ void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
             if(scriptComponent.initilized) {
                 scriptComponent.initilized = false;
             }
-            scriptComponent.onInit = [luaInstance, initFunc]() mutable { initFunc(luaInstance); };
+            scriptComponent.onInit = [luaInstance, initFunc, this]() mutable {
+                auto result = initFunc(luaInstance);
+                if (!result.valid()) {
+                    sol::error err = result;
+                    m_logger->error("Lua script init error: {}", err.what());
+                }
+            };
         } else {
             scriptComponent.onInit = [](){};
         }

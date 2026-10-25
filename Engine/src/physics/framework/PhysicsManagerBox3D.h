@@ -50,5 +50,7 @@ private:
 	b3WorldDef m_worldDef{};
 	std::unordered_map<uint32_t, b3ShapeId> m_shapeIDs;
 
-	b3BodyId _getBody(uint32_t id);	
+	b3BodyId _getBody(uint32_t id);
+	b3ShapeDef _defaultShapeDef(uint32_t entityID);
+	void _publishContactEvents();
 };

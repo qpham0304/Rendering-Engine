@@ -14,7 +14,8 @@ enum class EventType
 	MousePressed, MouseReleased, MouseMoved, MouseScrolled,
 	AsyncEvent, ModelLoadEvent, AnimationLoadEvent,
 	GuiMessageEvent, GuiFocusedEvent,
-	CameraUpdateEvent
+	CameraUpdateEvent,
+	ContactBegin, ContactEnd, ContactHit
 };
 
 class Event : public Object
@@ -244,5 +245,68 @@ public:
 
 	DEFINE_TYPE(CameraUpdateEvent,
 		member("entity", &CameraUpdateEvent::entity)
+	);
+};
+
+// published after each physics step, an entity id is 0 when the shape has no owning entity
+class ContactBeginEvent : public Event
+{
+public:
+	uint32_t entityA = 0;
+	uint32_t entityB = 0;
+
+	ContactBeginEvent(uint32_t a, uint32_t b) : entityA(a), entityB(b) { setFootprint("ContactBeginEvent", sizeof(ContactBeginEvent), MemorySystem::Core); }
+
+	EventType GetEventType() const override { return EventType::ContactBegin; }
+	const char* GetName() const override { return "ContactBeginEvent"; };
+
+	DEFINE_TYPE(ContactBeginEvent,
+		member("entityA", &ContactBeginEvent::entityA),
+		member("entityB", &ContactBeginEvent::entityB)
+	);
+};
+
+class ContactEndEvent : public Event
+{
+public:
+	uint32_t entityA = 0;
+	uint32_t entityB = 0;
+
+	ContactEndEvent(uint32_t a, uint32_t b) : entityA(a), entityB(b) { setFootprint("ContactEndEvent", sizeof(ContactEndEvent), MemorySystem::Core); }
+
+	EventType GetEventType() const override { return EventType::ContactEnd; }
+	const char* GetName() const override { return "ContactEndEvent"; };
+
+	DEFINE_TYPE(ContactEndEvent,
+		member("entityA", &ContactEndEvent::entityA),
+		member("entityB", &ContactEndEvent::entityB)
+	);
+};
+
+// shapes that collide faster than the world hit threshold
+class ContactHitEvent : public Event
+{
+public:
+	uint32_t entityA = 0;
+	uint32_t entityB = 0;
+	glm::vec3 point { 0.0f };
+	glm::vec3 normal { 0.0f };		// from A to B
+	float approachSpeed = 0.0f;
+
+	ContactHitEvent(uint32_t a, uint32_t b, const glm::vec3& point, const glm::vec3& normal, float approachSpeed)
+		: entityA(a), entityB(b), point(point), normal(normal), approachSpeed(approachSpeed)
+	{
+		setFootprint("ContactHitEvent", sizeof(ContactHitEvent), MemorySystem::Core);
+	}
+
+	EventType GetEventType() const override { return EventType::ContactHit; }
+	const char* GetName() const override { return "ContactHitEvent"; };
+
+	DEFINE_TYPE(ContactHitEvent,
+		member("entityA", &ContactHitEvent::entityA),
+		member("entityB", &ContactHitEvent::entityB),
+		member("point", &ContactHitEvent::point),
+		member("normal", &ContactHitEvent::normal),
+		member("approachSpeed", &ContactHitEvent::approachSpeed)
 	);
 };

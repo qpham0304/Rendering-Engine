@@ -453,6 +453,19 @@ void ParticleRendererVulkan::_gatherEmitters(Scene* scene, float gameStep, float
         TransformComponent& transform = entity.getComponent<TransformComponent>();
         EmitterGPU& gpu = emittersGPU[emitter.containerID];
 
+        // positioned bursts share what is left of the capacity after the regular spawn
+        std::vector<ParticleBurst> bursts;
+        uint32_t burstBudget = capacity - spawnCount;
+        for(const ParticleBurst& burst : emitter.bursts) {
+            uint32_t count = std::min(static_cast<uint32_t>(std::max(burst.count, 0)), burstBudget);
+            if(count == 0) {
+                continue;
+            }
+            burstBudget -= count;
+            bursts.push_back({ burst.position, burst.direction, static_cast<int>(count) });
+        }
+        emitter.bursts.clear();
+
         gpu.transform = transform.getModelMatrix();
         gpu.colorStart = emitter.colorStart;
         gpu.colorEnd = emitter.colorEnd;
@@ -531,6 +544,7 @@ void ParticleRendererVulkan::_gatherEmitters(Scene* scene, float gameStep, float
         active.containerIdx = emitter.containerID;
         active.capacity = capacity;
         active.spawnCount = spawnCount;
+        active.bursts = std::move(bursts);
         active.deltaTime = deltaTime;
         active.blendMode = std::clamp(emitter.blendMode, 0, static_cast<int>(ParticleBlendMode::Count) - 1);
         active.cullBackFaces = gpu.renderMode == static_cast<int>(ParticleRenderMode::Mesh) && !emitter.meshDoubleSided;
@@ -582,15 +596,26 @@ void ParticleRendererVulkan::_computeParticle(VkCommandBuffer cmd, uint32_t curr
     // emit: pop free slots and initialize the new particles
     pushConstant.stage = STAGE_EMIT;
     for(const ActiveEmitter& active : activeEmitters) {
-        if(active.spawnCount == 0) {
-            continue;
-        }
         pushConstant.containerIdx = active.containerIdx;
-        pushConstant.particleCount = active.spawnCount;
         pushConstant.deltaTime = active.deltaTime;
-        vkCmdPushConstants(cmd, computePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ParticlePushConstant), &pushConstant);
-        vkCmdDispatch(cmd, (active.spawnCount + GROUP_SIZE - 1) / GROUP_SIZE, 1, 1);
+
+        if(active.spawnCount > 0) {
+            pushConstant.particleCount = active.spawnCount;
+            pushConstant.burstPosition = glm::vec4(0.0f);
+            vkCmdPushConstants(cmd, computePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ParticlePushConstant), &pushConstant);
+            vkCmdDispatch(cmd, (active.spawnCount + GROUP_SIZE - 1) / GROUP_SIZE, 1, 1);
+        }
+
+        // one small dispatch per burst, w marks the burst origin as set
+        for(const ParticleBurst& burst : active.bursts) {
+            pushConstant.particleCount = static_cast<uint32_t>(burst.count);
+            pushConstant.burstPosition = glm::vec4(burst.position, 1.0f);
+            pushConstant.burstDirection = glm::vec4(burst.direction, 0.0f);
+            vkCmdPushConstants(cmd, computePipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ParticlePushConstant), &pushConstant);
+            vkCmdDispatch(cmd, (pushConstant.particleCount + GROUP_SIZE - 1) / GROUP_SIZE, 1, 1);
+        }
     }
+    pushConstant.burstPosition = glm::vec4(0.0f);
 
     // simulate reads the slots emit wrote and the dead count it left
     VkMemoryBarrier emitToSim{};

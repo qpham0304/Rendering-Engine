@@ -132,6 +132,10 @@ layout(push_constant) uniform ParticlePushConstant {
     uint stage;
     uint sortBlock;         // bitonic sequence size k
     uint sortStride;        // compare distance j
+    uint burstPad0;
+    uint burstPad1;
+    vec4 burstPosition;     // w > 0 while emitting a positioned burst, world space
+    vec4 burstDirection;    // zero keeps the emitter direction
 } pc;
 
 uint pcgHash(uint v) {

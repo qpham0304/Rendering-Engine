@@ -38,33 +38,6 @@
     },
     {
       "components": {
-        "ModelComponent": {
-          "path": "assets/models/sponza/gLTF/Sponza.gltf"
-        },
-        "NameComponent": {
-          "name": "sponza"
-        },
-        "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            0.009999999776482582,
-            0.009999999776482582,
-            0.009999999776482582
-          ],
-          "translateVec": [
-            0.0,
-            -2.5,
-            0.0
-          ]
-        }
-      }
-    },
-    {
-      "components": {
         "ColliderComponent": {
           "bodyType": "Cube",
           "colliderType": 0,
@@ -97,28 +70,14 @@
     },
     {
       "components": {
-        "ModelComponent": {
-          "path": "assets/models/cube/cube-notex.gltf"
-        },
-        "NameComponent": {
-          "name": "cube"
-        },
+        "ColliderComponent": { "bodyType": "Cube", "colliderType": 2, "shapeID": 0 },
+        "ModelComponent": { "path": "assets/models/cube/cube-notex.gltf" },
+        "NameComponent": { "name": "contact test cube" },
+        "ScriptComponent": { "path": "assets/scripts/ContactSparks.lua" },
         "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "translateVec": [
-            0.0,
-            -2.5,
-            0.0
-          ]
+          "rotateVec": [0.3, 0.0, 0.2],
+          "scaleVec": [0.5, 0.5, 0.5],
+          "translateVec": [0.0, 6.0, 0.0]
         }
       }
     },
