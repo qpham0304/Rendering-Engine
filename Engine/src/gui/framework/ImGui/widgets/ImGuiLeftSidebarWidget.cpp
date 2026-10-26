@@ -189,7 +189,6 @@ void ImGuiLeftSidebarWidget::EntityTab() {
     auto entities = scene->getEntitiesWith<TransformComponent>();
 
     for (auto& entity : entities) {
-        uint32_t currentID = entity.getID();
         NameComponent& nameComponent = entity.getComponent<NameComponent>();
 
         if (entity.hasComponent<ModelComponent>() && nameComponent.name == "Entity") {
@@ -199,63 +198,88 @@ void ImGuiLeftSidebarWidget::EntityTab() {
             }
         }
 
+        // a search lists every match flat, otherwise children are drawn under their parent
         if (!filterStr.empty()) {
             auto it = std::search(
                 nameComponent.name.begin(), nameComponent.name.end(),
                 filterStr.begin(), filterStr.end(),
                 [](char a, char b) { return std::tolower(a) == std::tolower(b); }
             );
-            if (it == nameComponent.name.end()) {
-                continue;
+            if (it != nameComponent.name.end()) {
+                _EntityNode(entity, scene, false);
             }
+        } else if (!entity.hasParent()) {
+            _EntityNode(entity, scene, true);
         }
-
-        ImGui::PushID(currentID);
-
-        bool isSelected = _IsEntitySelected(scene, entity);
-        ImGuiTreeNodeFlags nodeFlags = base_flags | ImGuiTreeNodeFlags_FramePadding;
-        if (isSelected) {
-            nodeFlags |= ImGuiTreeNodeFlags_Selected;
-        }
-
-        const char* icon = entity.hasComponent<LightComponent>() ? ICON_FA_LIGHTBULB
-                         : entity.hasComponent<ModelComponent>() ? ICON_FA_CUBES
-                         : ICON_FA_DOT_CIRCLE;
-
-        bool treeNodeOpen = ImGui::TreeNodeEx("##entity", nodeFlags, "%s  %s", icon, nameComponent.name.c_str());
-
-        if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen() && !isSelected) {
-            scene->selectEntities({ entity });
-            scene->selectMesh(0);   // the selected mesh belongs to the previous entity
-        }
-
-        if (ImGui::BeginPopupContextItem("Add Component")) {
-            _RenameMenuItem(entity);
-            _DuplicateMenuItem(entity);
-            _AddModelMenuItem(entity, "Add Model Async");
-            _AddLightMenuItem(entity);
-            _AddCameraMenuItem(entity);
-            _LoadAnimationMenuItem(entity);
-            ImGui::Separator();
-            _DeleteEntityMenuItem(entity, scene);
-            ImGui::EndPopup();
-        }
-
-        // after the context popup, it binds to the last item
-        if (entity.hasComponent<SkinningComponent>()) {
-            rightAlignedHint(ICON_FA_RUNNING);
-        }
-
-        if (treeNodeOpen) {
-            if (entity.hasComponent<ModelComponent>()) {
-                _ModelDetails(entity, scene);
-            }
-            ImGui::TreePop();
-        }
-        ImGui::PopID();
     }
 
     ImGui::End();
+}
+
+void ImGuiLeftSidebarWidget::_EntityNode(Entity& entity, Scene* scene, bool showChildren)
+{
+    ImGui::PushID(entity.getID());
+
+    std::vector<Entity> children;
+    if (showChildren && entity.hasComponent<RelationshipComponent>()) {
+        for (entt::entity child : entity.getComponent<RelationshipComponent>().children) {
+            uint32_t childID = entt::to_integral(child);
+            if (scene->hasEntity(childID)) {
+                Entity childEntity = scene->getEntity(childID);
+                if (childEntity.hasComponent<TransformComponent>()) {
+                    children.push_back(childEntity);
+                }
+            }
+        }
+    }
+
+    bool isSelected = _IsEntitySelected(scene, entity);
+    ImGuiTreeNodeFlags nodeFlags = base_flags | ImGuiTreeNodeFlags_FramePadding;
+    if (isSelected) {
+        nodeFlags |= ImGuiTreeNodeFlags_Selected;
+    }
+    if (children.empty() && !entity.hasComponent<ModelComponent>()) {
+        nodeFlags |= ImGuiTreeNodeFlags_Leaf;
+    }
+
+    const char* icon = entity.hasComponent<LightComponent>() ? ICON_FA_LIGHTBULB
+                     : entity.hasComponent<ModelComponent>() ? ICON_FA_CUBES
+                     : ICON_FA_DOT_CIRCLE;
+
+    bool treeNodeOpen = ImGui::TreeNodeEx("##entity", nodeFlags, "%s  %s", icon, entity.getComponent<NameComponent>().name.c_str());
+
+    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen() && !isSelected) {
+        scene->selectEntities({ entity });
+        scene->selectMesh(0);   // the selected mesh belongs to the previous entity
+    }
+
+    if (ImGui::BeginPopupContextItem("Add Component")) {
+        _RenameMenuItem(entity);
+        _DuplicateMenuItem(entity);
+        _AddModelMenuItem(entity, "Add Model Async");
+        _AddLightMenuItem(entity);
+        _AddCameraMenuItem(entity);
+        _LoadAnimationMenuItem(entity);
+        ImGui::Separator();
+        _DeleteEntityMenuItem(entity, scene);
+        ImGui::EndPopup();
+    }
+
+    // after the context popup, it binds to the last item
+    if (entity.hasComponent<SkinningComponent>()) {
+        rightAlignedHint(ICON_FA_RUNNING);
+    }
+
+    if (treeNodeOpen) {
+        if (entity.hasComponent<ModelComponent>()) {
+            _ModelDetails(entity, scene);
+        }
+        for (Entity& child : children) {
+            _EntityNode(child, scene, true);
+        }
+        ImGui::TreePop();
+    }
+    ImGui::PopID();
 }
 
 void ImGuiLeftSidebarWidget::_ModelDetails(Entity& entity, Scene* scene)

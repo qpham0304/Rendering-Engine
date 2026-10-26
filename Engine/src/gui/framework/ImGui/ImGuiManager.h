@@ -32,7 +32,7 @@ public:
 	void useLightTheme() override;
 	void useDarkTheme() override;
 
-	void renderGuizmo(TransformComponent& transformComponent) override;
+	void renderGuizmo(TransformComponent& transformComponent, const glm::mat4& parentWorld) override;
 	void guizmoTranslate() override;
 	void guizmoRotate() override;
 	void guizmoScale() override;

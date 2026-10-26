@@ -190,7 +190,7 @@ void LightingPassVulkan::_updateLights(uint32_t currentFrame)
 			auto& light = entity.getComponent<LightComponent>();
 			lights.push_back(LightSSBO(
 				light.color,
-				glm::vec4(transform.translateVec, 1.0),
+				glm::vec4(glm::vec3(transform.getModelMatrix()[3]), 1.0),
 				light.intensity * transform.scaleVec.x
 			));
 		}

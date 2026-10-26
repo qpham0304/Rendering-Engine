@@ -41,7 +41,7 @@ public:
 	virtual void useDarkTheme() = 0;
 	
 	virtual void applicationWindow() = 0;
-	virtual void renderGuizmo(TransformComponent& transformComponent) = 0;
+	virtual void renderGuizmo(TransformComponent& transformComponent, const glm::mat4& parentWorld) = 0;
 	virtual void guizmoTranslate() = 0;
 	virtual void guizmoRotate() = 0;
 	virtual void guizmoScale() = 0;

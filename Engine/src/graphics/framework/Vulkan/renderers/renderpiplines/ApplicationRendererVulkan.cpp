@@ -297,7 +297,8 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
  		if(!entities.empty()) {
  			const Entity& entity = entities[0];
  			TransformComponent& transform = entity.getComponent<TransformComponent>();
-			guiManager->renderGuizmo(transform);
+			glm::mat4 parentWorld = entity.hasParent() ? entity.getParent().getComponent<TransformComponent>().getModelMatrix() : glm::mat4(1.0f);
+			guiManager->renderGuizmo(transform, parentWorld);
  		}
 	}
 

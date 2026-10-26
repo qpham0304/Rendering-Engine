@@ -12,7 +12,7 @@
 
 class MYGRAPHICSENGINE_EXPORT TransformComponent {
 private:
-	glm::mat4 modelMatrix = glm::mat4(1.0f);
+	glm::mat4 worldMatrix = glm::mat4(1.0f);
 
 public:
 	glm::vec3 translateVec = glm::vec3(0.0f);
@@ -20,17 +20,25 @@ public:
 	glm::vec3 scaleVec = glm::vec3(1.0f);
 
 	TransformComponent() = default;
-	TransformComponent(glm::mat4&& modelMatrix) : modelMatrix(modelMatrix) {};
+	TransformComponent(glm::mat4&& modelMatrix) : worldMatrix(modelMatrix) {};
 
 	glm::mat4& getModelMatrix() {
-		return modelMatrix;
+		return worldMatrix;
 	}
 
-	void updateTransform() {
+	void setWorldMatrix(const glm::mat4& world) {
+		worldMatrix = world;
+	}
+
+	glm::mat4 getLocalMatrix() const {
 		glm::mat4 rotationMat = glm::toMat4(glm::quat(rotateVec));
 		glm::mat4 translateMat = glm::translate(glm::mat4(1.0), translateVec);
 		glm::mat4 scaleMat = glm::scale(glm::mat4(1.0), scaleVec);
-		modelMatrix = translateMat * rotationMat * scaleMat;
+		return translateMat * rotationMat * scaleMat;
+	}
+
+	void updateTransform() {
+		worldMatrix = getLocalMatrix();
 	}
 
 	void translate(glm::vec3 translate) {

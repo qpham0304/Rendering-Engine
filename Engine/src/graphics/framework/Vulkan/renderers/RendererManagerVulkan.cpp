@@ -402,7 +402,7 @@ void RendererManagerVulkan::collectLights()
 
         Common::PointLight pointLight{};
         pointLight.color = light.color;
-        pointLight.position = glm::vec4(transform.translateVec, 1.0f);
+        pointLight.position = glm::vec4(glm::vec3(transform.getModelMatrix()[3]), 1.0f);
         pointLight.intensity = light.intensity * transform.scaleVec.x;
         m_lights.push_back(pointLight);
     });

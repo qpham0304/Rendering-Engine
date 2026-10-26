@@ -11,7 +11,6 @@ end
 
 function Camera:processMouse()
     -- local x, y = getCursorPos()
-    -- log_info("Cursor X: " .. tostring(x) .. ", Y: " .. tostring(y))
     return true
 end
 
@@ -47,16 +46,6 @@ function Camera:processKeyboard()
 end
 
 function Camera:onInit()
-    -- local eventID = subscribe(EventType.MouseMoved,
-    --     function(event)
-    --         local mouseMovedEvent = as_MouseMoveEvent(event)
-    --         if mouseMovedEvent ~= nil then
-    --             log_info("move: " .. mouseMovedEvent.m_x .. ", " .. mouseMovedEvent.m_y)
-    --         else
-    --             log_info("failing")
-    --         end
-    --     end
-    -- )
 end
 
 function Camera:onUpdate(deltaTime)

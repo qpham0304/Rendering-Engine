@@ -50,6 +50,16 @@ entt::registry *Entity::getRegistry()
     return registry;
 }
 
+bool Entity::hasParent() const
+{
+    return hasComponent<RelationshipComponent>() && getComponent<RelationshipComponent>().parent != entt::null;
+}
+
+Entity Entity::getParent() const
+{
+    return Entity(getComponent<RelationshipComponent>().parent, *registry);
+}
+
 Entity::HookFunction Entity::_onCameraComponentAdded()
 {
     HookFunction function = [](Entity entity)

@@ -190,6 +190,36 @@ void Scene::onUpdate(const float& deltaTime)
 	view.each([&deltaTime](auto& trans) {
 
 	});
+
+	_updateWorldTransforms();
+}
+
+void Scene::_updateWorldTransforms()
+{
+	std::function<void(Entity, const glm::mat4&)> visit = [&](Entity entity, const glm::mat4& parentWorld) {
+		auto& transform = entity.getComponent<TransformComponent>();
+		transform.setWorldMatrix(parentWorld * transform.getLocalMatrix());
+
+		if(!entity.hasComponent<RelationshipComponent>()) {
+			return;
+		}
+		for(entt::entity child : entity.getComponent<RelationshipComponent>().children) {
+			uint32_t childID = entt::to_integral(child);
+			if(hasEntity(childID)) {
+				Entity childEntity = getEntity(childID);
+				if(childEntity.hasComponent<TransformComponent>()) {
+					visit(childEntity, transform.getModelMatrix());
+				}
+			}
+		}
+	};
+
+	auto func = [&](Entity entity) {
+		if(!entity.hasParent()) {
+			visit(entity, glm::mat4(1.0f));
+		}
+	};
+	forEnitiesWith<TransformComponent>(func);
 }
 
 const std::string& Scene::getName() const

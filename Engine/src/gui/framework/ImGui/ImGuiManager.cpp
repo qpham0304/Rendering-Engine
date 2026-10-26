@@ -297,7 +297,7 @@ void ImGuiManager::useDarkTheme()
 	ImGuiThemes::darkTheme();
 }
 
-void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
+void ImGuiManager::renderGuizmo(TransformComponent& transformComponent, const glm::mat4& parentWorld)
 {
 	ImGuizmo::BeginFrame();
 	glm::vec3 translateVector(0.0f, 0.0f, 0.0f);
@@ -309,7 +309,8 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 	auto v = &SceneManager::cameraController->getViewMatrix()[0][0];
 	auto p = glm::value_ptr(SceneManager::cameraController->getProjectionMatrix());
 
-	glm::mat4& transform = transformComponent.getModelMatrix();
+	// the gizmo works in world space, a child writes the result back relative to its parent
+	glm::mat4 transform = transformComponent.getModelMatrix();
 
 	ImGuizmo::SetOrthographic(false);
 	ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
@@ -319,14 +320,6 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 
 	ImVec2 windowPos = ImGui::GetWindowPos();
 	ImGuizmo::SetRect(windowPos.x, windowPos.y, wd, wh);
-	//ImVec2 viewportPos = ImGui::GetMainViewport()->Pos;
-	//ImGuizmo::SetRect(
-	//	windowPos.x - viewportPos.x,
-	//	windowPos.y - viewportPos.y,
-	//	ImGui::GetWindowWidth(),
-	//	ImGui::GetWindowHeight()
-	//);
-
 
 	ImGuizmo::OPERATION op = (ImGuizmo::OPERATION)GuizmoType;
 
@@ -355,12 +348,14 @@ void ImGuiManager::renderGuizmo(TransformComponent& transformComponent)
 	if (ImGuizmo::IsUsing()) {
 		setGuizmoFocus(true);
 		glm::vec3 translation, rotation, scale;
-		Utils::Math::DecomposeTransform(transform, translation, rotation, scale);	// graphics utils dependency, resolve when have time
+		glm::mat4 local = glm::inverse(parentWorld) * transform;
+		Utils::Math::DecomposeTransform(local, translation, rotation, scale);	// graphics utils dependency, resolve when have time
 		glm::vec3 deltaRotation = rotation - transformComponent.rotateVec;
 
 		transformComponent.translateVec = translation;
 		transformComponent.rotateVec += deltaRotation;
 		transformComponent.scaleVec = scale;
+		transformComponent.setWorldMatrix(transform);
 	}
 	else {
 		setGuizmoFocus(false);

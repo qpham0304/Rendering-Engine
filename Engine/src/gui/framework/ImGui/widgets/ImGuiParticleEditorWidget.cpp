@@ -42,7 +42,7 @@ void ImGuiParticleEditorWidget::render()
 
     Entity entity = scene->getEntity(selectedEntityID);
     ParticleEmitter& emitter = entity.getComponent<ParticleEmitter>();
-    glm::vec3 emitterPosition = entity.getComponent<TransformComponent>().translateVec;
+    glm::vec3 emitterPosition = glm::vec3(entity.getComponent<TransformComponent>().getModelMatrix()[3]);
 
     if (ImGui::BeginTable("ParticleEditorLayout", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV)) {
         ImGui::TableSetupColumn("Preview", ImGuiTableColumnFlags_WidthStretch, 0.62f);
