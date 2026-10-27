@@ -26,6 +26,7 @@ struct Material {
     float roughnessFactor;
     float aoFactor;
     float emissiveFactor;
+    float alphaCutoff;
 };
 
 
@@ -76,6 +77,11 @@ layout(buffer_reference, scalar) readonly buffer MaterialIndicesBuffer { uint i[
 
 layout(buffer_reference, scalar) buffer BoneModelBuffer { mat4 boneMatrices[]; };
 layout(buffer_reference, scalar) buffer BoneMatrixArrayTable { BoneModelBuffer ptrs[]; };
+
+// alpha masked materials (foliage cards) cut their shape out of the albedo alpha, 0 cutoff is opaque
+bool alphaClipped(Material mat, float albedoAlpha) {
+    return mat.alphaCutoff > 0.0 && albedoAlpha * mat.albedoFactor.a < mat.alphaCutoff;
+}
 
 // draws are non indexed, pass gl_VertexIndex
 Vertex fetchVertex(Object obj, uint vertexIndex) {

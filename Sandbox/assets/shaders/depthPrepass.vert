@@ -21,6 +21,9 @@ layout(push_constant) uniform PushConstant {
     BoneMatrixArrayTable boneTableRef;
 } pc;
 
+layout(location = 0) out vec2 outTexCoord;
+layout(location = 1) flat out uint outObjIdx;
+
 invariant gl_Position;
 
 void main() {
@@ -32,4 +35,6 @@ void main() {
     vec4 worldPos = obj.model * localPosition;
 
     gl_Position = ubo.proj * ubo.view * worldPos;
+    outTexCoord = vert.uv;
+    outObjIdx = gl_InstanceIndex;
 }

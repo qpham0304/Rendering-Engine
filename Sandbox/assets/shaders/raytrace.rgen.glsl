@@ -31,6 +31,7 @@ struct Material {
     float roughnessFactor;
     float aoFactor;
     float emissiveFactor;
+    float alphaCutoff;
 };
 
 const uint MAX_BONE_INFLUENCE =  4;

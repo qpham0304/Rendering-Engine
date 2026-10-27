@@ -229,7 +229,8 @@ void main() {
     float roughness = texture(samplerImages[mat.roughnessIdx], fragTexCoord).g;
     float metallic  = texture(samplerImages[mat.metalnessIdx], fragTexCoord).b;
 
-    if (texture(samplerImages[mat.albedoIdx], frameUV).a < 0.01) { 
+    float alpha = texture(samplerImages[mat.albedoIdx], frameUV).a;
+    if (alpha < 0.01 || alphaClipped(mat, alpha)) {
         discard;
     }
     
