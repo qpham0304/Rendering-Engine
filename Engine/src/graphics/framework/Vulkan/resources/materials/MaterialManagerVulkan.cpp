@@ -108,6 +108,7 @@ uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 	materialGPU.roughness = material.roughness;
 	materialGPU.ao = material.ao;
 	materialGPU.emissive = material.emissive;
+	materialGPU.alphaCutoff = material.alphaCutoff;
 	materialsGPU[m_ids] = materialGPU;
 
     return _assignID();
@@ -151,7 +152,8 @@ MaterialDesc MaterialManagerVulkan::getMaterial(const uint32_t &id)
 		{ material.metallic },
 		{ material.roughness },
 		{ material.ao },
-		{ material.emissive }
+		{ material.emissive },
+		{ material.alphaCutoff }
 	};
 }
 
@@ -180,6 +182,7 @@ void MaterialManagerVulkan::_buildMaterialCache()
 		gpuMaterial.roughness = material.roughness;
 		gpuMaterial.ao = material.ao;
 		gpuMaterial.emissive = material.emissive;
+		gpuMaterial.alphaCutoff = material.alphaCutoff;
         materialsGPU[id] = gpuMaterial;
     }
 }
@@ -209,6 +212,7 @@ bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &mate
 	material.roughness = materialDesc.roughness;
 	material.ao        = materialDesc.ao       ;
 	material.emissive  = materialDesc.emissive ;
+	material.alphaCutoff = materialDesc.alphaCutoff;
 
 	textureManagerVulkan->registerBindlessTexture(material.albedoID);
 	textureManagerVulkan->registerBindlessTexture(material.normalID);

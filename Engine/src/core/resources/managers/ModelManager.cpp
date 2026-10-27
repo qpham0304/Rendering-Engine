@@ -14,6 +14,7 @@
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
+#include <assimp/GltfMaterial.h>
 #include <assimp_glm_helpers.h>
 #include <functional>
 #include <algorithm>
@@ -370,6 +371,14 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         }
         if(materialDesc.aoIDs.empty()) {
             materialDesc.aoIDs = _loadMaterial(material, scene, aiTextureType_AMBIENT, "aoMap", directory);
+        }
+
+        // foliage cards are quads, the leaf shape comes from the albedo alpha
+        aiString alphaMode;
+        if(material->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode) == AI_SUCCESS && std::string_view(alphaMode.C_Str()) == "MASK") {
+            float cutoff = 0.5f;
+            material->Get(AI_MATKEY_GLTF_ALPHACUTOFF, cutoff);
+            materialDesc.alphaCutoff = cutoff;
         }
     }
 

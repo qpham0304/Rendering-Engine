@@ -11,6 +11,7 @@
 #include <graphics/framework/Vulkan/resources/textures/TextureVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
+#include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <graphics/framework/vulkan/core/VulkanPipeline.h>
@@ -123,6 +124,7 @@ void DepthPrepassVulkan::_renderDepth(VkCommandBuffer cmd, uint32_t currentFrame
 		0,
 		nullptr
 	);
+	materialManager->bindMaterial(cmd, (void*)depthPipeline.get());
 
 	auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
 	pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
@@ -207,6 +209,7 @@ void DepthPrepassVulkan::_createPipeline()
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
 	VkDescriptorSetLayout descriptorSetLayout = descriptorManagerVulkan->getDescriptorLayout(layoutID);
+	auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(textureManagerVulkan->getBindlessTextureLayout());
 
 	depthPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	depthPipeline->createGraphicsPipelineDynamic(
@@ -215,7 +218,7 @@ void DepthPrepassVulkan::_createPipeline()
 		depthConfig,
 		attachmentsInfo,
 		vertexInputInfo,
-		{ descriptorSetLayout },
+		{ descriptorSetLayout, bindlessLayout },
 		sizeof(Common::PushBDA)
 	);
 }

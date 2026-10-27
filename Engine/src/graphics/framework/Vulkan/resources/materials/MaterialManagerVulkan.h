@@ -31,6 +31,7 @@ public:
 		float roughness;
 		float ao;
 		float emissive;
+		float alphaCutoff;
     };
 
 public:

@@ -200,6 +200,18 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 
 	beginRecording(commandBuffer, shadowRenderPass, shadowFramebuffer, shadowPipeline.get());
 	{
+		auto bindlessSet = descriptorManagerVulkan->getDescriptorSet(textureManagerVulkan->getBindlessSet())[0];
+		vkCmdBindDescriptorSets(
+			commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			shadowPipeline->pipelineLayout,
+			0,
+			1,
+			&bindlessSet,
+			0,
+			nullptr
+		);
+
 		vkCmdPushConstants(
 			commandBuffer,
 			shadowPipeline->pipelineLayout,
@@ -333,7 +345,8 @@ void ShadowMapPassVulkan::_createShadowPipeline()
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-	std::vector<VkDescriptorSetLayout> layouts = { };
+	auto bindlessLayout = descriptorManagerVulkan->getDescriptorLayout(textureManagerVulkan->getBindlessTextureLayout());
+	std::vector<VkDescriptorSetLayout> layouts = { bindlessLayout };	// alpha masked casters sample their albedo
 
 	shadowPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
 	shadowPipeline->createGraphicsPipeline(
