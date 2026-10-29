@@ -120,6 +120,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     // graph owned textures are sized from this, passes can create them during init
     VkExtent2D extent = renderDeviceVulkan->swapchain.swapChainExtent;
     m_renderGraph.setRenderSize(extent.width, extent.height);
+    m_renderGraph.setOutputSize(extent.width, extent.height);
 
     // renderers loads saved values first before registering settings
     if(std::filesystem::exists(GraphicsSettingsSerializer::DefaultPath)) {
@@ -232,8 +233,10 @@ void RendererManagerVulkan::render()
     }
 
     // graph owned textures get recreated on their next create when this changes
-    VkExtent2D renderExtent = renderDeviceVulkan->swapchain.swapChainExtent;
-    m_renderGraph.setRenderSize(renderExtent.width, renderExtent.height);
+    _updateGraphSize();
+    VkExtent2D renderSize = m_renderGraph.getRenderSize();
+    ubo.width = static_cast<float>(renderSize.width);
+    ubo.height = static_cast<float>(renderSize.height);
 
     beginFrame();
     m_frameNumber++;
@@ -308,6 +311,14 @@ void RendererManagerVulkan::render()
 
     applicationRenderer->render(*camera);
     endFrame();
+}
+
+// output is the window, the scene renders at the same size
+void RendererManagerVulkan::_updateGraphSize()
+{
+    VkExtent2D outputSize = renderDeviceVulkan->swapchain.swapChainExtent;
+    m_renderGraph.setOutputSize(outputSize.width, outputSize.height);
+    m_renderGraph.setRenderSize(outputSize.width, outputSize.height);
 }
 
 void RendererManagerVulkan::drawDebug(glm::vec3 start, glm::vec3 end)

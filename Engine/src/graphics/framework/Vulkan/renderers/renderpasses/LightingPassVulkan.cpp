@@ -269,9 +269,9 @@ void LightingPassVulkan::_renderLightPass(VkCommandBuffer cmd, uint32_t currentF
 #pragma region setup
 void LightingPassVulkan::_createRenderTarget()
 {
-	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-	renderTarget.width = swapchain.swapChainExtent.width;
-	renderTarget.height = swapchain.swapChainExtent.height;
+	VkExtent2D extent = rendererManagerVulkan->getRenderGraph().getRenderSize();
+	renderTarget.width = extent.width;
+	renderTarget.height = extent.height;
 
 
 	RGTextureDesc desc{};

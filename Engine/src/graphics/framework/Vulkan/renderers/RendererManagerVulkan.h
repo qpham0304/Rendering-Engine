@@ -126,6 +126,8 @@ private:
 	uint64_t m_frameNumber { 0 };
 	bool swapchainOutdated{ false };
 
+	void _updateGraphSize();
+
 	//friend class renderer vulkan should not be able to call these
 	virtual bool init(WindowConfig config) override;
 	virtual bool onClose() override;

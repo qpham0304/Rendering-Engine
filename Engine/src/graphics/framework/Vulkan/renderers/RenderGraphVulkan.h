@@ -41,6 +41,7 @@ struct RGTextureDesc {
     TextureConfig config{};
     TextureSamplerConfig sampler{};
     float scale { 1.0f };   // 0.5 = half the render size, ignored for fixed size
+    bool outputSized { false };
 };
 
 class RenderGraphVulkan : public Object {
@@ -58,6 +59,9 @@ public:
     );
 
     void setRenderSize(uint32_t width, uint32_t height);
+    void setOutputSize(uint32_t width, uint32_t height);
+    VkExtent2D getRenderSize() const { return { m_renderWidth, m_renderHeight }; }
+    VkExtent2D getOutputSize() const { return { m_outputWidth, m_outputHeight }; }
 
     // graph owned texture: created on first use, recreated when the size or desc changes, and already imported
     // for this frame (it ends every frame in SHADER_READ_ONLY, and starts from UNDEFINED when config.initialLayout asks for it)
@@ -87,4 +91,6 @@ private:
     std::unordered_map<std::string, RenderTexture> m_ownedTextures;   // do not clear by reset
     uint32_t m_renderWidth { 0 };
     uint32_t m_renderHeight { 0 };
+    uint32_t m_outputWidth { 0 };
+    uint32_t m_outputHeight { 0 };
 };

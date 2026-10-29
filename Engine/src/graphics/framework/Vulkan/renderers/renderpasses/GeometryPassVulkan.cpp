@@ -183,9 +183,9 @@ void GeometryPassVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t curre
 #pragma region setup
 void GeometryPassVulkan::_createRenderTargets()
 {
-	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-	renderTarget.width = swapchain.swapChainExtent.width;
-	renderTarget.height = swapchain.swapChainExtent.height;
+	VkExtent2D extent = rendererManagerVulkan->getRenderGraph().getRenderSize();
+	renderTarget.width = extent.width;
+	renderTarget.height = extent.height;
 	renderTarget.depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
 	RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();

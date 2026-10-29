@@ -71,6 +71,9 @@ bool RendererVulkan::init(WindowConfig config)
 	m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::WindowResize, [this] (Event& event) {
 		this->needResize = true;
 	}));
+	m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::RenderResize, [this] (Event& event) {
+		this->needResize = true;
+	}));
 
 	return true;
 }

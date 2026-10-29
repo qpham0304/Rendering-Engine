@@ -47,7 +47,7 @@ vec4 outlineColor(ivec2 px)
     int hoverR = clamp(pc.hoverThickness, 1, 4);
     int selectR = clamp(pc.selectThickness, 1, 4);
     int maxR = max(hoverR, selectR);
-    ivec2 size = ivec2(ubo.width, ubo.height);
+    ivec2 size = imageSize(outputImage);
 
     bool sawSelect = false;
     bool sawHover = false;
@@ -86,7 +86,7 @@ void main()
 {
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
 
-    if (pixelCoord.x >= int(ubo.width) || pixelCoord.y >= int(ubo.height)) {
+    if (pixelCoord.x >= imageSize(outputImage).x || pixelCoord.y >= imageSize(outputImage).y) {
         return;
     }
 

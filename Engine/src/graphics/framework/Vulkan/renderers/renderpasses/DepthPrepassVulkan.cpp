@@ -146,9 +146,9 @@ void DepthPrepassVulkan::_renderDepth(VkCommandBuffer cmd, uint32_t currentFrame
 #pragma region setup
 void DepthPrepassVulkan::_createRenderTarget()
 {
-	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-	renderTarget.width = swapchain.swapChainExtent.width;
-	renderTarget.height = swapchain.swapChainExtent.height;
+	VkExtent2D extent = rendererManagerVulkan->getRenderGraph().getRenderSize();
+	renderTarget.width = extent.width;
+	renderTarget.height = extent.height;
 	renderTarget.depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
 	RGTextureDesc desc{};

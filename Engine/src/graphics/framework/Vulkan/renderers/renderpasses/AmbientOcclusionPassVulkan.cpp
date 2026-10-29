@@ -72,7 +72,7 @@ void AmbientOcclusionPassVulkan::render(Camera& camera)
     pushConstant.projScale = camera.getViewHeight() / (2.0 * tan(camera.getFOV() / 2));
     
     float fovRadians = glm::radians(camera.getFOV()); 
-    pushConstant.projScale = static_cast<float>(camera.getViewHeight()) / (2.0f * tanf(fovRadians * 0.5f));
+    pushConstant.projScale = static_cast<float>(rendererManagerVulkan->getRenderGraph().getRenderSize().height) / (2.0f * tanf(fovRadians * 0.5f));
 
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
@@ -86,7 +86,7 @@ void AmbientOcclusionPassVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFr
 {
     _updateDescriptorSetsAO(currentFrame);
     
-    VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
+    VkExtent2D extent = rendererManagerVulkan->getRenderGraph().getRenderSize();
     occlusionPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 
     vkCmdPushConstants(
@@ -109,8 +109,8 @@ void AmbientOcclusionPassVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFr
         0, nullptr
     );
 
-    uint32_t groupX = (swapchain.swapChainExtent.width + 15) / 16;
-    uint32_t groupY = (swapchain.swapChainExtent.height + 15) / 16;
+    uint32_t groupX = (extent.width + 15) / 16;
+    uint32_t groupY = (extent.height + 15) / 16;
 	vkCmdDispatch(cmd, groupX, groupY, 1);
 }
 
@@ -128,9 +128,9 @@ void AmbientOcclusionPassVulkan::writeBlur(VkCommandBuffer cmd, uint32_t current
 
     _updateDescriptorSetsBlur(currentFrame);
 
-    VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-    uint32_t groupX = (swapchain.swapChainExtent.width + 15) / 16;
-    uint32_t groupY = (swapchain.swapChainExtent.height + 15) / 16;
+    VkExtent2D extent = rendererManagerVulkan->getRenderGraph().getRenderSize();
+    uint32_t groupX = (extent.width + 15) / 16;
+    uint32_t groupY = (extent.height + 15) / 16;
 
     blurPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 

@@ -355,9 +355,10 @@ void DebugRendererVulkan::_createBuffers()
 
 void DebugRendererVulkan::_createResources()
 {
-    auto ubo = rendererManagerVulkan->getUBO();
-    width = ubo.width;
-    height = ubo.height;
+    // draws over the display image, which is at the output size when dlss upscales
+    VkExtent2D extent = rendererManagerVulkan->getRenderGraph().getOutputSize();
+    width = extent.width;
+    height = extent.height;
 
     TextureSamplerConfig samplerConfig {};
     TextureConfig imageConfig {

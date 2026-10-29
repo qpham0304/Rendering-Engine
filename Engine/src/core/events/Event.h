@@ -15,7 +15,8 @@ enum class EventType
 	AsyncEvent, ModelLoadEvent, AnimationLoadEvent,
 	GuiMessageEvent, GuiFocusedEvent,
 	CameraUpdateEvent,
-	ContactBegin, ContactEnd, ContactHit
+	ContactBegin, ContactEnd, ContactHit,
+	RenderResize
 };
 
 class Event : public Object
@@ -119,6 +120,20 @@ public:
 
 	EventType GetEventType() const override { return EventType::WindowResize; }
 	const char* GetName() const override { return "WindowResizeEvent"; };
+
+};
+
+// the render graph's render size changed without the window resizing (upscaler mode)
+class RenderResizeEvent : public Event
+{
+public:
+	uint32_t m_width;
+	uint32_t m_height;
+
+	RenderResizeEvent(uint32_t width, uint32_t height) : m_width(width), m_height(height){ setFootprint("RenderResizeEvent", sizeof(RenderResizeEvent), MemorySystem::Core); }
+
+	EventType GetEventType() const override { return EventType::RenderResize; }
+	const char* GetName() const override { return "RenderResizeEvent"; };
 
 };
 
