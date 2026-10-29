@@ -20,6 +20,7 @@ struct TextureConfig {
 	VkMemoryPropertyFlagBits properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	uint32_t mipLevels = 1;
 	uint32_t layerCount = 1;
+	VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D;
 	VkImageLayout initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;	// UNDEFINED skips the transition on creation
 };
 
@@ -27,6 +28,7 @@ struct TextureSamplerConfig {
 	VkFilter filter = VK_FILTER_LINEAR;
 	VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	VkSamplerMipmapMode mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	VkBorderColor borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 };
 
 class TextureVulkan : public Texture

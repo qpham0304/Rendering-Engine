@@ -148,14 +148,6 @@ uint32_t TextureManagerVulkan::_cacheFailedLoad(const std::string& key)
 	return 0;
 }
 
-//TODO: eventually remove this
-uint32_t TextureManagerVulkan::createTexture()
-{
-	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);
-
-	return _assignID();
-}
-
 TextureVulkan* TextureManagerVulkan::getTexture(uint32_t id)
 {
 	return dynamic_cast<TextureVulkan*>(TextureManager::getTexture(id));
@@ -914,7 +906,7 @@ void TextureManagerVulkan::copyBufferToImage(
 
 uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig)
 {
-	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);;
+	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);
 	TextureVulkan* texture = dynamic_cast<TextureVulkan*>(m_textures[m_ids].get());
 	texture->m_width = textureConfig.width;
 	texture->m_height = textureConfig.height;
@@ -929,6 +921,8 @@ uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, Textur
 		texture->textureImage,
 		texture->textureImageMemory,
 		textureConfig.mipLevels,
+		textureConfig.layerCount,
+		textureConfig.viewType == VK_IMAGE_VIEW_TYPE_CUBE ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0,
 		renderDeviceVulkan->device
 	);
 
@@ -938,6 +932,9 @@ uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, Textur
 		textureConfig.format,
 		textureConfig.aspectBits,
 		textureConfig.mipLevels,
+		0,
+		textureConfig.layerCount,
+		textureConfig.viewType,
 		renderDeviceVulkan->device
 	);
 
@@ -949,7 +946,7 @@ uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, Textur
 	samplerInfo.addressModeV = samplerConfig.addressMode;
 	samplerInfo.addressModeW = samplerConfig.addressMode;
 	samplerInfo.anisotropyEnable = VK_FALSE;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.borderColor = samplerConfig.borderColor;
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
 	samplerInfo.compareEnable = VK_FALSE;
 	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;

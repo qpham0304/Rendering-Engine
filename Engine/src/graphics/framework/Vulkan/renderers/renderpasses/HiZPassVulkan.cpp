@@ -32,9 +32,11 @@ bool HiZPassVulkan::init(WindowConfig config)
     depthImage = depthPrepass->renderTarget.depthTexture;
     depthHandle = depthPrepass->renderTarget.depthHandle;
 
+    // the shader loads before the mip views exist, a missing HiZ.comp.spv stops init with nothing to leak
+    _createDescriptorLayout();
+    _createPipelines();
     _createResources();
     _createDescriptors();
-    _createPipelines();
     hizRecreated = false;
 
     return true;
@@ -176,13 +178,16 @@ void HiZPassVulkan::_createPipelines()
 	);
 }
 
-void HiZPassVulkan::_createDescriptors()
+void HiZPassVulkan::_createDescriptorLayout()
 {
 	hiZLayoutID = descriptorManagerVulkan->createLayout({
 		{ 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }
 	});
+}
 
+void HiZPassVulkan::_createDescriptors()
+{
 	std::vector<VkDescriptorPoolSize> poolSizes {
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mipLevels },
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, mipLevels }

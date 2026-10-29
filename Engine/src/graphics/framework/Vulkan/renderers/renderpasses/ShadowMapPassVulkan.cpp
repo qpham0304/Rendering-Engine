@@ -280,37 +280,17 @@ void ShadowMapPassVulkan::_createDepthMap()
 {
 	VkFormat depthFormat = TextureManagerVulkan::findDepthFormat(renderDeviceVulkan->device);
 
-	depthID = textureManagerVulkan->createTexture();
-	depthMap = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(depthID));
-	depthMap->format = depthFormat;
-
-	TextureManagerVulkan::createImage(
-		width,
-		height,
-		depthFormat,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		depthMap->textureImage,
-		depthMap->textureImageMemory,
-		1,
-		renderDeviceVulkan->device
-	);
-
-	TextureManagerVulkan::createImageView(
-		depthMap->textureImage,
-		depthMap->textureImageView,
-		depthFormat,
-		VK_IMAGE_ASPECT_DEPTH_BIT,
-		1,
-		renderDeviceVulkan->device
-	);
-
-	TextureManagerVulkan::createTextureSampler(
-		depthMap->textureSampler,
-		renderDeviceVulkan->device,
-		TextureManagerVulkan::createLinearSampler(renderDeviceVulkan->device)
-	);
+	TextureConfig imageConfig {
+		.width = width,
+		.height = height,
+		.format = depthFormat,
+		.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+		.aspectBits = VK_IMAGE_ASPECT_DEPTH_BIT,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+	};
+	TextureSamplerConfig samplerConfig { .addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT };
+	depthID = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
+	depthMap = textureManagerVulkan->getTexture(depthID);
 }
 
 void ShadowMapPassVulkan::_createShadowPipeline()
@@ -429,44 +409,19 @@ void ShadowMapPassVulkan::_createShadowFrameBuffer()
 void ShadowMapPassVulkan::_createMomentImage()
 {
 	auto createTexture = [&](TextureVulkan*& texture) {
-		uint32_t imageID = textureManagerVulkan->createTexture();
-		texture = static_cast<TextureVulkan*>(textureManagerVulkan->getTexture(imageID));
-
-		TextureManagerVulkan::createImage(
-			width,
-			height,
-			VK_FORMAT_R32G32B32A32_SFLOAT,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			texture->textureImage,
-			texture->textureImageMemory,
-			1,
-			renderDeviceVulkan->device
-		);
-
-		TextureManagerVulkan::createImageView(
-			texture->textureImage,
-			texture->textureImageView,
-			VK_FORMAT_R32G32B32A32_SFLOAT,
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			1,
-			renderDeviceVulkan->device
-		);
-
-		VkSamplerCreateInfo samplerInfo{};
-		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		samplerInfo.magFilter = VK_FILTER_LINEAR;
-		samplerInfo.minFilter = VK_FILTER_LINEAR;
-		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE; // clear to 1.0 depth
-
-		TextureManagerVulkan::createTextureSampler(
-			texture->textureSampler,
-			renderDeviceVulkan->device,
-			samplerInfo
-		);
+		TextureConfig imageConfig {
+			.width = width,
+			.height = height,
+			.format = VK_FORMAT_R32G32B32A32_SFLOAT,
+			.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+			.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+		};
+		TextureSamplerConfig samplerConfig {
+			.addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+			.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE	// clear to 1.0 depth
+		};
+		uint32_t imageID = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
+		texture = textureManagerVulkan->getTexture(imageID);
 	};
 
 	createTexture(momentImage);
