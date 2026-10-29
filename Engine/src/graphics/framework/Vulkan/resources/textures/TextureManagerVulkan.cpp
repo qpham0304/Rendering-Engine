@@ -1172,10 +1172,10 @@ void TextureManagerVulkan::copyImage(
     VkImageCopy copyRegion{};
     copyRegion.srcSubresource = { aspect, 0, 0, 1 };
     copyRegion.dstSubresource = { aspect, 0, 0, 1 };
-    copyRegion.extent = { 	
-        renderDeviceVulkan->swapchain.swapChainExtent.width, 
-        renderDeviceVulkan->swapchain.swapChainExtent.height, 
-        1 
+    copyRegion.extent = {
+        std::min(srcImage->width(), dstImage->width()),
+        std::min(srcImage->height(), dstImage->height()),
+        1
     };
 
     vkCmdCopyImage(
