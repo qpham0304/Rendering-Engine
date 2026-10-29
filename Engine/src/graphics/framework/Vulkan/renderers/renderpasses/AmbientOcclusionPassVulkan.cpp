@@ -1,5 +1,6 @@
 #include "AmbientOcclusionPassVulkan.h"
 #include "DepthPrepassVulkan.h"
+#include "BlurPassVulkan.h"
 #include <core/scene/SceneManager.h>
 #include <core/features/camera.h>
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
@@ -32,10 +33,13 @@ bool AmbientOcclusionPassVulkan::init(WindowConfig config)
     depthImage = depthPrepass->renderTarget.depthTexture;
     depthHandle = depthPrepass->renderTarget.depthHandle;
 
+    blurPass = dynamic_cast<BlurPassVulkan*>(rendererManagerVulkan->getRenderer("BlurPassVulkan"));
+
     _createOcclusionMap();
     _createDescriptors();
 	_createPipelines();
-    
+    outputImage = aoMap;    // until the first frame hands back the blurred map
+
     pushConstant.radius = 0.75f;
     pushConstant.bias = 0.01f;
     pushConstant.intensity = 2.0f;
@@ -68,7 +72,6 @@ void AmbientOcclusionPassVulkan::render(Camera& camera)
     glm::mat4 proj = camera.getProjectionMatrix();
     proj[1][1] *= -1.0f;
 	pushConstant.invProj = glm::inverse(proj);
-    blurrPushConstant.invProj = pushConstant.invProj;
     pushConstant.projScale = camera.getViewHeight() / (2.0 * tan(camera.getFOV() / 2));
     
     float fovRadians = glm::radians(camera.getFOV()); 
@@ -78,7 +81,6 @@ void AmbientOcclusionPassVulkan::render(Camera& camera)
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 	renderDeviceVulkan->beginLabel(cmd, "AO Pass");
     writeAO(cmd, currentFrame);
-    writeBlur(cmd, currentFrame);
 	renderDeviceVulkan->endLabel(cmd);
 }
 
@@ -114,51 +116,6 @@ void AmbientOcclusionPassVulkan::writeAO(VkCommandBuffer cmd, uint32_t currentFr
 	vkCmdDispatch(cmd, groupX, groupY, 1);
 }
 
-void AmbientOcclusionPassVulkan::writeBlur(VkCommandBuffer cmd, uint32_t currentFrame)
-{
-    VkImageMemoryBarrier aoBarrier{};
-    aoBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    aoBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-    aoBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-    aoBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-    aoBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    aoBarrier.image = aoMap->textureImage;
-    aoBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &aoBarrier);
-
-    _updateDescriptorSetsBlur(currentFrame);
-
-    VkExtent2D extent = rendererManagerVulkan->getRenderGraph().getRenderSize();
-    uint32_t groupX = (extent.width + 15) / 16;
-    uint32_t groupY = (extent.height + 15) / 16;
-
-    blurPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
-
-    blurrPushConstant.blurRadius = settings->blurRadius;
-    blurrPushConstant.scale = settings->blurScale;
-    blurrPushConstant.isVertical = 0.0f;
-    vkCmdPushConstants(cmd, blurPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlurPushConstantInfo), &blurrPushConstant);
-    auto mToT_Sets = descriptorManagerVulkan->getDescriptorSet(blurDescSetMtoT_ID);
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, blurPipeline->pipelineLayout, 0, 1, &mToT_Sets[currentFrame], 0, nullptr);
-    vkCmdDispatch(cmd, groupX, groupY, 1);
-
-    VkImageMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    barrier.image = aoMapTemp->textureImage;
-    barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-    blurrPushConstant.isVertical = 1.0f;
-    vkCmdPushConstants(cmd, blurPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlurPushConstantInfo), &blurrPushConstant);
-    auto tToM_Sets = descriptorManagerVulkan->getDescriptorSet(blurDescSetTtoM_ID);
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, blurPipeline->pipelineLayout, 0, 1, &tToM_Sets[currentFrame], 0, nullptr);
-    vkCmdDispatch(cmd, groupX, groupY, 1);
-}
-
 void AmbientOcclusionPassVulkan::_createOcclusionMap()
 {
     RGTextureDesc desc{};
@@ -167,13 +124,8 @@ void AmbientOcclusionPassVulkan::_createOcclusionMap()
 
     RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
     aoMapHandle = graph.createRenderTexture("AO.Map", desc);
-    aoMapTempHandle = graph.createRenderTexture("AO.Temp", desc);
     aoMap = graph.getTexture(aoMapHandle);
-    aoMapTemp = graph.getTexture(aoMapTempHandle);
     aoMapID = aoMap->id();
-    aoMapTempID = aoMapTemp->id();
-
-    outputImage = aoMap;
 }
 
 void AmbientOcclusionPassVulkan::_createDescriptors()
@@ -195,28 +147,6 @@ void AmbientOcclusionPassVulkan::_createDescriptors()
 	for(int i = 0; i < frameCount; i++) {
         _updateDescriptorSetsAO(i);
     }
-
-
-    blurDescriptorLayoutID = descriptorManagerVulkan->createLayout({
-        { 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }, // Input
-        { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }, // Depth (for bilateral)
-        { 2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr }  // Output
-    });
-
-    std::vector<VkDescriptorPoolSize> blurPoolSizes {
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 4}, // 2 for each pass
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 2}, // 1 for each pass
-    };
-
-    blurDescriptorPoolID = descriptorManagerVulkan->createPool(blurPoolSizes, frameCount * 2);
-
-    // Create two sets per frame for the ping-pong
-    blurDescSetMtoT_ID = descriptorManagerVulkan->createSets(blurDescriptorLayoutID, blurDescriptorPoolID, frameCount);
-    blurDescSetTtoM_ID = descriptorManagerVulkan->createSets(blurDescriptorLayoutID, blurDescriptorPoolID, frameCount);
-
-    for(int i = 0; i < frameCount; i++) {
-        _updateDescriptorSetsBlur(i);
-    }
 }
 
 void AmbientOcclusionPassVulkan::_createPipelines()
@@ -227,14 +157,6 @@ void AmbientOcclusionPassVulkan::_createPipelines()
 		"assets/shaders/spv/alchemyAO.comp.spv", 
 		{ descriptorLayoutLUT }, 
 		sizeof(PushConstantInfo)
-	);
-
-    VkDescriptorSetLayout blurDescriptorLayout = descriptorManagerVulkan->getDescriptorLayout(blurDescriptorLayoutID);
-	blurPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
-	blurPipeline->createComputePipeline(
-		"assets/shaders/spv/bilateralBlur.comp.spv", 
-		{ blurDescriptorLayout },
-		sizeof(BlurPushConstantInfo)
 	);
 }
 
@@ -257,31 +179,6 @@ void AmbientOcclusionPassVulkan::_updateDescriptorSetsAO(uint32_t index)
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
-void AmbientOcclusionPassVulkan::_updateDescriptorSetsBlur(uint32_t index)
-{
-    auto mToT_Sets = descriptorManagerVulkan->getDescriptorSet(blurDescSetMtoT_ID);
-    auto tToM_Sets = descriptorManagerVulkan->getDescriptorSet(blurDescSetTtoM_ID);
-
-    // layout MUST match what the image is in during vkCmdDispatch
-    VkImageLayout computeLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-    VkDescriptorImageInfo depthInfo{ depthImage->textureSampler, depthImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-    VkDescriptorImageInfo aoInputInfo{ aoMap->textureSampler, aoMap->textureImageView, computeLayout };
-    VkDescriptorImageInfo tempInfo{ aoMapTemp->textureSampler, aoMapTemp->textureImageView, computeLayout };
-
-    std::vector<VkWriteDescriptorSet> writes;
-
-    descriptorManagerVulkan->writeStorageImage(&writes, mToT_Sets[index], 0, aoInputInfo);
-    descriptorManagerVulkan->writeImage(&writes, mToT_Sets[index], 1, depthInfo);
-    descriptorManagerVulkan->writeStorageImage(&writes, mToT_Sets[index], 2, tempInfo);
-
-    descriptorManagerVulkan->writeStorageImage(&writes, tToM_Sets[index], 0, tempInfo);
-    descriptorManagerVulkan->writeImage(&writes, tToM_Sets[index], 1, depthInfo);
-    descriptorManagerVulkan->writeStorageImage(&writes, tToM_Sets[index], 2, aoInputInfo);
-
-    descriptorManagerVulkan->updateDescriptorSets(&writes);
-}
-
 void AmbientOcclusionPassVulkan::_recreateResources()
 {
 	renderDeviceVulkan->waitIdle();
@@ -294,7 +191,6 @@ void AmbientOcclusionPassVulkan::_recreateResources()
 void AmbientOcclusionPassVulkan::_cleanupResources()
 {
     occlusionPipeline->destroy();
-    blurPipeline->destroy();
 }
 
 void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
@@ -310,7 +206,7 @@ void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
     RenderPassNode node{};
     node.name = "AO";
     node.reads  = { {depthHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL} };
-    node.writes = { {aoMapHandle, VK_IMAGE_LAYOUT_GENERAL}, {aoMapTempHandle, VK_IMAGE_LAYOUT_GENERAL} };
+    node.writes = { {aoMapHandle, VK_IMAGE_LAYOUT_GENERAL} };
 
     node.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
         Scene* scene = SceneManager::getInstance().getActiveScene();
@@ -324,4 +220,20 @@ void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
     };
 
     graph.addPass(node);
+
+    Camera* camera = SceneManager::cameraController;
+    BlurPassVulkan::BlurParams blurParams{};
+    blurParams.type = BlurType::Bilateral;
+    blurParams.depth = depthHandle;
+    if(camera) {
+        glm::mat4 proj = camera->getProjectionMatrix();
+        proj[1][1] *= -1.0f;
+        blurParams.invProj = glm::inverse(proj);
+    }
+    blurParams.radius = settings->blurRadius;
+    blurParams.sigma = static_cast<float>(settings->blurRadius);
+    blurParams.depthScale = settings->blurScale;
+
+    RGHandle blurredHandle = blurPass->blur(graph, "AO", aoMapHandle, blurParams);
+    outputImage = graph.getTexture(blurredHandle);
 }

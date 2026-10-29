@@ -332,6 +332,11 @@ void VulkanDevice::createLogicalDevice() {
 	deviceFeatures.multiDrawIndirect = VK_TRUE;
 	deviceFeatures.drawIndirectFirstInstance = VK_TRUE;
 
+	// lets one compute shader write storage images of any format (the blur pass)
+	VkPhysicalDeviceFeatures supportedFeatures{};
+	vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
+	deviceFeatures.shaderStorageImageWriteWithoutFormat = supportedFeatures.shaderStorageImageWriteWithoutFormat;
+
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	createInfo.pNext = this->rtSupported ? static_cast<void*>(&rtPipelineFeature) : static_cast<void*>(&features13);

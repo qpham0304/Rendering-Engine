@@ -19,6 +19,7 @@ class ImageBasedRendererVulkan;
 class SkyAtmosphereVulkan;
 class DDGIBuilderVulkan;
 class AmbientOcclusionPassVulkan;
+class BlurPassVulkan;
 class HiZPassVulkan;
 class SSRGIPassVulkan;
 class BloomPassVulkan;
@@ -114,6 +115,7 @@ protected:
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 	DDGIBuilderVulkan* ddgiPassRenderer { nullptr };
 	AmbientOcclusionPassVulkan* alchemyAORenderer { nullptr };
+	BlurPassVulkan* blurRenderer { nullptr };
 	HiZPassVulkan* hiZPassRenderer { nullptr };
 	SSRGIPassVulkan* SSRGIPassRenderer { nullptr };
 	BloomPassVulkan* bloomRenderer { nullptr };

@@ -2,6 +2,8 @@
 
 #include "PostProcessRendererVulkan.h"
 
+class BlurPassVulkan;
+
 class AmbientOcclusionPassVulkan : public PostProcessRendererVulkan
 {
 public:
@@ -11,13 +13,6 @@ public:
 		alignas(4) 	float bias;
 		alignas(4) 	float intensity;
 		alignas(4) 	float projScale;
-	};
-
-	struct BlurPushConstantInfo {
-		glm::mat4 invProj;
-		float isVertical;
-		int blurRadius;
-		float scale;
 	};
 
 public:
@@ -32,25 +27,20 @@ public:
 	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void writeAO(VkCommandBuffer cmd, uint32_t currentFrame);
-	void writeBlur(VkCommandBuffer cmd, uint32_t currentFrame);
 
 protected:
-	BlurPushConstantInfo blurrPushConstant;
 	AmbientOcclusionSettings* settings { nullptr };
+	BlurPassVulkan* blurPass { nullptr };
 	void _createOcclusionMap();
 	void _createPipelines();
 	void _createDescriptors();
 	void _updateDescriptorSetsAO(uint32_t index);
-	void _updateDescriptorSetsBlur(uint32_t index);
 	void _recreateResources();
 	void _cleanupResources();
 
 	uint32_t aoMapID;
-	uint32_t aoMapTempID;
 	TextureVulkan* aoMap { nullptr };
-	TextureVulkan* aoMapTemp { nullptr };
 	RGHandle aoMapHandle {};
-	RGHandle aoMapTempHandle {};
 	TextureVulkan* depthImage { nullptr };
 	RGHandle depthHandle {};
 
@@ -59,11 +49,4 @@ protected:
 	uint32_t occlusionDecriptorsetsID;
 	std::unique_ptr<VulkanPipeline> occlusionPipeline;
 	PushConstantInfo pushConstant;
-
-	uint32_t blurDescriptorLayoutID;
-	uint32_t blurDescriptorPoolID;
-	uint32_t blurDescSetMtoT_ID;
-	uint32_t blurDescSetTtoM_ID;
-	std::unique_ptr<VulkanPipeline> blurPipeline;
-	// BlurPushConstantInfo blurrPushConstant;
 };

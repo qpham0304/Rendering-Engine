@@ -11,6 +11,7 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/DepthPrepassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/BlurPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h"
@@ -100,6 +101,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     
     depthPrepassRenderer = addRenderer<DepthPrepassVulkan>("DepthPrepassVulkan");
     geometryPassRenderer = addRenderer<GeometryPassVulkan>("GeometryPassVulkan");
+    blurRenderer = addRenderer<BlurPassVulkan>("BlurPassVulkan");
     alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");   //TODO: only ui atm, remove soon
     lightingPassRenderer = addRenderer<LightingPassVulkan>("LightingPassVulkan");
