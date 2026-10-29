@@ -97,6 +97,9 @@ namespace ImGuiReflection {
 
     bool DrawField(const char* name, int& value, const FieldMeta& meta) {
         Row row(name, meta);
+        if (meta.widget == FieldWidget::Combo && meta.options) {
+            return ImGui::Combo("##value", &value, meta.options);
+        }
         if (HasRange(meta) && meta.widget != FieldWidget::Drag) {
             return ImGui::SliderInt("##value", &value, static_cast<int>(meta.min), static_cast<int>(meta.max), "%d", Flags(meta));
         }
