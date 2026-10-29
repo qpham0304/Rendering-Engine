@@ -65,14 +65,13 @@ TEST(SpriteComponent, SetFramePastSheetIsIgnored)
 	EXPECT_EQ(sprite.frameIndex, 1);
 }
 
-TEST(SpriteComponent, ZeroRowsOrColsAreClampedOnLoad)
+// components stay plain data, a 0 rows/cols sheet (#2) is handled by SpriteAnimator, see AssetFailureSmokeTests
+TEST(SpriteComponent, LoadKeepsValuesAsWritten)
 {
-	GTEST_SKIP() << "Known bug #2 in notes/ASSET_LOADING_BUGS.md: numRows/numCols of 0 reach a division in SpriteAnimator. "
-					"Remove this skip once SpriteComponent::onDeserialized clamps them.";
-
-	nlohmann::json j = { { "numRows", 0 }, { "numCols", 0 } };
+	nlohmann::json j = { { "numRows", 0 }, { "numCols", 0 }, { "frameIndex", 5 } };
 	SpriteComponent sprite = j.get<SpriteComponent>();
 
-	EXPECT_GE(sprite.numRows, 1);
-	EXPECT_GE(sprite.numCols, 1);
+	EXPECT_EQ(sprite.numRows, 0);
+	EXPECT_EQ(sprite.numCols, 0);
+	EXPECT_EQ(sprite.frameIndex, 5);
 }

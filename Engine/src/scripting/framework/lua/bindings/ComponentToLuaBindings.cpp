@@ -36,6 +36,11 @@ void ComponentToLuaBindings::exportComponents(sol::state& luaState, Logger* logg
             return it->second(lua, self, luaTable);
         },
         "removeComponent", [logger](Entity& self, const std::string& componentName) {
+            if (componentName == "TransformComponent" || componentName == "NameComponent") {
+                logger->error("Failed to remove component: every entity needs a {}", componentName);
+                return;
+            }
+
             // the serializer destroyer runs the component's unload hook before removing it
             const auto& destroyers = EntitySerializer::getComponentDestroyer();
             auto it = destroyers.find(componentName);

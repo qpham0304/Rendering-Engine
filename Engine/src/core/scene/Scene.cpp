@@ -40,7 +40,9 @@ Scene::Scene(std::string name)
 
 		if(keyCode == KEY_D) {
 			if(controlPressed){
-				duplicateEntity(selectedEntities[0]);
+				if(!selectedEntities.empty()) {
+					duplicateEntity(selectedEntities[0]);
+				}
 				controlPressed = false;
 			}
 		}
@@ -312,18 +314,21 @@ bool Scene::unloadScene()
 	auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
 	
 	for(auto& [id, entity] : entities) {
-		if(entity.hasComponent<SpriteComponent>()) {
+		if(entity.hasComponent<SpriteComponent>() && entity.hasComponent<ModelComponent>()) {
 			ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
 			Model* model = modelManager->getModel(modelComponent.modelID);
-			
-			for(auto& meshID : model->meshIDs) {
-				meshManager->destroy(meshID);
+			if(model) {
+				for(auto& meshID : model->meshIDs) {
+					meshManager->destroy(meshID);
+				}
+				modelManager->destroy(modelComponent.modelID);
 			}
-			modelManager->destroy(modelComponent.modelID);
 		}
 		if(entity.hasComponent<ColliderComponent>()){
 			ColliderComponent& colliderComponent = entity.getComponent<ColliderComponent>();
-			physicsManager->destroy(colliderComponent.shapeID);
+			if(colliderComponent.shapeID != 0) {
+				physicsManager->destroy(colliderComponent.shapeID);
+			}
 		}
 	}
 
@@ -340,6 +345,11 @@ bool Scene::unloadScene()
 bool Scene::reloadScene()
 {
 	unloadScene();
+
+	// assets that failed last time may have been fixed on disk since
+	ServiceLocator::GetService<TextureManager>("TextureManagerVulkan").clearFailedLoads();
+	ServiceLocator::GetService<ModelManager>("ModelManager").clearFailedLoads();
+
     return loadScene(scenePath);
 }
 

@@ -105,6 +105,9 @@ void ScriptManagerLua::onUpdate(const FrameTime& frameTime)
 
     SceneManager& sceneManager = SceneManager::getInstance();
     Scene* scene = sceneManager.getActiveScene();
+    if(!scene) {
+        return;
+    }
 
     auto func = std::function<void(Entity)>([&](Entity entity) -> void {
         auto& scriptComponent = entity.getComponent<ScriptComponent>();
@@ -155,7 +158,8 @@ void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
 
     try {
         if(!entity.hasComponent<ScriptComponent>()) {
-            m_logger->error("ScriptComponent not found in entity {}", entity.getComponent<NameComponent>().name);
+            std::string name = entity.hasComponent<NameComponent>() ? entity.getComponent<NameComponent>().name : std::to_string(entity.getID());
+            m_logger->error("ScriptComponent not found in entity {}", name);
             return;
         }
 
@@ -180,7 +184,7 @@ void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
             
             std::string className = std::filesystem::path(filePath).stem().string(); 
             auto proxy = m_luaState[className];
-            if(!proxy.valid()) {
+            if(!proxy.valid() || proxy.get_type() != sol::type::table) {
                 m_logger->error("Failed to find Lua class table: {}", className);
                 m_logger->error("Make sure file name matches defined class name");
                 return;
@@ -212,16 +216,25 @@ void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
         }
         sol::table luaInstance = result;
 
+        // the first error stops this instance until the script is hot reloaded, otherwise it logs every frame
+        auto failed = std::make_shared<bool>(false);
+        auto report = [this, failed, filePath](const char* stage, sol::protected_function_result result) {
+            if (result.valid()) {
+                return;
+            }
+            sol::error err = result;
+            *failed = true;
+            m_logger->error("Lua script {} error in {}, script disabled until reloaded: {}", stage, filePath, err.what());
+        };
+
         sol::protected_function initFunc = luaInstance["onInit"];
         if(initFunc.valid()) {
             if(scriptComponent.initilized) {
                 scriptComponent.initilized = false;
             }
-            scriptComponent.onInit = [luaInstance, initFunc, this]() mutable {
-                auto result = initFunc(luaInstance);
-                if (!result.valid()) {
-                    sol::error err = result;
-                    m_logger->error("Lua script init error: {}", err.what());
+            scriptComponent.onInit = [luaInstance, initFunc, report, failed]() mutable {
+                if (!*failed) {
+                    report("onInit", initFunc(luaInstance));
                 }
             };
         } else {
@@ -230,11 +243,9 @@ void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
 
         sol::protected_function updateFunc = luaInstance["onUpdate"];
         if(updateFunc.valid()) {
-            scriptComponent.onUpdate = [luaInstance, updateFunc, this](double dt) mutable {
-                auto result = updateFunc(luaInstance, dt); 
-                if (!result.valid()) {
-                    sol::error err = result;
-                    m_logger->error("Lua script update error: {}", err.what());
+            scriptComponent.onUpdate = [luaInstance, updateFunc, report, failed](double dt) mutable {
+                if (!*failed) {
+                    report("onUpdate", updateFunc(luaInstance, dt));
                 }
             };
         } else {
@@ -243,11 +254,9 @@ void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
 
         sol::protected_function fixedUpdateFunc = luaInstance["onFixedUpdate"];
         if(fixedUpdateFunc.valid()) {
-            scriptComponent.onFixedUpdate = [luaInstance, fixedUpdateFunc, this](double dt) mutable {
-                auto result = fixedUpdateFunc(luaInstance, dt);
-                if (!result.valid()) {
-                    sol::error err = result;
-                    m_logger->error("Lua script fixed update error: {}", err.what());
+            scriptComponent.onFixedUpdate = [luaInstance, fixedUpdateFunc, report, failed](double dt) mutable {
+                if (!*failed) {
+                    report("onFixedUpdate", fixedUpdateFunc(luaInstance, dt));
                 }
             };
         } else {
@@ -259,11 +268,13 @@ void ScriptManagerLua::loadScript(Entity& entity, std::string_view path)
             if(scriptComponent.onDestroy != nullptr) {
                 scriptComponent.onDestroy();    // call clean up for script reload
             }
-            scriptComponent.onDestroy = [luaInstance, destroyFunc]() mutable { destroyFunc(luaInstance); };
+            scriptComponent.onDestroy = [luaInstance, destroyFunc, report]() mutable {
+                report("onDestroy", destroyFunc(luaInstance));
+            };
         } else {
             scriptComponent.onDestroy = [](){};
         }
-    } catch (const std::runtime_error& e) {
+    } catch (const std::exception& e) {
         m_logger->error("{}", e.what());
     }
     

@@ -9,7 +9,9 @@
 #include "graphics/renderers/RenderDevice.h"
 #include "core/features/Camera.h"
 #include "core/features/EngineStates.h"
+#include "logging/Logger.h"
 #include "volk.h"
+#include <filesystem>
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
@@ -84,8 +86,21 @@ bool ImGuiManager::init(WindowConfig config)
 		return false;
 	}
 
-	io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto/Roboto-Regular.ttf", fontSize);
-	io.Fonts->AddFontFromFileTTF("assets/fonts/fa/" FONT_ICON_FILE_NAME_FAS, fontSize*0.75, &icons_config, icons_ranges);
+	// check first and fall back to imgui built-in font
+	const char* textFont = "assets/fonts/Roboto/Roboto-Regular.ttf";
+	const char* iconFont = "assets/fonts/fa/" FONT_ICON_FILE_NAME_FAS;
+	if (std::filesystem::exists(textFont)) {
+		io.Fonts->AddFontFromFileTTF(textFont, fontSize);
+	} else {
+		m_logger->warn("Font not found: {}, using the ImGui default font", textFont);
+		io.Fonts->AddFontDefault();
+	}
+
+	if (std::filesystem::exists(iconFont)) {
+		io.Fonts->AddFontFromFileTTF(iconFont, fontSize*0.75, &icons_config, icons_ranges);
+	} else {
+		m_logger->warn("Icon font not found: {}, icons will not show", iconFont);
+	}
 	
 	ImGuiStyle& style = ImGui::GetStyle();
 	style.WindowMenuButtonPosition = ImGuiDir_None;

@@ -3,6 +3,8 @@
 #include "core/scene/Scene.h"
 #include "core/entities/Entity.h"
 #include "core/components/MComponent.h"
+#include "core/events/EventManager.h"
+#include "window/InputKeyCode.h"
 
 // Adding, removing and saving entities on a Scene, no GPU involved.
 
@@ -121,4 +123,20 @@ TEST_F(SceneEntityTest, SavedJsonHasSceneNameAndEntities)
 	nlohmann::json j = nlohmann::json::parse(in);
 	EXPECT_EQ(j["scene_name"], "test-scene");
 	EXPECT_EQ(j["entities"].size(), 2u);
+}
+
+// notes/ASSET_LOADING_BUGS.md #15: Ctrl+D with nothing selected read selectedEntities[0] from an empty vector
+TEST_F(SceneEntityTest, DuplicateShortcutWithNothingSelectedDoesNothing)
+{
+	scene.addEntity("Only");
+	flush();
+	scene.selectEntities({});
+	size_t before = scene.getEntitiesWith<TransformComponent>().size();
+
+	KeyPressedEvent control(KEY_LEFT_CONTROL);
+	KeyPressedEvent duplicate(KEY_D);
+	EventManager::getInstance().publish(control);
+	EventManager::getInstance().publish(duplicate);
+
+	EXPECT_EQ(scene.getEntitiesWith<TransformComponent>().size(), before);
 }

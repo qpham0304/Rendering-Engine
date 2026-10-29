@@ -56,6 +56,10 @@ public:
 	static const std::map<std::string, ComponentDestroyer>& getComponentDestroyer();
 
 private:
+	void _runHook(Entity entity, const std::string& componentName, const std::function<void()>& hook);
+	static std::string _describe(Entity entity);
+
+private:
 	entt::registry& m_registry;
 	EntityMap& m_entities;
 	Logger& m_logger;

@@ -75,20 +75,32 @@ void SpriteAnimator::onUpdate(float dt)
                 }
             }
 
-            auto textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
             auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
             auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
             auto materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
-            
-            sprite.uvScale = {1.0 / sprite.numCols, 1.0 / sprite.numRows};
-            int currentRow = sprite.frameIndex / sprite.numCols;   // row represents y while col represents x 
-            int currentCol = sprite.frameIndex % sprite.numCols;   // i.e pixel 1, 2 =  arr[2][1] NOT arr[1][2]
-            int flippedRow = (sprite.numRows - 1) - currentRow;    // uv offset sampling need to be flipped also
+
+            // the scene file, lua or the editor can leave these at 0, treat that as a single frame sheet
+            int numRows = std::max(sprite.numRows, 1);
+            int numCols = std::max(sprite.numCols, 1);
+
+            sprite.uvScale = {1.0 / numCols, 1.0 / numRows};
+            int currentRow = sprite.frameIndex / numCols;   // row represents y while col represents x
+            int currentCol = sprite.frameIndex % numCols;   // i.e pixel 1, 2 =  arr[2][1] NOT arr[1][2]
+            int flippedRow = (numRows - 1) - currentRow;    // uv offset sampling need to be flipped also
             sprite.uvOffset = {sprite.uvScale.x * currentCol, sprite.uvScale.y * flippedRow};
 
+            if (!entity.hasComponent<ModelComponent>()) {
+                return;
+            }
             ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
             Model* model = modelManager->getModel(modelComponent.modelID);
+            if (!model || model->meshIDs.empty()) {
+                return;
+            }
             Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+            if (!mesh) {
+                return;
+            }
             MaterialDesc material = materialManager->getMaterial(mesh->materialID);
             material.uv = sprite.uvOffset;
             material.uvScale = sprite.uvScale;

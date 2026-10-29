@@ -152,6 +152,7 @@ public:
 	virtual uint32_t loadTextureFromMemory(const void *data, size_t size, std::string_view cacheKey, uint32_t mipLevels, bool isDataTexture) override;
 	virtual uint32_t createTexture() override;
 	virtual uint32_t createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig);
+	uint32_t createTextureFromPixels(const void* pixels, uint32_t width, uint32_t height, VkFormat format, std::string_view cacheKey, bool isDataTexture);
 	virtual TextureVulkan* getTexture(uint32_t id) override;
 	virtual void* inspectTexture(uint32_t id) override;
 	virtual uint32_t getInspectorLayout();
@@ -164,7 +165,7 @@ public:
 	uint32_t getStorageImageBindlessSet();
 
 private:
-	void _loadTexture(
+	uint32_t _loadTexture(
 		std::string_view path,
 		uint32_t mipLevels,
 		bool isDataTexture,
@@ -172,6 +173,19 @@ private:
 		const void* data = nullptr,
 		size_t size = 0
 	);
+	uint32_t _uploadTexture(
+		const std::string& key,
+		uint32_t id,
+		const void* pixels,
+		int width,
+		int height,
+		VkFormat format,
+		uint32_t mipLevels,
+		bool isDataTexture
+	);
+	uint32_t _cacheFailedLoad(const std::string& key);
+	TextureVulkan* _textureOrMissing(uint32_t textureID);
+	void _createMissingTexture();
 
 	// the id of the raw texture, returned back to user the inspectable texture
 	void _createInspectorDescriptorBind();

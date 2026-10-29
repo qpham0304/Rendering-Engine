@@ -740,22 +740,26 @@ void ImGuiRightSidebarWidget::_spriteControl(const Entity& entity)
             ImGui::TableNextColumn(); ImGui::Text("frameIndex:");
             ImGui::TableNextColumn(); 
             ImGui::SetNextItemWidth(-FLT_MIN);
-            int maxFrames = (sprite.numRows * sprite.numCols) - 1;
-            if (ImGui::DragInt("##frameIndex", &sprite.frameIndex, 0.1f, 0, maxFrames)) {
-                int currentRow = sprite.frameIndex / sprite.numCols;   // row represents y while col represents x 
-                int currentCol = sprite.frameIndex % sprite.numCols;   // i.e pixel 1, 2 =  arr[2][1] NOT [arr1][2]
-                int flippedRow = (sprite.numRows - 1) - currentRow;    // uv offset sampling need to be flipped also
-                sprite.uvScale = {1.0 / sprite.numCols, 1.0 / sprite.numRows};
+            int numRows = std::max(sprite.numRows, 1);  // minimum of 1 column and row
+            int numCols = std::max(sprite.numCols, 1);
+            int maxFrames = (numRows * numCols) - 1;
+            if (ImGui::DragInt("##frameIndex", &sprite.frameIndex, 0.1f, 0, maxFrames) && entity.hasComponent<ModelComponent>()) {
+                int currentRow = sprite.frameIndex / numCols;   // row represents y while col represents x
+                int currentCol = sprite.frameIndex % numCols;   // i.e pixel 1, 2 =  arr[2][1] NOT [arr1][2]
+                int flippedRow = (numRows - 1) - currentRow;    // uv offset sampling need to be flipped also
+                sprite.uvScale = {1.0 / numCols, 1.0 / numRows};
                 sprite.uvOffset = {sprite.uvScale.x * currentCol, sprite.uvScale.y * flippedRow};
 
 
                 ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
                 Model* model = modelManager->getModel(modelComponent.modelID);
-                Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
-                MaterialDesc material = materialManager->getMaterial(mesh->materialID);
-                material.uv = sprite.uvOffset;
-                material.uvScale = sprite.uvScale;
-                materialManager->updateMaterial(mesh->materialID, material);
+                Mesh* mesh = (model && !model->meshIDs.empty()) ? meshManager->getMesh(model->meshIDs[0]) : nullptr;
+                if (mesh) {
+                    MaterialDesc material = materialManager->getMaterial(mesh->materialID);
+                    material.uv = sprite.uvOffset;
+                    material.uvScale = sprite.uvScale;
+                    materialManager->updateMaterial(mesh->materialID, material);
+                }
             }
 
             ImGui::TableNextRow();

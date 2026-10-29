@@ -88,11 +88,12 @@ void PhysicsManagerBox3D::onUpdate(const FrameTime& frameTime)
                 auto& collider = entity.getComponent<ColliderComponent>();
                 auto& transform = entity.getComponent<TransformComponent>();
 
-                if(collider.shapeID == 0) {
+                auto shape = m_shapeIDs.find(collider.shapeID);
+                if(shape == m_shapeIDs.end()) {
                     return;
                 }
 
-                b3ShapeId shapeId = m_shapeIDs.at(collider.shapeID);
+                b3ShapeId shapeId = shape->second;
                 b3BodyId bodyId = b3Shape_GetBody(shapeId);
         
                 b3Body_SetType(bodyId, b3_kinematicBody);
@@ -121,16 +122,20 @@ void PhysicsManagerBox3D::onFixedUpdate(float fixedDeltaTime)
     b3World_Step(m_worldId, fixedDeltaTime, subStepCount);
 
     Scene* scene = SceneManager::getInstance().getActiveScene();
+    if(!scene) {
+        return;
+    }
 
     auto func = std::function<void(Entity)>([&](Entity entity) -> void {
         auto& collider = entity.getComponent<ColliderComponent>();
         auto& transform = entity.getComponent<TransformComponent>();
 
-        if(collider.shapeID == 0) {
+        auto shape = m_shapeIDs.find(collider.shapeID);
+        if(shape == m_shapeIDs.end()) {
             return;
         }
 
-        b3ShapeId shapeId = m_shapeIDs.at(collider.shapeID);
+        b3ShapeId shapeId = shape->second;
         b3BodyId bodyId = b3Shape_GetBody(shapeId);
         b3BodyType bodyType = b3Body_GetType(bodyId);
         ColliderType colliderType = static_cast<ColliderType>(collider.colliderType);

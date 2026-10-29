@@ -13,6 +13,24 @@
 #include "window/AppWindow.h"
 #include "particle/ParticleContainer.h"
 #include "animation/AnimationManager.h"
+#include "logging/Logger.h"
+
+namespace {
+
+    Logger& engineLogger()
+    {
+        return ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
+    }
+
+    std::string describe(Entity entity)
+    {
+        if (entity.hasComponent<NameComponent>()) {
+            return "'" + entity.getComponent<NameComponent>().name + "'";
+        }
+        return "id " + std::to_string(entity.getID());
+    }
+
+}
 
 Entity::Entity(const entt::entity& entity, entt::registry& registry)
     : entity(entity), registry(&registry)
@@ -187,10 +205,15 @@ Entity::HookFunction Entity::_onSpriteComponentAdded()
             sprite.textureID = textureManager->loadTexture(sprite.path);
         }
 
-        if(sprite.textureID != 0) {
+        // a failed load is 0, still bind it so the sprite shows the missing texture
+        if((sprite.path != "None" || sprite.textureID != 0) && entity.hasComponent<ModelComponent>()) {
             ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
             Model* model = modelManager->getModel(modelComponent.modelID);
-            Mesh* mesh = meshManager->getMesh(model->meshIDs[0]);
+            Mesh* mesh = (model && !model->meshIDs.empty()) ? meshManager->getMesh(model->meshIDs[0]) : nullptr;
+            if(!mesh) {
+                engineLogger().warn("Sprite on entity {} has no mesh to draw on", describe(entity));
+                return;
+            }
             MaterialDesc material = materialManager->getMaterial(mesh->materialID);
             material.albedoIDs = { sprite.textureID };
             materialManager->updateMaterial(mesh->materialID, material);
@@ -251,12 +274,15 @@ Entity::HookFunction Entity::_onColliderComponentAdded()
         auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
 
         if(!entity.hasComponent<ColliderComponent>()){
-            printf("critical collider not found");
+            engineLogger().error("Collider hook ran on entity {} without a ColliderComponent", describe(entity));
             return;
         }
 
+        // shapeID is saved with the scene, the old value means nothing until a body is created below
+        entity.getComponent<ColliderComponent>().shapeID = 0;
+
         if(!entity.hasComponent<ModelComponent>()){
-            printf("critical ModelComponent not found");
+            engineLogger().warn("Collider on entity {} skipped: it has no ModelComponent (or its model failed to load)", describe(entity));
             return;
         }
 
@@ -265,7 +291,15 @@ Entity::HookFunction Entity::_onColliderComponentAdded()
 
         ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
         Model* model = modelManager->getModel(modelComponent.modelID);
+        if (!model) {
+            engineLogger().warn("Collider on entity {} skipped: model {} is not loaded", describe(entity), modelComponent.path);
+            return;
+        }
         Mesh combinedMesh = meshManager->combineMeshes(model->meshIDs);
+        if (combinedMesh.vertices.empty()) {
+            engineLogger().warn("Collider on entity {} skipped: model {} has no vertices", describe(entity), modelComponent.path);
+            return;
+        }
         Mesh* mesh = &combinedMesh;
 
         auto shapeID = physicsManager->createBoxBody(entity, *mesh, transformComponent.translateVec, transformComponent.scaleVec, colliderComponent.colliderType);
@@ -279,7 +313,10 @@ Entity::HookFunction Entity::_onColliderComponentRemoved()
     HookFunction function = [](Entity entity)
     {
         auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
-        physicsManager->destroy(entity.getComponent<ColliderComponent>().shapeID);
+        uint32_t shapeID = entity.getComponent<ColliderComponent>().shapeID;
+        if (shapeID != 0) {
+            physicsManager->destroy(shapeID);
+        }
     };
     return function;
 }

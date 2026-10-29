@@ -236,7 +236,7 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 		float dragY = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0f).y;
 		bool clicked = ImGui::IsMouseReleased(ImGuiMouseButton_Left) && glm::length(glm::vec2(dragX, dragY)) < clickDragThreshold;
 		if(clicked && !guiManager->isGuizmoFocus()) {
-			if(hoveredID != 0) {
+			if(hoveredID != 0 && scene->hasEntity(hoveredID)) {
 				scene->selectEntities({ scene->getEntity(hoveredID) });
 			} else {
 				scene->selectEntities({});
@@ -265,7 +265,7 @@ void ApplicationRendererVulkan::renderGui(void* commandBuffer)
 			hoveredIsSelected = hoveredIsSelected || entity.getID() == hoveredID;
 		}
 
-		if(hoveredID != 0 && !hoveredIsSelected) {
+		if(hoveredID != 0 && !hoveredIsSelected && scene->hasEntity(hoveredID)) {
 			outlineCollider(scene->getEntity(hoveredID), false);
 		}
 	}

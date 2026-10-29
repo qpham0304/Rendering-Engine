@@ -37,13 +37,13 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 		return false;
 	}
 
-	fallback_albedoID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/albedo.png", 1, false);
-	fallback_normalID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/normal.png", 1, true);
+	fallback_albedoID = _loadFallbackTexture("assets/Textures/default/32x32/albedo.png", false, { 255, 255, 255, 255 });
+	fallback_normalID = _loadFallbackTexture("assets/Textures/default/32x32/normal.png", true, { 128, 128, 255, 255 });
 	// fallback_metallicID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/metallic.png", 1, true);
-	fallback_metallicID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/roughness-2.png", 1, true);
-	fallback_roughnessID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/roughness.png", 1, true);
-	fallback_aoID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/ao.png", 1, true);
-	fallback_emissiveID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/emissive.png", 1, false);
+	fallback_metallicID = _loadFallbackTexture("assets/Textures/default/32x32/roughness-2.png", true, { 0, 0, 0, 255 });
+	fallback_roughnessID = _loadFallbackTexture("assets/Textures/default/32x32/roughness.png", true, { 255, 255, 255, 255 });
+	fallback_aoID = _loadFallbackTexture("assets/Textures/default/32x32/ao.png", true, { 255, 255, 255, 255 });
+	fallback_emissiveID = _loadFallbackTexture("assets/Textures/default/32x32/emissive.png", false, { 0, 0, 0, 255 });
 
 	_createMaterialDescriptorSet();
 	
@@ -65,6 +65,18 @@ void MaterialManagerVulkan::onUpdate(const FrameTime& frameTime)
 	//TODO: conditional update would be better in case of thousands materials
 	_buildMaterialCache();
 	_updateGPUBuffer();
+}
+
+uint32_t MaterialManagerVulkan::_loadFallbackTexture(const std::string& path, bool isDataTexture, std::array<uint8_t, 4> color)
+{
+	uint32_t id = textureManagerVulkan->loadTexture(path, 1, isDataTexture);
+	if (id != 0) {
+		return id;
+	}
+
+	// a magenta checker as the default normal or roughness map would break every material, use a flat color
+	VkFormat format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+	return textureManagerVulkan->createTextureFromPixels(color.data(), 1, 1, format, "$fallback$" + path, isDataTexture);
 }
 
 bool MaterialManagerVulkan::onClose()

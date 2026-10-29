@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "TestHelpers.h"
+#include "SmokeTestSupport.h"
 #include <core/Engine.h>
 #include <core/layers/Layer.h>
 #include <core/events/EventManager.h>
@@ -99,6 +100,8 @@ TEST(EngineSmoke, BootLoadSceneRunFramesShutdown)
 int main(int argc, char** argv)
 {
 	TestHelpers::disableCrashDialogs();
+	SmokeTest::disableErrorDialogs();
 	::testing::InitGoogleTest(&argc, argv);
+	GTEST_FLAG_SET(death_test_style, "threadsafe");	// AssetFailureSmokeTests boot the engine in child processes
 	return RUN_ALL_TESTS();
 }

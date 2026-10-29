@@ -95,7 +95,10 @@ TEST_F(SceneLoadingTest, WrongValueTypeSkipsThatComponentOnly)
 
 	ASSERT_TRUE(scene.loadScene(path));
 	Entity a = findByName("A");
-	EXPECT_FALSE(a.hasComponent<TransformComponent>());
+
+	// the bad transform is dropped and replaced by a default one
+	ASSERT_TRUE(a.hasComponent<TransformComponent>());
+	EXPECT_EQ(a.getComponent<TransformComponent>().translateVec, glm::vec3(0.0f));
 }
 
 TEST_F(SceneLoadingTest, MissingPrefabStillCreatesEntity)
@@ -153,11 +156,9 @@ TEST_F(SceneLoadingTest, ChildrenGetParentRelationship)
 	EXPECT_EQ(child.getComponent<RelationshipComponent>().parent, static_cast<entt::entity>(parent));
 }
 
+// notes/ASSET_LOADING_BUGS.md #5: collider and camera hooks asserted on entities without a transform
 TEST_F(SceneLoadingTest, EntityWithoutTransformGetsDefaultOne)
 {
-	GTEST_SKIP() << "Known bug #5 in notes/ASSET_LOADING_BUGS.md: hooks assume a TransformComponent exists. "
-					"Remove this skip once EntitySerializer::deserializeEntity adds a default one.";
-
 	std::string path = temp.write("notransform.json", R"({
 		"scene_name": "x",
 		"entities": [ { "components": { "NameComponent": { "name": "A" } } } ]
@@ -165,4 +166,30 @@ TEST_F(SceneLoadingTest, EntityWithoutTransformGetsDefaultOne)
 
 	ASSERT_TRUE(scene.loadScene(path));
 	EXPECT_TRUE(findByName("A").hasComponent<TransformComponent>());
+}
+
+TEST_F(SceneLoadingTest, EntityWithNoComponentsGetsDefaultTransform)
+{
+	std::string path = temp.write("empty-entity.json", R"({ "scene_name": "x", "entities": [ {} ] })");
+
+	ASSERT_TRUE(scene.loadScene(path));
+	EXPECT_EQ(scene.getEntitiesWith<TransformComponent>().size(), 1u);
+}
+
+// a load hook that throws (here: the script hook, no ScriptManager is registered in unit tests)
+// is logged and skipped, the entity and the rest of the scene still load
+TEST_F(SceneLoadingTest, ThrowingLoadHookDoesNotStopSceneLoad)
+{
+	std::string path = temp.write("throwing-hook.json", R"({
+		"scene_name": "x",
+		"entities": [
+			{ "components": { "NameComponent": { "name": "Scripted" }, "ScriptComponent": { "path": "assets/scripts/Missing.lua" } } },
+			{ "components": { "NameComponent": { "name": "Plain" } } }
+		]
+	})");
+
+	ASSERT_TRUE(scene.loadScene(path));
+	EXPECT_EQ(entityCount(), 2u);
+	EXPECT_TRUE(findByName("Scripted").hasComponent<ScriptComponent>());
+	EXPECT_TRUE(findByName("Plain").hasComponent<TransformComponent>());
 }

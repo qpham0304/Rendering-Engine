@@ -36,6 +36,14 @@ std::vector<char> VulkanUtils::readFile(const std::string& filename)
 	}
 
 	size_t fileSize = (size_t)file.tellg();
+
+	// spir-v is a list of 32 bit words, an empty or truncated file crashes inside the driver instead of failing
+	if (fileSize == 0 || fileSize % sizeof(uint32_t) != 0) {
+		throw std::runtime_error(
+			std::string("Device::readFile: shader file is empty or truncated! ") + filename
+		);
+	}
+
 	std::vector<char> buffer(fileSize);
 
 	file.seekg(0);

@@ -42,6 +42,11 @@ public:
 	// the returned id is the id to the inspectable texture i.e: descriptorset for vulkan
 	virtual void* inspectTexture(uint32_t id) = 0;
 
+	// failed paths stay cached as id 0 until this, so a fixed file loads again on scene reload
+	void clearFailedLoads() {
+		std::erase_if(m_textureData, [](const auto& entry) { return entry.second == 0; });
+	}
+
 protected:
 	// these are internal managed texture by the concrete classes
 	std::unordered_map<uint32_t, std::shared_ptr<Texture>> m_textures;

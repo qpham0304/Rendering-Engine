@@ -43,12 +43,22 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 
 	hdrImageID = textureManagerVulkan->loadTexture(
 		loadedEnvironmentMap,
-		1, 
+		1,
 		false
 	);
 
-	hdrImage = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(hdrImageID));
-	assert(hdrImage && "Failed to cast texture to TextureVulkan");
+	// the missing checker is shared, the transition below would discard it, so use a fallback sky color
+	if(hdrImageID == 0) {
+		m_logger->error("Environment map {} failed to load, using a flat sky color", loadedEnvironmentMap);
+		const float skyColor[4] = { 0.5f, 0.6f, 0.75f, 1.0f };
+		hdrImageID = textureManagerVulkan->createTextureFromPixels(skyColor, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, "$fallback$environment", false);
+	}
+
+	hdrImage = textureManagerVulkan->getTexture(hdrImageID);
+	if(!hdrImage) {
+		m_logger->critical("ImageBasedRendererVulkan: no environment texture");
+		return false;
+	}
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
     hdrImage->transitImage(cmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1);
@@ -325,6 +335,12 @@ void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
 		1, 
 		false
 	);
+
+	if(hdrImageID_temp == 0) {
+		m_logger->error("Environment map {} failed to load, keeping the current one", path);
+		hdrImage_temp = nullptr;
+		return;
+	}
 
 	hdrImage_temp = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(hdrImageID_temp));
 

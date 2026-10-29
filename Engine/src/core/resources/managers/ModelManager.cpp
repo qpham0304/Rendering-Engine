@@ -133,7 +133,8 @@ void ModelManager::destroy(uint32_t id)
 {
     WriteLock lock = _lockWrite();
     if(m_models.find(id) == m_models.end()) {
-        throw std::runtime_error("Cannot find model with given ID");
+        m_logger->warn("Model not found id: {}", id);
+        return;
     }
     m_models.erase(id); //TODO: might want queue to remove next frame if something goes wrong
 }
@@ -166,11 +167,30 @@ uint32_t ModelManager::loadModel(std::string_view path)
         return addModel(model);
     }
 
-    if(!_loadModel(path)) {
+    std::string key(path);
+    if(m_failedPaths.contains(key)) {
+        return 0;
+    }
+
+    bool loaded = false;
+    try {
+        loaded = _loadModel(key);
+    }
+    catch (const std::exception& e) {
+        m_logger->error("Model Loading failed: {}: {}", key, e.what());
+    }
+
+    if(!loaded) {
+        m_failedPaths.insert(key);
         return 0;
     }
 
     return _assignID();
+}
+
+void ModelManager::clearFailedLoads()
+{
+    m_failedPaths.clear();
 }
 
 std::vector<std::string> ModelManager::listPrimitives()
@@ -219,6 +239,7 @@ bool ModelManager::_loadModel(std::string_view path)
 
     Assimp::Importer import;
     unsigned int flags = aiProcess_Triangulate
+        | aiProcess_SortByPType
         | aiProcess_GenSmoothNormals
         | aiProcess_GlobalScale
         | aiProcess_CalcTangentSpace
@@ -232,7 +253,7 @@ bool ModelManager::_loadModel(std::string_view path)
     
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::string error = import.GetErrorString();
-        m_logger->error("Model Loading failed: ERROR::ASSIMP::{}", error);
+        m_logger->error("Model Loading failed: {}: ERROR::ASSIMP::{}", path.data(), error);
         return false;
     }
 
@@ -246,8 +267,13 @@ bool ModelManager::_loadModel(std::string_view path)
     std::vector<uint32_t> meshes = {};
     std::unordered_map<uint32_t, uint32_t> meshCache; //assimp mesh index to engine meshID
     auto skeleton = skeletonManager->getSkeleton(skeletonID);
-    _processNode(scene->mRootNode, scene, meshes, meshCache, directory, skeletonID, skeleton->rootIndex);
-    
+    _processNode(scene->mRootNode, scene, meshes, meshCache, directory, skeletonID, skeleton ? skeleton->rootIndex : 0);
+
+    if(meshes.empty()) {
+        m_logger->error("Model Loading failed: {} has no triangle meshes", path.data());
+        return false;
+    }
+
     m_modelData[path.data()] = m_ids;
     m_models[m_ids] = std::make_shared<Model>();
     m_models[m_ids]->path = path.data();
@@ -284,10 +310,12 @@ void ModelManager::_processNode(aiNode* node,
             aiMesh* mesh = scene->mMeshes[aiMeshIndex];
             meshID = _processMesh(mesh, scene, directory, skeletonID);
             meshCache[aiMeshIndex] = meshID;
-            meshes.push_back(meshID);
+            if(meshID != 0) {
+                meshes.push_back(meshID);
+            }
         }
 
-        if(skeleton) {
+        if(meshID != 0 && skeleton) {
             skeleton->nodes[skeletonNodeIndex].meshIDs.push_back(meshID);
         }
     }
@@ -300,10 +328,19 @@ void ModelManager::_processNode(aiNode* node,
 
 uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::string_view directory, uint32_t skeletonID)
 {
+    // the renderer only draws triangles, SortByPType splits lines and points into their own meshes
+    if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE || mesh->mNumVertices == 0) {
+        m_logger->warn("Skipping mesh '{}' in {}: not a triangle mesh", mesh->mName.C_Str(), directory);
+        return 0;
+    }
+
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     std::vector<uint32_t> materialIndices;
     materialIndices.reserve(mesh->mNumFaces);
+
+    const bool hasNormals = mesh->HasNormals();
+    const bool hasTangents = mesh->HasTangentsAndBitangents();
 
     // process vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
@@ -312,7 +349,9 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
 
         // process vertex positions, normals and texture coordinates
         vertex.positions = AssimpGLMHelpers::toGlmVec3(mesh->mVertices[i]);
-        vertex.normal = AssimpGLMHelpers::toGlmVec3(mesh->mNormals[i]);
+        if (hasNormals) {
+            vertex.normal = AssimpGLMHelpers::toGlmVec3(mesh->mNormals[i]);
+        }
 
         // does the mesh contain texture coordinates?
         // a vertex can contain up to 8 different texture coordinates.
@@ -322,12 +361,14 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         if (mesh->mTextureCoords[0]) {
             vertex.texCoords.x = mesh->mTextureCoords[0][i].x;
             vertex.texCoords.y = mesh->mTextureCoords[0][i].y;
-            vertex.tangent.x = mesh->mTangents[i].x;
-            vertex.tangent.y = mesh->mTangents[i].y;
-            vertex.tangent.z = mesh->mTangents[i].z;
-            vertex.bitangent.x = mesh->mBitangents[i].x;
-            vertex.bitangent.y = mesh->mBitangents[i].y;
-            vertex.bitangent.z = mesh->mBitangents[i].z;
+            if (hasTangents) {
+                vertex.tangent.x = mesh->mTangents[i].x;
+                vertex.tangent.y = mesh->mTangents[i].y;
+                vertex.tangent.z = mesh->mTangents[i].z;
+                vertex.bitangent.x = mesh->mBitangents[i].x;
+                vertex.bitangent.y = mesh->mBitangents[i].y;
+                vertex.bitangent.z = mesh->mBitangents[i].z;
+            }
         } else {
             vertex.texCoords = glm::vec2(0.0f, 0.0f);
         }
@@ -345,7 +386,7 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     materialDesc.ao        = 1.0f;
     materialDesc.emissive  = 0.0f;
 
-    if (mesh->mMaterialIndex >= 0) {
+    if (mesh->mMaterialIndex < scene->mNumMaterials) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
         
         materialDesc.albedoIDs = _loadMaterial(material, scene, aiTextureType_BASE_COLOR, "albedoMap", directory);
@@ -422,16 +463,13 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, const aiScene
         std::string texturePathStr = str.C_Str();
 
         uint32_t textureID = 0;
-        size_t asteriskPos = texturePathStr.find('*');
+        const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(str.C_Str());
 
-        if (asteriskPos != std::string::npos) {
-            int textureIndex = std::stoi(texturePathStr.substr(asteriskPos + 1));
-            const aiTexture* embeddedTexture = scene->mTextures[textureIndex];
-
+        if (embeddedTexture) {
             if (embeddedTexture->mHeight == 0) {
-                // create a unique cache key for compressed memory bytes (PNG/JPG) 
+                // create a unique cache key for compressed memory bytes (PNG/JPG)
                 std::string cacheKey = std::string(directory) + "_" + texturePathStr; // e.g., "assets/DamagedHelmet_/*0"
-                
+
                 textureID = textureManager->loadTextureFromMemory(
                     embeddedTexture->pcData,
                     embeddedTexture->mWidth, // Byte size when mHeight == 0
@@ -440,13 +478,22 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, const aiScene
                     isData
                 );
             } else {
-                throw std::runtime_error("Uncompressed embedded textures (mHeight > 0) not yet supported.");
+                m_logger->warn("Skipping {} {} in {}: uncompressed embedded textures are not supported yet", typeName, texturePathStr, directory);
+                continue;
             }
+        } else if (!texturePathStr.empty() && texturePathStr[0] == '*') {
+            m_logger->warn("Skipping {} {} in {}: no embedded texture at that index", typeName, texturePathStr, directory);
+            continue;
         } else {
-            std::string path = std::string(directory) + '/' + std::string(str.C_Str());
-            textureID = textureManager->loadTexture(path.data(), defaultMipLevel, isData);
+            std::string path = std::string(directory) + '/' + texturePathStr;
+            textureID = textureManager->loadTexture(path, defaultMipLevel, isData);
         }
-        
+
+        // a checker normal or roughness map breaks the lighting, let the material fall back to its flat default
+        if (isData && textureID == 0) {
+            continue;
+        }
+
         textureIDs.push_back(textureID);
     }
 
@@ -520,8 +567,11 @@ void ModelManager::_extractBoneWeightForVertices(uint32_t skeletonID, std::vecto
             int numWeights = mesh->mBones[boneIndex]->mNumWeights;
 
             for (int i = 0; i < numWeights; ++i) {
-                int vertexId = weights[i].mVertexId;
+                unsigned int vertexId = weights[i].mVertexId;
                 float weight = weights[i].mWeight;
+                if (vertexId >= vertices.size()) {
+                    continue;
+                }
 
                 for(int j = 0; j < MAX_BONE_INFLUENCE; j++) {
                     Vertex& vertex = vertices[vertexId];

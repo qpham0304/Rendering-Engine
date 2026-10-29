@@ -197,6 +197,10 @@ entt::entity EntitySerializer::deserializeEntity(const nlohmann::json& data, ent
 	Entity entity(handle, m_registry);
 	m_entities[entt::to_integral(handle)] = entity;
 
+	// default components like scene's addentity, the json values below replace these
+	entity.addComponent<TransformComponent>();
+	entity.addComponent<NameComponent>("Entity");
+
 	// prefab instance: prefab json with the instance overrides patched on top
 	nlohmann::json merged = data;
 	if (data.contains("prefab_ref") && data["prefab_ref"].is_string()) {
@@ -232,13 +236,13 @@ entt::entity EntitySerializer::deserializeEntity(const nlohmann::json& data, ent
 		for (const auto& name : hookExecutionPriority) {
 			auto it = hooks.find(name);
 			if (it != hooks.end()) {
-				it->second();
+				_runHook(entity, name, it->second);
 				hooks.erase(it);	// prevent double call
 			}
 		}
 
 		for (auto& [name, hook] : hooks) {
-			hook();
+			_runHook(entity, name, hook);
 		}
 	}
 
@@ -262,6 +266,24 @@ entt::entity EntitySerializer::deserializeEntity(const nlohmann::json& data, ent
 	}
 
 	return handle;
+}
+
+void EntitySerializer::_runHook(Entity entity, const std::string& componentName, const std::function<void()>& hook)
+{
+	try {
+		hook();
+	}
+	catch (const std::exception& e) {
+		m_logger.error("Loading {} on entity {} failed: {}", componentName, _describe(entity), e.what());
+	}
+}
+
+std::string EntitySerializer::_describe(Entity entity)
+{
+	if (entity.hasComponent<NameComponent>()) {
+		return "'" + entity.getComponent<NameComponent>().name + "'";
+	}
+	return "id " + std::to_string(entity.getID());
 }
 
 nlohmann::json EntitySerializer::diffJson(const nlohmann::json& prefab, const nlohmann::json& current)
