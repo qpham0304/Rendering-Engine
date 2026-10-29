@@ -43,12 +43,22 @@ bool ImageBasedRendererVulkan::init(WindowConfig config)
 
 	hdrImageID = textureManagerVulkan->loadTexture(
 		loadedEnvironmentMap,
-		1, 
+		1,
 		false
 	);
 
-	hdrImage = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(hdrImageID));
-	assert(hdrImage && "Failed to cast texture to TextureVulkan");
+	// the missing checker is shared, the transition below would discard it, so use a fallback sky color
+	if(hdrImageID == 0) {
+		m_logger->error("Environment map {} failed to load, using a flat sky color", loadedEnvironmentMap);
+		const float skyColor[4] = { 0.5f, 0.6f, 0.75f, 1.0f };
+		hdrImageID = textureManagerVulkan->createTextureFromPixels(skyColor, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, "$fallback$environment", false);
+	}
+
+	hdrImage = textureManagerVulkan->getTexture(hdrImageID);
+	if(!hdrImage) {
+		m_logger->critical("ImageBasedRendererVulkan: no environment texture");
+		return false;
+	}
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
     hdrImage->transitImage(cmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1);
@@ -326,6 +336,12 @@ void ImageBasedRendererVulkan::loadTexture(std::string_view path) {
 		false
 	);
 
+	if(hdrImageID_temp == 0) {
+		m_logger->error("Environment map {} failed to load, keeping the current one", path);
+		hdrImage_temp = nullptr;
+		return;
+	}
+
 	hdrImage_temp = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(hdrImageID_temp));
 
 	if(hdrImage_temp) {
@@ -522,55 +538,14 @@ void ImageBasedRendererVulkan::_createDescriptorSetGlobalSum() {
 }
 
 void ImageBasedRendererVulkan::_createResourceLUT() {
-	uint32_t textureID = textureManagerVulkan->createTexture();
-	brdfLUT = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(textureID));
-
-	assert(brdfLUT && "failed to cast texture into vulkan texture");
-
-	TextureManagerVulkan::createImage(
-		512, 
-		512, 
-		VK_FORMAT_R16G16B16A16_SFLOAT, 
-		VK_IMAGE_TILING_OPTIMAL, 
-		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-		brdfLUT->textureImage, 
-		brdfLUT->textureImageMemory, 
-		1, 
-		renderDeviceVulkan->device
-	);
-
-	TextureManagerVulkan::createImageView(
-		brdfLUT->textureImage, 
-		brdfLUT->textureImageView, 
-		VK_FORMAT_R16G16B16A16_SFLOAT, 
-		VK_IMAGE_ASPECT_COLOR_BIT, 
-		1, 
-		renderDeviceVulkan->device
-	);
-
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.anisotropyEnable = VK_FALSE;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
-
-	TextureManagerVulkan::createTextureSampler(
-		brdfLUT->textureSampler,
-		renderDeviceVulkan->device,
-		samplerInfo
-	);
+	TextureConfig imageConfig {
+		.width = 512,
+		.height = 512,
+		.format = VK_FORMAT_R16G16B16A16_SFLOAT,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+	};
+	uint32_t textureID = textureManagerVulkan->createTexture(imageConfig, TextureSamplerConfig{});
+	brdfLUT = textureManagerVulkan->getTexture(textureID);
 
 	lutDescriptorLayoutID = descriptorManagerVulkan->createLayout({
 		{ 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr }
@@ -606,73 +581,19 @@ void ImageBasedRendererVulkan::_createResourceLUT() {
 }
 
 void ImageBasedRendererVulkan::_createResourcePrefilteredMap() {
-	uint32_t textureID = textureManagerVulkan->createTexture();
-	prefilterMap = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(textureID));
-
-	assert(prefilterMap && "failed to cast texture into vulkan texture");
-
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(mapSize))) + 1;
 
-    // auto createTexture = [&] (TextureVulkan*& texture, uint32_t w, uint32_t h, VkFormat format) {
-    //     TextureSamplerConfig samplerConfig = { VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_MIPMAP_MODE_LINEAR };
-    //     TextureConfig imageConfig { .width = w, .height = h, .format = format};
-
-    //     uint32_t id = textureManagerVulkan->createTexture(imageConfig, samplerConfig);
-    //     texture = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
-    // };
-
-	// createTexture(prefilterMap, mapSize, mapSize, VK_FORMAT_R16G16B16A16_SFLOAT);
-
-	TextureManagerVulkan::createImage(
-		mapSize, 
-		mapSize, 
-		VK_FORMAT_R16G16B16A16_SFLOAT, 
-		VK_IMAGE_TILING_OPTIMAL, 
-		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-		prefilterMap->textureImage, 
-		prefilterMap->textureImageMemory,
-		mipLevels, 
-		6,
-		VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT,
-		renderDeviceVulkan->device
-	);
-
-	
-	TextureManagerVulkan::createImageView(
-		prefilterMap->textureImage, 
-		prefilterMap->textureImageView, 
-		VK_FORMAT_R16G16B16A16_SFLOAT, 
-		VK_IMAGE_ASPECT_COLOR_BIT, 
-		mipLevels,
-		0,
-		6,
-		VK_IMAGE_VIEW_TYPE_CUBE,
-		renderDeviceVulkan->device
-	);
-
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.anisotropyEnable = VK_FALSE;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = static_cast<float>(mipLevels);
-
-	TextureManagerVulkan::createTextureSampler(
-		prefilterMap->textureSampler,
-		renderDeviceVulkan->device,
-		samplerInfo
-	);
+	TextureConfig imageConfig {
+		.width = mapSize,
+		.height = mapSize,
+		.format = VK_FORMAT_R16G16B16A16_SFLOAT,
+		.mipLevels = mipLevels,
+		.layerCount = 6,
+		.viewType = VK_IMAGE_VIEW_TYPE_CUBE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+	};
+	uint32_t textureID = textureManagerVulkan->createTexture(imageConfig, TextureSamplerConfig{});
+	prefilterMap = textureManagerVulkan->getTexture(textureID);
 
 		
 	prefilterMipViews.resize(mipLevels);

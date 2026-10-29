@@ -126,13 +126,21 @@ void Engine::init()
 	engineLogger->setLevel(LogLevel::Debug);
 // #endif
 	
-	for (Service*& service : services) {
-		if (!service->init(windowConfig)) {
-			engineLogger->error("Service Initilize failed: {}", service->getServiceName());
+	try {
+		for (Service*& service : services) {
+			if (!service->init(windowConfig)) {
+				engineLogger->error("Service Initilize failed: {}", service->getServiceName());
+			}
+			else {
+				engineLogger->debug("Initilize Service: {}", service->getServiceName());
+			}
+			initializedServices++;
 		}
-		else {
-			engineLogger->debug("Initilize Service: {}", service->getServiceName());
-		}
+	}
+	catch (const std::exception& e) {
+		engineLogger->critical("Engine init failed in {}: {}", services[initializedServices]->getServiceName(), e.what());
+		close();
+		throw;
 	}
 	isInitialized = true;
 }
@@ -157,6 +165,17 @@ void Engine::start()
 }
 
 void Engine::run() {
+	try {
+		_runLoop();
+	}
+	catch (const std::exception& e) {
+		engineLogger->critical("Engine stopped by an unhandled exception: {}", e.what());
+		close();
+		throw;
+	}
+}
+
+void Engine::_runLoop() {
 	const int maxFixedSteps = 5;
 	const double maxFrameTime = 0.25;
 	const double fixedDeltaTime = 1.0 / windowConfig.targetUpdateFPS;
@@ -235,7 +254,9 @@ void Engine::run() {
 
 void Engine::close()
 {
-	for (Service*& service : std::views::reverse(services)) {
+	// only services whose init finished, in reverse, and only once
+	while (initializedServices > 0) {
+		Service* service = services[--initializedServices];
 		if (!service->onClose()) {
 			engineLogger->error("Service Close failed: {}", service->getServiceName());
 		}
@@ -243,4 +264,5 @@ void Engine::close()
 			engineLogger->debug("Closing Service: {}", service->getServiceName());
 		}
 	}
+	isInitialized = false;
 }

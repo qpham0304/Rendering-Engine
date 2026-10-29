@@ -65,17 +65,6 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
 	auto materialManagerVulkan = static_cast<MaterialManagerVulkan*>(materialManager);
 	materialsAddress = materialManagerVulkan->getMaterialAddress();
 
-    m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::ModelLoadEvent, [this](Event& event) {
-        ModelLoadEvent& e = static_cast<ModelLoadEvent&>(event);
-        renderDeviceVulkan->waitIdle();
-        // m_rtBuilder.destroy();
-        m_tlasInitialized = false;
-        _createAccelStructure();
-        _createDescriptor();
-        // _createPipeline();
-        _createShaderBindingTable();
-    }));
-
     m_eventSubscriptions.push_back(EventManager::getInstance().subscribe(EventType::KeyPressed, [this](Event& event) {
 		KeyPressedEvent& keyPressedEvent = static_cast<KeyPressedEvent&>(event);
 		if (keyPressedEvent.keyCode == KEY_2) {
@@ -641,19 +630,15 @@ void RayTraceRendererVulkan::updateTlas() {
 
     _populateData(tlas);
 
+    // an empty scene, mid reload for example, keeps the last tlas instead of building a zero sized one
+    if(tlas.empty()) {
+        return;
+    }
+
     m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR, m_tlasInitialized, false);
-    
 
-	VkWriteDescriptorSetAccelerationStructureKHR descASInfo{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
-	descASInfo.accelerationStructureCount = 1;
-	VkAccelerationStructureKHR tlasHandle = m_rtBuilder.getTlas()->getAccelStr();
-	descASInfo.pAccelerationStructures = &tlasHandle;
-
-	uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-	auto rayTraceSet = descriptorManagerVulkan->getDescriptorSet(raytraceSetID)[currentFrame];
-	std::vector<VkWriteDescriptorSet> writes{};
-	descriptorManagerVulkan->writeAccelStruct(&writes, rayTraceSet, 0, rtBindings, descASInfo);
-	descriptorManagerVulkan->updateDescriptorSets(&writes);
+    // the tlas is recreated when the instance count changes, both the ray trace and post process sets hold it
+	_updateDescriptor(renderDeviceVulkan->getCurrentFrameIndex());
 }
 #pragma endregion setup
 

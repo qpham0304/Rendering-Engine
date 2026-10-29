@@ -29,8 +29,10 @@ void EditorLayer::renderGuizmo()
 	std::vector<Entity> selectedEntities = scene->getSelectedEntities();
 
 	if (!selectedEntities.empty()) {
-		auto& transformComponent = selectedEntities[0].getComponent<TransformComponent>();
-		guiController.renderGuizmo(transformComponent);
+		Entity entity = selectedEntities[0];
+		auto& transformComponent = entity.getComponent<TransformComponent>();
+		glm::mat4 parentWorld = entity.hasParent() ? entity.getParent().getComponent<TransformComponent>().getModelMatrix() : glm::mat4(1.0f);
+		guiController.renderGuizmo(transformComponent, parentWorld);
 	}
 }
 

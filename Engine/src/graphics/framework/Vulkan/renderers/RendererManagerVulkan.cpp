@@ -126,8 +126,21 @@ bool RendererManagerVulkan::init(WindowConfig config)
         m_graphicsSettings.loadSettings(GraphicsSettingsSerializer::DefaultPath);
     }
 
-    for(auto& [name, renderer] : m_renderers) {
-        renderer->init(config);
+    // a failed renderer (missing shader) stops the engine, close the ones already up so their gpu memory is released first
+    size_t initializedRenderers = 0;
+    try {
+        for(auto& [name, renderer] : m_renderers) {
+            renderer->init(config);
+            initializedRenderers++;
+        }
+    }
+    catch (const std::exception& e) {
+        m_logger->critical("Renderer {} failed to init: {}", std::get<0>(m_renderers[initializedRenderers]), e.what());
+        renderDeviceVulkan->waitIdle();
+        while (initializedRenderers > 0) {
+            std::get<1>(m_renderers[--initializedRenderers])->onClose();
+        }
+        throw;
     }
 
 
@@ -402,7 +415,7 @@ void RendererManagerVulkan::collectLights()
 
         Common::PointLight pointLight{};
         pointLight.color = light.color;
-        pointLight.position = glm::vec4(transform.translateVec, 1.0f);
+        pointLight.position = glm::vec4(glm::vec3(transform.getModelMatrix()[3]), 1.0f);
         pointLight.intensity = light.intensity * transform.scaleVec.x;
         m_lights.push_back(pointLight);
     });

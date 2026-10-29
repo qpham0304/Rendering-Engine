@@ -24,7 +24,6 @@ public:
 
 	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels = 1, bool isDataTexture = false) = 0;
 	virtual uint32_t loadTextureFromMemory(const void *data, size_t size, std::string_view cacheKey, uint32_t mipLevels, bool isDataTexture) = 0;
-	virtual uint32_t createTexture() = 0;
 	virtual Texture* getTexture(uint32_t id) {	//TODO: ideally remove raw pointer
 		if (m_textures.find(id) == m_textures.end()) {
 			return nullptr;
@@ -41,6 +40,11 @@ public:
 	// the input id is the id of raw texture managed by the conrete classes
 	// the returned id is the id to the inspectable texture i.e: descriptorset for vulkan
 	virtual void* inspectTexture(uint32_t id) = 0;
+
+	// failed paths stay cached as id 0 until this, so a fixed file loads again on scene reload
+	void clearFailedLoads() {
+		std::erase_if(m_textureData, [](const auto& entry) { return entry.second == 0; });
+	}
 
 protected:
 	// these are internal managed texture by the concrete classes

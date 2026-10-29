@@ -30,6 +30,7 @@ public:
 protected:
 	void _createResources();
 	void _createPipelines();
+	void _createDescriptorLayout();
 	void _createDescriptors();
 	void _updateDescriptor(uint32_t index);
 	void _recreateResources();

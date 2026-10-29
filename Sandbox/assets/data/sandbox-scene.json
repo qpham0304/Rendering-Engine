@@ -38,33 +38,6 @@
     },
     {
       "components": {
-        "ModelComponent": {
-          "path": "assets/models/sponza/gLTF/Sponza.gltf"
-        },
-        "NameComponent": {
-          "name": "sponza"
-        },
-        "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            0.009999999776482582,
-            0.009999999776482582,
-            0.009999999776482582
-          ],
-          "translateVec": [
-            0.0,
-            -2.5,
-            0.0
-          ]
-        }
-      }
-    },
-    {
-      "components": {
         "ColliderComponent": {
           "bodyType": "Cube",
           "colliderType": 0,
@@ -97,30 +70,31 @@
     },
     {
       "components": {
-        "ModelComponent": {
-          "path": "assets/models/cube/cube-notex.gltf"
-        },
-        "NameComponent": {
-          "name": "cube"
-        },
+        "ColliderComponent": { "bodyType": "Cube", "colliderType": 2, "shapeID": 0 },
+        "ModelComponent": { "path": "assets/models/cube/cube-notex.gltf" },
+        "NameComponent": { "name": "contact test cube" },
+        "ScriptComponent": { "path": "assets/scripts/ContactSparks.lua" },
         "TransformComponent": {
-          "rotateVec": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scaleVec": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "translateVec": [
-            0.0,
-            -2.5,
-            0.0
-          ]
+          "rotateVec": [0.3, 0.0, 0.2],
+          "scaleVec": [0.5, 0.5, 0.5],
+          "translateVec": [0.0, 6.0, 0.0]
         }
-      }
+      },
+      "children": [
+        {
+          "components": {
+            "NameComponent": { "name": "glide sparks" },
+            "TransformComponent": { "rotateVec": [0.0, 0.0, 0.0], "scaleVec": [1.0, 1.0, 1.0], "translateVec": [0.0, 0.0, 0.0] },
+            "ParticleEmitter": {
+              "emitRate": 0.0, "burstInterval": 0.0, "maxParticles": 2000,
+              "spawnShape": 0, "spreadAngle": 25.0, "speedMin": 2.0, "speedMax": 5.0,
+              "lifetimeMin": 0.5, "lifetimeMax": 1.0, "gravityScale": 1.0, "drag": 1.0,
+              "sizeMin": 0.12, "sizeMax": 0.2, "sizeEndScale": 0.3,
+              "colorStart": [0.2, 0.7, 1.0, 1.0], "colorEnd": [0.0, 0.2, 1.0, 0.0], "renderMode": 2, "blendMode": 1
+            }
+          }
+        }
+      ]
     },
     {
       "components": {

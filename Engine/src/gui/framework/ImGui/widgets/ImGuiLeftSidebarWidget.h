@@ -28,6 +28,7 @@ private:
 	void _EntityContent();
 	void _SearchFilter();
 
+	void _EntityNode(Entity& entity, Scene* scene, bool showChildren);
 	void _ModelDetails(Entity& entity, Scene* scene);
 	void _AnimationControls(Entity& entity);
 	void _HierarchyFilterBar();

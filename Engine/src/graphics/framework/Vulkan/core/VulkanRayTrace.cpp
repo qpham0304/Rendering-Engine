@@ -351,10 +351,12 @@ void RaytracingBuilderKHR::_cmdCreateTlas(
     buildInfo.type                     = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
     buildInfo.srcAccelerationStructure = VK_NULL_HANDLE;
 
+    // sized for at least one instance so an empty tlas never asks for a zero sized buffer
+    uint32_t maxInstances = std::max(countInstance, 1u);
     VkAccelerationStructureBuildSizesInfoKHR sizeInfo{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
     vkGetAccelerationStructureBuildSizesKHR(
         *m_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
-        &buildInfo, &countInstance, &sizeInfo
+        &buildInfo, &maxInstances, &sizeInfo
     );
 
     // Create TLAS
@@ -466,7 +468,10 @@ void RaytracingBuilderKHR::buildTlas(
 
     // Create a buffer holding the actual instance data (matrices++) for use by the AS builder
     // Create a buffer (staged) for the instances
-    uint32_t instancesBufferID = bufferManager->createInstanceBuffer(instances.data(), countInstance);
+    // a scene with no models (or whose models all failed) still needs a valid empty tlas, but buffers can't be zero sized
+    static const VkAccelerationStructureInstanceKHR emptyInstance{};
+    const VkAccelerationStructureInstanceKHR* instanceData = countInstance > 0 ? instances.data() : &emptyInstance;
+    uint32_t instancesBufferID = bufferManager->createInstanceBuffer(instanceData, std::max(countInstance, 1u));
     BufferVulkan* instancesBuffer = bufferManager->getBuffer(instancesBufferID);
     
     

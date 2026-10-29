@@ -43,7 +43,8 @@ bool SandBoxLayer::init()
     // only build it on first load, reloading dll wont recreate scene;
     if (!SceneManager::getInstance().getScene("sandbox-scene")) {
         Scene* scene = SceneManager::getInstance().addScene("sandbox-scene");
-        scene->loadScene("assets/data/sandbox-scene.json");
+        // scene->loadScene("assets/data/sandbox-scene.json");
+        scene->loadScene("assets/data/particle-showcase.json");
         // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
         // scene1->loadScene("assets/data/Level1.json");
         // Scene* scene2 = SceneManager::getInstance().addScene("Level2");
@@ -75,7 +76,8 @@ void SandBoxLayer::onDetach()
 }
 
 void SandBoxLayer::onUpdate(const FrameTime& frameTime)
-{    if(EngineState::isPlaying()) {
+{   
+    if(EngineState::isPlaying()) {
         // SceneManager::cameraController = camera.get();
     }
     // Log().warn("sandbox updating");

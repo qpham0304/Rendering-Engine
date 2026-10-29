@@ -88,11 +88,12 @@ void PhysicsManagerBox3D::onUpdate(const FrameTime& frameTime)
                 auto& collider = entity.getComponent<ColliderComponent>();
                 auto& transform = entity.getComponent<TransformComponent>();
 
-                if(collider.shapeID == 0) {
+                auto shape = m_shapeIDs.find(collider.shapeID);
+                if(shape == m_shapeIDs.end()) {
                     return;
                 }
 
-                b3ShapeId shapeId = m_shapeIDs.at(collider.shapeID);
+                b3ShapeId shapeId = shape->second;
                 b3BodyId bodyId = b3Shape_GetBody(shapeId);
         
                 b3Body_SetType(bodyId, b3_kinematicBody);
@@ -121,16 +122,20 @@ void PhysicsManagerBox3D::onFixedUpdate(float fixedDeltaTime)
     b3World_Step(m_worldId, fixedDeltaTime, subStepCount);
 
     Scene* scene = SceneManager::getInstance().getActiveScene();
+    if(!scene) {
+        return;
+    }
 
     auto func = std::function<void(Entity)>([&](Entity entity) -> void {
         auto& collider = entity.getComponent<ColliderComponent>();
         auto& transform = entity.getComponent<TransformComponent>();
 
-        if(collider.shapeID == 0) {
+        auto shape = m_shapeIDs.find(collider.shapeID);
+        if(shape == m_shapeIDs.end()) {
             return;
         }
 
-        b3ShapeId shapeId = m_shapeIDs.at(collider.shapeID);
+        b3ShapeId shapeId = shape->second;
         b3BodyId bodyId = b3Shape_GetBody(shapeId);
         b3BodyType bodyType = b3Body_GetType(bodyId);
         ColliderType colliderType = static_cast<ColliderType>(collider.colliderType);
@@ -156,6 +161,57 @@ void PhysicsManagerBox3D::onFixedUpdate(float fixedDeltaTime)
 
     scene->forEnitiesWith<ColliderComponent>(func);
 
+    _publishContactEvents();
+}
+
+void PhysicsManagerBox3D::_publishContactEvents()
+{
+    auto entityOf = [](b3ShapeId shapeId) -> uint32_t {
+        if(!b3Shape_IsValid(shapeId)) {
+            return 0;
+        }
+        return (uint32_t)(uintptr_t)b3Shape_GetUserData(shapeId);
+    };
+
+    // the arrays belong to the world, listeners may destroy bodies and grow them so copy before publishing
+    b3ContactEvents contactEvents = b3World_GetContactEvents(m_worldId);
+    std::vector<ContactBeginEvent> beginEvents;
+    std::vector<ContactEndEvent> endEvents;
+    std::vector<ContactHitEvent> hitEvents;
+
+    for(int i = 0; i < contactEvents.beginCount; i++) {
+        const b3ContactBeginTouchEvent& event = contactEvents.beginEvents[i];
+        beginEvents.emplace_back(entityOf(event.shapeIdA), entityOf(event.shapeIdB));
+    }
+    for(int i = 0; i < contactEvents.endCount; i++) {
+        const b3ContactEndTouchEvent& event = contactEvents.endEvents[i];
+        endEvents.emplace_back(entityOf(event.shapeIdA), entityOf(event.shapeIdB));
+    }
+    for(int i = 0; i < contactEvents.hitCount; i++) {
+        const b3ContactHitEvent& event = contactEvents.hitEvents[i];
+        glm::vec3 point((float)event.point.x, (float)event.point.y, (float)event.point.z);
+        hitEvents.emplace_back(entityOf(event.shapeIdA), entityOf(event.shapeIdB), point, b3ToGlmVec3(event.normal), event.approachSpeed);
+    }
+
+    EventManager& eventManager = EventManager::getInstance();
+    for(auto& event : beginEvents) {
+        eventManager.publish(event);
+    }
+    for(auto& event : endEvents) {
+        eventManager.publish(event);
+    }
+    for(auto& event : hitEvents) {
+        eventManager.publish(event);
+    }
+}
+
+b3ShapeDef PhysicsManagerBox3D::_defaultShapeDef(uint32_t entityID)
+{
+    b3ShapeDef shapeDef = b3DefaultShapeDef();
+    shapeDef.userData = (void*)(uintptr_t)entityID;
+    shapeDef.enableContactEvents = true;
+    shapeDef.enableHitEvents = true;
+    return shapeDef;
 }
 
 uint32_t PhysicsManagerBox3D::createMeshBody(
@@ -202,8 +258,7 @@ uint32_t PhysicsManagerBox3D::createMeshBody(
     meshShape.data = meshData;
     meshShape.scale = { scale.x, scale.y, scale.z };
 
-    b3ShapeDef shapeDef = b3DefaultShapeDef();
-    shapeDef.userData = (void*)(uintptr_t)entityID;
+    b3ShapeDef shapeDef = _defaultShapeDef(entityID);
 
     bool isStatic = colliderType == ColliderType::Static;
     if(!isStatic) {
@@ -267,8 +322,7 @@ uint32_t PhysicsManagerBox3D::createBoxBody(
     hy = std::max(hy, minHalfExtent);
     hz = std::max(hz, minHalfExtent);
 
-    b3ShapeDef shapeDef = b3DefaultShapeDef();
-    shapeDef.userData = (void*)(uintptr_t)entityID;
+    b3ShapeDef shapeDef = _defaultShapeDef(entityID);
 
     bool isStatic = colliderType == ColliderType::Static;
     if(!isStatic) {
@@ -333,8 +387,7 @@ uint32_t PhysicsManagerBox3D::createSphereBody(
         b3Quat_identity
     };
 
-    b3ShapeDef shapeDef = b3DefaultShapeDef();
-    shapeDef.userData = (void*)(uintptr_t)entityID;
+    b3ShapeDef shapeDef = _defaultShapeDef(entityID);
 
     bool isStatic = colliderType == ColliderType::Static;
     if(!isStatic) {

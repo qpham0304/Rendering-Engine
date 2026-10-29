@@ -42,8 +42,19 @@ bool TextureManagerVulkan::init(WindowConfig config)
 
 	_createInspectorDescriptorBind();
 	_createBindlessDescriptor();
+	_createMissingTexture();
 
 	return true;
+}
+
+void TextureManagerVulkan::_createMissingTexture()
+{
+	const uint8_t checker[] = {
+		255, 0, 255, 255,	0, 0, 0, 255,
+		0, 0, 0, 255,		255, 0, 255, 255
+	};
+	_uploadTexture("$missing$", 0, checker, 2, 2, VK_FORMAT_R8G8B8A8_UNORM, 1, true);
+	registerBindlessTexture(0);
 }
 
 bool TextureManagerVulkan::onClose()
@@ -61,6 +72,10 @@ bool TextureManagerVulkan::onClose()
 
 void TextureManagerVulkan::destroy(uint32_t id)
 {
+	if (id == 0) {
+		return;	// the missing texture, shared by every failed load
+	}
+
 	auto it = m_textures.find(id);
 	if (it == m_textures.end()) {
 		m_logger->warn("Texture not found id: {}", id);
@@ -88,32 +103,49 @@ void TextureManagerVulkan::destroy(uint32_t id)
 
 uint32_t TextureManagerVulkan::loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture)
 {
-	if (m_textureData.find(path.data()) != m_textureData.end()) {
-		return m_textureData.at(path.data());
+	std::string key(path);
+	auto it = m_textureData.find(key);
+	if (it != m_textureData.end()) {
+		return it->second;
 	}
 
-	_loadTexture(path, mipLevels, isDataTexture);
-
-	return _assignID();
+	uint32_t id = _loadTexture(key, mipLevels, isDataTexture);
+	return id != 0 ? id : _cacheFailedLoad(key);
 }
 
 uint32_t TextureManagerVulkan::loadTextureFromMemory(const void *data, size_t size, std::string_view cacheKey, uint32_t mipLevels, bool isDataTexture)
 {
-	if (m_textureData.find(cacheKey.data()) != m_textureData.end()) {
-		return m_textureData.at(cacheKey.data());
+	std::string key(cacheKey);
+	auto it = m_textureData.find(key);
+	if (it != m_textureData.end()) {
+		return it->second;
 	}
 
-	_loadTexture(cacheKey, mipLevels, isDataTexture, true, data, size);
-
-	return _assignID();
+	uint32_t id = (data && size > 0) ? _loadTexture(key, mipLevels, isDataTexture, true, data, size) : 0;
+	return id != 0 ? id : _cacheFailedLoad(key);
 }
 
-//TODO: eventually remove this
-uint32_t TextureManagerVulkan::createTexture()
+uint32_t TextureManagerVulkan::createTextureFromPixels(const void* pixels, uint32_t width, uint32_t height, VkFormat format, std::string_view cacheKey, bool isDataTexture)
 {
-	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);
+	std::string key(cacheKey);
+	auto it = m_textureData.find(key);
+	if (it != m_textureData.end()) {
+		return it->second;
+	}
 
-	return _assignID();
+	if (!pixels || width == 0 || height == 0) {
+		m_logger->error("TextureManagerVulkan::createTextureFromPixels: no pixel data for {}", key);
+		return 0;
+	}
+
+	return _uploadTexture(key, _assignID(), pixels, static_cast<int>(width), static_cast<int>(height), format, 1, isDataTexture);
+}
+
+uint32_t TextureManagerVulkan::_cacheFailedLoad(const std::string& key)
+{
+	m_logger->warn("Using the missing texture in place of {}", key);
+	m_textureData[key] = 0;
+	return 0;
 }
 
 TextureVulkan* TextureManagerVulkan::getTexture(uint32_t id)
@@ -154,7 +186,7 @@ uint32_t TextureManagerVulkan::getInspectorLayout() {
 	return inspectorLayoutID;
 } 
 
-void TextureManagerVulkan::_loadTexture(
+uint32_t TextureManagerVulkan::_loadTexture(
 	std::string_view path,
 	uint32_t mipLevels,
 	bool isDataTexture,
@@ -163,55 +195,69 @@ void TextureManagerVulkan::_loadTexture(
 	size_t size
 ) {
 	stbi_set_flip_vertically_on_load(true);
+	std::string key(path);
 	bool isHDR = false;
 	VkFormat format;
-	uint32_t bytesPerChannel;
 	void* pixels;
 
-	int texWidth, texHeight, texChannels;
-	
+	int texWidth = 0, texHeight = 0, texChannels = 0;
+
 	if(isFromMemory) {
 		isHDR = stbi_is_hdr_from_memory(static_cast<const stbi_uc*>(data), static_cast<int>(size));
-        
+
         if (isHDR) {
             pixels = stbi_loadf_from_memory(
-				static_cast<const stbi_uc*>(data), static_cast<int>(size), 
+				static_cast<const stbi_uc*>(data), static_cast<int>(size),
 				&texWidth, &texHeight, &texChannels, STBI_rgb_alpha
 			);
             format = VK_FORMAT_R32G32B32A32_SFLOAT;
-            bytesPerChannel = sizeof(float);
         } else {
             pixels = stbi_load_from_memory(
-				static_cast<const stbi_uc*>(data), static_cast<int>(size), 
+				static_cast<const stbi_uc*>(data), static_cast<int>(size),
 				&texWidth, &texHeight, &texChannels, STBI_rgb_alpha
 			);
             format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
-            bytesPerChannel = sizeof(uint8_t);
         }
 	} else {
-        isHDR = stbi_is_hdr(path.data());
+        isHDR = stbi_is_hdr(key.c_str());
 		if (isHDR) {
-			pixels = stbi_loadf(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+			pixels = stbi_loadf(key.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 			format = VK_FORMAT_R32G32B32A32_SFLOAT;
-			bytesPerChannel = sizeof(float);
 		} else {
-			pixels = stbi_load(path.data(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+			pixels = stbi_load(key.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 			format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
-			bytesPerChannel = sizeof(uint8_t);
 		}
 	}
 
-	VkDeviceSize imageSize = texWidth * texHeight * 4 * bytesPerChannel;
+	if (!pixels) {
+		const char* reason = stbi_failure_reason();
+		m_logger->error("TextureManagerVulkan::loadTexture: failed to load texture image {}: {}", key, reason ? reason : "unknown error");
+		return 0;
+	}
 
 	// float formats are not guaranteed to support the linear blit generateMipmaps uses
 	if (mipLevels == FULL_MIP_CHAIN) {
 		mipLevels = isHDR ? 1 : static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 	}
 
-	if (!pixels) {
-		m_logger->error("TextureManagerVulkan::loadTexture: failed to load texture image {}", path.data());
-		return;
-	}
+	uint32_t id = _uploadTexture(key, _assignID(), pixels, texWidth, texHeight, format, mipLevels, isDataTexture);
+	stbi_image_free(pixels);
+	return id;
+}
+
+uint32_t TextureManagerVulkan::_uploadTexture(
+	const std::string& key,
+	uint32_t id,
+	const void* pixels,
+	int texWidth,
+	int texHeight,
+	VkFormat format,
+	uint32_t mipLevels,
+	bool isDataTexture
+) {
+	const bool isHDR = format == VK_FORMAT_R32G32B32A32_SFLOAT;
+	const VkDeviceSize bytesPerChannel = isHDR ? sizeof(float) : sizeof(uint8_t);
+	VkDeviceSize imageSize = static_cast<VkDeviceSize>(texWidth) * texHeight * 4 * bytesPerChannel;
 
 	VmaAllocation stagingBufferMemory;
 	VkBuffer stagingBuffer;
@@ -229,15 +275,12 @@ void TextureManagerVulkan::_loadTexture(
 	memcpy(mappedData, pixels, static_cast<size_t>(imageSize));
 	vmaUnmapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory);
 
-	stbi_image_free(pixels);
-
-
-	std::shared_ptr<TextureVulkan> texture = std::make_shared<TextureVulkan>(m_ids);
-	texture->m_path = path;
+	std::shared_ptr<TextureVulkan> texture = std::make_shared<TextureVulkan>(id);
+	texture->m_path = key;
 	texture->m_width = texWidth;
 	texture->m_height = texHeight;
-	m_textures[m_ids] = texture;
-	m_textureData[path.data()] = m_ids;
+	m_textures[id] = texture;
+	m_textureData[key] = id;
 
 	createImage(
 		texWidth,
@@ -277,7 +320,7 @@ void TextureManagerVulkan::_loadTexture(
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	// single level data textures (blue noise, lookup maps) are read texel exact, mipmapped ones (material maps) are filtered like colour
+	// single level data textures (blue noise, lookup maps) are read texel exact, mipmapped ones (material maps) are filtered like color
 	if (isDataTexture && mipLevels == 1) {
         samplerInfo.magFilter = VK_FILTER_NEAREST;
         samplerInfo.minFilter = VK_FILTER_NEAREST;
@@ -301,7 +344,8 @@ void TextureManagerVulkan::_loadTexture(
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = static_cast<float>(mipLevels);
 	createTextureSampler(texture->textureSampler, renderDeviceVulkan->device, samplerInfo);
-	m_logger->debug("Texture loaded {}, id: {}", path.data(), static_cast<uint32_t>(m_ids.load()));
+	m_logger->debug("Texture loaded {}, id: {}", key, id);
+	return id;
 }
 
 void TextureManagerVulkan::_createInspectorDescriptorBind()
@@ -349,9 +393,23 @@ void TextureManagerVulkan::_createBindlessDescriptor()
     globalBindlessSetID = descriptorManagerVulkan->createSets(globalBindlessLayoutID, globalBindlessPoolID, 1);
 }
 
+TextureVulkan* TextureManagerVulkan::_textureOrMissing(uint32_t textureID)
+{
+	TextureVulkan* tex = getTexture(textureID);
+	if (tex && tex->textureImageView != VK_NULL_HANDLE) {
+		return tex;
+	}
+
+	m_logger->error("No texture with id {}, binding the missing texture instead", textureID);
+	return getTexture(0);
+}
+
 void TextureManagerVulkan::registerBindlessTexture(uint32_t textureID)
 {
-    TextureVulkan* tex = getTexture(textureID);
+    TextureVulkan* tex = _textureOrMissing(textureID);
+    if (!tex) {
+        return;
+    }
     VkDescriptorSet globalSet = descriptorManagerVulkan->getDescriptorSet(globalBindlessSetID)[0];
 
     VkDescriptorImageInfo imageInfo{};
@@ -368,6 +426,10 @@ void TextureManagerVulkan::registerTextureStorage(uint32_t textureID)
 {
 	//TODO: do not share with image sampler set, create a storage global sets for storage image
     TextureVulkan* tex = getTexture(textureID);
+    if (!tex || tex->textureImageView == VK_NULL_HANDLE) {
+        m_logger->error("registerTextureStorage: no texture with id {}", textureID);
+        return;
+    }
     VkDescriptorSet globalSet = descriptorManagerVulkan->getDescriptorSet(globalBindlessSetID)[0];
 
     VkDescriptorImageInfo imageInfo{};
@@ -844,7 +906,7 @@ void TextureManagerVulkan::copyBufferToImage(
 
 uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig)
 {
-	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);;
+	m_textures[m_ids] = std::make_shared<TextureVulkan>(m_ids);
 	TextureVulkan* texture = dynamic_cast<TextureVulkan*>(m_textures[m_ids].get());
 	texture->m_width = textureConfig.width;
 	texture->m_height = textureConfig.height;
@@ -859,6 +921,8 @@ uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, Textur
 		texture->textureImage,
 		texture->textureImageMemory,
 		textureConfig.mipLevels,
+		textureConfig.layerCount,
+		textureConfig.viewType == VK_IMAGE_VIEW_TYPE_CUBE ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0,
 		renderDeviceVulkan->device
 	);
 
@@ -868,6 +932,9 @@ uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, Textur
 		textureConfig.format,
 		textureConfig.aspectBits,
 		textureConfig.mipLevels,
+		0,
+		textureConfig.layerCount,
+		textureConfig.viewType,
 		renderDeviceVulkan->device
 	);
 
@@ -879,7 +946,7 @@ uint32_t TextureManagerVulkan::createTexture(TextureConfig textureConfig, Textur
 	samplerInfo.addressModeV = samplerConfig.addressMode;
 	samplerInfo.addressModeW = samplerConfig.addressMode;
 	samplerInfo.anisotropyEnable = VK_FALSE;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.borderColor = samplerConfig.borderColor;
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
 	samplerInfo.compareEnable = VK_FALSE;
 	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;

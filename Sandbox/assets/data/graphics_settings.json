@@ -44,15 +44,37 @@
       ],
       "sunIntensity": 2.0
     },
+    "SSRSettings": {
+      "downsample": 0,
+      "maxDistance": 500.0,
+      "maxSteps": 64,
+      "thickness": 0.25,
+      "useTLAS": false
+    },
     "ShadowMapSettings": {
       "blurRadius": 64,
       "blurSigma": 15.0,
       "orthoExtent": 25.0,
       "sunAzimuth": 0.0,
-      "sunElevation": 1.371000051498413,
+      "sunElevation": 3.065999984741211,
       "useOrtho": true,
       "zFar": 105.0,
       "zNear": 0.009999999776482582
+    },
+    "SkyAtmosphereSettings": {
+      "enabled": true,
+      "groundAlbedo": [
+        0.30000001192092896,
+        0.30000001192092896,
+        0.30000001192092896,
+        1.0
+      ],
+      "intensity": 1.0,
+      "mieAnisotropy": 0.800000011920929,
+      "mieScale": 1.0,
+      "ozone": true,
+      "rayleighScale": 1.0,
+      "viewHeight": 0.20000000298023224
     }
   }
 }

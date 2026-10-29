@@ -60,6 +60,11 @@ void main() {
     uint matID = matIndices.i[gl_PrimitiveID];
     Material mat = materials.m[matID];
 
+    vec4 albedo = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], inTexCoord + mat.uvOffset);
+    if (alphaClipped(mat, albedo.a)) {
+        discard;
+    }
+
     outPos = vec4(inWorldPos, 1.0);
     
     // culling is off, the back face of thin geometry is lit like its front instead of from behind
@@ -72,7 +77,7 @@ void main() {
     vec3 N = getNormalFromMap(normalMap, mat, TBN);
     outNorm = vec4(N, 1.0);
     
-    outAlbedo = texture(samplerImages[mat.albedoIdx], inTexCoord + mat.uvOffset) * mat.albedoFactor;
+    outAlbedo = albedo * mat.albedoFactor;
     
     float ao        = texture(samplerImages[mat.aoIdx], inTexCoord + mat.uvOffset).r        * mat.aoFactor;
     float roughness = texture(samplerImages[mat.roughnessIdx], inTexCoord + mat.uvOffset).g * mat.roughnessFactor;

@@ -82,58 +82,15 @@ void BilateralBlurPassVulkan::writeBlur()
 
 void BilateralBlurPassVulkan::_createOcclusionMap()
 {
-    aoMapID = textureManagerVulkan->createTexture();
-    aoMap = dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(aoMapID));
-	
-    assert(aoMap && "failed to cast texture into vulkan texture");
-	
-    VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-	VkDevice device = renderDeviceVulkan->device;
-    
-    TextureManagerVulkan::createImage(
-        swapchain.swapChainExtent.width,
-        swapchain.swapChainExtent.height,
-        VK_FORMAT_R16_SFLOAT,
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        aoMap->textureImage,
-        aoMap->textureImageMemory,
-        1,
-        renderDeviceVulkan->device
-    );
-
-    TextureManagerVulkan::createImageView(
-        aoMap->textureImage,
-        aoMap->textureImageView,
-        VK_FORMAT_R16_SFLOAT,
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        1,
-        renderDeviceVulkan->device
-    );
-
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	samplerInfo.anisotropyEnable = VK_FALSE;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
-
-    TextureManagerVulkan::createTextureSampler(
-        aoMap->textureSampler, 
-        renderDeviceVulkan->device,
-        samplerInfo
-    );
+    VkExtent2D extent = renderDeviceVulkan->swapchain.swapChainExtent;
+    TextureConfig imageConfig {
+        .width = extent.width,
+        .height = extent.height,
+        .format = VK_FORMAT_R16_SFLOAT,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+    };
+    aoMapID = textureManagerVulkan->createTexture(imageConfig, TextureSamplerConfig{});
+    aoMap = textureManagerVulkan->getTexture(aoMapID);
 }
 
 void BilateralBlurPassVulkan::_createDescriptors()

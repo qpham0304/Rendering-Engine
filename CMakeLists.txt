@@ -17,6 +17,13 @@ else()
     set(WK_LIB_TYPE SHARED)
 endif()
 
+# GoogleTest tests live in each project's tests/ folder, shared setup in cmake/WkTesting.cmake. dev build only
+option(WK_BUILD_TESTS "Build the engine and sandbox test executables" ON)
+if(WK_BUILD_TESTS AND NOT WK_EXPORT_GAME)
+    set(WK_TESTS_ENABLED ON)
+    enable_testing()
+endif()
+
 add_subdirectory(Engine)
 add_subdirectory(Sandbox)
 if(NOT WK_EXPORT_GAME)

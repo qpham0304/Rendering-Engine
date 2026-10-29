@@ -26,7 +26,11 @@ void EventToLuaBindings::exportEvent(sol::state &luaState, Logger* logger)
         "ModelLoadEvent", EventType::ModelLoadEvent,
         "AnimationLoadEvent", EventType::AnimationLoadEvent,
         "GuiMessageEvent", EventType::GuiMessageEvent,
-        "GuiFocusedEvent", EventType::GuiFocusedEvent
+        "GuiFocusedEvent", EventType::GuiFocusedEvent,
+        "CameraUpdateEvent", EventType::CameraUpdateEvent,
+        "ContactBegin", EventType::ContactBegin,
+        "ContactEnd", EventType::ContactEnd,
+        "ContactHit", EventType::ContactHit
     );
 
     luaState.new_usertype<Event>("Event",
@@ -52,6 +56,9 @@ void EventToLuaBindings::exportEvent(sol::state &luaState, Logger* logger)
     // _registerEvent<GuiMessageEvent>(luaState);
     // _registerEvent<GuiFocusEvent>(luaState);
     _registerEvent<CameraUpdateEvent>(luaState);
+    _registerEvent<ContactBeginEvent>(luaState);
+    _registerEvent<ContactEndEvent>(luaState);
+    _registerEvent<ContactHitEvent>(luaState);
 
     EventManager& eventManager = EventManager::getInstance();
 

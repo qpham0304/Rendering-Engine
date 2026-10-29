@@ -19,6 +19,7 @@ struct MaterialDesc {
     float roughness = 1.0f;
     float ao        = 1.0f;
     float emissive  = 1.0f;
+    float alphaCutoff = 0.0f;   // 0 is opaque, otherwise texels with albedo alpha below it are discarded
 };
 
 struct GPUMaterialData {
@@ -37,4 +38,5 @@ struct GPUMaterialData {
     float roughness = 1.0f;
     float ao        = 1.0f;
     float emissive  = 1.0f;
+    float alphaCutoff = 0.0f;
 };

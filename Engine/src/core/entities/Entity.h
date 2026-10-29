@@ -57,6 +57,8 @@ public:
 	}
 
 	uint32_t getID() const;
+	bool hasParent() const;
+	Entity getParent() const;
 
 	entt::registry* getRegistry();
 

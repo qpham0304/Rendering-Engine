@@ -6,6 +6,7 @@
 #include <volk.h>
 #include <glm/glm.hpp>
 #include <cstdint>
+#include <array>
 
 class RenderDeviceVulkan;
 class TextureManagerVulkan;
@@ -31,6 +32,7 @@ public:
 		float roughness;
 		float ao;
 		float emissive;
+		float alphaCutoff;
     };
 
 public:
@@ -54,6 +56,7 @@ public:
 
 private:
 	uint32_t _checkMaterial(const std::vector<uint32_t>& textures, uint32_t fallbackID) const;
+	uint32_t _loadFallbackTexture(const std::string& path, bool isDataTexture, std::array<uint8_t, 4> color);
 	void _createMaterialDescriptorSet();
 	void _buildMaterialCache();
 	void _updateGPUBuffer();

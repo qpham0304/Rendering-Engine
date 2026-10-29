@@ -60,9 +60,13 @@ private:
     std::unique_ptr<ParticleManager> particleManager;
 
 private:
+    void _runLoop();
+
+private:
     std::vector<Service*> services;
     std::vector<EventSubscription> m_eventSubscriptions;
     std::vector<std::function<void()>> frameCallbacks;
     bool isInitialized = false;
+    size_t initializedServices = 0;
 
 };

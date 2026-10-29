@@ -175,6 +175,11 @@ void BufferManagerVulkan::createBuffer(
 	VmaAllocationCreateInfo allocInfo{};
 	allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 	allocInfo.requiredFlags = properties;
+	if ((properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+		// host visible vram is only the 256MB BAR heap without resizable BAR, fall back to system ram once it is full
+		allocInfo.requiredFlags &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		allocInfo.preferredFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	}
 	if (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
 		// VMA (AUTO mode) refuses vmaMapMemory unless CPU access is declared at creation.
 		// Upload-only buffers (staging, uniforms) get sequential-write; anything the CPU may read back gets random access.
@@ -189,7 +194,7 @@ void BufferManagerVulkan::createBuffer(
 		renderDeviceVulkan->device.getAllocator(), &bufferInfo, &allocInfo, &buffer, &bufferMemory, &allocationInfo
 	);
 	if (result != VK_SUCCESS) {
-		throw std::runtime_error("failed to create buffer!");
+		throw std::runtime_error("failed to create buffer! VkResult " + std::to_string(result) + ", size " + std::to_string(size));
 	}
 	MEMORY_TRACK(bufferMemory, allocationInfo.size, MemorySystem::Graphics, "VkBuffer");
 }
@@ -381,6 +386,54 @@ uint32_t BufferManagerVulkan::createBufferDeviceAddress(size_t bufferSize)
 	buffers[m_ids] = deviceAddressBuffer;
 
     return _assignID();
+}
+
+uint32_t BufferManagerVulkan::createStaticBufferDeviceAddress(const void* src, size_t bufferSize)
+{
+	VkBuffer stagingBuffer;
+	VmaAllocation stagingBufferMemory;
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer,
+		stagingBufferMemory
+	);
+
+	void* data;
+	vmaMapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory, &data);
+	memcpy(data, src, bufferSize);
+	vmaUnmapMemory(renderDeviceVulkan->device.getAllocator(), stagingBufferMemory);
+
+	VkBuffer buffer;
+	VmaAllocation bufferMemory;
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT
+			| VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+			| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		buffer,
+		bufferMemory
+	);
+
+	copyBuffer(stagingBuffer, buffer, bufferSize);
+
+	MEMORY_UNTRACK(stagingBufferMemory);
+	vmaDestroyBuffer(renderDeviceVulkan->device.getAllocator(), stagingBuffer, stagingBufferMemory);
+
+	auto deviceAddressBuffer = std::make_shared<DeviceAddressBufferVulkan>(m_ids, buffer, bufferMemory);
+
+	VkBufferDeviceAddressInfo addressInfo {};
+	addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+	addressInfo.pNext = nullptr;
+	addressInfo.buffer = buffer;
+	deviceAddressBuffer->deviceAddress = vkGetBufferDeviceAddress(renderDeviceVulkan->device, &addressInfo);
+
+	buffers[m_ids] = deviceAddressBuffer;
+
+	return _assignID();
 }
 
 uint32_t BufferManagerVulkan::createIndirectBuffer(size_t bufferSize)

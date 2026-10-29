@@ -102,6 +102,7 @@ private:
 	bool processing = false;
 	bool reloading = false;
 
+	void _updateWorldTransforms();
 	void _addEntity(Entity& entity);
 	bool _removeEntity(const uint32_t& uuid);
 };

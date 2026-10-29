@@ -106,3 +106,7 @@ endforeach()
 
 add_custom_target(${PROJECT_NAME}_Shaders DEPENDS ${SPIRV_BINARY_FILES})
 add_dependencies(${GAME_TARGET} ${PROJECT_NAME}_Shaders)
+
+if(WK_TESTS_ENABLED)
+    add_subdirectory(tests)
+endif()
