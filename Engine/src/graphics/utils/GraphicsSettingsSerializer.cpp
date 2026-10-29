@@ -36,6 +36,7 @@ void GraphicsSettingsSerializer::RegisterSettings()
 	REGISTER_SETTINGS(ImageBasedSettings);
 	REGISTER_SETTINGS(DeferredSettings);
 	REGISTER_SETTINGS(DDGISettings);
+	REGISTER_SETTINGS(TonemapSettings);
 }
 
 bool GraphicsSettingsSerializer::saveSettings(std::string_view filePath) const

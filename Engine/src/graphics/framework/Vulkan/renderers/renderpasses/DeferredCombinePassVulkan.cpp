@@ -117,8 +117,6 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 	renderDeviceVulkan->beginLabel(cmd, "Deferred Combine Pass");
     writeCombinedImage(cmd, currentFrame);
 	renderDeviceVulkan->endLabel(cmd);
-
-    rendererManagerVulkan->setDisplayImage(outputImage);
 }
 
 // the gbuffer is per frame and the gi / ddgi images can be recreated, so these are looked up again every frame

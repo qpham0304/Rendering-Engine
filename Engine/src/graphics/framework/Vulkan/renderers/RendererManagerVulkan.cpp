@@ -16,6 +16,7 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/TemporalPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/DeferredCombinePassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/TonemapPassVulkan.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/SkyAtmosphereVulkan.h"
@@ -113,6 +114,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
         ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
     }
     deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
+    tonemapRenderer = addRenderer<TonemapPassVulkan>("TonemapPassVulkan");
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
     ribbonRenderer = addRenderer<RibbonRendererVulkan>("RibbonRendererVulkan");
 	debugRenderer = addRenderer<DebugRendererVulkan>("DebugRendererVulkan");
@@ -205,6 +207,7 @@ void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
             ddgiPassRenderer->onUpdate();
         }
         deferredCombineRenderer->onUpdate();
+        tonemapRenderer->onUpdate();
     } else if(currentRenderMode == 2 && raytracingRenderer) {
         raytracingRenderer->onUpdate();
     }
@@ -301,6 +304,7 @@ void RendererManagerVulkan::render()
             ddgiPassRenderer->addToGraph(m_renderGraph);
         }
         deferredCombineRenderer->addToGraph(m_renderGraph);
+        tonemapRenderer->addToGraph(m_renderGraph);
 
         m_renderGraph.execute(cmd, currentFrame);
     } else if(currentRenderMode == 2 && raytracingRenderer) {

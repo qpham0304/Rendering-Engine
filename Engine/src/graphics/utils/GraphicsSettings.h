@@ -174,6 +174,19 @@ struct DeferredSettings {
 	)
 };
 
+struct TonemapSettings {
+	int tonemapper { 1 };
+	float exposure { 1.0f };
+	float gamma { 2.2f };
+
+	DEFINE_TYPE(TonemapSettings,
+		member("tonemapper", &TonemapSettings::tonemapper, FieldMeta{ .widget = FieldWidget::Combo,
+			.options = "None\0Reinhard\0ACES (Narkowicz)\0ACES (Hill)\0Uncharted 2\0AgX\0Khronos PBR Neutral\0\0" }),
+		member("exposure", &TonemapSettings::exposure, FieldMeta{ .min = 0.0f, .max = 8.0f }),
+		member("gamma", &TonemapSettings::gamma, FieldMeta{ .min = 1.0f, .max = 3.0f })
+	)
+};
+
 struct DDGISettings {
 	bool enabled { true };
 	bool indirectOnly { false };

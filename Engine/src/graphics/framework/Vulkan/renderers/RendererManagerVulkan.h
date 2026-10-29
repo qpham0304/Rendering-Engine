@@ -28,6 +28,7 @@ class PostProcessRendererVulkan;
 class ParticleRendererVulkan;
 class RibbonRendererVulkan;
 class DebugRendererVulkan;
+class TonemapPassVulkan;
 
 class MeshManager;
 class ModelManager;
@@ -119,6 +120,7 @@ protected:
 	ParticleRendererVulkan* particleRenderer { nullptr };
 	RibbonRendererVulkan* ribbonRenderer { nullptr };
 	DebugRendererVulkan* debugRenderer { nullptr };
+	TonemapPassVulkan* tonemapRenderer { nullptr };
 
 private:
 	RenderGraphVulkan m_renderGraph;
