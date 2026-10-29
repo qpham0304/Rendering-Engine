@@ -392,3 +392,7 @@ memory_stats.json
 
 # exported standalone game
 export/
+
+# NVIDIA DLSS SDK
+Engine/extern/dlss/*
+!Engine/extern/dlss/CMakeLists.txt

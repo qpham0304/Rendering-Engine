@@ -174,6 +174,26 @@ struct DeferredSettings {
 	)
 };
 
+struct DLSSSettings {
+	bool enabled { true };
+	int mode { 1 };
+	bool resetHistory { false };
+
+	bool supported { false };
+	uint32_t renderWidth { 0 };
+	uint32_t renderHeight { 0 };
+
+	DEFINE_TYPE(DLSSSettings,
+		member("enabled", &DLSSSettings::enabled),
+		member("mode", &DLSSSettings::mode, FieldMeta{ .widget = FieldWidget::Combo,
+			.options = "DLAA\0Quality\0Balanced\0Performance\0Ultra Performance\0\0" }),
+		member("resetHistory", &DLSSSettings::resetHistory, FieldMeta{ .widget = FieldWidget::Button }),
+		member("supported", &DLSSSettings::supported, FieldMeta{ .readOnly = true }),
+		member("renderWidth", &DLSSSettings::renderWidth, FieldMeta{ .readOnly = true }),
+		member("renderHeight", &DLSSSettings::renderHeight, FieldMeta{ .readOnly = true })
+	)
+};
+
 struct TonemapSettings {
 	int tonemapper { 1 };
 	float exposure { 1.0f };

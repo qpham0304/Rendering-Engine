@@ -14,6 +14,8 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 invProj;
     float width;
     float height;
+    vec2 jitter;
+    float mipBias;
 } ubo;
 
 layout(push_constant) uniform PushConstant {

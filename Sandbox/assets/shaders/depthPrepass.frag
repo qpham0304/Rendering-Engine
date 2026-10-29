@@ -7,6 +7,20 @@
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) flat in uint inObjIdx;
 
+layout(set = 0, binding = 0) uniform UniformBufferObject {
+    mat4 invNormal;
+    mat4 view;
+    mat4 prevViewProj;
+    mat4 proj;
+    vec4 cameraPos;
+    mat4 invView;
+    mat4 invProj;
+    float width;
+    float height;
+    vec2 jitter;
+    float mipBias;
+} ubo;
+
 layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 
 layout(push_constant) uniform PushConstant {
@@ -22,7 +36,7 @@ void main() {
         return;
     }
 
-    float alpha = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], inTexCoord + mat.uvOffset).a;
+    float alpha = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], inTexCoord + mat.uvOffset, ubo.mipBias).a;
     if (alphaClipped(mat, alpha)) {
         discard;
     }

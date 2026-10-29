@@ -165,7 +165,7 @@ void DepthPrepassVulkan::_createRenderTarget()
 void DepthPrepassVulkan::_createDescriptor()
 {
 	std::vector<VkDescriptorSetLayoutBinding> bindings = {
-		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr },
+		{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },	// fragment reads the mip bias
 	};
 	layoutID = descriptorManagerVulkan->createLayout(bindings);
 

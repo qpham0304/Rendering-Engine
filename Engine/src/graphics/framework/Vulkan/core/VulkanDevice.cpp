@@ -29,6 +29,7 @@
 
 #include "core/features/ServiceLocator.h"
 #include "window/AppWindow.h"
+#include "DLSSSupport.h"
 // #include <vulkan/vulkan_win32.h>
 // #include "VulkanExtensions.hpp"
 
@@ -154,6 +155,14 @@ void VulkanDevice::createInstance()
 
 
 	auto extensions = getRequiredExtensions();
+	if(auto dlssExtensions = DLSSSupport::instanceExtensions()) {
+		for(const char* name : *dlssExtensions) {
+			if(std::none_of(extensions.begin(), extensions.end(), [name](const char* ext) { return strcmp(ext, name) == 0; })) {
+				extensions.push_back(name);
+			}
+		}
+		dlssInstanceReady = true;
+	}
 	createInfo.enabledExtensionCount = extensions.size();
 	createInfo.ppEnabledExtensionNames = extensions.data();
 
@@ -344,6 +353,16 @@ void VulkanDevice::createLogicalDevice() {
 		enabledExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 		enabledExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
 		enabledExtensions.push_back(VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME);
+	}
+
+	auto dlssExtensions = dlssInstanceReady ? DLSSSupport::deviceExtensions(instance, physicalDevice) : std::nullopt;
+	if(dlssExtensions) {
+		for(const char* name : *dlssExtensions) {
+			if(std::none_of(enabledExtensions.begin(), enabledExtensions.end(), [name](const char* ext) { return strcmp(ext, name) == 0; })) {
+				enabledExtensions.push_back(name);
+			}
+		}
+		dlssSupported = true;
 	}
 
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size());

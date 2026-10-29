@@ -92,6 +92,7 @@ add_subdirectory(extern/box3d)
 add_subdirectory(extern/vma)
 add_subdirectory(extern/volk)
 add_subdirectory(extern/vk-bootstrap)
+add_subdirectory(extern/dlss)
 
 find_package(Vulkan REQUIRED)
 
@@ -148,6 +149,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     opengl32
     lua::lib
     box3d::box3d
+    dlss
 )
 
 

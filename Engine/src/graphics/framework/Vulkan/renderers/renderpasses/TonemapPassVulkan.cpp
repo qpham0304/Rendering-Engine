@@ -1,4 +1,5 @@
 #include "TonemapPassVulkan.h"
+#include "DLSSPassVulkan.h"
 #include "DeferredCombinePassVulkan.h"
 #include <core/scene/SceneManager.h>
 #include <core/features/camera.h>
@@ -48,7 +49,11 @@ void TonemapPassVulkan::onUpdate()
 
 void TonemapPassVulkan::_fetchInputImage()
 {
-    inputImage = dynamic_cast<DeferredCombinePassVulkan*>(rendererManagerVulkan->getRenderer("DeferredCombinePassVulkan"))->getOutputImage();
+    if(rendererManagerVulkan->isUpscaling()) {
+        inputImage = dynamic_cast<DLSSPassVulkan*>(rendererManagerVulkan->getRenderer("DLSSPassVulkan"))->getOutputImage();
+    } else {
+        inputImage = dynamic_cast<DeferredCombinePassVulkan*>(rendererManagerVulkan->getRenderer("DeferredCombinePassVulkan"))->getOutputImage();
+    }
 }
 
 void TonemapPassVulkan::_createResources()

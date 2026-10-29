@@ -28,6 +28,7 @@ class PostProcessRendererVulkan;
 class ParticleRendererVulkan;
 class RibbonRendererVulkan;
 class DebugRendererVulkan;
+class DLSSPassVulkan;
 class TonemapPassVulkan;
 
 class MeshManager;
@@ -58,6 +59,8 @@ public:
 	void setDisplayImage(TextureVulkan* image);
 	TextureVulkan* getDisplayImage();
 	RenderGraphVulkan& getRenderGraph() { return m_renderGraph; }
+	bool isUpscaling() const { return m_upscaling; }
+	glm::vec2 getJitterPixels() const { return m_jitterPixels; }
 	const Common::UniformBufferObject& getUBO() const;
 	const std::vector<UniformBufferVulkan*>& getBufferUBO() const;
 
@@ -120,6 +123,7 @@ protected:
 	ParticleRendererVulkan* particleRenderer { nullptr };
 	RibbonRendererVulkan* ribbonRenderer { nullptr };
 	DebugRendererVulkan* debugRenderer { nullptr };
+	DLSSPassVulkan* dlssRenderer { nullptr };
 	TonemapPassVulkan* tonemapRenderer { nullptr };
 
 private:
@@ -127,6 +131,8 @@ private:
 	bool needResize{ false };
 	uint64_t m_frameNumber { 0 };
 	bool swapchainOutdated{ false };
+	bool m_upscaling { false };
+	glm::vec2 m_jitterPixels { 0.0f };
 
 	void _updateGraphSize();
 
