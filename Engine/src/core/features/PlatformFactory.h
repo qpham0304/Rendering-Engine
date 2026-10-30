@@ -18,6 +18,7 @@
 #include "core/resources/managers/RendererManager.h"
 #include "scripting/ScriptManager.h"
 #include "physics/PhysicsManager.h"
+#include "audio/AudioManager.h"
 #include "core/features/Object.h"
 
 // one single file to register and create all subsystems and services
@@ -97,6 +98,7 @@ private:
 		Factory<MaterialManager, RenderPlatform>,
 		Factory<RendererManager, RenderPlatform>,
 		Factory<ScriptManager, ScriptingPlatform>,
-		Factory<PhysicsManager, PhysicsFramework>
+		Factory<PhysicsManager, PhysicsFramework>,
+		Factory<AudioManager, AudioFramework>
 	> factories;
 };

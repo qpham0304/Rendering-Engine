@@ -14,6 +14,7 @@
 #include "graphics/framework/Vulkan/renderers/RendererManagerVulkan.h"
 #include "scripting/framework/lua/ScriptManagerLua.h"
 #include "physics/framework/PhysicsManagerBox3D.h"
+#include "audio/framework/AudioManagerMiniaudio.h"
 
 PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     : serviceLocator(serviceLocator)
@@ -77,6 +78,11 @@ PlatformFactory::PlatformFactory(ServiceLocator& serviceLocator)
     GetFactory<PhysicsManager, PhysicsFramework>().Register(
         PhysicsFramework::BOX3D,
         RegisterConstructor<PhysicsManager, PhysicsManagerBox3D>()
+    );
+
+    GetFactory<AudioManager, AudioFramework>().Register(
+        AudioFramework::MINIAUDIO,
+        RegisterConstructor<AudioManager, AudioManagerMiniaudio>()
     );
     
 }
