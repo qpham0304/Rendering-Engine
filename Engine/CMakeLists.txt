@@ -94,6 +94,13 @@ add_subdirectory(extern/volk)
 add_subdirectory(extern/vk-bootstrap)
 add_subdirectory(extern/dlss)
 
+# miniaudio static with only its built-in wav/flac/mp3 decoders, no vorbis/opus lookups
+set(MINIAUDIO_NO_LIBVORBIS ON CACHE BOOL "" FORCE)
+set(MINIAUDIO_NO_LIBOPUS ON CACHE BOOL "" FORCE)
+set(MINIAUDIO_NO_EXTRA_NODES ON CACHE BOOL "" FORCE)
+set(MINIAUDIO_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(extern/miniaudio)
+
 find_package(Vulkan REQUIRED)
 
 
@@ -150,6 +157,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     lua::lib
     box3d::box3d
     dlss
+    miniaudio
 )
 
 
