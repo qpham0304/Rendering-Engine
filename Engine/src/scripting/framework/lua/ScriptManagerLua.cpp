@@ -9,8 +9,10 @@
 #include "bindings/EventToLuaBindings.h"
 #include "bindings/MathToLuaBindings.h"
 #include "bindings/PhysicsToLuaBindings.h"
+#include "bindings/AudioToLuaBindings.h"
 #include "bindings/ComponentToLuaBindings.h"
 #include "physics/PhysicsManager.h"
+#include "audio/AudioManager.h"
 
 
 ScriptManagerLua::ScriptManagerLua(std::string serviceName)
@@ -37,6 +39,7 @@ bool ScriptManagerLua::init(WindowConfig config)
     MathToLuaBindings::exportMath(m_luaState);
     EventToLuaBindings::exportEvent(m_luaState, m_logger.get());
     PhysicsToLuaBindings::exportPhysics(m_luaState, &ServiceLocator::GetService<PhysicsManager>("PhysicsManager"));
+    AudioToLuaBindings::exportAudio(m_luaState, &ServiceLocator::GetService<AudioManager>("AudioManager"));
     
     SharedFunctionsLua shareToLua(m_logger.get()); 
     
