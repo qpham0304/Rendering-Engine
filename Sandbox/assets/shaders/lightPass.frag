@@ -43,6 +43,7 @@ layout(set = 1, binding = 5) uniform sampler2D brdfLUT;
 layout(set = 1, binding = 6) uniform samplerCube prefilterMap;
 layout(set = 1, binding = 7) uniform sampler2D hdrImage;
 layout(set = 1, binding = 8) uniform sampler2D aoImage;
+layout(set = 1, binding = 9) uniform sampler2D rtShadowImage;    // sun visibility from the ray traced shadow, used when rtShadow is set
 
 layout (push_constant) uniform LightData {
     mat4 sunlightMVP;
@@ -60,6 +61,7 @@ layout (push_constant) uniform LightData {
     float G;
     float scatteringScale;
     float iblDiffuse;       // whether to use ibl 1 or use global illumination 0
+    int rtShadow;
 } pcl;
 
 const float PI = 3.14159265359;
@@ -523,7 +525,9 @@ void main() {
     
     // float shadow = 1.0 - calcShadow(worldPos);
     // float shadow = 1.0 - calcMSMShadow(worldPos + N * pcl.bias);
-    float shadow = 1.0 - calcPCSS(worldPos, normalize(worldNorm), pcl.sunlightMVP, normalize(pcl.direction.xyz));
+    float shadow = pcl.rtShadow != 0
+        ? texelFetch(rtShadowImage, ivec2(gl_FragCoord.xy), 0).r
+        : 1.0 - calcPCSS(worldPos, normalize(worldNorm), pcl.sunlightMVP, normalize(pcl.direction.xyz));
     vec3 L_sun = normalize(pcl.direction.xyz); 
     vec3 sunRadiance = pcl.color.rgb * shadow;
 

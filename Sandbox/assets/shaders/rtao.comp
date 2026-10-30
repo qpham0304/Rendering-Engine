@@ -1,0 +1,98 @@
+#version 460
+
+#extension GL_EXT_ray_query : require
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r16f) uniform writeonly image2D outputAO;
+layout(set = 0, binding = 1) uniform sampler2D inputDepth;     // depth prepass, ao runs before the g-buffer
+layout(set = 0, binding = 2) uniform accelerationStructureEXT topLevelAS;
+
+layout(push_constant) uniform Params {
+    mat4 invViewProj;   // y flipped like the ubo
+    vec4 cameraPos;
+    float radius;       // world space, also the ray length
+    float intensity;
+    int rayCount;
+} pc;
+
+const float TWO_PI = 6.28318531;
+
+vec3 worldPosAt(ivec2 p, ivec2 size) {
+    vec2 uv = (vec2(p) + 0.5) / vec2(size);
+    vec4 world = pc.invViewProj * vec4(uv * 2.0 - 1.0, texelFetch(inputDepth, p, 0).r, 1.0);
+    return world.xyz / world.w;
+}
+
+// picks the neighbor closer to the camera on each axis so edges don't bleed the background into the normal
+vec3 reconstructNormal(ivec2 p, ivec2 size, vec3 P) {
+    vec3 right = worldPosAt(min(p + ivec2(1, 0), size - 1), size);
+    vec3 left  = worldPosAt(max(p - ivec2(1, 0), ivec2(0)), size);
+    vec3 down  = worldPosAt(min(p + ivec2(0, 1), size - 1), size);
+    vec3 up    = worldPosAt(max(p - ivec2(0, 1), ivec2(0)), size);
+
+    float dP = distance(P, pc.cameraPos.xyz);
+    vec3 dx = abs(distance(right, pc.cameraPos.xyz) - dP) < abs(dP - distance(left, pc.cameraPos.xyz)) ? right - P : P - left;
+    vec3 dy = abs(distance(down, pc.cameraPos.xyz) - dP) < abs(dP - distance(up, pc.cameraPos.xyz)) ? down - P : P - up;
+
+    vec3 N = normalize(cross(dx, dy));
+    return dot(N, pc.cameraPos.xyz - P) < 0.0 ? -N : N;
+}
+
+uint hash(uint x) {
+    x ^= x >> 16; x *= 0x7feb352du;
+    x ^= x >> 15; x *= 0x846ca68bu;
+    x ^= x >> 16;
+    return x;
+}
+
+float random(inout uint state) {
+    state = hash(state);
+    return float(state) / 4294967295.0;
+}
+
+vec3 cosineHemisphere(vec3 N, float u1, float u2) {
+    vec3 T = normalize(abs(N.y) < 0.999 ? cross(N, vec3(0.0, 1.0, 0.0)) : cross(N, vec3(1.0, 0.0, 0.0)));
+    vec3 B = cross(N, T);
+    float r = sqrt(u1);
+    float phi = TWO_PI * u2;
+    return normalize(T * (r * cos(phi)) + B * (r * sin(phi)) + N * sqrt(max(1.0 - u1, 0.0)));
+}
+
+// short occlusion rays against the scene, hits closer than the radius darken more than the far ones
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(outputAO);
+    if (pixel.x >= size.x || pixel.y >= size.y) {
+        return;
+    }
+
+    if (texelFetch(inputDepth, pixel, 0).r >= 1.0) {
+        imageStore(outputAO, pixel, vec4(1.0));
+        return;
+    }
+
+    vec3 P = worldPosAt(pixel, size);
+    vec3 N = reconstructNormal(pixel, size, P);
+    float distanceToCamera = distance(P, pc.cameraPos.xyz);
+    vec3 origin = P + N * (0.01 + 0.001 * distanceToCamera);
+
+    uint seed = hash(uint(pixel.x) * 1973u + uint(pixel.y) * 9277u);
+    float occlusion = 0.0;
+    for (int i = 0; i < pc.rayCount; i++) {
+        vec3 dir = cosineHemisphere(N, random(seed), random(seed));
+
+        rayQueryEXT rayQuery;
+        rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.001, dir, pc.radius);
+        while (rayQueryProceedEXT(rayQuery)) {}
+
+        if (rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT) {
+            float t = rayQueryGetIntersectionTEXT(rayQuery, true);
+            occlusion += 1.0 - (t / pc.radius) * (t / pc.radius);
+        }
+    }
+
+    float ao = 1.0 - occlusion / float(max(pc.rayCount, 1));
+    ao = pow(clamp(ao, 0.0, 1.0), pc.intensity);
+    imageStore(outputAO, pixel, vec4(ao));
+}

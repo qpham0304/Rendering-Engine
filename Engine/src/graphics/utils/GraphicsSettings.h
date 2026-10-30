@@ -33,6 +33,10 @@ struct ShadowMapSettings {
 	bool useOrtho { true };
 	uint32_t blurRadius { 64 };			// moment blur
 	float blurSigma { 15.0f };
+	int method { 0 };
+	float rtSoftness { 0.5f };
+	int rtRayCount { 4 };
+	int rtBlurRadius { 3 };
 
 	// runtime state, not reflected
 	glm::vec3 lightDir { glm::normalize(glm::vec3(1.0f)) };	// toward the sun, what the shadow map is rendered from
@@ -46,7 +50,13 @@ struct ShadowMapSettings {
 		member("zFar", &ShadowMapSettings::zFar, FieldMeta{ .min = 50.0f, .max = 200.0f }),
 		member("useOrtho", &ShadowMapSettings::useOrtho),
 		member("blurRadius", &ShadowMapSettings::blurRadius, FieldMeta{ .min = 1.0f, .max = 64.0f }),
-		member("blurSigma", &ShadowMapSettings::blurSigma, FieldMeta{ .min = 1.0f, .max = 30.0f, .format = "%.4f", .logarithmic = true })
+		member("blurSigma", &ShadowMapSettings::blurSigma, FieldMeta{ .min = 1.0f, .max = 30.0f, .format = "%.4f", .logarithmic = true }),
+		member("method", &ShadowMapSettings::method, FieldMeta{ .widget = FieldWidget::Combo,
+			.tooltip = "ray traced needs ray tracing support, it falls back to the shadow map without it",
+			.options = "Shadow Map\0Ray Traced\0\0" }),
+		member("rtSoftness", &ShadowMapSettings::rtSoftness, FieldMeta{ .min = 0.0f, .max = 5.0f, .tooltip = "degrees, 0 is a hard shadow" }),
+		member("rtRayCount", &ShadowMapSettings::rtRayCount, FieldMeta{ .min = 1.0f, .max = 16.0f }),
+		member("rtBlurRadius", &ShadowMapSettings::rtBlurRadius, FieldMeta{ .min = 0.0f, .max = 8.0f, .tooltip = "0 turns the blur off" })
 	)
 };
 
@@ -81,12 +91,25 @@ struct LightingSettings {
 };
 
 struct AmbientOcclusionSettings {
+	int method { 0 };
+	float radius { 0.75f };
+	float intensity { 2.0f };
+	int rayCount { 4 };
+	int blurType { 3 };
 	int blurRadius { 4 };
 	float blurScale { 100.0f };
 
 	DEFINE_TYPE(AmbientOcclusionSettings,
+		member("method", &AmbientOcclusionSettings::method, FieldMeta{ .widget = FieldWidget::Combo,
+			.tooltip = "ray traced needs ray tracing support, it falls back to GTAO without it",
+			.options = "Alchemy\0GTAO\0Ray Traced\0\0" }),
+		member("radius", &AmbientOcclusionSettings::radius, FieldMeta{ .min = 0.05f, .max = 5.0f, .tooltip = "world space reach of the occlusion" }),
+		member("intensity", &AmbientOcclusionSettings::intensity, FieldMeta{ .min = 0.1f, .max = 4.0f }),
+		member("rayCount", &AmbientOcclusionSettings::rayCount, FieldMeta{ .min = 1.0f, .max = 32.0f, .tooltip = "rays per pixel, ray traced only" }),
+		member("blurType", &AmbientOcclusionSettings::blurType, FieldMeta{ .widget = FieldWidget::Combo,
+			.options = "None\0Box\0Gaussian\0Bilateral\0\0" }),
 		member("blurRadius", &AmbientOcclusionSettings::blurRadius, FieldMeta{ .min = 1.0f, .max = 16.0f }),
-		member("blurScale", &AmbientOcclusionSettings::blurScale, FieldMeta{ .min = 1.0f, .max = 100.0f })
+		member("blurScale", &AmbientOcclusionSettings::blurScale, FieldMeta{ .min = 1.0f, .max = 100.0f, .tooltip = "bilateral depth edge sharpness" })
 	)
 };
 

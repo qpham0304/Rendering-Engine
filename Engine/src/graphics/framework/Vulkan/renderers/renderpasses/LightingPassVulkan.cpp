@@ -85,7 +85,8 @@ void LightingPassVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 
-	if(environmentImage != imageBasedRenderer->hdrImage || aoImage != ambientOcclusionPass->getOutputImage()) {
+	if(environmentImage != imageBasedRenderer->hdrImage || aoImage != ambientOcclusionPass->getOutputImage()
+		|| rtShadowImageID != _rayTracedShadowImage()->id()) {
 		renderDeviceVulkan->waitIdle();	// the frame in flight still reads the old descriptors
 		_updateLightDescriptor();
 	}
@@ -154,6 +155,9 @@ void LightingPassVulkan::addToGraph(RenderGraphVulkan& graph)
 		{ depthTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
 		{ aoTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
 	};
+	if(shadowMapPass->isRayTraced()) {
+		node.reads.push_back({ graph.importTexture(shadowMapPass->getRayTracedMask()), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+	}
 
 	node.writes = {
 		{ renderTarget.colorHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }
@@ -219,6 +223,7 @@ void LightingPassVulkan::_updateLights(uint32_t currentFrame)
 
 	// with a probe grid the diffuse ambient comes from ddgi in the combine pass, the light pass only keeps the specular ibl
 	pushConstantLight.iblDiffuse = (ddgiSettings && ddgiSettings->isReady()) ? 0.0f : 1.0f;
+	pushConstantLight.rtShadow = shadowMapPass->isRayTraced() ? 1 : 0;
 
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
@@ -351,13 +356,14 @@ void LightingPassVulkan::_createLightDescriptor()
 		{ 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+		{ 9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 	});
 
 	uint32_t poolIDLayout_1 = descriptorManagerVulkan->createPool(
 		{
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount },
 			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 2},
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 6 },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 7 },
 		},
 		frameCount
 	);
@@ -439,6 +445,10 @@ void LightingPassVulkan::_updateLightDescriptor()
 		aoImageInfo.imageView = ambientOcclusionPass->getOutputImage()->textureImageView;
 		aoImageInfo.sampler = ambientOcclusionPass->getOutputImage()->textureSampler;
 
+		// the shader only reads it when rtShadow is set, the binding still needs an image otherwise
+		TextureVulkan* rtShadow = _rayTracedShadowImage();
+		VkDescriptorImageInfo rtShadowInfo{ rtShadow->textureSampler, rtShadow->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
 		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 1, ssboInfo);
@@ -449,11 +459,18 @@ void LightingPassVulkan::_updateLightDescriptor()
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 6, prefilterImageInfo);
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 7, hdrImageInfo);
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 8, aoImageInfo);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 9, rtShadowInfo);
 
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 	environmentImage = imageBasedRenderer->hdrImage;
 	aoImage = ambientOcclusionPass->getOutputImage();
+	rtShadowImageID = _rayTracedShadowImage()->id();
+}
+
+TextureVulkan* LightingPassVulkan::_rayTracedShadowImage() const
+{
+	return shadowMapPass->isRayTraced() ? shadowMapPass->getRayTracedMask() : shadowMapPass->blueNoiseImage;
 }
 
 void LightingPassVulkan::_recreateResources()

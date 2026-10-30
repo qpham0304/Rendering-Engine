@@ -30,6 +30,7 @@ public:
 		alignas(4)	float G;
 		alignas(4)	float scatteringScale;
 		alignas(4)	float iblDiffuse;
+		alignas(4)	int rtShadow;
 	};
 
 	struct LightSSBO {
@@ -77,12 +78,14 @@ protected:
 	AmbientOcclusionPassVulkan* ambientOcclusionPass { nullptr };
 	TextureVulkan* environmentImage { nullptr };
 	TextureVulkan* aoImage { nullptr };
+	uint32_t rtShadowImageID { 0 };
 
 	void _updateLights(uint32_t currentFrame);
 	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _createRenderTarget();
 	void _createLightDescriptor();
 	void _updateLightDescriptor();
+	TextureVulkan* _rayTracedShadowImage() const;
 	void _createLightPipeline();
 	void _recreateResources();
 	void _cleanupResources();

@@ -304,6 +304,7 @@ void RendererManagerVulkan::render()
         }
 
         geometryPassRenderer->addToGraph(m_renderGraph);
+        shadowMapPass->addRayTracedToGraph(m_renderGraph);
 
         lightingPassRenderer->addToGraph(m_renderGraph);
         hiZPassRenderer->addToGraph(m_renderGraph);

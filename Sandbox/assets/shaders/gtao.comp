@@ -1,0 +1,128 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+#include "common/mathUtils.glsl"
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r16f) uniform writeonly image2D outputAO;
+layout(set = 0, binding = 1) uniform sampler2D inputDepth;     // depth prepass, ao runs before the g-buffer
+
+layout(push_constant) uniform Params {
+    mat4 invProj;       // y flipped like ubo.invProj
+    float radius;       // world space
+    float intensity;
+    float projScale;    // pixels per world unit at distance 1
+    int sliceCount;
+    int stepCount;
+} pc;
+
+const float HALF_PI = PI * 0.5;
+
+vec3 viewPosAt(ivec2 p, ivec2 size) {
+    vec2 uv = (vec2(p) + 0.5) / vec2(size);
+    return getPos(uv, texelFetch(inputDepth, p, 0).r, pc.invProj, mat4(1.0));
+}
+
+// picks the neighbor closer in depth on each axis so edges don't bleed the background into the normal
+vec3 reconstructNormal(ivec2 p, ivec2 size, vec3 P) {
+    vec3 right = viewPosAt(min(p + ivec2(1, 0), size - 1), size);
+    vec3 left  = viewPosAt(max(p - ivec2(1, 0), ivec2(0)), size);
+    vec3 down  = viewPosAt(min(p + ivec2(0, 1), size - 1), size);
+    vec3 up    = viewPosAt(max(p - ivec2(0, 1), ivec2(0)), size);
+
+    vec3 dx = abs(right.z - P.z) < abs(P.z - left.z) ? right - P : P - left;
+    vec3 dy = abs(down.z - P.z) < abs(P.z - up.z) ? down - P : P - up;
+
+    vec3 N = normalize(cross(dx, dy));
+    return dot(N, P) > 0.0 ? -N : N;
+}
+
+// Jorge Jimenez's interleaved gradient noise, rotates the slices per pixel for the blur to clean up
+float interleavedGradientNoise(vec2 p) {
+    return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
+}
+
+// ground truth ambient occlusion (Jimenez et al. 2016): per slice find the highest horizon on both sides
+// in screen space, then integrate the visible arc against the cosine of the normal projected into the slice
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(outputAO);
+    if (pixel.x >= size.x || pixel.y >= size.y) {
+        return;
+    }
+
+    if (texelFetch(inputDepth, pixel, 0).r >= 1.0) {
+        imageStore(outputAO, pixel, vec4(1.0));
+        return;
+    }
+
+    vec3 P = viewPosAt(pixel, size);
+    vec3 N = reconstructNormal(pixel, size, P);
+    vec3 V = normalize(-P);
+
+    float screenRadius = pc.projScale * pc.radius / -P.z;
+    if (screenRadius < 1.0) {
+        imageStore(outputAO, pixel, vec4(1.0));
+        return;
+    }
+
+    float noiseSlice = interleavedGradientNoise(vec2(pixel));
+    float noiseStep = interleavedGradientNoise(vec2(pixel) + vec2(5.588238, 3.917));
+    float falloffFrom = pc.radius * 0.4;
+    float falloffRange = max(pc.radius - falloffFrom, 1e-4);
+
+    float visibility = 0.0;
+    for (int slice = 0; slice < pc.sliceCount; slice++) {
+        float phi = (float(slice) + noiseSlice) * PI / float(pc.sliceCount);
+        vec2 screenDir = vec2(cos(phi), sin(phi));              // pixels, y down
+        vec3 dir = vec3(screenDir.x, -screenDir.y, 0.0);        // view space, y up
+
+        vec3 orthoDir = dir - dot(dir, V) * V;
+        vec3 axis = normalize(cross(orthoDir, V));
+        vec3 projN = N - axis * dot(N, axis);
+        float projLength = length(projN);
+        if (projLength < 1e-4) {
+            visibility += 1.0;
+            continue;
+        }
+
+        float cosN = clamp(dot(projN, V) / projLength, -1.0, 1.0);
+        float n = sign(dot(orthoDir, projN)) * acos(cosN);
+
+        float horizonCos0 = -1.0;
+        float horizonCos1 = -1.0;
+        for (int s = 0; s < pc.stepCount; s++) {
+            float t = (float(s) + noiseStep) / float(pc.stepCount);
+            vec2 offset = screenDir * max(t * screenRadius, 1.0);
+
+            ivec2 p0 = clamp(ivec2(vec2(pixel) - offset), ivec2(0), size - 1);
+            ivec2 p1 = clamp(ivec2(vec2(pixel) + offset), ivec2(0), size - 1);
+
+            vec3 d0 = viewPosAt(p0, size) - P;
+            vec3 d1 = viewPosAt(p1, size) - P;
+            float l0 = length(d0);
+            float l1 = length(d1);
+
+            // samples past the radius fade back to the lowest horizon so far away geometry stops occluding
+            float c0 = mix(dot(d0, V) / max(l0, 1e-4), -1.0, clamp((l0 - falloffFrom) / falloffRange, 0.0, 1.0));
+            float c1 = mix(dot(d1, V) / max(l1, 1e-4), -1.0, clamp((l1 - falloffFrom) / falloffRange, 0.0, 1.0));
+            horizonCos0 = max(horizonCos0, c0);
+            horizonCos1 = max(horizonCos1, c1);
+        }
+
+        float h0 = -acos(clamp(horizonCos0, -1.0, 1.0));
+        float h1 = acos(clamp(horizonCos1, -1.0, 1.0));
+        h0 = n + max(h0 - n, -HALF_PI);
+        h1 = n + min(h1 - n, HALF_PI);
+
+        float arc0 = (cosN + 2.0 * h0 * sin(n) - cos(2.0 * h0 - n)) * 0.25;
+        float arc1 = (cosN + 2.0 * h1 * sin(n) - cos(2.0 * h1 - n)) * 0.25;
+        visibility += projLength * (arc0 + arc1);
+    }
+
+    float ao = clamp(visibility / float(pc.sliceCount), 0.0, 1.0);
+    ao = pow(ao, pc.intensity);
+    imageStore(outputAO, pixel, vec4(ao));
+}
