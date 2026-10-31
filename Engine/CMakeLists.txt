@@ -24,6 +24,30 @@ file(GLOB_RECURSE ENGINE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
 )
 
+# TODO: ideally subsystems or services each have their own cmake only scripting system atm, eventually refactor everything else
+# a src folder with its own CMakeLists.txt is a separate target that links itself into the engine
+file(GLOB_RECURSE ENGINE_MODULE_LISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/*/CMakeLists.txt)
+set(ENGINE_MODULE_DIRS)
+foreach(moduleList ${ENGINE_MODULE_LISTS})
+    cmake_path(GET moduleList PARENT_PATH moduleDir)
+    list(APPEND ENGINE_MODULE_DIRS ${moduleDir})
+endforeach()
+
+set(ENGINE_OWN_SOURCES)
+foreach(source ${ENGINE_SOURCES})
+    set(inModule FALSE)
+    foreach(moduleDir ${ENGINE_MODULE_DIRS})
+        cmake_path(IS_PREFIX moduleDir ${source} NORMALIZE isPrefix)
+        if(isPrefix)
+            set(inModule TRUE)
+        endif()
+    endforeach()
+    if(NOT inModule)
+        list(APPEND ENGINE_OWN_SOURCES ${source})
+    endif()
+endforeach()
+set(ENGINE_SOURCES ${ENGINE_OWN_SOURCES})
+
 set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/imgui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/imgui_draw.cpp
@@ -160,10 +184,13 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     miniaudio
 )
 
-
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /bigobj /utf-8 /MP)
 endif()
+
+foreach(moduleDir ${ENGINE_MODULE_DIRS})
+    add_subdirectory(${moduleDir})
+endforeach()
 
 if(WK_TESTS_ENABLED)
     add_subdirectory(tests)

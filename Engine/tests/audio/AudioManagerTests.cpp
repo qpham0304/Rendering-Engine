@@ -2,6 +2,7 @@
 #include "TestHelpers.h"
 #include "audio/framework/AudioManagerMiniaudio.h"
 #include "core/events/EventManager.h"
+#include "core/features/EngineStates.h"
 #include <cstdint>
 #include <fstream>
 
@@ -105,5 +106,26 @@ TEST_F(AudioManagerTest, MusicReplacesPreviousTrack)
 	EXPECT_EQ(audio.listIDs().size(), 1u);
 
 	audio.stopMusic();
+	EXPECT_TRUE(audio.listIDs().empty());
+}
+
+// a stop reloads the scene and its scripts start their sounds again, so nothing may survive it
+TEST_F(AudioManagerTest, StopReleasesEverySound)
+{
+	std::string music = writeSilentWav(temp, "music.wav");
+	std::string hit = writeSilentWav(temp, "hit.wav");
+
+	audio.playMusic(music);
+	audio.play(hit, { .loop = true });
+	ASSERT_EQ(audio.listIDs().size(), 2u);
+
+	EngineState::play();
+	audio.onUpdate(FrameTime{});
+	EngineState::pause();
+	audio.onUpdate(FrameTime{});
+	EXPECT_EQ(audio.listIDs().size(), 2u);
+
+	EngineState::stop();
+	audio.onUpdate(FrameTime{});
 	EXPECT_TRUE(audio.listIDs().empty());
 }

@@ -7,18 +7,6 @@
 #include <nlohmann/json.hpp>
 #include "core/features/Object.h"
 
-// optional hook a reflected type can define to rebuild derived data after from_json
-template<typename T>
-concept HasOnDeserialized = requires(T& t) { t.onDeserialized(); };
-
-template<typename T>
-void CallOnDeserialized(T& obj)
-{
-	if constexpr (HasOnDeserialized<T>) {
-		obj.onDeserialized();
-	}
-}
-
 // how an editor draws a reflected field
 enum class FieldWidget { Auto, Drag, Color, Button, FilePath, Texture, Combo };
 
@@ -67,7 +55,6 @@ FieldMeta ResolveFieldMeta(const Meta&... meta) {
 			}                                                                   	\
 		};                                                                      	\
 		ClassName::VisitFields(resolver);                                       	\
-		CallOnDeserialized(obj);                                                	\
 	}
 
 class Logger;

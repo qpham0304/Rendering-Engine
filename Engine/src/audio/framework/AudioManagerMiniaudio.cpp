@@ -59,7 +59,7 @@ bool AudioManagerMiniaudio::onClose()
     ma_engine_uninit(m_engine.get());
     m_engine.reset();
     m_initialized = false;
-    m_running = false;
+    m_lastState = EngineState::State::Stopped;
     return true;
 }
 
@@ -296,37 +296,21 @@ void AudioManagerMiniaudio::_followCamera()
 
 void AudioManagerMiniaudio::_syncWithGameState()
 {
-    bool playing = EngineState::isPlaying();
-    if(playing && !m_running) {
+    EngineState::State state = EngineState::getState();
+    if(state == m_lastState) {
+        return;
+    }
+
+    if(state == EngineState::State::Playing) {
         ma_engine_start(m_engine.get());
-        m_running = true;
     }
-    else if(!playing && m_running) {
+    else {
         ma_engine_stop(m_engine.get());
-        m_running = false;
-
-        // a pause keeps every sound where it was. a stop does not rerun the scripts that started the loops,
-        // so loops and music rewind to replay on the next play, one shots are dropped
-        if(EngineState::isStopped()) {
-            _rewindLoops();
-        }
-    }
-}
-
-void AudioManagerMiniaudio::_rewindLoops()
-{
-    std::vector<uint32_t> oneShots;
-    for(const auto& [id, sound] : m_sounds) {
-        bool fading = std::find(m_fadingOut.begin(), m_fadingOut.end(), id) != m_fadingOut.end();
-        if(ma_sound_is_looping(sound.get()) && !fading) {
-            ma_sound_seek_to_pcm_frame(sound.get(), 0);
-        }
-        else {
-            oneShots.push_back(id);
-        }
     }
 
-    for(uint32_t id : oneShots) {
-        _release(id);
+    // a pause keeps every sound where it was, a stop reloads the scene and its scripts start their sounds again
+    if(state == EngineState::State::Stopped) {
+        stopAll();
     }
+    m_lastState = state;
 }

@@ -3,6 +3,7 @@
 #include "core/features/ServiceLocator.h"
 #include "core/scene/SceneManager.h"
 #include "core/events/EventManager.h"
+#include "core/features/EngineStates.h"
 #include "core/entities/Entity.h"
 #include "window/AppWindow.h"
 #include "bindings/SharedFunctionsLua.h"
@@ -104,6 +105,18 @@ void ScriptManagerLua::onUpdate(const FrameTime& frameTime)
         for (const auto& path : localReloadQueue) {
             _reloadScript(path);
         }
+    }
+
+    // a stop destroyed the scene's script instances, collect them so their event subscriptions end too
+    EngineState::State state = EngineState::getState();
+    if(state != m_lastState && state == EngineState::State::Stopped) {
+        m_luaState.collect_garbage();
+    }
+    m_lastState = state;
+
+    // scripts are game logic, they init on the first play and freeze while paused
+    if(state != EngineState::State::Playing) {
+        return;
     }
 
     SceneManager& sceneManager = SceneManager::getInstance();

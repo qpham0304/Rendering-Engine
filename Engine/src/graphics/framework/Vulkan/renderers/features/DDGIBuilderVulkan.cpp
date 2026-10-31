@@ -38,7 +38,7 @@ static LightProbeComponent* findProbeGrid()
 // LightProbeComponent::probeCounts when it is set, otherwise the same count on every axis
 static glm::uvec3 gridProbeCounts(const LightProbeComponent& probeGrid, uint32_t maxCount)
 {
-	glm::uvec3 counts = probeGrid.probeCounts;
+	glm::uvec3 counts = glm::uvec3(glm::max(probeGrid.probeCounts, glm::ivec3(0)));
 	if(counts.x == 0 || counts.y == 0 || counts.z == 0) {
 		counts = glm::uvec3(probeGrid.probesPerDimension);
 	}

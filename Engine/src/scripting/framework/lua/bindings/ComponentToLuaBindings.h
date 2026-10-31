@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include "core/entities/Entity.h"
 #include "core/components/MComponent.h"
+#include "core/scene/EntitySerializer.h"
 
 class Logger;
 
@@ -46,7 +47,7 @@ private:
 
         // default construct, then copy any matching field of the optional lua table onto it
         componentAdders[T::GetStaticType()] = [](sol::state_view lua, Entity e, sol::object luaTable) -> sol::object {
-            T& component = e.getRegistry()->emplace_or_replace<T>(e);
+            T& component = e.addComponent<T>(e);
 
             if (luaTable.is<sol::table>()) {
                 sol::table table = luaTable.as<sol::table>();
@@ -59,7 +60,14 @@ private:
                 });
             }
 
-            return sol::make_object(lua, &component);
+            // the registered load hook runs like scene component load
+            const auto& factory = EntitySerializer::getComponentFactory();
+            auto loader = factory.find(T::GetStaticType());
+            if (loader != factory.end()) {
+                loader->second(e, nlohmann::json(component))();
+            }
+
+            return sol::make_object(lua, &e.getComponent<T>());
         };
 
         return luaType;

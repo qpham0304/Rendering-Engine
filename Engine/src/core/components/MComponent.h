@@ -56,11 +56,6 @@ public:
 		updateTransform();
 	}
 
-	// called by from_json after the fields are loaded
-	void onDeserialized() {
-		updateTransform();
-	}
-
 	DEFINE_TYPE(TransformComponent,
 		member("translateVec", &TransformComponent::translateVec),
 		member("rotateVec", &TransformComponent::rotateVec),
@@ -152,13 +147,18 @@ struct MYGRAPHICSENGINE_EXPORT LightProbeComponent {
 	LightProbeComponent() = default;
 
 	std::vector<glm::vec4> probeGrid;
-	size_t bufferSize;
-	uint32_t probesPerDimension;
-	glm::uvec3 probeCounts { 0 };	// probes per axis, falls back to probesPerDimension on every axis when left at 0
-	float spacing;
-    glm::vec4 gridOrigin;
+	size_t bufferSize { 0 };
+	uint32_t probesPerDimension { 0 };
+	glm::ivec3 probeCounts { 0 };	// probes per axis, falls back to probesPerDimension on every axis when left at 0
+	float spacing { 0.0f };
+    glm::vec4 gridOrigin { 0.0f };
 
-	//NLOHMANN_DEFINE_TYPE_INTRUSIVE(LightProbeComponent, probeGrid);
+	DEFINE_TYPE(LightProbeComponent,
+		member("probeCounts", &LightProbeComponent::probeCounts),
+		member("probesPerDimension", &LightProbeComponent::probesPerDimension),
+		member("spacing", &LightProbeComponent::spacing),
+		member("gridOrigin", &LightProbeComponent::gridOrigin)
+	);
 };
 
 struct MYGRAPHICSENGINE_EXPORT SpriteComponent {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scripting/ScriptManager.h"
+#include "core/features/EngineStates.h"
 #include <sol/sol.hpp>
 
 struct ScriptComponent;
@@ -29,4 +30,6 @@ protected:
 	
 	virtual void _reloadScript(const std::string& path) override;
 	void _initScript(ScriptComponent& scriptComponent);
+
+	EngineState::State m_lastState { EngineState::State::Stopped };
 };

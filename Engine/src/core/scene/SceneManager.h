@@ -13,6 +13,7 @@
 #include "graphics/framework/OpenGL/core/TextureOpenGL.h"
 #include "core/resources/managers/Manager.h"
 #include "core/features/Mesh.h"
+#include "core/features/EngineStates.h"
 
 class Camera;
 
@@ -45,10 +46,14 @@ private:
 
 	bool init(WindowConfig config) override;
 	bool onClose() override;
+	void onFixedUpdate(float fixedDeltaTime) override;
 	void onUpdate(const FrameTime& frameTime) override;
 	virtual void destroy(uint32_t id) override {};
 
+	void _syncWithGameState();
+
 private:
+	EngineState::State m_lastState { EngineState::State::Stopped };
 	std::unordered_map<std::string, std::unique_ptr<Scene>> scenes;
 	bool areaFocused { false };
 

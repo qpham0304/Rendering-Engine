@@ -79,7 +79,7 @@ std::vector<uint32_t> PhysicsManagerBox3D::listIDs() const
 
 void PhysicsManagerBox3D::onUpdate(const FrameTime& frameTime)
 {
-    if(!EngineState::isPlaying()) {
+    if(EngineState::isStopped()) {
         SceneManager& sceneManager = SceneManager::getInstance();
         for(uint32_t sceneID : sceneManager.listIDs()) {
             Scene* scene = sceneManager.getScene(sceneID);

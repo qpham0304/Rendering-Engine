@@ -1,5 +1,6 @@
 #include "SmokeTestSupport.h"
 #include <core/features/ServiceLocator.h>
+#include <core/features/EngineStates.h>
 #include <core/resources/managers/TextureManager.h>
 #include <core/resources/managers/ModelManager.h>
 #include <scripting/ScriptManager.h>
@@ -217,6 +218,9 @@ function UpdateError:onUpdate(dt) error("update boom") end
 		entity("InitErrorEntity", { { "ScriptComponent", { { "path", initScript } } } }),
 		entity("UpdateErrorEntity", { { "ScriptComponent", { { "path", updateScript } } } }),
 	}));
+
+	// scripts only run while the game plays
+	EngineState::play();
 
 	int framesRun = 0;
 	size_t updateErrorsBeforeReload = 0;

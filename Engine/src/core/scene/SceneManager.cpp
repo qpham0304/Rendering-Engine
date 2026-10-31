@@ -72,8 +72,15 @@ bool SceneManager::onClose()
 	return true;
 }
 
+void SceneManager::onFixedUpdate(float fixedDeltaTime)
+{
+	_syncWithGameState();
+}
+
 void SceneManager::onUpdate(const FrameTime& frameTime)
 {
+	_syncWithGameState();
+
 	for (auto& [name, scene] : scenes) {
 		if (!scene->isEnabled) {
 			continue;
@@ -181,6 +188,26 @@ bool SceneManager::removeScene(const std::string& name)
 bool SceneManager::empty()
 {
     return scenes.empty();
+}
+
+// play starts from a snapshot of every scene and stop rebuilds them from it. checked in the fixed update too,
+// this runs before the other services so the snapshot is taken before the first physics step or script init
+void SceneManager::_syncWithGameState()
+{
+	EngineState::State state = EngineState::getState();
+	if (state == m_lastState) {
+		return;
+	}
+
+	for (auto& [name, scene] : scenes) {
+		if (m_lastState == EngineState::State::Stopped) {
+			scene->onStart();
+		}
+		else if (state == EngineState::State::Stopped) {
+			scene->onStop();
+		}
+	}
+	m_lastState = state;
 }
 
 std::vector<uint32_t> SceneManager::listIDs() const

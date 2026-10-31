@@ -1,6 +1,7 @@
 #pragma once
 
 #include "audio/AudioManager.h"
+#include "core/features/EngineStates.h"
 #include <unordered_map>
 
 typedef struct ma_engine ma_engine;
@@ -41,12 +42,11 @@ private:
 	void _release(uint32_t id);
 	void _followCamera();
 	void _syncWithGameState();
-	void _rewindLoops();
 
 	std::unique_ptr<ma_engine> m_engine;
 	std::unordered_map<uint32_t, std::unique_ptr<ma_sound>> m_sounds;
 	std::vector<uint32_t> m_fadingOut;		// stopped with a fade, released once silent
 	uint32_t m_musicID { 0 };
 	bool m_initialized { false };
-	bool m_running { false };
+	EngineState::State m_lastState { EngineState::State::Stopped };
 };
