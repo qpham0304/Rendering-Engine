@@ -84,6 +84,7 @@ private:
 	std::unique_ptr<VulkanPipeline> offscreenPipeline;
 
 	ShadowMapPassVulkan* shadowMapRenderer { nullptr };
+	uint32_t shadowMapID { 0 };
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 
 	bool isActive{ false };

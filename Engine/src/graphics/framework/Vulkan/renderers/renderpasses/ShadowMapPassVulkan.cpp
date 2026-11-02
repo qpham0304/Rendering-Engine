@@ -94,6 +94,7 @@ void ShadowMapPassVulkan::onUpdate()
 void ShadowMapPassVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
+	_applyResolution();
 
 	glm::mat4 lightProjection;
 	if(settings->useOrtho) {
@@ -459,6 +460,12 @@ void ShadowMapPassVulkan::_createMomentDescriptor()
 
 	compDescSetMtoT_ID = descriptorManagerVulkan->createSets(compDescriptorLayoutID, compDescriptorPoolID, 1);
 	compDescSetTtoM_ID = descriptorManagerVulkan->createSets(compDescriptorLayoutID, compDescriptorPoolID, 1);
+	_writeMomentDescriptors();
+}
+
+// the blur ping-pongs moment -> temp -> moment, rewritten when the shadow map size changes
+void ShadowMapPassVulkan::_writeMomentDescriptors()
+{
 	auto setsMtoT = descriptorManagerVulkan->getDescriptorSet(compDescSetMtoT_ID);
 	auto setsTtoM = descriptorManagerVulkan->getDescriptorSet(compDescSetTtoM_ID);
 
@@ -529,6 +536,7 @@ void ShadowMapPassVulkan::_cleanupResources()
 
 void ShadowMapPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+	_applyResolution();
 	auto depth = graph.importTexture(depthMap);
 
 	RenderPassNode node{};
@@ -657,4 +665,28 @@ void ShadowMapPassVulkan::_writeRayTraced(VkCommandBuffer cmd, uint32_t currentF
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, rtPipeline->pipelineLayout, 0, 1, &sets[currentFrame], 0, nullptr);
 	vkCmdDispatch(cmd, (rtMask->width() + 15) / 16, (rtMask->height() + 15) / 16, 1);
 	renderDeviceVulkan->endLabel(cmd);
+}
+
+// resolution comes from the settings, everything sized by it is rebuilt before this frame uses the shadow map
+void ShadowMapPassVulkan::_applyResolution()
+{
+	static constexpr uint32_t sizes[] = { 512, 1024, 2048, 4096 };
+	uint32_t size = sizes[std::clamp(settings->resolution, 0, 3)];
+	if(size == width && size == height) {
+		return;
+	}
+
+	renderDeviceVulkan->waitIdle();
+	vkDestroyFramebuffer(renderDeviceVulkan->device, shadowFramebuffer, nullptr);
+	textureManagerVulkan->destroy(depthID);
+	textureManagerVulkan->destroy(momentImage->id());
+	textureManagerVulkan->destroy(tempMomentImage->id());
+
+	width = size;
+	height = size;
+	_createDepthMap();
+	_createMomentImage();
+	_writeMomentDescriptors();
+	_createShadowFrameBuffer();
+	textureManagerVulkan->registerBindlessTexture(depthMap->id());
 }

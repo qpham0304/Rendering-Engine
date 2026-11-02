@@ -114,9 +114,9 @@ public:
 
 struct MYGRAPHICSENGINE_EXPORT LightComponent {
 public:
-	glm::vec4 color;
-	float intensity;
-	float radius;
+	glm::vec4 color { 1.0, 1.0, 1.0, 1.0};
+	float intensity { 1.0 };
+	float radius { 1.0 };
 
 	LightComponent() = default;
 	LightComponent(glm::vec4 c, float i, float r) : color(c), intensity(i), radius(r) {};

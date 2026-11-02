@@ -124,6 +124,7 @@ set(MINIAUDIO_NO_LIBOPUS ON CACHE BOOL "" FORCE)
 set(MINIAUDIO_NO_EXTRA_NODES ON CACHE BOOL "" FORCE)
 set(MINIAUDIO_INSTALL OFF CACHE BOOL "" FORCE)
 add_subdirectory(extern/miniaudio)
+target_compile_definitions(miniaudio PRIVATE MA_COINIT_VALUE=2)	# COINIT_APARTMENTTHREADED
 
 find_package(Vulkan REQUIRED)
 

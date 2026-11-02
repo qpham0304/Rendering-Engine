@@ -37,6 +37,14 @@ struct ShadowMapSettings {
 	float rtSoftness { 0.5f };
 	int rtRayCount { 4 };
 	int rtBlurRadius { 3 };
+	int resolution { 1 };
+	float pcssSoftness { 0.04f };
+	float pcssMaxPenumbra { 0.75f };
+	float depthBias { 0.01f };
+	float slopeBias { 1.0f };
+	float slopeBiasMax { 0.05f };
+	float normalBias { 0.0f };
+	float maxDepthSlope { 16.0f };
 
 	// runtime state, not reflected
 	glm::vec3 lightDir { glm::normalize(glm::vec3(1.0f)) };	// toward the sun, what the shadow map is rendered from
@@ -56,7 +64,17 @@ struct ShadowMapSettings {
 			.options = "Shadow Map\0Ray Traced\0\0" }),
 		member("rtSoftness", &ShadowMapSettings::rtSoftness, FieldMeta{ .min = 0.0f, .max = 5.0f, .tooltip = "degrees, 0 is a hard shadow" }),
 		member("rtRayCount", &ShadowMapSettings::rtRayCount, FieldMeta{ .min = 1.0f, .max = 16.0f }),
-		member("rtBlurRadius", &ShadowMapSettings::rtBlurRadius, FieldMeta{ .min = 0.0f, .max = 8.0f, .tooltip = "0 turns the blur off" })
+		member("rtBlurRadius", &ShadowMapSettings::rtBlurRadius, FieldMeta{ .min = 0.0f, .max = 8.0f, .tooltip = "0 turns the blur off" }),
+		member("resolution", &ShadowMapSettings::resolution, FieldMeta{ .widget = FieldWidget::Combo,
+			.tooltip = "shadow map texels per side, orthoExtent sets how much of the world they cover",
+			.options = "512\0" "1024\0" "2048\0" "4096\0\0" }),
+		member("pcssSoftness", &ShadowMapSettings::pcssSoftness, FieldMeta{ .min = 0.0f, .max = 0.2f, .format = "%.3f", .tooltip = "how fast the penumbra widens with distance from the occluder" }),
+		member("pcssMaxPenumbra", &ShadowMapSettings::pcssMaxPenumbra, FieldMeta{ .min = 0.05f, .max = 3.0f, .tooltip = "widest soft edge in world units, also how far the blocker search looks" }),
+		member("depthBias", &ShadowMapSettings::depthBias, FieldMeta{ .min = 0.0f, .max = 0.2f, .format = "%.4f", .tooltip = "constant bias in world units" }),
+		member("slopeBias", &ShadowMapSettings::slopeBias, FieldMeta{ .min = 0.0f, .max = 4.0f, .tooltip = "scales the bias for the surface slope inside one shadow texel" }),
+		member("slopeBiasMax", &ShadowMapSettings::slopeBiasMax, FieldMeta{ .min = 0.0f, .max = 0.5f, .format = "%.3f", .tooltip = "cap on the slope bias in world units, larger lifts the shadow off its caster at a low sun" }),
+		member("normalBias", &ShadowMapSettings::normalBias, FieldMeta{ .min = 0.0f, .max = 4.0f, .tooltip = "moves the lookup along the normal in shadow texels, also detaches contact at a low sun" }),
+		member("maxDepthSlope", &ShadowMapSettings::maxDepthSlope, FieldMeta{ .min = 1.0f, .max = 64.0f, .tooltip = "cap on the receiver plane slope, keeps silhouettes from exploding" })
 	)
 };
 

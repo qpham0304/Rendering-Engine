@@ -47,7 +47,7 @@ private:
 
         // default construct, then copy any matching field of the optional lua table onto it
         componentAdders[T::GetStaticType()] = [](sol::state_view lua, Entity e, sol::object luaTable) -> sol::object {
-            T& component = e.addComponent<T>(e);
+            T& component = e.getRegistry()->emplace_or_replace<T>(e);
 
             if (luaTable.is<sol::table>()) {
                 sol::table table = luaTable.as<sol::table>();

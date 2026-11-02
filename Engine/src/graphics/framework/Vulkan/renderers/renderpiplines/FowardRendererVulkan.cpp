@@ -95,6 +95,12 @@ void ForwardRendererVulkan::render(Camera& camera)
 		return;
 	}
 
+	// the shadow map is recreated when its resolution setting changes
+	if(shadowMapRenderer->depthID != shadowMapID) {
+		renderDeviceVulkan->waitIdle();
+		_updateDescriptor();
+	}
+
 
     lights.clear();
 
@@ -428,6 +434,7 @@ void ForwardRendererVulkan::_updateDescriptor()
     auto uniformBuffersList = rendererManagerVulkan->getBufferUBO();
 
 	TextureVulkan* depthMap = shadowMapRenderer->depthMap;
+	shadowMapID = shadowMapRenderer->depthID;
 	assert(depthMap && "failed to retrieve depthMap");
 
 	uint32_t blueNoiseID = textureManagerVulkan->loadTexture("assets/textures/obluenoise256.png", 1, true);
