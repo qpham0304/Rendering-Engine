@@ -28,7 +28,7 @@ public:
 		alignas(4)	float skyboxDetail;
 		alignas(4)	int aoOn;
 		alignas(4)	float G;
-		alignas(4)	float scatteringScale;
+		alignas(4)	float fogDensity;
 		alignas(4)	float iblDiffuse;
 		alignas(4)	int rtShadow;
 		alignas(4)	float pcssSoftness;
@@ -39,6 +39,14 @@ public:
 		alignas(4)	float maxDepthSlope;
 		alignas(16)	glm::mat4 sunNormalMatrix;
 		alignas(4)	float normalBias;
+		alignas(4)	int ambientInCombine;
+		alignas(4)	float fogHeightFalloff;
+		alignas(4)	float fogBaseHeight;
+		alignas(4)	float fogMaxDistance;
+		alignas(4)	int fogSteps;
+		alignas(4)	uint32_t frameIndex;
+		alignas(4)	float fogSunScattering;
+		alignas(4)	float fogAmbientScattering;
 	};
 
 	struct LightSSBO {

@@ -31,6 +31,46 @@ namespace {
 
 	// the part of the params the luts depend on, everything before the sun
 	const size_t LUT_PARAMS_SIZE = offsetof(SkyAtmosphereVulkan::AtmosphereParams, sunDirection);
+
+	// nearest positive hit with a sphere at the origin, -1 when there is none (raySphere in atmosphere.glsl)
+	float raySphere(glm::vec3 origin, glm::vec3 dir, float radius)
+	{
+		float b = glm::dot(origin, dir);
+		float c = glm::dot(origin, origin) - radius * radius;
+		float discriminant = b * b - c;
+		if(discriminant < 0.0f) {
+			return -1.0f;
+		}
+		float s = std::sqrt(discriminant);
+		float t0 = -b - s;
+		float t1 = -b + s;
+		return t0 > 0.0f ? t0 : (t1 > 0.0f ? t1 : -1.0f);
+	}
+
+	// how much of the sun gets through the atmosphere to the viewer, the same medium as sampleMedium in atmosphere.glsl.
+	// one ray a frame on the cpu, so every pass lighting with the sun gets the same sunset color
+	glm::vec3 sunTransmittance(const SkyAtmosphereVulkan::AtmosphereParams& params)
+	{
+		glm::vec3 sunDir = glm::vec3(params.sunDirection);
+		glm::vec3 origin(0.0f, params.bottomRadius + params.viewHeight, 0.0f);
+		if(raySphere(origin, sunDir, params.bottomRadius) > 0.0f) {
+			return glm::vec3(0.0f);		// below the horizon
+		}
+
+		const int steps = 40;
+		float dt = raySphere(origin, sunDir, params.topRadius) / static_cast<float>(steps);
+		glm::vec3 opticalDepth(0.0f);
+		for(int i = 0; i < steps; i++) {
+			glm::vec3 p = origin + sunDir * ((static_cast<float>(i) + 0.5f) * dt);
+			float height = glm::length(p) - params.bottomRadius;
+			float rayleighDensity = std::exp(-height / params.rayleighScattering.w);
+			float mieDensity = std::exp(-height / params.mie.z);
+			float ozoneDensity = std::max(0.0f, 1.0f - std::abs(height - params.ozoneAbsorption.w) / params.groundAlbedo.w);
+			opticalDepth += (glm::vec3(params.rayleighScattering) * rayleighDensity + glm::vec3(params.mie.y * mieDensity)
+				+ glm::vec3(params.ozoneAbsorption) * ozoneDensity) * dt;
+		}
+		return glm::exp(-opticalDepth);
+	}
 }
 
 SkyAtmosphereVulkan::SkyAtmosphereVulkan(std::string serviceName)
@@ -166,6 +206,7 @@ void SkyAtmosphereVulkan::_updateParams()
 	params.topRadius = TOP_RADIUS;
 	params.viewHeight = std::max(settings->viewHeight, 0.001f);	// exactly on the ground the horizon ray grazes the planet
 	params.padding = 0.0f;
+	settings->sunTransmittance = sunTransmittance(params);
 
 	if(std::memcmp(&params, &lastParams, LUT_PARAMS_SIZE) != 0) {
 		lutDirty = true;

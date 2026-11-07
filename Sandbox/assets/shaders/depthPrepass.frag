@@ -36,7 +36,8 @@ void main() {
         return;
     }
 
-    float alpha = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], inTexCoord + mat.uvOffset, ubo.mipBias).a;
+    vec2 matUV = materialUV(mat, inTexCoord, textureSize(samplerImages[nonuniformEXT(mat.albedoIdx)], 0));
+    float alpha = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], matUV, ubo.mipBias).a;
     if (alphaClipped(mat, alpha)) {
         discard;
     }

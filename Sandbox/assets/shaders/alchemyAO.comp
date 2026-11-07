@@ -53,9 +53,11 @@ void main() {
     float sum = 0.0;
     const int SAMPLES = 16;
 
-    // McGuire's suggested constants
-    const float epsilon = 0.0001;
+    // McGuire's SAO constants. a tiny epsilon lets a neighbor a few mm in front saturate the sum, which on an
+    // animated mesh flips pixels between black and lit every frame
+    const float epsilon = 0.01;
     const float radius2 = n.radius * n.radius;
+    const float invRadius6 = 1.0 / (radius2 * radius2 * radius2);
 
     // Random rotation per pixel to hide banding
     float randomAngle = fract(sin(dot(vec2(uv), vec2(12.9898, 78.233))) * 43758.5453) * 6.283185;
@@ -85,9 +87,8 @@ void main() {
         sum += (f * f * f) * max(0.0, vn - n.bias) / (vv + epsilon);
     }
 
-    float sigma = 2.0;
-    float k = 1.0;
-    float ao = max(0.0, 1.0 - (2.0 * sigma / float(SAMPLES)) * sum);
+    // the falloff peaks at r^6, normalized so the result doesn't depend on the radius
+    float ao = max(0.0, 1.0 - sum * invRadius6 * (5.0 / float(SAMPLES)));
 
     ao = pow(ao, n.intensity);
 

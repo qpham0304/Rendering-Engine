@@ -53,7 +53,7 @@ struct ShadowMapSettings {
 	DEFINE_TYPE(ShadowMapSettings,
 		member("sunAzimuth", &ShadowMapSettings::sunAzimuth, FieldMeta{ .min = 0.0f, .max = 6.28f }),
 		member("sunElevation", &ShadowMapSettings::sunElevation, FieldMeta{ .min = -3.14f, .max = 3.14f }),
-		member("orthoExtent", &ShadowMapSettings::orthoExtent, FieldMeta{ .min = 1.0f, .max = 25.0f }),
+		member("orthoExtent", &ShadowMapSettings::orthoExtent, FieldMeta{ .min = 1.0f, .max = 50.0f }),
 		member("zNear", &ShadowMapSettings::zNear, FieldMeta{ .min = 0.01f, .max = 15.0f }),
 		member("zFar", &ShadowMapSettings::zFar, FieldMeta{ .min = 50.0f, .max = 200.0f }),
 		member("useOrtho", &ShadowMapSettings::useOrtho),
@@ -84,8 +84,17 @@ struct LightingSettings {
 	float skyboxDetail { 0.0f };
 	bool ambientOcclusion { true };
 	float phaseG { 0.7f };
-	float scatteringScale { 0.2f };
-	
+
+	// height fog the sun scatters in, god rays are its shadowed parts
+	bool volumetricFog { true };
+	float fogDensity { 0.005f };
+	float fogHeightFalloff { 0.15f };
+	float fogBaseHeight { 0.0f };
+	float fogMaxDistance { 80.0f };
+	int fogSteps { 24 };
+	float fogSunScattering { 1.0f };
+	float fogAmbientScattering { 1.0f };
+
 	// moment shadow filtering
 	float shadowBias { 0.001f };
 	float momentAlpha { 0.0001f };
@@ -98,8 +107,15 @@ struct LightingSettings {
 		member("sunIntensity", &LightingSettings::sunIntensity, FieldMeta{ .min = 1.0f, .max = 15.0f }),
 		member("skyboxDetail", &LightingSettings::skyboxDetail, FieldMeta{ .min = 0.0f, .max = 1.0f }),
 		member("ambientOcclusion", &LightingSettings::ambientOcclusion),
-		member("phaseG", &LightingSettings::phaseG, FieldMeta{ .widget = FieldWidget::Drag, .min = 0.0f, .max = 1.0f, .tooltip = "G of the phase function" }),
-		member("scatteringScale", &LightingSettings::scatteringScale, FieldMeta{ .widget = FieldWidget::Drag, .min = 0.0f, .max = 5.0f }),
+		member("phaseG", &LightingSettings::phaseG, FieldMeta{ .min = 0.0f, .max = 0.95f, .tooltip = "how much the fog scatters forward, higher makes the shafts brighter looking toward the sun" }),
+		member("volumetricFog", &LightingSettings::volumetricFog),
+		member("fogDensity", &LightingSettings::fogDensity, FieldMeta{ .min = 0.0f, .max = 0.5f, .format = "%.4f", .logarithmic = true, .tooltip = "extinction per meter at the base height" }),
+		member("fogHeightFalloff", &LightingSettings::fogHeightFalloff, FieldMeta{ .min = 0.0f, .max = 2.0f, .tooltip = "how fast the fog thins with height, 0 is uniform" }),
+		member("fogBaseHeight", &LightingSettings::fogBaseHeight, FieldMeta{ .min = -50.0f, .max = 50.0f }),
+		member("fogMaxDistance", &LightingSettings::fogMaxDistance, FieldMeta{ .min = 5.0f, .max = 500.0f, .tooltip = "how far the march goes, also the fog distance over the sky" }),
+		member("fogSteps", &LightingSettings::fogSteps, FieldMeta{ .min = 4.0f, .max = 64.0f }),
+		member("fogSunScattering", &LightingSettings::fogSunScattering, FieldMeta{ .min = 0.0f, .max = 20.0f, .tooltip = "brightens the sun shafts without thickening the fog, 1 is physical" }),
+		member("fogAmbientScattering", &LightingSettings::fogAmbientScattering, FieldMeta{ .min = 0.0f, .max = 2.0f, .tooltip = "sky light in the fog, lower for interiors so the gaps between shafts stay dark, 1 is physical" }),
 		member("shadowBias", &LightingSettings::shadowBias, FieldMeta{ .min = 0.001f, .max = 0.1f }),
 		member("momentAlpha", &LightingSettings::momentAlpha, FieldMeta{ .min = 0.0001f, .max = 0.01f, .format = "%.4f" }),
 		member("linstepLow", &LightingSettings::linstepLow, FieldMeta{ .min = 0.01f, .max = 1.0f }),
@@ -137,13 +153,35 @@ struct SSRSettings {
 	float thickness { 0.25f };
 	float maxDistance { 500.0f };
 	bool useTLAS { false };
+	float maxSampleLuminance { 8.0f };
+	bool reflectionOnly { false };
 
 	DEFINE_TYPE(SSRSettings,
 		member("downsample", &SSRSettings::downsample, FieldMeta{ .min = 0.0f, .max = 2.0f, .tooltip = "0 full, 1 half, 2 quarter resolution" }),
 		member("maxSteps", &SSRSettings::maxSteps, FieldMeta{ .min = 8.0f, .max = 256.0f, .tooltip = "hi-z traversal iterations per ray" }),
 		member("thickness", &SSRSettings::thickness, FieldMeta{ .min = 0.01f, .max = 5.0f, .tooltip = "view space depth a hit may be behind the surface" }),
 		member("maxDistance", &SSRSettings::maxDistance, FieldMeta{ .min = 1.0f, .max = 1000.0f }),
-		member("useTLAS", &SSRSettings::useTLAS, FieldMeta{ .tooltip = "rays that leave the screen continue against the scene, needs ray tracing support" })
+		member("useTLAS", &SSRSettings::useTLAS, FieldMeta{ .tooltip = "rays that leave the screen continue against the scene, needs ray tracing support" }),
+		member("maxSampleLuminance", &SSRSettings::maxSampleLuminance, FieldMeta{ .min = 1.0f, .max = 64.0f, .tooltip = "brightest single ray sample, lower removes sparkles but darkens bright bounces" }),
+		member("reflectionOnly", &SSRSettings::reflectionOnly, FieldMeta{ .tooltip = "trace only reflections, diffuse indirect comes from ddgi / the sky" })
+	)
+};
+
+struct TemporalSettings {
+	float maxHistoryRough { 32.0f };
+	float maxHistorySmooth { 2.0f };
+	float maxHistoryMoving { 8.0f };
+	float clampGamma { 1.5f };
+	float depthTolerance { 0.03f };
+	float normalThreshold { 0.95f };
+
+	DEFINE_TYPE(TemporalSettings,
+		member("maxHistoryRough", &TemporalSettings::maxHistoryRough, FieldMeta{ .min = 1.0f, .max = 128.0f, .tooltip = "frames accumulated on rough surfaces, lower ghosts less but is noisier" }),
+		member("maxHistorySmooth", &TemporalSettings::maxHistorySmooth, FieldMeta{ .min = 1.0f, .max = 32.0f, .tooltip = "frames accumulated on smooth (mirror like) surfaces" }),
+		member("maxHistoryMoving", &TemporalSettings::maxHistoryMoving, FieldMeta{ .min = 1.0f, .max = 64.0f, .tooltip = "cap on the history while a pixel moves" }),
+		member("clampGamma", &TemporalSettings::clampGamma, FieldMeta{ .min = 0.25f, .max = 4.0f, .tooltip = "width of the neighborhood box the history is clamped to, lower ghosts less but flickers more" }),
+		member("depthTolerance", &TemporalSettings::depthTolerance, FieldMeta{ .min = 0.001f, .max = 0.2f, .format = "%.3f", .tooltip = "relative view depth difference that still counts as the same surface" }),
+		member("normalThreshold", &TemporalSettings::normalThreshold, FieldMeta{ .min = 0.5f, .max = 1.0f, .format = "%.3f", .tooltip = "minimum normal dot product that still counts as the same surface" })
 	)
 };
 
@@ -160,6 +198,7 @@ struct SkyAtmosphereSettings {
 	uint32_t transmittance { 0 };
 	uint32_t multiScattering { 0 };
 	uint32_t environment { 0 };
+	glm::vec3 sunTransmittance { 1.0f };	// filled by the sky each frame, not saved
 
 	DEFINE_TYPE(SkyAtmosphereSettings,
 		member("enabled", &SkyAtmosphereSettings::enabled, FieldMeta{ .tooltip = "light the scene from the atmosphere instead of the environment map" }),
@@ -175,6 +214,20 @@ struct SkyAtmosphereSettings {
 		member("environment", &SkyAtmosphereSettings::environment, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true })
 	)
 };
+
+// the sun as it reaches the scene: the set color, dimmed and tinted by the atmosphere while the sky atmosphere is on.
+// every pass that lights with the sun takes it from here so direct light and gi agree
+inline glm::vec4 sceneSunColor(const LightingSettings* lighting, const SkyAtmosphereSettings* sky)
+{
+	if (!lighting) {
+		return glm::vec4(0.0f);
+	}
+	glm::vec4 color = lighting->sunColor * lighting->sunIntensity;
+	if (sky && sky->enabled) {
+		color *= glm::vec4(sky->sunTransmittance, 1.0f);
+	}
+	return color;
+}
 
 struct ImageBasedSettings {
 	std::string environmentMap { "assets/textures/hdr/farm_field_puresky_2k.hdr" };

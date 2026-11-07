@@ -21,7 +21,8 @@ void main() {
     Object obj = push.objRef.objects[inObjIdx];
     Material mat = MaterialsBuffer(obj.materialsRef).m[MaterialIndicesBuffer(obj.materialIndicesRef).i[gl_PrimitiveID]];
     if (mat.alphaCutoff > 0.0) {
-        float alpha = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], inTexCoord + mat.uvOffset).a;
+        vec2 matUV = materialUV(mat, inTexCoord, textureSize(samplerImages[nonuniformEXT(mat.albedoIdx)], 0));
+        float alpha = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], matUV).a;
         if (alphaClipped(mat, alpha)) {
             discard;
         }

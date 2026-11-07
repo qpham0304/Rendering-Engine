@@ -202,11 +202,18 @@ void LightingPassVulkan::_updateLights(uint32_t currentFrame)
 		}
 	}
 
-	lightUniform.color = settings->sunColor * settings->sunIntensity;
+	lightUniform.color = sceneSunColor(settings, rendererManagerVulkan->getGraphicsSettings().get<SkyAtmosphereSettings>());
 	lightUniform.skyboxDetail = settings->skyboxDetail;
 	lightUniform.aoOn = settings->ambientOcclusion ? 1 : 0;
 	lightUniform.G = settings->phaseG;
-	lightUniform.scatteringScale = settings->scatteringScale;
+	lightUniform.fogDensity = settings->volumetricFog ? std::max(settings->fogDensity, 0.0f) : 0.0f;
+	lightUniform.fogHeightFalloff = std::max(settings->fogHeightFalloff, 0.0f);
+	lightUniform.fogBaseHeight = settings->fogBaseHeight;
+	lightUniform.fogMaxDistance = std::max(settings->fogMaxDistance, 1.0f);
+	lightUniform.fogSteps = std::clamp(settings->fogSteps, 1, 128);
+	lightUniform.fogSunScattering = std::max(settings->fogSunScattering, 0.0f);
+	lightUniform.fogAmbientScattering = std::max(settings->fogAmbientScattering, 0.0f);
+	lightUniform.frameIndex++;	// moves the march noise every frame so dlss / taa average it out
 	lightUniform.bias = settings->shadowBias;
 	lightUniform.alpha = settings->momentAlpha;
 	lightUniform.lintstepLow = settings->linstepLow;
@@ -234,6 +241,7 @@ void LightingPassVulkan::_updateLights(uint32_t currentFrame)
 	// with a probe grid the diffuse ambient comes from ddgi in the combine pass, the light pass only keeps the specular ibl
 	lightUniform.iblDiffuse = (ddgiSettings && ddgiSettings->isReady()) ? 0.0f : 1.0f;
 	lightUniform.rtShadow = shadowMapPass->isRayTraced() ? 1 : 0;
+	lightUniform.ambientInCombine = 1;
 
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));

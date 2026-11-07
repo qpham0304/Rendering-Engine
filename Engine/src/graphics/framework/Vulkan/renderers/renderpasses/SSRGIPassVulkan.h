@@ -20,6 +20,8 @@ public:
 		alignas(8) uint64_t objectsRef;
 		alignas(8) uint64_t lightsRef;
 		alignas(4) uint32_t lightCount;
+		alignas(4) float maxSampleLuminance;
+		alignas(4) int reflectionOnly;
 	};
 
 	struct UniformBufferObject {
@@ -49,6 +51,7 @@ public:
 	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
     void writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame, VulkanPipeline* activePipeline);
+	TextureVulkan* getSpecularImage() const { return specularImage; }
 
 public: // TODO: consider make private
 	TextureVulkan* depthImageHiZ;
@@ -59,6 +62,13 @@ public: // TODO: consider make private
 	TextureVulkan* emissiveImage;
 	TextureVulkan* colorImage;
 	RGHandle outputHandle {};
+	TextureVulkan* specularImage { nullptr };
+	RGHandle specularHandle {};
+	uint32_t specularImageID { 0 };
+	TextureVulkan* motionImage { nullptr };
+	TextureVulkan* prevColorImage { nullptr };
+	RGHandle prevColorHandle {};
+	uint32_t prevColorImageID { 0 };
 	
 protected:
 	void _createResources();

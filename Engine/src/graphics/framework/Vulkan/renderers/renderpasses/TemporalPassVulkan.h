@@ -7,8 +7,14 @@ class TemporalPassVulkan : public PostProcessRendererVulkan
 {
 public:
 	struct PushConstant {
-        alignas(8) glm::vec2 screenRes;
-        alignas(4) float maxAccumulation;
+		glm::mat4 invProj;
+		glm::vec2 screenRes;
+		float maxHistoryRough;
+		float maxHistorySmooth;
+		float maxHistoryMoving;
+		float clampGamma;
+		float depthTolerance;
+		float normalThreshold;
 	};
 
 	struct UniformBufferObject {
@@ -29,12 +35,13 @@ public:
     void writeTP(VkCommandBuffer cmd, uint32_t currentFrame);
     void writeTAA(VkCommandBuffer cmd, uint32_t currentFrame);
 	virtual TextureVulkan* getOutputImage() override;
+	TextureVulkan* getSpecularOutputImage();
 
 protected:
 	void _createResources();
 	void _createPipelines();
 	void _createDescriptors();
-	void _updateDescriptor(uint32_t currentSetsID, uint32_t index, TextureVulkan* writeImg, TextureVulkan* readImage);
+	void _updateDescriptor(uint32_t currentSetsID, uint32_t index, bool writeA);
 	void _recreateResources();
 	void _cleanupResources();
 	void _copyImageReource(VkCommandBuffer cmd);
@@ -52,6 +59,16 @@ protected:
 	RGHandle prevDepthHandle {};
 	RGHandle prevNormalHandle {};
 
+	TextureVulkan* ssrgiSpecularImage { nullptr };
+	TextureVulkan* specularA { nullptr };
+	TextureVulkan* specularB { nullptr };
+	TextureVulkan* lengthA { nullptr };
+	TextureVulkan* lengthB { nullptr };
+	RGHandle specularAHandle {};
+	RGHandle specularBHandle {};
+	RGHandle lengthAHandle {};
+	RGHandle lengthBHandle {};
+
 	uint32_t ssrgiHistoryImageID;
 	uint32_t prevDepthImageID;
 	uint32_t prevNormalImageID;
@@ -61,6 +78,7 @@ protected:
 	uint32_t TemporalSetsID;
 	uint32_t TemporalSetsHistoryID;
 	PushConstant pushConstant;
+	TemporalSettings* settings { nullptr };
 	UniformBufferObject ubo;
 	std::vector<UniformBufferVulkan*> uniformbuffersList;
 

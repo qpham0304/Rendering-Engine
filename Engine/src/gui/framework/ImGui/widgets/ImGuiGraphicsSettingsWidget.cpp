@@ -19,6 +19,7 @@ ImGuiGraphicsSettingsWidget::ImGuiGraphicsSettingsWidget(std::string name)
     m_drawers.add<DDGISettings>();
     m_drawers.add<DLSSSettings>();
     m_drawers.add<TonemapSettings>();
+    m_drawers.add<TemporalSettings>();
 }
 
 void ImGuiGraphicsSettingsWidget::render()
@@ -52,7 +53,8 @@ void ImGuiGraphicsSettingsWidget::render()
         ImGui::TextDisabled("no renderer registered settings");
     }
 
-    std::vector<RGPassInfo> passes = rendererManager->getRenderGraph().getPasses();    for (const auto& entry : entries) {
+    std::vector<RGPassInfo> passes = rendererManager->getRenderGraph().getPasses();
+    for (const auto& entry : entries) {
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
         if (!ImGui::TreeNodeEx(entry.name.c_str(), flags)) {
             continue;

@@ -1,4 +1,5 @@
 #include "SSRGIPassVulkan.h"
+#include "DeferredCombinePassVulkan.h"
 #include <core/scene/SceneManager.h>
 #include <core/features/camera.h>
 #include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
@@ -48,6 +49,10 @@ bool SSRGIPassVulkan::init(WindowConfig config)
     albedoImage = geometryPass->renderTarget.gBufferAlbedo;
     pbrImage = geometryPass->renderTarget.gPBR;
     emissiveImage = geometryPass->renderTarget.gBufferEmissive;
+    motionImage = geometryPass->renderTarget.gBufferMotion;
+    prevColorHandle = rendererManagerVulkan->getRenderGraph().createRenderTexture(DeferredCombinePassVulkan::OutputName, DeferredCombinePassVulkan::outputDesc());
+    prevColorImage = rendererManagerVulkan->getRenderGraph().getTexture(prevColorHandle);
+    prevColorImageID = prevColorImage->id();
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
     settings = &rendererManagerVulkan->getGraphicsSettings().add<SSRSettings>("Screen Space Reflections");
@@ -114,7 +119,7 @@ void SSRGIPassVulkan::render(Camera &camera)
         sunDirection = glm::vec3(0.0f, 1.0f, 0.0f);
     }
     ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), 0.0f);
-    ubo.sunColor = lightingSettings ? lightingSettings->sunColor * lightingSettings->sunIntensity : glm::vec4(0.0f);
+    ubo.sunColor = sceneSunColor(lightingSettings, graphicsSettings.get<SkyAtmosphereSettings>());
     ubo.skyIntensity = ddgiSettings ? ddgiSettings->skyIntensity : 1.0f;	// traced hits see the same sky as the ddgi probes
     // tlas hits take their bounce light from last frame's probes, same grid the combine pass samples
     ubo.ddgiReady = (ddgiSettings && ddgiSettings->isReady() && ddgiIrradianceAtlas) ? 1 : 0;
@@ -137,6 +142,8 @@ void SSRGIPassVulkan::render(Camera &camera)
     pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
     pushConstant.lightsRef = rendererManagerVulkan->getLightsAddress();
     pushConstant.lightCount = rendererManagerVulkan->getLightCount();
+    pushConstant.maxSampleLuminance = std::max(settings->maxSampleLuminance, 0.1f);
+    pushConstant.reflectionOnly = settings->reflectionOnly ? 1 : 0;
     pushConstant.useTLAS = 0;
 
     // only switch to the ray query pipeline when it can actually trace, otherwise skip the tlas update entirely
@@ -197,6 +204,10 @@ void SSRGIPassVulkan::_createResources()
     outputHandle = graph.createRenderTexture("SSRGI.Output", desc);
     outputImage = graph.getTexture(outputHandle);
     outputImageID = outputImage->id();
+
+    specularHandle = graph.createRenderTexture("SSRGI.Specular", desc);
+    specularImage = graph.getTexture(specularHandle);
+    specularImageID = specularImage->id();
 }
 
 void SSRGIPassVulkan::_createPipelines()
@@ -238,12 +249,15 @@ void SSRGIPassVulkan::_createDescriptors()
 		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 14, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },	// specular, 10 - 13 are the ray query bindings
+		{ 15, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 16, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     };
 
 	uint32_t frameCount = VulkanUtils::numFrames();
     std::vector<VkDescriptorPoolSize> poolSizes {
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 8},
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 10},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 2},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
 	};
 
@@ -283,6 +297,7 @@ void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
     albedoImage = geometryPass->renderTarget.gBufferAlbedo;
     pbrImage = geometryPass->renderTarget.gPBR;
     emissiveImage = geometryPass->renderTarget.gBufferEmissive;
+    motionImage = geometryPass->renderTarget.gBufferMotion;
 
 	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(SSRGISetsID);
     VkDescriptorImageInfo depthImageInfo{};
@@ -304,6 +319,10 @@ void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
 	outputImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 	outputImageInfo.imageView = outputImage->textureImageView;
 	outputImageInfo.sampler = outputImage->textureSampler;
+
+	VkDescriptorImageInfo specularImageInfo{ specularImage->textureSampler, specularImage->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+	VkDescriptorImageInfo motionInfo{ motionImage->textureSampler, motionImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo prevColorInfo{ prevColorImage->textureSampler, prevColorImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer = static_cast<VkBuffer>(*uniformbuffersList[index]);
@@ -348,6 +367,9 @@ void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 7, pbrImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 8, emissiveImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 9, blueNoiseInfo);
+	descriptorManagerVulkan->writeStorageImage(&writes, descriptorSets[index], 14, specularImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 15, motionInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 16, prevColorInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
@@ -394,7 +416,14 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
     // same output as last frame unless the render size or downsample changed, then the graph recreated it
     uint32_t previousOutputID = outputImageID;
+    uint32_t previousSpecularID = specularImageID;
     _createResources();
+
+    // last frame's final hdr image, same graph texture the combine pass writes later this frame
+    uint32_t previousColorID = prevColorImageID;
+    prevColorHandle = graph.createRenderTexture(DeferredCombinePassVulkan::OutputName, DeferredCombinePassVulkan::outputDesc());
+    prevColorImage = graph.getTexture(prevColorHandle);
+    prevColorImageID = prevColorImage->id();
 
     if(needResize) {
 		_recreateResources();
@@ -404,7 +433,8 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
 
     // compared by id, a recreated texture can land at the same address
     auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(rendererManagerVulkan->getRenderer("HiZPassVulkan"));
-    if(outputImageID != previousOutputID || highZRendererVulkan->hizImage->id() != hizImageID) {
+    if(outputImageID != previousOutputID || specularImageID != previousSpecularID || prevColorImageID != previousColorID
+        || highZRendererVulkan->hizImage->id() != hizImageID) {
         for(uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
             _updateDescriptor(i);
         }
@@ -429,7 +459,9 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
         { colorImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
         { albedoImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
         { pbrImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-        { emissiveImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
+        { emissiveImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { graph.importTexture(motionImage), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { prevColorHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
     };
 
     // the tlas fallback samples last frame's probes, picked here so the reads and the descriptors agree
@@ -442,7 +474,8 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
     }
 
     node.writes = {
-        { outputHandle, VK_IMAGE_LAYOUT_GENERAL }
+        { outputHandle, VK_IMAGE_LAYOUT_GENERAL },
+        { specularHandle, VK_IMAGE_LAYOUT_GENERAL }
     };
 
     node.execute = [this] (VkCommandBuffer cmd, uint32_t currentFrame){

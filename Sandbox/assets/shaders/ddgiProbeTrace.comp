@@ -99,7 +99,7 @@ void main() {
             hitDistance = t;
 
             Material mat = materials.m[matIndices.i[primitiveID]];
-            vec2 matUV = uv + mat.uvOffset;
+            vec2 matUV = materialUV(mat, uv, textureSize(samplerImages[nonuniformEXT(mat.albedoIdx)], 0));
             vec3 albedo = textureLod(samplerImages[nonuniformEXT(mat.albedoIdx)], matUV, 0.0).rgb * mat.albedoFactor.rgb;
             vec3 emissive = textureLod(samplerImages[nonuniformEXT(mat.emissiveIdx)], matUV, 0.0).rgb * mat.emissiveFactor;
 
