@@ -106,9 +106,9 @@ void main() {
     vec3 kD = (1.0 - F) * (1.0 - metallic);
 
     // incoming diffuse where the ssgi rays missed: the probes inside the grid, the open sky outside it
+    DDGIVolume volume = DDGIVolume(pc.gridOrigin.xyz, pc.gridSpacing, pc.probeCounts.xyz, pc.normalBias);
     vec3 fallbackDiffuse = getSkyIrradiance(N);
     if (pc.ddgiMode != 0) {
-        DDGIVolume volume = DDGIVolume(pc.gridOrigin.xyz, pc.gridSpacing, pc.probeCounts.xyz, pc.normalBias);
         vec4 irradiance = ddgiSampleIrradiance(fragPos, N, V, volume, lastFrameIrradianceAtlas, lastFrameVisibilityAtlas);
         fallbackDiffuse = mix(getSkyIrradiance(N) * pc.skyIntensity, irradiance.rgb / DDGI_PI * pc.ddgiIntensity, irradiance.a);
     }
@@ -121,8 +121,23 @@ void main() {
     // with the split sum the same way the light pass used to for the environment alone
     vec3 R = reflect(-V, N);
     vec3 prefiltered = textureLod(prefilterMap, R, roughness * 4.0).rgb;
+
+    // the sky only shows through as much as the probes see it in the reflection direction: indoors they see walls,
+    // so the missed reflection fades to their bounce light instead of the open sky
+    vec3 fallbackSpecular = prefiltered;
+    if (pc.ddgiMode != 0) {
+        vec4 probe = ddgiSampleIrradiance(fragPos, R, V, volume, lastFrameIrradianceAtlas, lastFrameVisibilityAtlas);
+        vec3 probeRadiance = probe.rgb / DDGI_PI * pc.ddgiIntensity;
+        const vec3 lumaWeights = vec3(0.2126, 0.7152, 0.0722);
+        float skyLum = dot(getSkyIrradiance(R) * pc.skyIntensity, lumaWeights);
+        float skyVisibility = clamp(dot(probeRadiance, lumaWeights) / max(skyLum, 1e-4), 0.0, 1.0);
+        vec3 smoothFallback = mix(probeRadiance, prefiltered, skyVisibility);
+        vec3 occluded = mix(smoothFallback, probeRadiance, smoothstep(0.3, 0.8, roughness));
+        fallbackSpecular = mix(prefiltered, occluded, probe.a);
+    }
+
     vec4 specularGI = texture(specularGIImage, uv);
-    vec3 incomingSpecular = specularGI.rgb + (1.0 - clamp(specularGI.a, 0.0, 1.0)) * prefiltered;
+    vec3 incomingSpecular = specularGI.rgb + (1.0 - clamp(specularGI.a, 0.0, 1.0)) * fallbackSpecular;
     vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
     vec3 specular = incomingSpecular * (F * brdf.x + brdf.y) * ao;
 

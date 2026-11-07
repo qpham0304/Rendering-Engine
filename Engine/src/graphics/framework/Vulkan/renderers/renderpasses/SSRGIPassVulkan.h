@@ -22,6 +22,7 @@ public:
 		alignas(4) uint32_t lightCount;
 		alignas(4) float maxSampleLuminance;
 		alignas(4) int reflectionOnly;
+		alignas(4) uint32_t frameIndex { 0 };
 	};
 
 	struct UniformBufferObject {

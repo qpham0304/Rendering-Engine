@@ -50,6 +50,7 @@ layout(push_constant) uniform Constants {
     uint lightCount;
     float maxSampleLuminance;
     int reflectionOnly;
+    uint frameIndex;
 } pc;
 
 #ifdef SSR_RAY_QUERY
@@ -402,6 +403,18 @@ float traceRay(vec3 startView, vec3 rayDir, out vec3 radiance) {
 }
 
 // one cosine weighted diffuse ray and one ggx specular ray per pixel. both outputs are the incoming radiance only,
+// 2x2 order that alternates diagonals, nested once more for a 4x4 block so consecutive frames land far apart
+ivec2 subPixelOffset(uint index, int scale) {
+    const ivec2 order[4] = ivec2[](ivec2(0, 0), ivec2(1, 1), ivec2(1, 0), ivec2(0, 1));
+    if (scale == 2) {
+        return order[index & 3u];
+    }
+    if (scale == 4) {
+        return order[index & 3u] * 2 + order[(index >> 2) & 3u];
+    }
+    return ivec2(0);
+}
+
 // with no albedo or fresnel (demodulated): texture detail stays out of the temporal history, which keeps it from
 // smearing, and the combine pass multiplies the material back in.
 // rgb = radiance * confidence, a = confidence
@@ -409,7 +422,12 @@ void main() {
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
     if (pixelCoord.x >= pc.screenRes.x || pixelCoord.y >= pc.screenRes.y) return;
 
-    vec2 uv = (vec2(pixelCoord) + 0.5) / pc.screenRes;
+    // below full resolution each texel covers a block of render pixels, trace a different one of them every frame
+    // so the history sees the real surface of each pixel instead of the depth / normal blended at the block center
+    int scale = 1 << pc.mostDetailedMip;
+    ivec2 renderRes = textureSize(u_GBufferNormals, 0);
+    ivec2 renderPixel = min(pixelCoord * scale + subPixelOffset(pc.frameIndex, scale), renderRes - 1);
+    vec2 uv = (vec2(renderPixel) + 0.5) / vec2(renderRes);
     float depth = texture(depthImage, uv).r;
 
     if (depth >= 1.0 || depth <= 0.00001) {

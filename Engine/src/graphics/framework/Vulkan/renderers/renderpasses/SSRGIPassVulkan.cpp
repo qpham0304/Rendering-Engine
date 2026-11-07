@@ -144,6 +144,7 @@ void SSRGIPassVulkan::render(Camera &camera)
     pushConstant.lightCount = rendererManagerVulkan->getLightCount();
     pushConstant.maxSampleLuminance = std::max(settings->maxSampleLuminance, 0.1f);
     pushConstant.reflectionOnly = settings->reflectionOnly ? 1 : 0;
+    pushConstant.frameIndex++;
     pushConstant.useTLAS = 0;
 
     // only switch to the ray query pipeline when it can actually trace, otherwise skip the tlas update entirely

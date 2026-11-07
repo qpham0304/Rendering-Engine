@@ -529,10 +529,10 @@
     {
       "components": {
         "ModelComponent": {
-          "path": "C:/Users/tomor/Desktop/Projects/C++/MyGraphicsEngine/Sandbox/assets/models/terrains/terrain_dristibute_gn/terrain_dristibute_gn.glb"
+          "path": "assets/models/sponza/gltf/sponza.gltf"
         },
         "NameComponent": {
-          "name": "C:/Users/tomor/Desktop/Projects/C++/MyGraphicsEngine/Sandbox/assets/models/terrains/terrain_dristibute_gn/terrain_dristibute_gn.glb"
+          "name": "assets/models/sponza/gltf/sponza.gltf"
         },
         "TransformComponent": {
           "rotateVec": [
@@ -541,9 +541,9 @@
             0.0
           ],
           "scaleVec": [
-            1.0,
-            1.0,
-            1.0
+            0.01,
+            0.01,
+            0.01
           ],
           "translateVec": [
             0.0,

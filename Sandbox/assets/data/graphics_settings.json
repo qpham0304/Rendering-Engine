@@ -2,7 +2,12 @@
   "graphics_settings": {
     "AmbientOcclusionSettings": {
       "blurRadius": 4,
-      "blurScale": 100.0
+      "blurScale": 100.0,
+      "blurType": 3,
+      "intensity": 2.0,
+      "method": 1,
+      "radius": 0.75,
+      "rayCount": 4
     },
     "BloomSettings": {
       "exposure": 1.0,
@@ -19,6 +24,10 @@
       "normalBias": 0.30000001192092896,
       "skyIntensity": 1.0
     },
+    "DLSSSettings": {
+      "enabled": true,
+      "mode": 1
+    },
     "DeferredSettings": {
       "combine": true,
       "temporalReprojection": true
@@ -28,12 +37,18 @@
     },
     "LightingSettings": {
       "ambientOcclusion": true,
+      "fogAmbientScattering": 1.0,
+      "fogBaseHeight": 0.0,
+      "fogDensity": 0.004999999888241291,
+      "fogHeightFalloff": 0.15000000596046448,
+      "fogMaxDistance": 80.0,
+      "fogSteps": 24,
+      "fogSunScattering": 1.0,
       "linstepHigh": 1.0,
       "linstepLow": 0.20000000298023224,
       "litBias": 0.0005000000237487257,
       "momentAlpha": 9.999999747378752e-05,
       "phaseG": 0.699999988079071,
-      "scatteringScale": 0.20000000298023224,
       "shadowBias": 0.0010000000474974513,
       "skyboxDetail": 0.0,
       "sunColor": [
@@ -42,21 +57,36 @@
         1.0,
         1.0
       ],
-      "sunIntensity": 2.0
+      "sunIntensity": 2.0,
+      "volumetricFog": true
     },
     "SSRSettings": {
       "downsample": 0,
       "maxDistance": 500.0,
+      "maxSampleLuminance": 8.0,
       "maxSteps": 64,
+      "reflectionOnly": false,
       "thickness": 0.25,
       "useTLAS": false
     },
     "ShadowMapSettings": {
       "blurRadius": 64,
       "blurSigma": 15.0,
+      "depthBias": 0.009999999776482582,
+      "maxDepthSlope": 16.0,
+      "method": 0,
+      "normalBias": 0.0,
       "orthoExtent": 25.0,
+      "pcssMaxPenumbra": 0.75,
+      "pcssSoftness": 0.03999999910593033,
+      "resolution": 1,
+      "rtBlurRadius": 3,
+      "rtRayCount": 4,
+      "rtSoftness": 0.5,
+      "slopeBias": 1.0,
+      "slopeBiasMax": 0.05000000074505806,
       "sunAzimuth": 0.0,
-      "sunElevation": 3.065999984741211,
+      "sunElevation": 1.805999994277954,
       "useOrtho": true,
       "zFar": 105.0,
       "zNear": 0.009999999776482582
@@ -75,6 +105,19 @@
       "ozone": true,
       "rayleighScale": 1.0,
       "viewHeight": 0.20000000298023224
+    },
+    "TemporalSettings": {
+      "clampGamma": 1.5,
+      "depthTolerance": 0.029999999329447746,
+      "maxHistoryMoving": 8.0,
+      "maxHistoryRough": 32.0,
+      "maxHistorySmooth": 2.0,
+      "normalThreshold": 0.949999988079071
+    },
+    "TonemapSettings": {
+      "exposure": 1.0,
+      "gamma": 2.200000047683716,
+      "tonemapper": 1
     }
   }
 }
