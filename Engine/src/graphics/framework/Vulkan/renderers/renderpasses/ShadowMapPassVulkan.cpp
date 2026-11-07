@@ -210,7 +210,7 @@ void ShadowMapPassVulkan::recordDrawCommand(VkCommandBuffer commandBuffer, uint3
 	LightPushConstant push{};
 	push.lightMVP = settings->lightSpaceMatrix;
 	push.objectsRef = rendererManagerVulkan->getObjectsAddress();
-	push.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID());
+	push.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID(renderDeviceVulkan->getCurrentFrameIndex()));
 
 	beginRecording(commandBuffer, shadowRenderPass, shadowFramebuffer, shadowPipeline.get());
 	{

@@ -28,6 +28,7 @@
 #include "core/features/camera.h"
 #include "core/events/EventManager.h"
 #include <core/resources/managers/MeshManager.h>
+#include "animation/AnimationManager.h"
 #include <core/resources/managers/ModelManager.h>
 #include <core/features/Mesh.h>
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
@@ -278,6 +279,7 @@ void RendererManagerVulkan::render()
 
     collectMeshDraws();
     collectLights();
+    ServiceLocator::GetService<AnimationManager>("AnimationManager").uploadBoneMatrices(currentFrame);  // after the fence, like the objects
 	lastViewProj = unjitteredProj * ubo.view;
 
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();

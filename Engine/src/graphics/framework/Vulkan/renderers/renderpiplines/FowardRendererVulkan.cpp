@@ -177,7 +177,7 @@ void ForwardRendererVulkan::recordDrawToTextureCommand(VkCommandBuffer cmd, uint
 
 		auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
 		auto materialManagerVulkan = (MaterialManagerVulkan*)materialManager;
-		pushConstantLight.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID());
+		pushConstantLight.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID(renderDeviceVulkan->getCurrentFrameIndex()));
 		pushConstantLight.materialRef = materialManagerVulkan->getMaterialAddress();
 		pushConstantLight.objectsRef = rendererManagerVulkan->getObjectsAddress();
 

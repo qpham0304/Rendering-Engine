@@ -165,7 +165,7 @@ void GeometryPassVulkan::_renderGeometryPass(VkCommandBuffer cmd, uint32_t curre
 
 	auto animationManager = &ServiceLocator::GetService<AnimationManager>("AnimationManager");
 	pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
-	pushConstant.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID());
+	pushConstant.boneMatricesRef = bufferManagerVulkan->getVirtualMemoryAddress(animationManager->getAnimationBufferAddressID(renderDeviceVulkan->getCurrentFrameIndex()));
 
 	vkCmdPushConstants(
 		cmd,

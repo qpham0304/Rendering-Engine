@@ -28,7 +28,10 @@ void RenderGraphVulkan::execute(VkCommandBuffer cmd, uint32_t currentFrame)
             _prepareAccess(cmd, access, true);
         }
 
-        passNode.execute(cmd, currentFrame);
+        // still transitioned above, so the passes after it see the same layouts as when it runs
+        if(isPassEnabled(passNode.name)) {
+            passNode.execute(cmd, currentFrame);
+        }
     }
 
     for(auto& resource : m_resources) {
@@ -62,23 +65,19 @@ void RenderGraphVulkan::_prepareAccess(VkCommandBuffer cmd, const RGAccess& acce
     resource.lastWasWrite = isWrite;
 }
 
-// passes rebuild on this like on a window resize, the upscaler can change it while the window stays the same
-void RenderGraphVulkan::setRenderSize(uint32_t width, uint32_t height)
+std::vector<RGPassInfo> RenderGraphVulkan::getPasses() const
 {
-    bool changed = m_renderWidth != 0 && (m_renderWidth != width || m_renderHeight != height);
-    m_renderWidth = width;
-    m_renderHeight = height;
-
-    if(changed) {
-        RenderResizeEvent event(width, height);
-        EventManager::getInstance().publish(event);
+    std::vector<RGPassInfo> passes;
+    passes.reserve(m_passes.size());
+    for(const auto& passNode : m_passes) {
+        passes.push_back({
+            passNode.name,
+            static_cast<uint32_t>(passNode.reads.size()),
+            static_cast<uint32_t>(passNode.writes.size()),
+            isPassEnabled(passNode.name)
+        });
     }
-}
-
-void RenderGraphVulkan::setOutputSize(uint32_t width, uint32_t height)
-{
-    m_outputWidth = width;
-    m_outputHeight = height;
+    return passes;
 }
 
 RGHandle RenderGraphVulkan::createRenderTexture(const std::string& name, const RGTextureDesc& desc)

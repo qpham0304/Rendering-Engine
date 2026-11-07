@@ -2,6 +2,7 @@
 
 #include "core/resources/managers/Manager.h"
 #include "graphics/renderers/Renderer.h"
+#include "graphics/renderers/RenderGraph.h"
 #include "core/features/Texture.h"
 #include "graphics/utils/GraphicsSettingsSerializer.h"
 #include <glm/glm.hpp>
@@ -35,6 +36,7 @@ public:
 	}
 
     virtual Renderer* getRenderer(std::string_view name) = 0;
+	virtual RenderGraph& getRenderGraph() = 0;
 
 	GraphicsSettingsSerializer& getGraphicsSettings() { return m_graphicsSettings; }
 

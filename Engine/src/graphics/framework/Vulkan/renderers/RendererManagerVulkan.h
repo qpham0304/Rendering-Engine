@@ -59,7 +59,7 @@ public:
 	void endFrame();
 	void setDisplayImage(TextureVulkan* image);
 	TextureVulkan* getDisplayImage();
-	RenderGraphVulkan& getRenderGraph() { return m_renderGraph; }
+	virtual RenderGraphVulkan& getRenderGraph() override { return m_renderGraph; }
 	bool isUpscaling() const { return m_upscaling; }
 	glm::vec2 getJitterPixels() const { return m_jitterPixels; }
 	const Common::UniformBufferObject& getUBO() const;
