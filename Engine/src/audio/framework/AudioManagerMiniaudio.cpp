@@ -195,6 +195,7 @@ void AudioManagerMiniaudio::playMusic(const std::string& path, float volume, flo
     }
 
     ma_sound* sound = _getSound(id);
+    m_musicVolume = volume;
     ma_sound_set_volume(sound, volume);
     ma_sound_set_looping(sound, MA_TRUE);
     if(fadeSeconds > 0.0f) {
@@ -220,9 +221,16 @@ void AudioManagerMiniaudio::stopMusic(float fadeSeconds)
     m_musicID = 0;
 }
 
+// kept without a track playing, the next playMusic call sets it again
 void AudioManagerMiniaudio::setMusicVolume(float volume)
 {
+    m_musicVolume = volume;
     setVolume(m_musicID, volume);
+}
+
+float AudioManagerMiniaudio::getMusicVolume() const
+{
+    return m_musicVolume;
 }
 
 void AudioManagerMiniaudio::setMasterVolume(float volume)

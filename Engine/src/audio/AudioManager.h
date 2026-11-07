@@ -38,6 +38,7 @@ public:
 	virtual void playMusic(const std::string& path, float volume = 1.0f, float fadeSeconds = 0.0f) = 0;
 	virtual void stopMusic(float fadeSeconds = 0.0f) = 0;
 	virtual void setMusicVolume(float volume) = 0;
+	virtual float getMusicVolume() const = 0;
 
 	virtual void setMasterVolume(float volume) = 0;
 	virtual float getMasterVolume() const = 0;

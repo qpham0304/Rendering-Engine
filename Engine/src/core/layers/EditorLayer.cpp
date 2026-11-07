@@ -18,6 +18,7 @@
 #include "gui/framework/ImGui/widgets/ImGuiAssetBrowserWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiParticleEditorWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiGraphicsSettingsWidget.h"
+#include "gui/framework/ImGui/widgets/ImGuiAudioWidget.h"
 
 void EditorLayer::renderGuizmo()
 {
@@ -60,6 +61,7 @@ bool EditorLayer::init()
 	guiController.addWidget<ImGuiAssetBrowserWidget>();
 	guiController.addWidget<ImGuiParticleEditorWidget>();
 	guiController.addWidget<ImGuiGraphicsSettingsWidget>();
+	guiController.addWidget<ImGuiAudioWidget>();
 	guiController.addWidget<ImGuiMenuWidget>(guiController.getWidgets());
 
 	
