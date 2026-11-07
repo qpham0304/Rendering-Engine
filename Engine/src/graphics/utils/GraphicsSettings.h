@@ -155,6 +155,11 @@ struct SSRSettings {
 	bool useTLAS { false };
 	float maxSampleLuminance { 8.0f };
 	bool reflectionOnly { false };
+	bool restir { true };
+	float restirMaxHistory { 20.0f };
+	int restirSpatialSamples { 4 };
+	float restirSpatialRadius { 16.0f };
+	float restirMaxJacobian { 10.0f };
 
 	DEFINE_TYPE(SSRSettings,
 		member("downsample", &SSRSettings::downsample, FieldMeta{ .min = 0.0f, .max = 2.0f, .tooltip = "0 full, 1 half, 2 quarter resolution" }),
@@ -163,7 +168,12 @@ struct SSRSettings {
 		member("maxDistance", &SSRSettings::maxDistance, FieldMeta{ .min = 1.0f, .max = 1000.0f }),
 		member("useTLAS", &SSRSettings::useTLAS, FieldMeta{ .tooltip = "rays that leave the screen continue against the scene, needs ray tracing support" }),
 		member("maxSampleLuminance", &SSRSettings::maxSampleLuminance, FieldMeta{ .min = 1.0f, .max = 64.0f, .tooltip = "brightest single ray sample, lower removes sparkles but darkens bright bounces" }),
-		member("reflectionOnly", &SSRSettings::reflectionOnly, FieldMeta{ .tooltip = "trace only reflections, diffuse indirect comes from ddgi / the sky" })
+		member("reflectionOnly", &SSRSettings::reflectionOnly, FieldMeta{ .tooltip = "trace only reflections, diffuse indirect comes from ddgi / the sky" }),
+		member("restir", &SSRSettings::restir, FieldMeta{ .tooltip = "reuse diffuse ray samples over time and from neighbors (restir gi)" }),
+		member("restirMaxHistory", &SSRSettings::restirMaxHistory, FieldMeta{ .min = 1.0f, .max = 64.0f, .tooltip = "how many past samples a reservoir may stand for, lower reacts faster to light changes" }),
+		member("restirSpatialSamples", &SSRSettings::restirSpatialSamples, FieldMeta{ .min = 0.0f, .max = 16.0f, .tooltip = "neighbor reservoirs merged per pixel" }),
+		member("restirSpatialRadius", &SSRSettings::restirSpatialRadius, FieldMeta{ .min = 1.0f, .max = 64.0f, .tooltip = "neighbor search radius in trace pixels" }),
+		member("restirMaxJacobian", &SSRSettings::restirMaxJacobian, FieldMeta{ .min = 1.5f, .max = 100.0f, .tooltip = "rejects neighbor samples whose solid angle changes more than this, lower is safer near corners" })
 	)
 };
 
@@ -182,6 +192,24 @@ struct TemporalSettings {
 		member("clampGamma", &TemporalSettings::clampGamma, FieldMeta{ .min = 0.25f, .max = 4.0f, .tooltip = "width of the neighborhood box the history is clamped to, lower ghosts less but flickers more" }),
 		member("depthTolerance", &TemporalSettings::depthTolerance, FieldMeta{ .min = 0.001f, .max = 0.2f, .format = "%.3f", .tooltip = "relative view depth difference that still counts as the same surface" }),
 		member("normalThreshold", &TemporalSettings::normalThreshold, FieldMeta{ .min = 0.5f, .max = 1.0f, .format = "%.3f", .tooltip = "minimum normal dot product that still counts as the same surface" })
+	)
+};
+
+struct AtrousSettings {
+	bool enabled { true };
+	int iterations { 3 };
+	float depthSigma { 0.02f };
+	float normalPower { 64.0f };
+	float luminanceSigma { 4.0f };
+	float specularRoughnessStart { 0.1f };
+
+	DEFINE_TYPE(AtrousSettings,
+		member("enabled", &AtrousSettings::enabled, FieldMeta{ .tooltip = "spatial denoise of the temporal ssgi / ssr result" }),
+		member("iterations", &AtrousSettings::iterations, FieldMeta{ .min = 1.0f, .max = 5.0f, .tooltip = "each pass doubles the sample spacing, 3 reaches about 16 pixels" }),
+		member("depthSigma", &AtrousSettings::depthSigma, FieldMeta{ .min = 0.001f, .max = 0.2f, .format = "%.3f", .tooltip = "relative view depth change per pixel of distance that still blurs together" }),
+		member("normalPower", &AtrousSettings::normalPower, FieldMeta{ .min = 1.0f, .max = 256.0f, .tooltip = "higher keeps creases and edges sharper" }),
+		member("luminanceSigma", &AtrousSettings::luminanceSigma, FieldMeta{ .min = 0.1f, .max = 32.0f, .tooltip = "how many local standard deviations of brightness still blur together, higher is smoother" }),
+		member("specularRoughnessStart", &AtrousSettings::specularRoughnessStart, FieldMeta{ .min = 0.0f, .max = 1.0f, .tooltip = "reflections below this roughness stay unfiltered so mirrors keep their detail" })
 	)
 };
 

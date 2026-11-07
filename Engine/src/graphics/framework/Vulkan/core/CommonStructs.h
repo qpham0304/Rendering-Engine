@@ -33,6 +33,7 @@ namespace Common {
         uint32_t materialIdx = 0;
         uint32_t flags = 0;
         uint32_t padding = 0;
+        uint64_t rtVertexAddress = 0;
     };
 
     

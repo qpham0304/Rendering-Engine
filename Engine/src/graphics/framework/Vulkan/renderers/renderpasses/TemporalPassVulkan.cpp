@@ -143,6 +143,11 @@ TextureVulkan* TemporalPassVulkan::getSpecularOutputImage()
     return flip ? specularA : specularB;
 }
 
+TextureVulkan* TemporalPassVulkan::getHistoryLengthImage()
+{
+    return flip ? lengthA : lengthB;
+}
+
 void TemporalPassVulkan::writeTAA(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     

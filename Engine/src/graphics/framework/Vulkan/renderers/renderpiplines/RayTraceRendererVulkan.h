@@ -70,6 +70,7 @@ public:
 	void writePostProcess(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeRayTracing(VkCommandBuffer cmd, uint32_t currentFrame);
 	void updateTlas();
+	uint64_t getSkinnedVertexAddress(uint32_t meshID, uint32_t boneMatricesIdx);
 
 public:	//TODO: make private once done testing	
 	const int numInstances = 1;
@@ -78,6 +79,8 @@ public:	//TODO: make private once done testing
 	uint32_t frameCounter { 0 };
 	bool m_tlasInitialized { false };
 	uint64_t m_lastTlasFrame { 0 };
+	std::vector<uint32_t> m_instanceBufferIDs;
+	std::vector<uint32_t> m_instanceBufferCapacity;
 	bool clear { false };
 	bool explicitPass { false };
 
@@ -126,6 +129,28 @@ public:	//TODO: make private once done testing
     VkStridedDeviceAddressRegionKHR m_hitRegion{};       	// Hit shader region
     VkStridedDeviceAddressRegionKHR m_callRegion{};
 
+	struct SkinnedInstance {
+		uint32_t meshID { 0 };
+		uint32_t vertexBufferID { 0 };
+		uint64_t vertexAddress { 0 };
+		uint32_t vertexCount { 0 };
+		uint64_t lastSkinnedFrame { 0 };
+		RaytracingBuilderKHR::DynamicBlas blas {};
+	};
+	struct SkinningPushConstant {
+		uint64_t source;
+		uint64_t destination;
+		uint64_t boneTable;
+		uint32_t boneMatricesIdx;
+		uint32_t vertexCount;
+	};
+	std::unordered_map<uint64_t, SkinnedInstance> m_skinned;
+	std::unique_ptr<VulkanPipeline> m_skinningPipeline;
+
+	static uint64_t _skinnedKey(uint32_t meshID, uint32_t boneMatricesIdx) { return (uint64_t(meshID) << 32) | boneMatricesIdx; }
+	void _skinAndRefit(VkCommandBuffer cmd);
+	void _releaseStaleSkinned();
+
 	void _createResources();
 	void _createPipeline();
 	void _createDescriptor();
@@ -144,7 +169,7 @@ public:	//TODO: make private once done testing
 		return out_matrix;
 	}
 
-	BlasInput _toVkGeometry(uint32_t meshID);
+	BlasInput _toVkGeometry(uint32_t meshID, uint64_t vertexAddressOverride = 0);
 	void _createAccelStructure();
 	void _buildNewBlas();
 	void _createShaderBindingTable();

@@ -39,6 +39,7 @@ void GraphicsSettingsSerializer::RegisterSettings()
 	REGISTER_SETTINGS(DLSSSettings);
 	REGISTER_SETTINGS(TonemapSettings);
 	REGISTER_SETTINGS(TemporalSettings);
+	REGISTER_SETTINGS(AtrousSettings);
 }
 
 bool GraphicsSettingsSerializer::saveSettings(std::string_view filePath) const

@@ -79,6 +79,7 @@ std::vector<RGPassInfo> RenderGraphVulkan::getPasses() const
         for(const auto& access : passNode.writes) {
             const RGResource& resource = m_resources[access.handle.index];
             info.outputs.push_back({
+                _textureName(resource.texture),
                 resource.texture->id(),
                 resource.texture->width(),
                 resource.texture->height(),
@@ -88,6 +89,21 @@ std::vector<RGPassInfo> RenderGraphVulkan::getPasses() const
         passes.push_back(std::move(info));
     }
     return passes;
+}
+
+// graph owned textures go by the name they were created with, imported ones by their file or their id
+std::string RenderGraphVulkan::_textureName(TextureVulkan* texture) const
+{
+    for(const auto& [name, owned] : m_ownedTextures) {
+        if(owned.texture == texture) {
+            return name;
+        }
+    }
+    std::string path = texture->path();
+    if(!path.empty() && path != "n/a") {
+        return path;
+    }
+    return "texture " + std::to_string(texture->id());
 }
 
 RGHandle RenderGraphVulkan::createRenderTexture(const std::string& name, const RGTextureDesc& desc)

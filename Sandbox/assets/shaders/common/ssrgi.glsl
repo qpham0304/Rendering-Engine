@@ -51,7 +51,33 @@ layout(push_constant) uniform Constants {
     float maxSampleLuminance;
     int reflectionOnly;
     uint frameIndex;
+    int restir;
+    float restirMaxHistory;
 } pc;
+
+#include "restir.glsl"
+
+// diffuse reservoirs: this frame's (temporal reuse output, read by the spatial pass) and last frame's
+layout(set = 0, binding = 17, rgba32f) uniform writeonly image2D u_Reservoir0;
+layout(set = 0, binding = 18, rgba32f) uniform writeonly image2D u_Reservoir1;
+layout(set = 0, binding = 19, rgba32f) uniform writeonly image2D u_Reservoir2;
+layout(set = 0, binding = 20, rgba32f) uniform writeonly image2D u_Reservoir3;
+layout(set = 0, binding = 21, rgba32f) uniform readonly image2D u_PrevReservoir0;
+layout(set = 0, binding = 22, rgba32f) uniform readonly image2D u_PrevReservoir1;
+layout(set = 0, binding = 23, rgba32f) uniform readonly image2D u_PrevReservoir2;
+layout(set = 0, binding = 24, rgba32f) uniform readonly image2D u_PrevReservoir3;
+
+void storeReservoir(ivec2 coord, Reservoir r) {
+    imageStore(u_Reservoir0, coord, packReservoir0(r));
+    imageStore(u_Reservoir1, coord, packReservoir1(r));
+    imageStore(u_Reservoir2, coord, packReservoir2(r));
+    imageStore(u_Reservoir3, coord, packReservoir3(r));
+}
+
+Reservoir loadPrevReservoir(ivec2 coord) {
+    return unpackReservoir(imageLoad(u_PrevReservoir0, coord), imageLoad(u_PrevReservoir1, coord),
+        imageLoad(u_PrevReservoir2, coord), imageLoad(u_PrevReservoir3, coord));
+}
 
 #ifdef SSR_RAY_QUERY
 layout(set = 0, binding = 10) uniform accelerationStructureEXT topLevelAS;
@@ -68,9 +94,10 @@ layout(set = 1, binding = 0) uniform sampler2D samplerImages[];
 // the reflected surface is off screen or hidden, so there is no lit color to read back:
 // shade the hit the way the ddgi probes do (sun and light components with shadow rays, probe bounce or sky, emissive).
 // world space in and out
-bool traceScene(vec3 origin, vec3 dir, float maxDistance, out vec3 radiance, out float hitT) {
+bool traceScene(vec3 origin, vec3 dir, float maxDistance, out vec3 radiance, out float hitT, out vec3 hitNormal) {
     radiance = vec3(0.0);
     hitT = 0.0;
+    hitNormal = -dir;
 
     rayQueryEXT rayQuery;
     rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, origin, 0.01, dir, maxDistance);
@@ -87,7 +114,7 @@ bool traceScene(vec3 origin, vec3 dir, float maxDistance, out vec3 radiance, out
     mat4x3 worldToObject = rayQueryGetIntersectionWorldToObjectEXT(rayQuery, true);
 
     Object obj = ObjectsBuffer(pc.objectsRef).objects[customIndex];
-    Vertices vertices = Vertices(obj.vertexAddress);
+    Vertices vertices = Vertices(obj.rtVertexAddress);
     Indices indices = Indices(obj.indexAddress);
     MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
     MaterialIndicesBuffer matIndices = MaterialIndicesBuffer(obj.materialIndicesRef);
@@ -103,6 +130,7 @@ bool traceScene(vec3 origin, vec3 dir, float maxDistance, out vec3 radiance, out
         nrmObject = cross(v1.pos - v0.pos, v2.pos - v0.pos);
     }
     vec3 N = normalize(vec3(nrmObject * worldToObject));
+    hitNormal = N;
 
     // the back of a surface: the ray started inside or behind geometry, nothing reflects from there
     if (dot(N, dir) > 0.0) {
@@ -351,8 +379,10 @@ vec3 sampleGGXVNDF(vec3 ve, float alpha, vec2 u) {
 // one ray from a view space start: the hi-z march on screen, then the tlas when it is enabled and the ray left the
 // screen or went behind something. confidence is how much of the result is a real hit (screen edges fade it out),
 // the combine pass fills the rest from the probes / environment, so a miss is never counted twice
-float traceRay(vec3 startView, vec3 rayDir, out vec3 radiance) {
+float traceRay(vec3 startView, vec3 rayDir, out vec3 radiance, out vec3 hitPosWorld, out vec3 hitNormalWorld) {
     radiance = vec3(0.0);
+    hitPosWorld = vec3(0.0);
+    hitNormalWorld = vec3(0.0, 1.0, 0.0);
 
     vec3 endView = startView + rayDir * (0.1 * -startView.z);
     vec3 origin = toScreen(startView);
@@ -385,6 +415,8 @@ float traceRay(vec3 startView, vec3 rayDir, out vec3 radiance) {
             radiance = prevOnScreen ? textureLod(u_PrevFinalColor, prevHitUV, 0.0).rgb : textureLod(u_SceneColor, hitUV, 0.0).rgb;
             radiance = (any(isnan(radiance)) || any(isinf(radiance))) ? vec3(0.0) : max(radiance, vec3(0.0));
             vec2 edge = smoothstep(vec2(0.0), vec2(0.05), hitUV) * smoothstep(vec2(1.0), vec2(0.95), hitUV);
+            hitPosWorld = (camera.invView * vec4(hitView, 1.0)).xyz;
+            hitNormalWorld = normalize(mat3(camera.invView) * hitNormal);
             return edge.x * edge.y;
         }
     }
@@ -394,7 +426,8 @@ float traceRay(vec3 startView, vec3 rayDir, out vec3 radiance) {
         vec3 worldStart = (camera.invView * vec4(startView, 1.0)).xyz;
         vec3 worldDir = normalize(mat3(camera.invView) * rayDir);
         float hitT;
-        if (traceScene(worldStart, worldDir, pc.maxDistance, radiance, hitT)) {
+        if (traceScene(worldStart, worldDir, pc.maxDistance, radiance, hitT, hitNormalWorld)) {
+            hitPosWorld = worldStart + worldDir * hitT;
             return 1.0;
         }
     }
@@ -433,6 +466,9 @@ void main() {
     if (depth >= 1.0 || depth <= 0.00001) {
         imageStore(u_ResultImage, pixelCoord, vec4(0.0));
         imageStore(u_SpecularImage, pixelCoord, vec4(0.0));
+        if (pc.restir != 0) {
+            storeReservoir(pixelCoord, emptyReservoir(vec3(0.0), vec3(0.0, 1.0, 0.0)));
+        }
         return;
     }
 
@@ -456,8 +492,10 @@ void main() {
     vec3 diffuseDir = sampleHemisphere(N, vec2(rnd(seed), rnd(seed)));
     vec3 diffuseRadiance = vec3(0.0);
     float diffuseConfidence = 0.0;
+    vec3 diffuseHitPos;
+    vec3 diffuseHitNormal;
     if (pc.reflectionOnly == 0) {
-        diffuseConfidence = traceRay(startView, diffuseDir, diffuseRadiance);   // 0 confidence: combine uses ddgi / sky
+        diffuseConfidence = traceRay(startView, diffuseDir, diffuseRadiance, diffuseHitPos, diffuseHitNormal);   // 0 confidence: combine uses ddgi / sky
     }
 
     // specular: visible normals of the ggx lobe, the reflected direction is distributed like the brdf, so the
@@ -471,7 +509,9 @@ void main() {
     vec3 specularRadiance = vec3(0.0);
     float specularConfidence = 0.0;
     if (dot(specularDir, N) > 0.0) {
-        specularConfidence = traceRay(startView, specularDir, specularRadiance);
+        vec3 specularHitPos;
+        vec3 specularHitNormal;
+        specularConfidence = traceRay(startView, specularDir, specularRadiance, specularHitPos, specularHitNormal);
     }
 
     // a single very bright hit (the sun on a light surface) would sit in the history as a firefly for many frames
@@ -492,6 +532,53 @@ void main() {
         specularOut = vec4(0.0);
     }
 
-    imageStore(u_ResultImage, pixelCoord, diffuseOut);
     imageStore(u_SpecularImage, pixelCoord, specularOut);
+
+    if (pc.restir == 0 || pc.reflectionOnly != 0) {
+        imageStore(u_ResultImage, pixelCoord, diffuseOut);
+        return;
+    }
+
+    // restir: this frame's ray is one candidate, last frame's reservoir at the same surface carries up to
+    // restirMaxHistory earlier ones. the spatial pass merges neighbors and writes the diffuse result
+    vec3 visiblePos = (camera.invView * vec4(viewPos, 1.0)).xyz;
+    vec3 visibleNormal = normalize(mat3(camera.invView) * N);
+    bool validSample = diffuseConfidence > 0.0 && !any(isnan(diffuseOut)) && !any(isinf(diffuseOut));
+
+    Reservoir candidate = emptyReservoir(visiblePos, visibleNormal);
+    if (validSample) {
+        candidate.radiance = diffuseRadiance;
+        candidate.confidence = diffuseConfidence;
+        candidate.samplePos = diffuseHitPos;
+        candidate.sampleNormal = diffuseHitNormal;
+    }
+
+    Reservoir r = emptyReservoir(visiblePos, visibleNormal);
+    float sourcePdf = max(dot(N, diffuseDir), 1e-4) / RESTIR_PI;
+    float candidateTarget = restirTarget(candidate.radiance, candidate.confidence, candidate.samplePos, visiblePos, visibleNormal);
+    updateReservoir(r, candidate, candidateTarget / sourcePdf, 1.0, rnd(seed));
+
+    vec2 prevUV = uv - texture(u_MotionVectors, uv).rg;
+    if (all(greaterThanEqual(prevUV, vec2(0.0))) && all(lessThan(prevUV, vec2(1.0)))) {
+        Reservoir prev = loadPrevReservoir(ivec2(prevUV * pc.screenRes));
+
+        // only the same surface: close to this pixel's plane and facing the same way
+        float viewDistance = length(viewPos);
+        vec3 offset = prev.visiblePos - visiblePos;
+        bool samePlane = abs(dot(visibleNormal, offset)) < 0.02 * viewDistance && length(offset) < 0.1 * viewDistance;
+        bool sameNormal = dot(visibleNormal, prev.visibleNormal) > 0.9;
+        if (prev.M > 0.0 && prev.W > 0.0 && samePlane && sameNormal) {
+            prev.M = min(prev.M, pc.restirMaxHistory);
+            float prevTarget = restirTarget(prev.radiance, prev.confidence, prev.samplePos, visiblePos, visibleNormal);
+            updateReservoir(r, prev, prevTarget * prev.W * prev.M, prev.M, rnd(seed));
+        } else if (prev.M > 0.0 && samePlane && sameNormal) {
+            r.M += min(prev.M, pc.restirMaxHistory);   // all misses so far, they still count against the hits
+        }
+    }
+
+    finalizeReservoir(r);
+    if (isnan(r.W) || isinf(r.W)) {
+        r = emptyReservoir(visiblePos, visibleNormal);
+    }
+    storeReservoir(pixelCoord, r);
 }

@@ -72,6 +72,7 @@ private:
     //     std::unordered_set<std::string>& visiting
     // );
     TextureVulkan* _createTexture(const std::string& name, const RGTextureDesc& desc);
+    std::string _textureName(TextureVulkan* texture) const;
     void _prepareAccess(VkCommandBuffer cmd, const RGAccess& access, bool isWrite);
 
     struct RenderTexture {

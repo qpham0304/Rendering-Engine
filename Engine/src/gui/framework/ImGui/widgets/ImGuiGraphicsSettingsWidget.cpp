@@ -20,6 +20,7 @@ ImGuiGraphicsSettingsWidget::ImGuiGraphicsSettingsWidget(std::string name)
     m_drawers.add<DLSSSettings>();
     m_drawers.add<TonemapSettings>();
     m_drawers.add<TemporalSettings>();
+    m_drawers.add<AtrousSettings>();
 }
 
 void ImGuiGraphicsSettingsWidget::render()
@@ -88,7 +89,7 @@ void ImGuiGraphicsSettingsWidget::_drawOutputs(const std::vector<RGPassInfo>& pa
             ImGui::PushID(static_cast<int>(texture.id));
             bool viewing = rendererManager->getViewTexture() == texture.id;
 
-            std::string label = (viewing ? "Hide " : "View ") + pass.name;
+            std::string label = (viewing ? "Hide " : "View ") + texture.name;
             ImGui::BeginDisabled(!texture.viewable);
             if (ImGui::Button(label.c_str(), ImVec2(-FLT_MIN, 0.0f))) {
                 rendererManager->setViewTexture(viewing ? 0 : texture.id);

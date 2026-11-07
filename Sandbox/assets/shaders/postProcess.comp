@@ -70,6 +70,7 @@ struct Object {
     uint materialIdx;
     uint flags;
     uint padding;
+    uint64_t rtVertexAddress;   // what ray hits read: the skinned copy for animated meshes, the mesh vertices otherwise
 };
 
 
@@ -175,7 +176,7 @@ void main() {
 
             Object obj = pc.objRef.objects[instanceID];
             
-            Vertices vertices = Vertices(obj.vertexAddress);
+            Vertices vertices = Vertices(obj.rtVertexAddress);
             Indices indices = Indices(obj.indexAddress);
             MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
             MaterialIndicesBuffer matIndices = MaterialIndicesBuffer(obj.materialIndiciesRef);

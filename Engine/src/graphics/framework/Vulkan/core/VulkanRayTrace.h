@@ -68,6 +68,25 @@ public:
         bool motion = false
     );
 
+    // a blas over geometry that changes every frame (skinned meshes): built once, then refit in the frame's command buffer
+    struct DynamicBlas {
+        AccelStructureBufferVulkan* as { nullptr };
+        uint32_t scratchID { 0 };
+        bool built { false };
+    };
+    DynamicBlas createDynamicBlas(const BlasInput& input);
+    void cmdBuildDynamicBlas(VkCommandBuffer cmd, DynamicBlas& blas, const BlasInput& input);
+    void destroyDynamicBlas(DynamicBlas& blas);
+    VkDeviceAddress getAccelDeviceAddress(AccelStructureBufferVulkan* as) const;
+
+    // records the refit into the frame's command buffer, the instances must already sit in a buffer the gpu can read
+    void cmdUpdateTlas(
+        VkCommandBuffer cmd,
+        uint32_t countInstance,
+        VkDeviceAddress instanceAddress,
+        VkBuildAccelerationStructureFlagsKHR flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR
+    );
+
 protected:
     std::vector<AccelStructureBufferVulkan*> m_blas;  // Bottom-level acceleration structure
     AccelStructureBufferVulkan*              m_tlas;  // Top-level acceleration structure

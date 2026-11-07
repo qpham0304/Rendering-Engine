@@ -1,0 +1,131 @@
+#version 460
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// diffuse and specular are both rgb = radiance * confidence, a = confidence (see ssrgi.glsl), filtered as they are
+layout(set = 0, binding = 0) uniform sampler2D u_InDiffuse;
+layout(set = 0, binding = 1) uniform sampler2D u_InSpecular;
+layout(set = 0, binding = 2, rgba16f) uniform writeonly image2D u_OutDiffuse;
+layout(set = 0, binding = 3, rgba16f) uniform writeonly image2D u_OutSpecular;
+layout(set = 0, binding = 4) uniform sampler2D u_Depth;
+layout(set = 0, binding = 5) uniform sampler2D u_Normal;
+layout(set = 0, binding = 6) uniform sampler2D u_PBR;            // ao, roughness, metallic
+layout(set = 0, binding = 7) uniform sampler2D u_HistoryLength;  // frames the temporal pass accumulated
+
+layout(push_constant) uniform Constants {
+    mat4 invProj;           // y flipped like ubo.invProj, only used to linearize depth
+    vec2 screenRes;
+    int stepSize;
+    float depthSigma;
+    float normalPower;
+    float luminanceSigma;
+    float specularRoughnessStart;
+} pc;
+
+const float kernel[3] = float[](3.0 / 8.0, 1.0 / 4.0, 1.0 / 16.0);
+const vec3 lumaWeights = vec3(0.2126, 0.7152, 0.0722);
+
+float linearDepth(float depth) {
+    vec4 view = pc.invProj * vec4(0.0, 0.0, depth, 1.0);
+    return -view.z / view.w;
+}
+
+vec4 fetch(sampler2D image, ivec2 coord) {
+    return max(texelFetch(image, coord, 0), vec4(0.0));
+}
+
+// the brightness spread of the 3x3 around the pixel, what counts as noise rather than a real edge
+vec2 localDeviation(ivec2 center, ivec2 maxCoord) {
+    vec2 m1 = vec2(0.0);
+    vec2 m2 = vec2(0.0);
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            ivec2 coord = clamp(center + ivec2(x, y), ivec2(0), maxCoord);
+            vec2 l = vec2(dot(fetch(u_InDiffuse, coord).rgb, lumaWeights), dot(fetch(u_InSpecular, coord).rgb, lumaWeights));
+            m1 += l;
+            m2 += l * l;
+        }
+    }
+    m1 /= 9.0;
+    return sqrt(max(m2 / 9.0 - m1 * m1, vec2(0.0)));
+}
+
+// one edge avoiding a-trous iteration: a 5x5 b3 spline kernel spread stepSize pixels apart, every tap weighted by how
+// alike its surface (view depth, normal) and its brightness are, the passes double the spacing so a few reach far
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 res = ivec2(pc.screenRes);
+    if (pixel.x >= res.x || pixel.y >= res.y) {
+        return;
+    }
+
+    vec4 centerDiffuse = fetch(u_InDiffuse, pixel);
+    vec4 centerSpecular = fetch(u_InSpecular, pixel);
+    vec3 centerNormal = texelFetch(u_Normal, pixel, 0).xyz;
+
+    // the sky has no surface to filter on
+    if (length(centerNormal) < 0.1) {
+        imageStore(u_OutDiffuse, pixel, centerDiffuse);
+        imageStore(u_OutSpecular, pixel, centerSpecular);
+        return;
+    }
+    centerNormal = normalize(centerNormal);
+
+    float centerDepth = linearDepth(texelFetch(u_Depth, pixel, 0).r);
+    float centerRoughness = texelFetch(u_PBR, pixel, 0).g;
+    float centerDiffuseLuma = dot(centerDiffuse.rgb, lumaWeights);
+    float centerSpecularLuma = dot(centerSpecular.rgb, lumaWeights);
+
+    // freshly disoccluded pixels have little history and are noisy, they get a looser brightness test
+    float historyLength = texelFetch(u_HistoryLength, pixel, 0).r;
+    float freshness = 1.0 + 3.0 * clamp(1.0 - historyLength / 8.0, 0.0, 1.0);
+
+    ivec2 maxCoord = res - 1;
+    vec2 deviation = localDeviation(pixel, maxCoord) * pc.luminanceSigma * freshness + 1e-4;
+
+    vec4 sumDiffuse = vec4(0.0);
+    vec4 sumSpecular = vec4(0.0);
+    float weightDiffuse = 0.0;
+    float weightSpecular = 0.0;
+
+    for (int y = -2; y <= 2; y++) {
+        for (int x = -2; x <= 2; x++) {
+            ivec2 coord = pixel + ivec2(x, y) * pc.stepSize;
+            if (any(lessThan(coord, ivec2(0))) || any(greaterThan(coord, maxCoord))) {
+                continue;
+            }
+
+            vec3 normal = texelFetch(u_Normal, coord, 0).xyz;
+            if (length(normal) < 0.1) {
+                continue;
+            }
+
+            float h = kernel[abs(x)] * kernel[abs(y)];
+            float distancePixels = length(vec2(x, y)) * float(pc.stepSize);
+            float depth = linearDepth(texelFetch(u_Depth, coord, 0).r);
+            float wDepth = exp(-abs(centerDepth - depth) / (pc.depthSigma * centerDepth * max(distancePixels, 1.0)));
+            float wNormal = pow(max(dot(centerNormal, normalize(normal)), 0.0), pc.normalPower);
+            float wSurface = h * wDepth * wNormal;
+
+            vec4 diffuse = fetch(u_InDiffuse, coord);
+            float wDiffuse = wSurface * exp(-abs(centerDiffuseLuma - dot(diffuse.rgb, lumaWeights)) / deviation.x);
+            sumDiffuse += diffuse * wDiffuse;
+            weightDiffuse += wDiffuse;
+
+            // reflections only blur with surfaces of a similar roughness, a sharp floor next to a rough wall stays sharp
+            vec4 specular = fetch(u_InSpecular, coord);
+            float roughness = texelFetch(u_PBR, coord, 0).g;
+            float wRoughness = exp(-abs(centerRoughness - roughness) * 10.0);
+            float wSpecular = wSurface * wRoughness * exp(-abs(centerSpecularLuma - dot(specular.rgb, lumaWeights)) / deviation.y);
+            sumSpecular += specular * wSpecular;
+            weightSpecular += wSpecular;
+        }
+    }
+
+    vec4 filteredDiffuse = weightDiffuse > 1e-6 ? sumDiffuse / weightDiffuse : centerDiffuse;
+    vec4 filteredSpecular = weightSpecular > 1e-6 ? sumSpecular / weightSpecular : centerSpecular;
+
+    float specularBlur = smoothstep(pc.specularRoughnessStart, pc.specularRoughnessStart + 0.2, centerRoughness);
+    imageStore(u_OutDiffuse, pixel, filteredDiffuse);
+    imageStore(u_OutSpecular, pixel, mix(centerSpecular, filteredSpecular, specularBlur));
+}

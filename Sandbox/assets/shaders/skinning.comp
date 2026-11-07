@@ -1,0 +1,35 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+#include "common/buffers.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(push_constant) uniform Constants {
+    Vertices source;
+    Vertices destination;
+    BoneMatrixArrayTable boneTable;
+    uint boneMatricesIdx;
+    uint vertexCount;
+} pc;
+
+// the same skinning the raster vertex shaders do, written out in object space so the blas and ray hits see the pose
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+    if (index >= pc.vertexCount) {
+        return;
+    }
+
+    Vertex vert = pc.source.v[index];
+    mat4 skinMatrix = getSkinMatrix(pc.boneTable, pc.boneMatricesIdx, vert);
+    mat3 linear = mat3(skinMatrix);
+    mat3 normalMatrix = abs(determinant(linear)) > 1e-8 ? transpose(inverse(linear)) : linear;
+
+    Vertex skinned = vert;
+    skinned.pos = (skinMatrix * vec4(vert.pos, 1.0)).xyz;
+    skinned.normal = normalMatrix * vert.normal;
+    skinned.tangent = mat3(skinMatrix) * vert.tangent;
+    skinned.biTangent = mat3(skinMatrix) * vert.biTangent;
+    pc.destination.v[index] = skinned;
+}

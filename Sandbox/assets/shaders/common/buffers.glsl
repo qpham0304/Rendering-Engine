@@ -55,6 +55,7 @@ struct Object {
     uint materialIdx;
     uint flags;
     uint padding;
+    uint64_t rtVertexAddress;   // what ray hits read: the skinned copy for animated meshes, the mesh vertices otherwise
 };
 
 layout(buffer_reference, scalar) buffer ObjectsBuffer{ Object objects[]; };

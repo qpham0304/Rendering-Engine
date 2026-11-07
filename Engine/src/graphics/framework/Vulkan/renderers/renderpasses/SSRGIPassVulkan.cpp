@@ -75,6 +75,9 @@ bool SSRGIPassVulkan::onClose()
     if(rayQueryPipeline) {
         rayQueryPipeline->destroy();
     }
+    if(spatialPipeline) {
+        spatialPipeline->destroy();
+    }
 
     return true;
 }
@@ -146,6 +149,10 @@ void SSRGIPassVulkan::render(Camera &camera)
     pushConstant.reflectionOnly = settings->reflectionOnly ? 1 : 0;
     pushConstant.frameIndex++;
     pushConstant.useTLAS = 0;
+    bool restir = settings->restir && !settings->reflectionOnly;
+    pushConstant.restir = restir ? 1 : 0;
+    pushConstant.restirMaxHistory = std::max(settings->restirMaxHistory, 1.0f);
+    _updateReservoirDescriptors(currentFrame);
 
     // only switch to the ray query pipeline when it can actually trace, otherwise skip the tlas update entirely
     VulkanPipeline* activePipeline = pipeline.get();
@@ -162,8 +169,58 @@ void SSRGIPassVulkan::render(Camera &camera)
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     renderDeviceVulkan->beginLabel(cmd, "SSRGI Pass");
     writeSSRGI(cmd, currentFrame, activePipeline);
+    if(restir) {
+        _writeSpatialReuse(cmd, currentFrame);
+    }
     renderDeviceVulkan->endLabel(cmd);
 
+}
+
+// this frame's reservoirs were just written by the trace, the spatial pass reads its neighbors' and writes the diffuse output
+void SSRGIPassVulkan::_writeSpatialReuse(VkCommandBuffer cmd, uint32_t currentFrame)
+{
+    VkMemoryBarrier barrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0, 1, &barrier, 0, nullptr, 0, nullptr);
+
+    spatialPushConstant.traceRes = { static_cast<int>(traceWidth), static_cast<int>(traceHeight) };
+    spatialPushConstant.radius = std::max(settings->restirSpatialRadius, 1.0f);
+    spatialPushConstant.samples = std::clamp(settings->restirSpatialSamples, 0, 16);
+    spatialPushConstant.frameSeed = pushConstant.frameIndex;
+    spatialPushConstant.maxJacobian = std::max(settings->restirMaxJacobian, 1.01f);
+
+    spatialPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+    VkDescriptorSet set = descriptorManagerVulkan->getDescriptorSet(spatialSetsID)[currentFrame];
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, spatialPipeline->pipelineLayout, 0, 1, &set, 0, nullptr);
+    vkCmdPushConstants(cmd, spatialPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SpatialPushConstant), &spatialPushConstant);
+    vkCmdDispatch(cmd, (traceWidth + 7) / 8, (traceHeight + 7) / 8, 1);
+}
+
+// the current and previous reservoirs swap every frame, only this frame's sets are rewritten (the other may be in flight)
+void SSRGIPassVulkan::_updateReservoirDescriptors(uint32_t index)
+{
+    TextureVulkan* const* current = reservoirs[reservoirCurrent];
+    TextureVulkan* const* previous = reservoirs[1 - reservoirCurrent];
+    VkDescriptorImageInfo currentInfos[4];
+    VkDescriptorImageInfo previousInfos[4];
+    for(int i = 0; i < 4; i++) {
+        currentInfos[i] = { current[i]->textureSampler, current[i]->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+        previousInfos[i] = { previous[i]->textureSampler, previous[i]->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+    }
+    VkDescriptorImageInfo outputInfo{ outputImage->textureSampler, outputImage->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+
+    const VkDescriptorSet& traceSet = descriptorManagerVulkan->getDescriptorSet(SSRGISetsID)[index];
+    const VkDescriptorSet& spatialSet = descriptorManagerVulkan->getDescriptorSet(spatialSetsID)[index];
+    std::vector<VkWriteDescriptorSet> writes;
+    for(uint32_t i = 0; i < 4; i++) {
+        descriptorManagerVulkan->writeStorageImage(&writes, traceSet, 17 + i, currentInfos[i]);
+        descriptorManagerVulkan->writeStorageImage(&writes, traceSet, 21 + i, previousInfos[i]);
+        descriptorManagerVulkan->writeStorageImage(&writes, spatialSet, i, currentInfos[i]);
+    }
+    descriptorManagerVulkan->writeStorageImage(&writes, spatialSet, 4, outputInfo);
+    descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
 void SSRGIPassVulkan::writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame, VulkanPipeline* activePipeline)
@@ -209,6 +266,21 @@ void SSRGIPassVulkan::_createResources()
     specularHandle = graph.createRenderTexture("SSRGI.Specular", desc);
     specularImage = graph.getTexture(specularHandle);
     specularImageID = specularImage->id();
+
+    // restir reservoirs keep their contents across frames, last frame's set is this frame's history
+    RGTextureDesc reservoirDesc{};
+    reservoirDesc.config.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    reservoirDesc.scale = desc.scale;
+    const char* names[2][4] = {
+        { "SSRGI.ReservoirA0", "SSRGI.ReservoirA1", "SSRGI.ReservoirA2", "SSRGI.ReservoirA3" },
+        { "SSRGI.ReservoirB0", "SSRGI.ReservoirB1", "SSRGI.ReservoirB2", "SSRGI.ReservoirB3" },
+    };
+    for(int set = 0; set < 2; set++) {
+        for(int i = 0; i < 4; i++) {
+            reservoirHandles[set][i] = graph.createRenderTexture(names[set][i], reservoirDesc);
+            reservoirs[set][i] = graph.getTexture(reservoirHandles[set][i]);
+        }
+    }
 }
 
 void SSRGIPassVulkan::_createPipelines()
@@ -226,6 +298,13 @@ void SSRGIPassVulkan::_createPipelines()
 		layouts,
 		sizeof(PushConstant)
 	);
+
+    spatialPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+    spatialPipeline->createComputePipeline(
+        "assets/shaders/spv/restirSpatial.comp.spv",
+        { descriptorManagerVulkan->getDescriptorLayout(spatialLayoutID) },
+        sizeof(SpatialPushConstant)
+    );
 
     if(rtSupported) {
         rayQueryPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
@@ -254,13 +333,24 @@ void SSRGIPassVulkan::_createDescriptors()
 		{ 15, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 16, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     };
+    for(uint32_t binding = 17; binding <= 24; binding++) {	// restir reservoirs, this frame's then last frame's
+        bindings.push_back({ binding, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });
+    }
 
 	uint32_t frameCount = VulkanUtils::numFrames();
     std::vector<VkDescriptorPoolSize> poolSizes {
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 10},
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 2},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 10},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
 	};
+
+    std::vector<VkDescriptorSetLayoutBinding> spatialBindings;
+    for(uint32_t binding = 0; binding <= 4; binding++) {
+        spatialBindings.push_back({ binding, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });
+    }
+    spatialLayoutID = descriptorManagerVulkan->createLayout(spatialBindings);
+    spatialPoolID = descriptorManagerVulkan->createPool({ { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 5 } }, frameCount);
+    spatialSetsID = descriptorManagerVulkan->createSets(spatialLayoutID, spatialPoolID, frameCount);
 
     // tlas and sky sh for the ray query fallback, written every frame it is used
     if(rtSupported) {
@@ -411,6 +501,9 @@ void SSRGIPassVulkan::_cleanupResources()
     if(rayQueryPipeline) {
         rayQueryPipeline->destroy();
     }
+    if(spatialPipeline) {
+        spatialPipeline->destroy();
+    }
 }
 
 void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
@@ -478,6 +571,14 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
         { outputHandle, VK_IMAGE_LAYOUT_GENERAL },
         { specularHandle, VK_IMAGE_LAYOUT_GENERAL }
     };
+
+    // last frame's reservoirs are read and this frame's written, both stay in general
+    reservoirCurrent = 1 - reservoirCurrent;
+    for(int set = 0; set < 2; set++) {
+        for(int i = 0; i < 4; i++) {
+            node.writes.push_back({ reservoirHandles[set][i], VK_IMAGE_LAYOUT_GENERAL });
+        }
+    }
 
     node.execute = [this] (VkCommandBuffer cmd, uint32_t currentFrame){
         Scene* scene = SceneManager::getInstance().getActiveScene();

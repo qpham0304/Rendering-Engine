@@ -22,6 +22,7 @@
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
 #include <graphics/framework/Vulkan/resources/buffers/AccelStructureBufferVulkan.h>
 #include <core/scene/SceneManager.h>
+#include "animation/AnimationManager.h"
 #include <glm/gtx/string_cast.hpp>
 
 RayTraceRendererVulkan::RayTraceRendererVulkan() 
@@ -62,6 +63,9 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
 	_createPipeline();
 	_createShaderBindingTable();
 
+	m_skinningPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	m_skinningPipeline->createComputePipeline("assets/shaders/spv/skinning.comp.spv", {}, sizeof(SkinningPushConstant));
+
 	auto materialManagerVulkan = static_cast<MaterialManagerVulkan*>(materialManager);
 	materialsAddress = materialManagerVulkan->getMaterialAddress();
 
@@ -91,6 +95,9 @@ bool RayTraceRendererVulkan::init(WindowConfig config)
 bool RayTraceRendererVulkan::onClose()
 {
 	renderDeviceVulkan->waitIdle();
+	if(m_skinningPipeline) {
+		m_skinningPipeline->destroy();
+	}
 	_cleanupResources();
 	
 	return true;
@@ -372,6 +379,12 @@ void RayTraceRendererVulkan::_populateData(std::vector<VkAccelerationStructureIn
 		inst.transform = toTransformMatrixKHR(draw.model);
 		inst.instanceCustomIndex = draw.objectIdx;
 		inst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(draw.meshID - 1);
+
+		// animated meshes trace their own blas, skinned this frame
+		auto skinned = m_skinned.find(_skinnedKey(draw.meshID, draw.boneMatricesIdx));
+		if(draw.boneMatricesIdx != 0 && skinned != m_skinned.end() && skinned->second.blas.built) {
+			inst.accelerationStructureReference = m_rtBuilder.getAccelDeviceAddress(skinned->second.blas.as);
+		}
 		inst.mask = 0xFF;
 		inst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
 
@@ -401,7 +414,7 @@ void RayTraceRendererVulkan::_populateData(std::vector<VkAccelerationStructureIn
 	}
 }
 
-BlasInput RayTraceRendererVulkan::_toVkGeometry(uint32_t meshID) {
+BlasInput RayTraceRendererVulkan::_toVkGeometry(uint32_t meshID, uint64_t vertexAddressOverride) {
     const MeshManager::MeshData& meshData = meshManager->getMeshData(meshID);
     Mesh* mesh = meshManager->getMesh(meshID);
 
@@ -412,6 +425,9 @@ BlasInput RayTraceRendererVulkan::_toVkGeometry(uint32_t meshID) {
 	desc.materialIndicesRef = bdaBuffer->getAddress();
 	bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.vertexBDA_ID));
 	desc.vertexAddress = bdaBuffer->getAddress();
+	if(vertexAddressOverride != 0) {
+		desc.vertexAddress = vertexAddressOverride;
+	}
 	bdaBuffer = static_cast<DeviceAddressBufferVulkan*>(bufferManagerVulkan->getBuffer(meshData.indexBDA_ID));
 	desc.indexAddress = bdaBuffer->getAddress();
     
@@ -625,6 +641,7 @@ void RayTraceRendererVulkan::updateTlas() {
     m_lastTlasFrame = frameNumber;
 
     _buildNewBlas();
+    _skinAndRefit(renderDeviceVulkan->commandPool.currentBuffer());
 
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
 
@@ -635,7 +652,27 @@ void RayTraceRendererVulkan::updateTlas() {
         return;
     }
 
-    m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR, m_tlasInitialized, false);
+    // one mapped instance buffer per frame in flight, this frame's fence already passed so its copy is free to write
+    uint32_t frameIndex = renderDeviceVulkan->getCurrentFrameIndex();
+    if(frameIndex >= m_instanceBufferIDs.size()) {
+        m_instanceBufferIDs.resize(frameIndex + 1, 0);
+        m_instanceBufferCapacity.resize(frameIndex + 1, 0);
+    }
+    uint32_t count = static_cast<uint32_t>(tlas.size());
+    if(m_instanceBufferCapacity[frameIndex] < count) {
+        if(m_instanceBufferIDs[frameIndex] != 0) {
+            bufferManagerVulkan->destroy(m_instanceBufferIDs[frameIndex]);
+        }
+        uint32_t capacity = std::max(count * 2, 64u);
+        m_instanceBufferIDs[frameIndex] = bufferManagerVulkan->createBufferDeviceAddress(capacity * sizeof(VkAccelerationStructureInstanceKHR));
+        m_instanceBufferCapacity[frameIndex] = capacity;
+    }
+    uint32_t instanceBufferID = m_instanceBufferIDs[frameIndex];
+    bufferManagerVulkan->updateBufferDeviceAddress(instanceBufferID, tlas.data(), count * sizeof(VkAccelerationStructureInstanceKHR));
+
+    VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
+    m_rtBuilder.cmdUpdateTlas(cmd, count, bufferManagerVulkan->getVirtualMemoryAddress(instanceBufferID));
+    m_tlasInitialized = true;
 
     // the tlas is recreated when the instance count changes, both the ray trace and post process sets hold it
 	_updateDescriptor(renderDeviceVulkan->getCurrentFrameIndex());
@@ -644,4 +681,107 @@ void RayTraceRendererVulkan::updateTlas() {
 
 void RayTraceRendererVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+}
+
+// one skinned copy of the vertices per animated mesh instance, ray hits read it through Object::rtVertexAddress.
+// created on first use, filled by _skinAndRefit before the tlas references it
+uint64_t RayTraceRendererVulkan::getSkinnedVertexAddress(uint32_t meshID, uint32_t boneMatricesIdx)
+{
+    uint64_t key = _skinnedKey(meshID, boneMatricesIdx);
+    auto it = m_skinned.find(key);
+    if(it != m_skinned.end()) {
+        return it->second.vertexAddress;
+    }
+
+    Mesh* mesh = meshManager->getMesh(meshID);
+    SkinnedInstance instance{};
+    instance.meshID = meshID;
+    instance.vertexCount = static_cast<uint32_t>(mesh->vertices.size());
+    instance.vertexBufferID = bufferManagerVulkan->createBufferObject(std::max<size_t>(instance.vertexCount, 1) * sizeof(Vertex));
+    instance.vertexAddress = bufferManagerVulkan->getVirtualMemoryAddress(instance.vertexBufferID);
+    m_skinned[key] = instance;
+    return instance.vertexAddress;
+}
+
+// skins every animated instance drawn this frame into its own vertex buffer, then builds or refits its blas,
+// all in the frame's command buffer ahead of the tlas update that references them
+void RayTraceRendererVulkan::_skinAndRefit(VkCommandBuffer cmd)
+{
+    uint32_t frameIndex = renderDeviceVulkan->getCurrentFrameIndex();
+    uint64_t frameNumber = rendererManagerVulkan->getFrameNumber();
+    _releaseStaleSkinned();
+
+    std::vector<uint64_t> keys;
+    for(const auto& draw : rendererManagerVulkan->getMeshDraws()) {
+        if(draw.boneMatricesIdx == 0) {
+            continue;
+        }
+        uint64_t key = _skinnedKey(draw.meshID, draw.boneMatricesIdx);
+        getSkinnedVertexAddress(draw.meshID, draw.boneMatricesIdx);
+        if(m_skinned[key].lastSkinnedFrame != frameNumber) {
+            m_skinned[key].lastSkinnedFrame = frameNumber;
+            keys.push_back(key);
+        }
+    }
+    if(keys.empty()) {
+        return;
+    }
+
+    uint32_t boneTableID = ServiceLocator::GetService<AnimationManager>("AnimationManager").getAnimationBufferAddressID(frameIndex);
+    if(boneTableID == 0) {
+        return;
+    }
+
+    const VkPipelineStageFlags readers = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+        | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+
+    // the frames still in flight may be reading these vertices in hit shaders or in their blas refit
+    VkMemoryBarrier beforeSkinning{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+    beforeSkinning.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+    beforeSkinning.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    vkCmdPipelineBarrier(cmd, readers, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &beforeSkinning, 0, nullptr, 0, nullptr);
+
+    SkinningPushConstant push{};
+    push.boneTable = bufferManagerVulkan->getVirtualMemoryAddress(boneTableID);
+    m_skinningPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+    for(uint64_t key : keys) {
+        SkinnedInstance& instance = m_skinned[key];
+        const MeshManager::MeshData& meshData = meshManager->getMeshData(instance.meshID);
+        push.source = bufferManagerVulkan->getVirtualMemoryAddress(meshData.vertexBDA_ID);
+        push.destination = instance.vertexAddress;
+        push.boneMatricesIdx = static_cast<uint32_t>(key & 0xFFFFFFFFu);
+        push.vertexCount = instance.vertexCount;
+        vkCmdPushConstants(cmd, m_skinningPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SkinningPushConstant), &push);
+        vkCmdDispatch(cmd, (instance.vertexCount + 63) / 64, 1, 1);
+    }
+
+    VkMemoryBarrier afterSkinning{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+    afterSkinning.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    afterSkinning.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, readers, 0, 1, &afterSkinning, 0, nullptr, 0, nullptr);
+
+    for(uint64_t key : keys) {
+        SkinnedInstance& instance = m_skinned[key];
+        BlasInput geometry = _toVkGeometry(instance.meshID, instance.vertexAddress);
+        if(!instance.blas.as) {
+            instance.blas = m_rtBuilder.createDynamicBlas(geometry);
+        }
+        m_rtBuilder.cmdBuildDynamicBlas(cmd, instance.blas, geometry);
+    }
+}
+
+// instances not drawn for a few frames (entity removed, scene reloaded) are no longer referenced by any frame in flight
+void RayTraceRendererVulkan::_releaseStaleSkinned()
+{
+    uint64_t frameNumber = rendererManagerVulkan->getFrameNumber();
+    for(auto it = m_skinned.begin(); it != m_skinned.end();) {
+        SkinnedInstance& instance = it->second;
+        if(instance.lastSkinnedFrame != 0 && instance.lastSkinnedFrame + 4 < frameNumber) {
+            m_rtBuilder.destroyDynamicBlas(instance.blas);
+            bufferManagerVulkan->destroy(instance.vertexBufferID);
+            it = m_skinned.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }

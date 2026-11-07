@@ -11,6 +11,7 @@ struct RGHandle {
 };
 
 struct RGTextureInfo {
+    std::string name;
     uint32_t id { 0 };
     uint32_t width { 0 };
     uint32_t height { 0 };

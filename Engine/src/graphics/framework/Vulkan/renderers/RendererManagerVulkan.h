@@ -24,6 +24,7 @@ class HiZPassVulkan;
 class SSRGIPassVulkan;
 class BloomPassVulkan;
 class TemporalPassVulkan;
+class AtrousPassVulkan;
 class DeferredCombinePassVulkan;
 class PostProcessRendererVulkan;
 class ParticleRendererVulkan;
@@ -44,6 +45,7 @@ public:
 		glm::mat4 model;
 		uint32_t meshID;
 		uint32_t objectIdx;
+		uint32_t boneMatricesIdx { 0 };
 	};
 
 public:
@@ -120,6 +122,7 @@ protected:
 	SSRGIPassVulkan* SSRGIPassRenderer { nullptr };
 	BloomPassVulkan* bloomRenderer { nullptr };
 	TemporalPassVulkan* temporalPassRenderer { nullptr };
+	AtrousPassVulkan* atrousPassRenderer { nullptr };
 	DeferredCombinePassVulkan* deferredCombineRenderer { nullptr };
 	PostProcessRendererVulkan* postProcessRenderer { nullptr };
 	ParticleRendererVulkan* particleRenderer { nullptr };

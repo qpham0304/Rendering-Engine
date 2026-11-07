@@ -16,6 +16,7 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/TemporalPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/AtrousPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/DeferredCombinePassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/DLSSPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/TonemapPassVulkan.h"
@@ -114,6 +115,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
     bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
     temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
+    atrousPassRenderer = addRenderer<AtrousPassVulkan>("AtrousPassVulkan");
     if(rtSupported) {
         ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
     }
@@ -316,6 +318,7 @@ void RendererManagerVulkan::render()
         bloomRenderer->addToGraph(m_renderGraph);
         if(m_graphicsSettings.get<DeferredSettings>()->temporalReprojection) {
             temporalPassRenderer->addToGraph(m_renderGraph);
+            atrousPassRenderer->addToGraph(m_renderGraph);
         }
         if(ddgiPassRenderer) {
             ddgiPassRenderer->addToGraph(m_renderGraph);
@@ -399,6 +402,7 @@ void RendererManagerVulkan::collectMeshDraws()
             draw.model = probe ? glm::translate(worldMatrix, glm::vec3(probe->probeGrid[i])) : worldMatrix;	//TODO: this couple the probe data to the renderer
             draw.meshID = model->meshIDs[i];
             draw.objectIdx = static_cast<uint32_t>(m_meshDraws.size());
+            draw.boneMatricesIdx = boneMatricesIdx;
             m_meshDraws.push_back(draw);
 
             const Mesh* mesh = meshManager->getMesh(draw.meshID);
@@ -414,6 +418,10 @@ void RendererManagerVulkan::collectMeshDraws()
             object.boneMatricesIdx = boneMatricesIdx;
             object.materialIdx = mesh->materialID;
             object.flags = probe ? Common::OBJECT_LIGHT_PROBE : 0;
+            // ray hits read the posed vertices, the raster passes skin the rest pose themselves
+            object.rtVertexAddress = (boneMatricesIdx != 0 && raytracingRenderer)
+                ? raytracingRenderer->getSkinnedVertexAddress(draw.meshID, boneMatricesIdx)
+                : object.vertexAddress;
 
             VkDrawIndirectCommand& command = m_drawCommands[draw.objectIdx];
             command.vertexCount = static_cast<uint32_t>(mesh->indices.size());

@@ -18,6 +18,7 @@
 #include <math.h>
 #include <algorithm>
 #include "TemporalPassVulkan.h"
+#include "AtrousPassVulkan.h"
 #include "BloomPassVulkan.h"
 
 DeferredCombinePassVulkan::DeferredCombinePassVulkan(std::string serviceName)
@@ -135,7 +136,11 @@ void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
     renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
 	auto bloomPassRenderer = dynamic_cast<BloomPassVulkan*>(renderer);
 
-    if(deferredSettings && deferredSettings->temporalReprojection) {
+    auto atrousPass = dynamic_cast<AtrousPassVulkan*>(rendererManagerVulkan->getRenderer("AtrousPassVulkan"));
+    if(deferredSettings && deferredSettings->temporalReprojection && atrousPass && atrousPass->isFiltering()) {
+        denoisedGIImage = atrousPass->getDiffuseOutputImage();
+        specularGIImage = atrousPass->getSpecularOutputImage();
+    } else if(deferredSettings && deferredSettings->temporalReprojection) {
         denoisedGIImage = temporalPassRenderer->getOutputImage();
         specularGIImage = temporalPassRenderer->getSpecularOutputImage();
     } else {

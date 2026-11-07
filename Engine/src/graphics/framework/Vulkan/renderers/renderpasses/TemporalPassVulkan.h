@@ -36,6 +36,7 @@ public:
     void writeTAA(VkCommandBuffer cmd, uint32_t currentFrame);
 	virtual TextureVulkan* getOutputImage() override;
 	TextureVulkan* getSpecularOutputImage();
+	TextureVulkan* getHistoryLengthImage();
 
 protected:
 	void _createResources();
