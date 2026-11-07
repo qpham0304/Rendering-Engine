@@ -70,12 +70,22 @@ std::vector<RGPassInfo> RenderGraphVulkan::getPasses() const
     std::vector<RGPassInfo> passes;
     passes.reserve(m_passes.size());
     for(const auto& passNode : m_passes) {
-        passes.push_back({
-            passNode.name,
-            static_cast<uint32_t>(passNode.reads.size()),
-            static_cast<uint32_t>(passNode.writes.size()),
-            isPassEnabled(passNode.name)
-        });
+        RGPassInfo info{};
+        info.name = passNode.name;
+        info.readCount = static_cast<uint32_t>(passNode.reads.size());
+        info.writeCount = static_cast<uint32_t>(passNode.writes.size());
+        info.enabled = isPassEnabled(passNode.name);
+        info.settings = passNode.settings;
+        for(const auto& access : passNode.writes) {
+            const RGResource& resource = m_resources[access.handle.index];
+            info.outputs.push_back({
+                resource.texture->id(),
+                resource.texture->width(),
+                resource.texture->height(),
+                resource.finalLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            });
+        }
+        passes.push_back(std::move(info));
     }
     return passes;
 }

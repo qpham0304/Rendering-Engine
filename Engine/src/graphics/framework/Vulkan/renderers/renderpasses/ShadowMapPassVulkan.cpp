@@ -540,6 +540,7 @@ void ShadowMapPassVulkan::addToGraph(RenderGraphVulkan& graph)
 	auto depth = graph.importTexture(depthMap);
 
 	RenderPassNode node{};
+	node.settings = settings;
 	node.name = "ShadowMap";
 	node.writes = {};
 	node.writes = { { depth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
@@ -609,6 +610,7 @@ void ShadowMapPassVulkan::addRayTracedToGraph(RenderGraphVulkan& graph)
 	auto normal = graph.importTexture(normalImage);
 
 	RenderPassNode node{};
+	node.settings = settings;
 	node.name = "RayTracedShadow";
 	node.reads = {
 		{ position, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
@@ -633,6 +635,7 @@ void ShadowMapPassVulkan::addRayTracedToGraph(RenderGraphVulkan& graph)
 		blurParams.radius = settings->rtBlurRadius;
 		blurParams.sigma = static_cast<float>(settings->rtBlurRadius);
 		blurParams.depthScale = 100.0f;
+		blurParams.settings = settings;
 		rtMaskOutput = graph.getTexture(blurPass->blur(graph, "Shadow", rtMaskHandle, blurParams));
 	}
 

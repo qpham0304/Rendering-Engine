@@ -22,6 +22,7 @@ struct RenderPassNode {
     std::vector<RGAccess> reads{};  // Dependencies during the pass
     std::vector<RGAccess> writes{}; // Outputs during the pass
     std::function<void(VkCommandBuffer, uint32_t)> execute;
+    const void* settings { nullptr };   // ties the pass to its entry in the graphics settings
 };
 
 

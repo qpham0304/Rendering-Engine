@@ -145,6 +145,7 @@ void LightingPassVulkan::addToGraph(RenderGraphVulkan& graph)
 
 
 	RenderPassNode node{};
+	node.settings = settings;
     node.name = "lighting";
     node.reads  = { 
 		{ gBufferPos, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },

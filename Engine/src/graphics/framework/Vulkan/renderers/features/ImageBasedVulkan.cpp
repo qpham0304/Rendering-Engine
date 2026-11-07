@@ -687,6 +687,7 @@ void ImageBasedRendererVulkan::addToGraph(RenderGraphVulkan& graph)
 	auto prefilter = graph.importTexture(prefilterMap);
 
 	RenderPassNode node{};
+	node.settings = settings;
 	node.name = "IBL";
 	node.reads  = { { hdr, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
 	node.writes = { { prefilter, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };

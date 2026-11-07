@@ -568,6 +568,7 @@ void DDGIBuilderVulkan::addToGraph(RenderGraphVulkan& graph)
     }
 
     RenderPassNode node{};
+    node.settings = settings;
     node.name = "DDGI";
     node.reads = {};
     

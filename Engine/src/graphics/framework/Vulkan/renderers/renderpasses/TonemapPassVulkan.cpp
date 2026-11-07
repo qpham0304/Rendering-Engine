@@ -173,6 +173,7 @@ void TonemapPassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto input = graph.importTexture(inputImage);
 
     RenderPassNode node{};
+    node.settings = settings;
     node.name = "Tonemap";
     node.reads = { { input, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
     node.writes = { { outputHandle, VK_IMAGE_LAYOUT_GENERAL } };

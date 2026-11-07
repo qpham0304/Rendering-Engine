@@ -420,6 +420,7 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto emissiveImageHandle = graph.importTexture(emissiveImage);
 
     RenderPassNode node{};
+    node.settings = settings;
     node.name = "SSRGI";
     node.reads = {
         { depthImageHiZHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},

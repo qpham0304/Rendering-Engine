@@ -40,6 +40,10 @@ public:
 
 	GraphicsSettingsSerializer& getGraphicsSettings() { return m_graphicsSettings; }
 
+	// debug view: the viewport shows this texture instead of the final image, 0 shows the final image
+	void setViewTexture(uint32_t textureID) { m_viewTextureID = textureID; }
+	uint32_t getViewTexture() const { return m_viewTextureID; }
+
 protected:
 	friend class Engine;
 	
@@ -47,5 +51,6 @@ protected:
 
 	std::vector<std::tuple<std::string, std::shared_ptr<Renderer>>> m_renderers;
 	GraphicsSettingsSerializer m_graphicsSettings;
+	uint32_t m_viewTextureID { 0 };
 
 };

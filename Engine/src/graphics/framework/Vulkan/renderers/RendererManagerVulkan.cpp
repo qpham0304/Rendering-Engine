@@ -333,6 +333,13 @@ void RendererManagerVulkan::render()
 
     debugRenderer->render(*camera);
 
+    // debug view of a graph texture, the graph left it shader readable. a recreated texture has a new id and falls back
+    auto& textureManager = dynamic_cast<TextureManagerVulkan&>(ServiceLocator::GetService<TextureManager>("TextureManagerVulkan"));
+    TextureVulkan* viewTexture = m_viewTextureID != 0 ? textureManager.getTexture(m_viewTextureID) : nullptr;
+    if(currentRenderMode == 1 && viewTexture) {
+        setDisplayImage(viewTexture);
+    }
+
     applicationRenderer->render(*camera);
     endFrame();
 }

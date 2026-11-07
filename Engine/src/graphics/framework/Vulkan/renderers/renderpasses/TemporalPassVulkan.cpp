@@ -321,6 +321,7 @@ void TemporalPassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto pbrImageHandle = graph.importTexture(pbrImage);
 
     RenderPassNode node{};
+    node.settings = rendererManagerVulkan->getGraphicsSettings().get<DeferredSettings>();
     node.name = "TAA";
     node.reads = {
         { ssrgiImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},

@@ -41,6 +41,10 @@ void ImGuiGraphicsSettingsWidget::render()
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("%s", GraphicsSettingsSerializer::DefaultPath);
     }
+
+    if (rendererManager->getViewTexture() != 0 && ImGui::Button("View Final Image", ImVec2(-FLT_MIN, 0.0f))) {
+        rendererManager->setViewTexture(0);
+    }
     ImGui::Separator();
 
     const auto& entries = graphicsSettings.entries();
@@ -48,7 +52,7 @@ void ImGuiGraphicsSettingsWidget::render()
         ImGui::TextDisabled("no renderer registered settings");
     }
 
-    for (const auto& entry : entries) {
+    std::vector<RGPassInfo> passes = rendererManager->getRenderGraph().getPasses();    for (const auto& entry : entries) {
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
         if (!ImGui::TreeNodeEx(entry.name.c_str(), flags)) {
             continue;
@@ -58,8 +62,41 @@ void ImGuiGraphicsSettingsWidget::render()
         } else {
             ImGui::TextDisabled("no drawer registered for this settings type");
         }
+        _drawOutputs(passes, entry.data.get());
         ImGui::TreePop();
     }
 
     ImGui::End();
+}
+
+// the textures the passes behind these settings wrote last frame, any of them can replace the final image in the viewport
+void ImGuiGraphicsSettingsWidget::_drawOutputs(const std::vector<RGPassInfo>& passes, const void* settings)
+{
+    bool header = false;
+    for (const RGPassInfo& pass : passes) {
+        if (pass.settings != settings) {
+            continue;
+        }
+        if (!header) {
+            ImGui::SeparatorText("Outputs");
+            header = true;
+        }
+
+        for (const RGTextureInfo& texture : pass.outputs) {
+            ImGui::PushID(static_cast<int>(texture.id));
+            bool viewing = rendererManager->getViewTexture() == texture.id;
+
+            std::string label = (viewing ? "Hide " : "View ") + pass.name;
+            ImGui::BeginDisabled(!texture.viewable);
+            if (ImGui::Button(label.c_str(), ImVec2(-FLT_MIN, 0.0f))) {
+                rendererManager->setViewTexture(viewing ? 0 : texture.id);
+            }
+            ImGui::EndDisabled();
+            ImGui::PopID();
+        }
+    }
+
+    if (!header) {
+        ImGui::TextDisabled("no pass in the graph this frame");
+    }
 }

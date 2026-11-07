@@ -102,6 +102,7 @@ void SkyAtmosphereVulkan::addToGraph(RenderGraphVulkan& graph)
 	// fixed size, only rebuilt once unless the atmosphere changes
 	if(lutDirty) {
 		RenderPassNode transmittanceNode{};
+		transmittanceNode.settings = settings;
 		transmittanceNode.name = "Sky.Transmittance";
 		transmittanceNode.writes = { { transmittanceHandle, VK_IMAGE_LAYOUT_GENERAL } };
 		transmittanceNode.execute = [this](VkCommandBuffer cmd, uint32_t currentFrame) {
@@ -110,6 +111,7 @@ void SkyAtmosphereVulkan::addToGraph(RenderGraphVulkan& graph)
 		graph.addPass(transmittanceNode);
 
 		RenderPassNode multiScatteringNode{};
+		multiScatteringNode.settings = settings;
 		multiScatteringNode.name = "Sky.MultiScattering";
 		multiScatteringNode.reads = { { transmittanceHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
 		multiScatteringNode.writes = { { multiScatteringHandle, VK_IMAGE_LAYOUT_GENERAL } };
@@ -122,6 +124,7 @@ void SkyAtmosphereVulkan::addToGraph(RenderGraphVulkan& graph)
 	// the sun moved or the settings changed, the ibl rebuilds its sh and prefilter from the new sky this frame
 	if(environmentDirty) {
 		RenderPassNode environmentNode{};
+		environmentNode.settings = settings;
 		environmentNode.name = "Sky.Environment";
 		environmentNode.reads = {
 			{ transmittanceHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },

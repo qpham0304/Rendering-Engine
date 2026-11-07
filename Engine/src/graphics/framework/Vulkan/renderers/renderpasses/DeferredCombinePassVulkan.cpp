@@ -351,6 +351,7 @@ void DeferredCombinePassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto pbr = graph.importTexture(pbrImage);
 
     RenderPassNode node{};
+    node.settings = rendererManagerVulkan->getGraphicsSettings().get<DeferredSettings>();
     node.name = "DeferredCombine";
     node.reads = {
         { gi, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },

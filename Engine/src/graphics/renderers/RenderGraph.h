@@ -10,11 +10,20 @@ struct RGHandle {
     uint32_t index;
 };
 
+struct RGTextureInfo {
+    uint32_t id { 0 };
+    uint32_t width { 0 };
+    uint32_t height { 0 };
+    bool viewable { false };    // the graph leaves it shader readable at the end of the frame, so the viewport can show it
+};
+
 struct RGPassInfo {
     std::string name;
     uint32_t readCount { 0 };
     uint32_t writeCount { 0 };
     bool enabled { true };
+    const void* settings { nullptr };   // the settings object of the renderer that added it, if it has one
+    std::vector<RGTextureInfo> outputs;
 };
 
 // api independent side of the graph: the sizes passes render at and which passes run. the backend graph records
