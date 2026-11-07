@@ -57,6 +57,7 @@ bool LightingPassVulkan::init(WindowConfig config)
 	lights.reserve(numLights);
 	size_t lightBufferSize = numLights * sizeof(LightSSBO);
 	bufferManagerVulkan->createStorageBuffers(lightStoragebuffers, lightBufferSize);
+	bufferManagerVulkan->createUniformBuffers(lightUniformBuffers, sizeof(LightUniform));
 
 	settings = &rendererManagerVulkan->getGraphicsSettings().add<LightingSettings>("Lighting");
 
@@ -85,7 +86,8 @@ void LightingPassVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
 
-	if(environmentImage != imageBasedRenderer->hdrImage || aoImage != ambientOcclusionPass->getOutputImage()) {
+	if(environmentImage != imageBasedRenderer->hdrImage || aoImage != ambientOcclusionPass->getOutputImage()
+		|| rtShadowImageID != _rayTracedShadowImage()->id() || shadowMapID != shadowMapPass->depthMap->id()) {
 		renderDeviceVulkan->waitIdle();	// the frame in flight still reads the old descriptors
 		_updateLightDescriptor();
 	}
@@ -154,6 +156,9 @@ void LightingPassVulkan::addToGraph(RenderGraphVulkan& graph)
 		{ depthTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
 		{ aoTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
 	};
+	if(shadowMapPass->isRayTraced()) {
+		node.reads.push_back({ graph.importTexture(shadowMapPass->getRayTracedMask()), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+	}
 
 	node.writes = {
 		{ renderTarget.colorHandle, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }
@@ -196,32 +201,42 @@ void LightingPassVulkan::_updateLights(uint32_t currentFrame)
 		}
 	}
 
-	pushConstantLight.color = settings->sunColor * settings->sunIntensity;
-	pushConstantLight.skyboxDetail = settings->skyboxDetail;
-	pushConstantLight.aoOn = settings->ambientOcclusion ? 1 : 0;
-	pushConstantLight.G = settings->phaseG;
-	pushConstantLight.scatteringScale = settings->scatteringScale;
-	pushConstantLight.bias = settings->shadowBias;
-	pushConstantLight.alpha = settings->momentAlpha;
-	pushConstantLight.lintstepLow = settings->linstepLow;
-	pushConstantLight.linstepHigh = settings->linstepHigh;
-	pushConstantLight.litBias = settings->litBias;
+	lightUniform.color = settings->sunColor * settings->sunIntensity;
+	lightUniform.skyboxDetail = settings->skyboxDetail;
+	lightUniform.aoOn = settings->ambientOcclusion ? 1 : 0;
+	lightUniform.G = settings->phaseG;
+	lightUniform.scatteringScale = settings->scatteringScale;
+	lightUniform.bias = settings->shadowBias;
+	lightUniform.alpha = settings->momentAlpha;
+	lightUniform.lintstepLow = settings->linstepLow;
+	lightUniform.linstepHigh = settings->linstepHigh;
+	lightUniform.litBias = settings->litBias;
 	const GraphicsSettingsSerializer& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
 	const ShadowMapSettings* shadowSettings = graphicsSettings.get<ShadowMapSettings>();
 	const DDGISettings* ddgiSettings = graphicsSettings.get<DDGISettings>();
 
 	if(shadowSettings) {
-		pushConstantLight.direction = glm::vec4(shadowSettings->lightDir, 1.0f);
-		pushConstantLight.sunlightMVP = shadowSettings->lightSpaceMatrix;
+		lightUniform.direction = glm::vec4(shadowSettings->lightDir, 1.0f);
+		lightUniform.sunlightMVP = shadowSettings->lightSpaceMatrix;
+		lightUniform.sunNormalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(shadowSettings->lightSpaceMatrix))));
+		lightUniform.pcssSoftness = std::max(shadowSettings->pcssSoftness, 0.0f);
+		lightUniform.pcssMaxPenumbra = std::max(shadowSettings->pcssMaxPenumbra, 0.01f);
+		lightUniform.depthBias = std::max(shadowSettings->depthBias, 0.0f);
+		lightUniform.slopeBias = std::max(shadowSettings->slopeBias, 0.0f);
+		lightUniform.slopeBiasMax = std::max(shadowSettings->slopeBiasMax, 0.0f);
+		lightUniform.maxDepthSlope = std::max(shadowSettings->maxDepthSlope, 0.0f);
+		lightUniform.normalBias = std::max(shadowSettings->normalBias, 0.0f);
 	}
-	pushConstantLight.time = AppWindow::getTime();
-	pushConstantLight.numLights = lights.size();
+	lightUniform.time = AppWindow::getTime();
+	lightUniform.numLights = lights.size();
 
 	// with a probe grid the diffuse ambient comes from ddgi in the combine pass, the light pass only keeps the specular ibl
-	pushConstantLight.iblDiffuse = (ddgiSettings && ddgiSettings->isReady()) ? 0.0f : 1.0f;
+	lightUniform.iblDiffuse = (ddgiSettings && ddgiSettings->isReady()) ? 0.0f : 1.0f;
+	lightUniform.rtShadow = shadowMapPass->isRayTraced() ? 1 : 0;
 
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
+	lightUniformBuffers[currentFrame]->update(&lightUniform, sizeof(LightUniform));
 }
 
 void LightingPassVulkan::_renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame)
@@ -254,24 +269,15 @@ void LightingPassVulkan::_renderLightPass(VkCommandBuffer cmd, uint32_t currentF
 		nullptr
 	);
 
-	vkCmdPushConstants(
-		cmd,
-		lightingPipeline->pipelineLayout,
-		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-		0,
-		sizeof(PushConstantLight),
-		&pushConstantLight
-	);
-
 	vkCmdDraw(cmd, 3, 1, 0, 0);
 }
 
 #pragma region setup
 void LightingPassVulkan::_createRenderTarget()
 {
-	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-	renderTarget.width = swapchain.swapChainExtent.width;
-	renderTarget.height = swapchain.swapChainExtent.height;
+	VkExtent2D extent = rendererManagerVulkan->getRenderGraph().getRenderSize();
+	renderTarget.width = extent.width;
+	renderTarget.height = extent.height;
 
 
 	RGTextureDesc desc{};
@@ -317,7 +323,7 @@ void LightingPassVulkan::_createLightPipeline()
 		attachmentsInfo,
 		emptyVertexInput,
 		lightLayouts,
-		sizeof(PushConstantLight)
+		0
 	);
 }
 
@@ -351,13 +357,15 @@ void LightingPassVulkan::_createLightDescriptor()
 		{ 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
 		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+		{ 9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr},
+		{ 10, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 	});
 
 	uint32_t poolIDLayout_1 = descriptorManagerVulkan->createPool(
 		{
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 2 },
 			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 2},
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 6 },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 7 },
 		},
 		frameCount
 	);
@@ -439,6 +447,12 @@ void LightingPassVulkan::_updateLightDescriptor()
 		aoImageInfo.imageView = ambientOcclusionPass->getOutputImage()->textureImageView;
 		aoImageInfo.sampler = ambientOcclusionPass->getOutputImage()->textureSampler;
 
+		// the shader only reads it when rtShadow is set, the binding still needs an image otherwise
+		TextureVulkan* rtShadow = _rayTracedShadowImage();
+		VkDescriptorImageInfo rtShadowInfo{ rtShadow->textureSampler, rtShadow->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+
+		VkDescriptorBufferInfo lightUniformInfo{ static_cast<VkBuffer>(*lightUniformBuffers[i]), 0, VK_WHOLE_SIZE };
+
 		std::vector<VkWriteDescriptorSet> writes = {};
 		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 0, bufferInfo);
 		descriptorManagerVulkan->writeStorage(&writes, descriptorSets[i], 1, ssboInfo);
@@ -449,11 +463,20 @@ void LightingPassVulkan::_updateLightDescriptor()
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 6, prefilterImageInfo);
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 7, hdrImageInfo);
 		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 8, aoImageInfo);
+		descriptorManagerVulkan->writeImage(&writes, descriptorSets[i], 9, rtShadowInfo);
+		descriptorManagerVulkan->writeUniform(&writes, descriptorSets[i], 10, lightUniformInfo);
 
 		descriptorManagerVulkan->updateDescriptorSets(&writes);
 	}
 	environmentImage = imageBasedRenderer->hdrImage;
 	aoImage = ambientOcclusionPass->getOutputImage();
+	rtShadowImageID = _rayTracedShadowImage()->id();
+	shadowMapID = shadowMapPass->depthMap->id();
+}
+
+TextureVulkan* LightingPassVulkan::_rayTracedShadowImage() const
+{
+	return shadowMapPass->isRayTraced() ? shadowMapPass->getRayTracedMask() : shadowMapPass->blueNoiseImage;
 }
 
 void LightingPassVulkan::_recreateResources()

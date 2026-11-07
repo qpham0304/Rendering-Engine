@@ -77,6 +77,7 @@ Engine::Engine(WindowConfig config)
 	layerManager = platformFactory.Create<LayerManager>();
 	animationManager = platformFactory.Create<AnimationManager>();
 	particleManager = platformFactory.Create<ParticleManager>();
+	audioManager = platformFactory.Create<AudioManager>(windowConfig.audioFramework);
 
 	//NOTE: setup order is important!
 	services.push_back(&eventManager);
@@ -93,6 +94,7 @@ Engine::Engine(WindowConfig config)
 	services.push_back(guiManager.get());
 	services.push_back(animationManager.get());
 	services.push_back(particleManager.get());
+	services.push_back(audioManager.get());
 	services.push_back(scriptManager.get());
 	services.push_back(physicsManager.get());
 	services.push_back(layerManager.get());

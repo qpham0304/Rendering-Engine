@@ -123,9 +123,9 @@ void HiZPassVulkan::writeHiZ(VkCommandBuffer cmd, uint32_t currentFrame)
 void HiZPassVulkan::_createResources()
 {
 	// render sized so mip 0 lines up with the depth buffer texel for texel, the graph resizes it with the window
-	VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
-	width = swapchain.swapChainExtent.width;
-	height = swapchain.swapChainExtent.height;
+	VkExtent2D extent = rendererManagerVulkan->getRenderGraph().getRenderSize();
+	width = extent.width;
+	height = extent.height;
 	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
 	RGTextureDesc desc{};

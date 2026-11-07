@@ -14,7 +14,7 @@ class AmbientOcclusionPassVulkan;
 class LightingPassVulkan : public RendererVulkan
 {
 public:
-	struct PushConstantLight {
+	struct LightUniform {
 		alignas(64) glm::mat4 sunlightMVP;
 		alignas(16) glm::vec4 direction;
 		alignas(16) glm::vec4 color;
@@ -30,6 +30,15 @@ public:
 		alignas(4)	float G;
 		alignas(4)	float scatteringScale;
 		alignas(4)	float iblDiffuse;
+		alignas(4)	int rtShadow;
+		alignas(4)	float pcssSoftness;
+		alignas(4)	float pcssMaxPenumbra;
+		alignas(4)	float depthBias;
+		alignas(4)	float slopeBias;
+		alignas(4)	float slopeBiasMax;
+		alignas(4)	float maxDepthSlope;
+		alignas(16)	glm::mat4 sunNormalMatrix;
+		alignas(4)	float normalBias;
 	};
 
 	struct LightSSBO {
@@ -57,13 +66,14 @@ public:
 
 	//TODO: make private once done testing
 	RenderTarget renderTarget;
-	PushConstantLight pushConstantLight;
+	LightUniform lightUniform;
 	std::vector<LightSSBO> lights;
 
 protected:
 	LightingSettings* settings { nullptr };
 	const int numLights = 1000;
 	std::vector<StorageBufferVulkan*> lightStoragebuffers;
+	std::vector<UniformBufferVulkan*> lightUniformBuffers;
 
 	std::unique_ptr<VulkanPipeline> lightingPipeline;
 	uint32_t lightLayoutID;
@@ -77,12 +87,15 @@ protected:
 	AmbientOcclusionPassVulkan* ambientOcclusionPass { nullptr };
 	TextureVulkan* environmentImage { nullptr };
 	TextureVulkan* aoImage { nullptr };
+	uint32_t rtShadowImageID { 0 };
+	uint32_t shadowMapID { 0 };
 
 	void _updateLights(uint32_t currentFrame);
 	void _renderLightPass(VkCommandBuffer cmd, uint32_t currentFrame);
 	void _createRenderTarget();
 	void _createLightDescriptor();
 	void _updateLightDescriptor();
+	TextureVulkan* _rayTracedShadowImage() const;
 	void _createLightPipeline();
 	void _recreateResources();
 	void _cleanupResources();

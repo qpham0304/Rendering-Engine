@@ -164,6 +164,7 @@ public:
 	VkQueue getGraphicsQueue() const;
 	VkQueue getPresentQueue() const;
 	bool raytracingSupport() const;
+	bool dlssSupport() const { return dlssSupported; }
 	VmaAllocator getAllocator() const noexcept { return allocator; }
 
 private:
@@ -188,6 +189,8 @@ private:
 
 	bool rtSupported;
 	bool dynamicRenderingSupported;
+	bool dlssInstanceReady { false };
+	bool dlssSupported { false };
 
 	const std::vector<const char*> validationLayers = {
 		"VK_LAYER_KHRONOS_validation"

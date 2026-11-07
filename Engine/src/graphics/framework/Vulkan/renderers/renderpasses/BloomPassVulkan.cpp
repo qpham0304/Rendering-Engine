@@ -36,9 +36,9 @@ bool BloomPassVulkan::init(WindowConfig config)
 
     assert(giPassVulkan && "failed to retrieve GI Pass data");
 
-    //use swapchain size not a potential 0x0 minimized appwindow size, also to match render image
-    uint32_t width = renderDeviceVulkan->swapchain.swapChainExtent.width;
-    uint32_t height = renderDeviceVulkan->swapchain.swapChainExtent.height;
+    // render size, not a potential 0x0 minimized appwindow size, also to match the lit image
+    uint32_t width = rendererManagerVulkan->getRenderGraph().getRenderSize().width;
+    uint32_t height = rendererManagerVulkan->getRenderGraph().getRenderSize().height;
     uint32_t maxMips = std::floor(std::log2(std::max(width, height))) - 2;
     mipCount = std::clamp(maxMips, 5u, 10u);
 

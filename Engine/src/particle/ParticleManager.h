@@ -64,7 +64,13 @@ private:
     const uint32_t MAX_CONTAINERS = 100;
 	std::vector<ParticleContainer> m_containers { {} };
 	std::vector<ContainerData> m_containerData { {} };
-	std::vector<uint32_t> m_toBeDestroyed;
+	struct PendingRelease {
+		uint32_t containerID { 0 };
+		uint32_t framesLeft { 0 };
+	};
+
+	const uint32_t RELEASE_DELAY_FRAMES = 3;
+	std::vector<PendingRelease> m_toBeDestroyed;
 	BufferManager* m_bufferManager { nullptr };
 	uint32_t m_version { 0 };
 	PreviewRequest m_previewRequest {};

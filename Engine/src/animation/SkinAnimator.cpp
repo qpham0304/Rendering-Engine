@@ -116,9 +116,9 @@ glm::vec3 SkinAnimator::_interpolatePosition(float currentTime, const Track &tra
         return track.keyPositions[0].position;
     }
 
-    int p0Index = 0;
+    int p0Index = track.keyPositions.size() - 2;
     for(int i = 0; i < track.keyPositions.size() - 1; i++) {
-        if(currentTime < track.keyPositions[i].timeStamp) {
+        if(currentTime < track.keyPositions[i + 1].timeStamp) {
             p0Index = i;
             break;
         }
@@ -154,9 +154,9 @@ Math::Quat SkinAnimator::_interpolateRotation(float currentTime, const Track &tr
         return track.keyRotations[0].orientation;
     }
 
-    int p0Index = 0;
+    int p0Index = track.keyRotations.size() - 2;
     for(int i = 0; i < track.keyRotations.size() - 1; i++) {
-        if(currentTime < track.keyRotations[i].timeStamp) {
+        if(currentTime < track.keyRotations[i + 1].timeStamp) {
             p0Index = i;
             break;
         }
@@ -192,9 +192,9 @@ glm::vec3 SkinAnimator::_interpolateScale(float currentTime, const Track &track)
         return track.keyScales[0].scale;
     }
 
-    int p0Index = 0;
+    int p0Index = track.keyScales.size() - 2;;
     for(int i = 0; i < track.keyScales.size() - 1; i++) {
-        if(currentTime < track.keyScales[i].timeStamp) {
+        if(currentTime < track.keyScales[i + 1].timeStamp) {
             p0Index = i;
             break;
         }

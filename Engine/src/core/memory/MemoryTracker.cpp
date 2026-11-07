@@ -43,6 +43,7 @@ const char* MemoryTracker::systemName(MemorySystem system)
 		case MemorySystem::Particle:	return "Particle";
 		case MemorySystem::Scripting:	return "Scripting";
 		case MemorySystem::Gui:			return "Gui";
+		case MemorySystem::Audio:		return "Audio";
 		default:						return "Unknown";
 	}
 }

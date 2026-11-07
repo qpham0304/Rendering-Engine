@@ -57,7 +57,7 @@ void EntitySerializer::RegisterComponents()
 	}
 
 	REGISTER_COMPONENT(NameComponent, NO_DEFINE, NO_DEFINE);
-	REGISTER_COMPONENT(TransformComponent, NO_DEFINE, NO_DEFINE);
+	REGISTER_COMPONENT(TransformComponent, Entity::_onTransformComponentAdded(), NO_DEFINE);
 	REGISTER_COMPONENT(ModelComponent, Entity::_onModelComponentAdded(), NO_DEFINE);
 	REGISTER_COMPONENT(PrefabComponent, NO_DEFINE, NO_DEFINE);
 	REGISTER_COMPONENT(SpriteComponent, Entity::_onSpriteComponentAdded(), NO_DEFINE);
@@ -68,6 +68,7 @@ void EntitySerializer::RegisterComponents()
 	REGISTER_COMPONENT(ParticleEmitter, Entity::_onParticleEmitterAdded(), NO_DEFINE);
 	REGISTER_COMPONENT(RibbonComponent, NO_DEFINE, NO_DEFINE);
 	REGISTER_COMPONENT(SkinningComponent, Entity::_onSkinningComponentAdded(), NO_DEFINE);
+	REGISTER_COMPONENT(LightProbeComponent, Entity::_onLightProbeComponentAdded(), NO_DEFINE);
 }
 
 void EntitySerializer::serialize(nlohmann::json& j) const

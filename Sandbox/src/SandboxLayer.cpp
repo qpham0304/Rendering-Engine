@@ -43,8 +43,8 @@ bool SandBoxLayer::init()
     // only build it on first load, reloading dll wont recreate scene;
     if (!SceneManager::getInstance().getScene("sandbox-scene")) {
         Scene* scene = SceneManager::getInstance().addScene("sandbox-scene");
-        // scene->loadScene("assets/data/sandbox-scene.json");
-        scene->loadScene("assets/data/particle-showcase.json");
+        scene->loadScene("assets/data/sandbox-scene.json");
+        // scene->loadScene("assets/data/particle-showcase.json");
         // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
         // scene1->loadScene("assets/data/Level1.json");
         // Scene* scene2 = SceneManager::getInstance().addScene("Level2");
@@ -158,6 +158,11 @@ void SandBoxLayer::createLightProbes()
 
     Scene* activeScene = SceneManager::getInstance().getActiveScene();
 
+    // if scene already have a probe grid loaded from json
+    if(!activeScene->getEntitiesWith<LightProbeComponent>().empty()) {
+        return;
+    }
+
     // fit the grid to everything in the scene: a surface outside the grid only gets the open sky, not the probes
     glm::vec3 sceneMin(FLT_MAX);
     glm::vec3 sceneMax(-FLT_MAX);
@@ -195,25 +200,14 @@ void SandBoxLayer::createLightProbes()
 
     glm::vec3 offset = glm::vec3(probeCounts - 1u) * spacing * 0.5f;
     auto& lightProbeComponent = lightProbeEntity.addComponent<LightProbeComponent>();
-    lightProbeComponent.probeGrid.resize(probeCounts.x * probeCounts.y * probeCounts.z);
-    lightProbeComponent.bufferSize = lightProbeComponent.probeGrid.size() * sizeof(glm::vec4);  //NOTE: assuming probe is glm::vec4
     lightProbeComponent.probesPerDimension = probeCounts.x;
-    lightProbeComponent.probeCounts = probeCounts;
+    lightProbeComponent.probeCounts = glm::ivec3(probeCounts);
     lightProbeComponent.spacing = spacing;
     // world position of probe (0, 0, 0), the ddgi shaders rebuild every probe position from this and the spacing
     lightProbeComponent.gridOrigin = glm::vec4(transform.translateVec - offset, 1.0);
-    
+
     // local positions (relative to the entity) for drawing the probes
-    // index order has to match ddgiProbeIndex in assets/shaders/common/ddgi.glsl
-    for (uint32_t y = 0; y < probeCounts.y; y++) {
-        for (uint32_t z = 0; z < probeCounts.z; z++) {
-            for (uint32_t x = 0; x < probeCounts.x; x++) {
-                uint32_t index = x + (z * probeCounts.x) + (y * probeCounts.x * probeCounts.z);
-                
-                lightProbeComponent.probeGrid[index] = glm::vec4(glm::vec3(x, y, z) * spacing - offset, 1.0);
-            }
-        }
-    }
+    Entity::_onLightProbeComponentAdded()(lightProbeEntity);
 
     // debug spheres, one mesh per probe
     // MaterialDesc materialDesc;

@@ -8,6 +8,9 @@
 #include <vector>
 #include <unordered_map>
 
+class AccelStructureBufferVulkan;
+class BlurPassVulkan;
+
 class ShadowMapPassVulkan : public RendererVulkan
 {
 private:
@@ -21,6 +24,13 @@ private:
 		uint32_t isVertical;	// 0 for horizontal, 1 for vertical
 		uint32_t radius;
 		float sigma;
+	};
+
+	struct RayTracedPushConstant {
+		glm::vec4 sunDirection;
+		float coneAngle;
+		int rayCount;
+		float maxDistance;
 	};
 
 public:
@@ -37,6 +47,10 @@ public:
 	void endRecording(void* cmdBuffer);
 	void recordDrawCommand(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 	void dispatchBlur(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
+	void addRayTracedToGraph(RenderGraphVulkan& graph);
+	bool isRayTraced() const { return m_rayTraced; }
+	TextureVulkan* getRayTracedMask() const { return rtMaskOutput; }
 
 public:	
 	std::unique_ptr<VulkanPipeline> shadowPipeline;
@@ -65,6 +79,23 @@ public:
 	ComputePushConstant pushconstant;
 
 private:
+	bool rtSupported { false };
+	bool m_rayTraced { false };
+	std::vector<VkDescriptorSetLayoutBinding> rtBindings;
+	uint32_t rtLayoutID { 0 };
+	uint32_t rtPoolID { 0 };
+	uint32_t rtSetsID { 0 };
+	std::unique_ptr<VulkanPipeline> rtPipeline;
+	RayTracedPushConstant rtPush {};
+	RGHandle rtMaskHandle {};
+	TextureVulkan* rtMask { nullptr };
+	TextureVulkan* rtMaskOutput { nullptr };
+	AccelStructureBufferVulkan* rtTlas { nullptr };
+	BlurPassVulkan* blurPass { nullptr };
+
+	void _createRayTraced();
+	void _writeRayTraced(VkCommandBuffer cmd, uint32_t currentFrame, TextureVulkan* positionImage, TextureVulkan* normalImage);
+
 	void _createDepthMap();
 	void _createShadowPipeline();
 	void _createShadowRenderPass();
@@ -73,6 +104,8 @@ private:
 	void _createMomentDescriptor();
 	// void _updateMomentDesccriptor();
 	void _createComputePipeline();
+	void _writeMomentDescriptors();
+	void _applyResolution();
 
 	void _recreateResources() override;
 	void _cleanupResources() override;

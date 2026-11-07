@@ -19,6 +19,7 @@ class ImageBasedRendererVulkan;
 class SkyAtmosphereVulkan;
 class DDGIBuilderVulkan;
 class AmbientOcclusionPassVulkan;
+class BlurPassVulkan;
 class HiZPassVulkan;
 class SSRGIPassVulkan;
 class BloomPassVulkan;
@@ -28,6 +29,8 @@ class PostProcessRendererVulkan;
 class ParticleRendererVulkan;
 class RibbonRendererVulkan;
 class DebugRendererVulkan;
+class DLSSPassVulkan;
+class TonemapPassVulkan;
 
 class MeshManager;
 class ModelManager;
@@ -57,6 +60,8 @@ public:
 	void setDisplayImage(TextureVulkan* image);
 	TextureVulkan* getDisplayImage();
 	RenderGraphVulkan& getRenderGraph() { return m_renderGraph; }
+	bool isUpscaling() const { return m_upscaling; }
+	glm::vec2 getJitterPixels() const { return m_jitterPixels; }
 	const Common::UniformBufferObject& getUBO() const;
 	const std::vector<UniformBufferVulkan*>& getBufferUBO() const;
 
@@ -110,6 +115,7 @@ protected:
 	ImageBasedRendererVulkan* imageBasedRenderer { nullptr };
 	DDGIBuilderVulkan* ddgiPassRenderer { nullptr };
 	AmbientOcclusionPassVulkan* alchemyAORenderer { nullptr };
+	BlurPassVulkan* blurRenderer { nullptr };
 	HiZPassVulkan* hiZPassRenderer { nullptr };
 	SSRGIPassVulkan* SSRGIPassRenderer { nullptr };
 	BloomPassVulkan* bloomRenderer { nullptr };
@@ -119,12 +125,18 @@ protected:
 	ParticleRendererVulkan* particleRenderer { nullptr };
 	RibbonRendererVulkan* ribbonRenderer { nullptr };
 	DebugRendererVulkan* debugRenderer { nullptr };
+	DLSSPassVulkan* dlssRenderer { nullptr };
+	TonemapPassVulkan* tonemapRenderer { nullptr };
 
 private:
 	RenderGraphVulkan m_renderGraph;
 	bool needResize{ false };
 	uint64_t m_frameNumber { 0 };
 	bool swapchainOutdated{ false };
+	bool m_upscaling { false };
+	glm::vec2 m_jitterPixels { 0.0f };
+
+	void _updateGraphSize();
 
 	//friend class renderer vulkan should not be able to call these
 	virtual bool init(WindowConfig config) override;

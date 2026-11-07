@@ -11,11 +11,14 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/DepthPrepassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/BlurPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/TemporalPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/DeferredCombinePassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/DLSSPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/TonemapPassVulkan.h"
 #include "graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/ImageBasedVulkan.h"
 #include "graphics/framework/vulkan/renderers/features/SkyAtmosphereVulkan.h"
@@ -98,6 +101,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     
     depthPrepassRenderer = addRenderer<DepthPrepassVulkan>("DepthPrepassVulkan");
     geometryPassRenderer = addRenderer<GeometryPassVulkan>("GeometryPassVulkan");
+    blurRenderer = addRenderer<BlurPassVulkan>("BlurPassVulkan");
     alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");   //TODO: only ui atm, remove soon
     lightingPassRenderer = addRenderer<LightingPassVulkan>("LightingPassVulkan");
@@ -113,6 +117,8 @@ bool RendererManagerVulkan::init(WindowConfig config)
         ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
     }
     deferredCombineRenderer = addRenderer<DeferredCombinePassVulkan>("DeferredCombinePassVulkan");
+    dlssRenderer = addRenderer<DLSSPassVulkan>("DLSSPassVulkan");
+    tonemapRenderer = addRenderer<TonemapPassVulkan>("TonemapPassVulkan");
     particleRenderer = addRenderer<ParticleRendererVulkan>("ParticleRendererVulkan");
     ribbonRenderer = addRenderer<RibbonRendererVulkan>("RibbonRendererVulkan");
 	debugRenderer = addRenderer<DebugRendererVulkan>("DebugRendererVulkan");
@@ -120,6 +126,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     // graph owned textures are sized from this, passes can create them during init
     VkExtent2D extent = renderDeviceVulkan->swapchain.swapChainExtent;
     m_renderGraph.setRenderSize(extent.width, extent.height);
+    m_renderGraph.setOutputSize(extent.width, extent.height);
 
     // renderers loads saved values first before registering settings
     if(std::filesystem::exists(GraphicsSettingsSerializer::DefaultPath)) {
@@ -204,6 +211,8 @@ void RendererManagerVulkan::onUpdate(const FrameTime& frameTime)
             ddgiPassRenderer->onUpdate();
         }
         deferredCombineRenderer->onUpdate();
+        dlssRenderer->onUpdate();
+        tonemapRenderer->onUpdate();
     } else if(currentRenderMode == 2 && raytracingRenderer) {
         raytracingRenderer->onUpdate();
     }
@@ -232,8 +241,11 @@ void RendererManagerVulkan::render()
     }
 
     // graph owned textures get recreated on their next create when this changes
-    VkExtent2D renderExtent = renderDeviceVulkan->swapchain.swapChainExtent;
-    m_renderGraph.setRenderSize(renderExtent.width, renderExtent.height);
+    _updateGraphSize();
+    VkExtent2D renderSize = m_renderGraph.getRenderSize();
+    VkExtent2D outputSize = m_renderGraph.getOutputSize();
+    ubo.width = static_cast<float>(renderSize.width);
+    ubo.height = static_cast<float>(renderSize.height);
 
     beginFrame();
     m_frameNumber++;
@@ -249,6 +261,14 @@ void RendererManagerVulkan::render()
 	ubo.proj = camera->getProjectionMatrix();
 	ubo.cameraPos = glm::vec4(camera->getPosition(), 1.0);
 	ubo.proj[1][1] *= -1.0;
+	glm::mat4 unjitteredProj = ubo.proj;
+
+    // dlss reconstructs from samples spread inside each pixel over frames, prevViewProj stays unjittered for the motion vectors
+    m_jitterPixels = m_upscaling ? dlssRenderer->getJitter(m_frameNumber) : glm::vec2(0.0f);
+    ubo.jitter = 2.0f * m_jitterPixels / glm::vec2(renderSize.width, renderSize.height);
+    ubo.proj = glm::translate(glm::mat4(1.0f), glm::vec3(ubo.jitter, 0.0f)) * ubo.proj;
+    ubo.mipBias = m_upscaling ? std::log2(static_cast<float>(renderSize.width) / static_cast<float>(outputSize.width)) : 0.0f;
+
 	ubo.invView = camera->getInViewMatrix();
 	ubo.invProj = camera->getInProjectionMatrix();
 	ubo.invProj[1][1] *= -1.0;
@@ -258,7 +278,7 @@ void RendererManagerVulkan::render()
 
     collectMeshDraws();
     collectLights();
-	lastViewProj = ubo.proj * ubo.view;
+	lastViewProj = unjitteredProj * ubo.view;
 
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
 
@@ -284,6 +304,7 @@ void RendererManagerVulkan::render()
         }
 
         geometryPassRenderer->addToGraph(m_renderGraph);
+        shadowMapPass->addRayTracedToGraph(m_renderGraph);
 
         lightingPassRenderer->addToGraph(m_renderGraph);
         hiZPassRenderer->addToGraph(m_renderGraph);
@@ -298,6 +319,10 @@ void RendererManagerVulkan::render()
             ddgiPassRenderer->addToGraph(m_renderGraph);
         }
         deferredCombineRenderer->addToGraph(m_renderGraph);
+        if(m_upscaling) {
+            dlssRenderer->addToGraph(m_renderGraph);
+        }
+        tonemapRenderer->addToGraph(m_renderGraph);
 
         m_renderGraph.execute(cmd, currentFrame);
     } else if(currentRenderMode == 2 && raytracingRenderer) {
@@ -308,6 +333,17 @@ void RendererManagerVulkan::render()
 
     applicationRenderer->render(*camera);
     endFrame();
+}
+
+// output is the window, the scene renders smaller while dlss upscales
+void RendererManagerVulkan::_updateGraphSize()
+{
+    VkExtent2D outputSize = renderDeviceVulkan->swapchain.swapChainExtent;
+    m_upscaling = currentRenderMode == 1 && dlssRenderer->isActive();
+    VkExtent2D renderSize = m_upscaling ? dlssRenderer->getRenderExtent(outputSize) : outputSize;
+
+    m_renderGraph.setOutputSize(outputSize.width, outputSize.height);
+    m_renderGraph.setRenderSize(renderSize.width, renderSize.height);
 }
 
 void RendererManagerVulkan::drawDebug(glm::vec3 start, glm::vec3 end)

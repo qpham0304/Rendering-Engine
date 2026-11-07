@@ -1,6 +1,7 @@
 #include "EventToLuaBindings.h"
 #include "core/events/EventManager.h"
 #include "core/events/EventSubscription.h"
+#include "core/features/EngineStates.h"
 #include "logging/Logger.h"
 #include <memory>
 
@@ -30,7 +31,8 @@ void EventToLuaBindings::exportEvent(sol::state &luaState, Logger* logger)
         "CameraUpdateEvent", EventType::CameraUpdateEvent,
         "ContactBegin", EventType::ContactBegin,
         "ContactEnd", EventType::ContactEnd,
-        "ContactHit", EventType::ContactHit
+        "ContactHit", EventType::ContactHit,
+        "PlayAudio", EventType::PlayAudio
     );
 
     luaState.new_usertype<Event>("Event",
@@ -59,6 +61,7 @@ void EventToLuaBindings::exportEvent(sol::state &luaState, Logger* logger)
     _registerEvent<ContactBeginEvent>(luaState);
     _registerEvent<ContactEndEvent>(luaState);
     _registerEvent<ContactHitEvent>(luaState);
+    _registerEvent<PlayAudioEvent>(luaState);
 
     EventManager& eventManager = EventManager::getInstance();
 
@@ -84,6 +87,11 @@ void EventToLuaBindings::exportEvent(sol::state &luaState, Logger* logger)
         auto subscriptionID = std::make_shared<uint32_t>(0);
 
         EventSubscription subscription = EventManager::getInstance().subscribe(eventType, [logger, handles, callbacks, subscriptionID](Event& event) {
+            // script callbacks are game logic like the script updates, skip when game is paused
+            if (!EngineState::isPlaying()) {
+                return;
+            }
+
             sol::object handle = handles[*subscriptionID];
             if (!handle.valid()) {
                 return;     // collected

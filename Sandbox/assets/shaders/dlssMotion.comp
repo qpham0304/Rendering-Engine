@@ -1,0 +1,32 @@
+#version 460
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D depthImage;
+layout(set = 0, binding = 1) uniform sampler2D motionImage;
+layout(set = 0, binding = 2, rg16f) writeonly uniform image2D outMotion;
+
+layout(push_constant) uniform Constants {
+    mat4 skyReproject;  // current to previous ndc, rotation only
+    vec2 jitter;        // ndc
+} pc;
+
+// gbuffer motion for geometry, the sky gets the camera rotation since the gbuffer never wrote it
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(outMotion);
+    if (pixelCoord.x >= size.x || pixelCoord.y >= size.y) {
+        return;
+    }
+
+    vec2 motion = texelFetch(motionImage, pixelCoord, 0).rg;
+    float depth = texelFetch(depthImage, pixelCoord, 0).r;
+    if (depth >= 1.0) {
+        vec2 ndc = (vec2(pixelCoord) + 0.5) / vec2(size) * 2.0 - 1.0 - pc.jitter;
+        vec4 prevClip = pc.skyReproject * vec4(ndc, 1.0, 1.0);
+        vec2 prevUV = prevClip.xy / prevClip.w * 0.5 + 0.5;
+        motion = (ndc * 0.5 + 0.5) - prevUV;
+    }
+
+    imageStore(outMotion, pixelCoord, vec4(motion, 0.0, 0.0));
+}

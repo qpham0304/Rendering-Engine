@@ -8,6 +8,7 @@
 #include <core/scene/SceneManager.h>
 #include <animation/AnimationManager.h>
 #include <particle/ParticleManager.h>
+#include <audio/AudioManager.h>
 #include <core/resources/managers/SkeletonManager.h>
 #include "core/features/Object.h"
 #include <functional>
@@ -58,6 +59,7 @@ private:
     std::unique_ptr<ScriptManager> scriptManager;
     std::unique_ptr<PhysicsManager> physicsManager;
     std::unique_ptr<ParticleManager> particleManager;
+    std::unique_ptr<AudioManager> audioManager;
 
 private:
     void _runLoop();

@@ -419,6 +419,13 @@ namespace Utils {
 		std::string filePath;
 		HWND hwnd = ::GetActiveWindow();
 
+		// the shell dialog only works on a single threaded apartment, on a multithreaded one Show() never returns
+		HRESULT comResult = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+		if (comResult == RPC_E_CHANGED_MODE) {
+			std::cerr << "fileDialog: the calling thread is a multithreaded COM apartment, the file dialog cannot open" << std::endl;
+			return filePath;
+		}
+
 		IFileOpenDialog* pFileOpen = NULL;
 		HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
 		if (SUCCEEDED(hr)) {
@@ -451,6 +458,9 @@ namespace Utils {
 				}
 			}
 			pFileOpen->Release();
+		}
+		if (SUCCEEDED(comResult)) {
+			CoUninitialize();
 		}
 		for (char& c : filePath) {
 			if (c == '\\') {

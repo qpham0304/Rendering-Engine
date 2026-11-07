@@ -3,6 +3,7 @@
 #include <graphics/renderers/RenderDevice.h>
 #include <graphics/framework/Vulkan/renderers/RenderDeviceVulkan.h>
 #include <graphics/framework/Vulkan/resources/textures/TextureManagerVulkan.h>
+#include <core/events/EventManager.h>
 
 RenderGraphVulkan::RenderGraphVulkan()
 {
@@ -61,10 +62,23 @@ void RenderGraphVulkan::_prepareAccess(VkCommandBuffer cmd, const RGAccess& acce
     resource.lastWasWrite = isWrite;
 }
 
+// passes rebuild on this like on a window resize, the upscaler can change it while the window stays the same
 void RenderGraphVulkan::setRenderSize(uint32_t width, uint32_t height)
 {
+    bool changed = m_renderWidth != 0 && (m_renderWidth != width || m_renderHeight != height);
     m_renderWidth = width;
     m_renderHeight = height;
+
+    if(changed) {
+        RenderResizeEvent event(width, height);
+        EventManager::getInstance().publish(event);
+    }
+}
+
+void RenderGraphVulkan::setOutputSize(uint32_t width, uint32_t height)
+{
+    m_outputWidth = width;
+    m_outputHeight = height;
 }
 
 RGHandle RenderGraphVulkan::createRenderTexture(const std::string& name, const RGTextureDesc& desc)
@@ -81,8 +95,10 @@ TextureVulkan* RenderGraphVulkan::getTexture(RGHandle handle)
 TextureVulkan* RenderGraphVulkan::_createTexture(const std::string& name, const RGTextureDesc& desc)
 {
     bool fixedSize = desc.config.width > 0 && desc.config.height > 0;
-    uint32_t width = fixedSize ? desc.config.width : std::max(1u, static_cast<uint32_t>(m_renderWidth * desc.scale));
-    uint32_t height = fixedSize ? desc.config.height : std::max(1u, static_cast<uint32_t>(m_renderHeight * desc.scale));
+    uint32_t baseWidth = desc.outputSized ? m_outputWidth : m_renderWidth;
+    uint32_t baseHeight = desc.outputSized ? m_outputHeight : m_renderHeight;
+    uint32_t width = fixedSize ? desc.config.width : std::max(1u, static_cast<uint32_t>(baseWidth * desc.scale));
+    uint32_t height = fixedSize ? desc.config.height : std::max(1u, static_cast<uint32_t>(baseHeight * desc.scale));
 
     auto& textureManager = dynamic_cast<TextureManagerVulkan&>(ServiceLocator::GetService<TextureManager>("TextureManagerVulkan"));
 

@@ -43,8 +43,9 @@ layout(set = 1, binding = 5) uniform sampler2D brdfLUT;
 layout(set = 1, binding = 6) uniform samplerCube prefilterMap;
 layout(set = 1, binding = 7) uniform sampler2D hdrImage;
 layout(set = 1, binding = 8) uniform sampler2D aoImage;
+layout(set = 1, binding = 9) uniform sampler2D rtShadowImage;    // sun visibility from the ray traced shadow, used when rtShadow is set
 
-layout (push_constant) uniform LightData {
+layout(set = 1, binding = 10) uniform LightData {
     mat4 sunlightMVP;
     vec4 direction;
     vec4 color;
@@ -60,6 +61,15 @@ layout (push_constant) uniform LightData {
     float G;
     float scatteringScale;
     float iblDiffuse;       // whether to use ibl 1 or use global illumination 0
+    int rtShadow;
+    float pcssSoftness;
+    float pcssMaxPenumbra;
+    float depthBias;        // world units
+    float slopeBias;
+    float slopeBiasMax;
+    float maxDepthSlope;
+    mat4 sunNormalMatrix;   // world normals into the sun clip space
+    float normalBias;       // shadow texels
 } pcl;
 
 const float PI = 3.14159265359;
@@ -169,11 +179,6 @@ const vec2 poissonDisk16[16] = vec2[](
 );
 
 
-// how fast the shadow edge widens with distance from the occluder (tan of the light's angular radius, exaggerated)
-const float SUN_SOFTNESS = 0.04;
-// widest penumbra in world units, also how far the blocker search looks
-const float MAX_PENUMBRA = 0.75;
-
 // compares against the 4 nearest texels and filters the results.
 // sampling the depth with a linear sampler and comparing afterwards filters the wrong thing and gives stair steps
 float shadowTap(vec2 uv, float compareDepth) {
@@ -203,8 +208,12 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm, mat4 lightMVP, vec3 L) {
     float uvPerUnit = 0.5 * length(vec3(lightMVP[0][0], lightMVP[1][0], lightMVP[2][0]));
     float depthPerUnit = length(vec3(lightMVP[0][2], lightMVP[1][2], lightMVP[2][2]));
 
-    float NdotL = dot(worldNorm, L);
-    float normalOffset = max(0.05 * (1.0 - NdotL), 0.005);
+    float texel = 1.0 / float(textureSize(shadowMap, 0).x);
+
+    // a receiver raised by h along its normal misses the foot of its occluder over h / tan(sun elevation),
+    // so at a low sun any offset here shows up as light leaking under the caster. the receiver plane bias
+    // below already handles acne, this stays 0 unless a scene needs it
+    float normalOffset = pcl.normalBias * texel / uvPerUnit;
     vec4 fragPosLightSpace = lightMVP * vec4(worldPos + worldNorm * normalOffset, 1.0);
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords.xy = projCoords.xy * 0.5 + 0.5;
@@ -212,21 +221,31 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm, mat4 lightMVP, vec3 L) {
         return 0.0;
     }
 
-    float texel = 1.0 / float(textureSize(shadowMap, 0).x);
-    float depthBias = 0.05 * depthPerUnit;
+    // receiver plane depth bias: how the surface's light space depth changes per shadow map uv, so every tap compares
+    // against the depth the plane has at that tap instead of at the pixel. without it a plane almost edge on to a low
+    // sun shadows itself in stripes along the shadow map texels, since the wide filter reaches much closer depths.
+    // taken from the normal in sun clip space rather than screen derivatives: the g-buffer position is half float,
+    // so close to the camera neighbouring rows read the same position and the derivatives step in stripes
+    vec3 lightNormal = mat3(pcl.sunNormalMatrix) * worldNorm;
+    vec2 depthSlope = abs(lightNormal.z) > 1e-4 ? -2.0 * lightNormal.xy / lightNormal.z : vec2(0.0);
+    depthSlope = clamp(depthSlope, vec2(-pcl.maxDepthSlope), vec2(pcl.maxDepthSlope));   // edge on to the sun the slope goes to infinity
+
+    // the one texel the depth was rendered at can still be off by its own slope
+    float samplingError = pcl.slopeBias * dot(vec2(texel), abs(depthSlope));
+    float depthBias = pcl.depthBias * depthPerUnit + min(samplingError, pcl.slopeBiasMax * depthPerUnit);
     float receiverDepth = projCoords.z - depthBias;
 
     vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
     float angle = texture(blueNoise, noiseUV).r * 2.0 * PI;
 
     // blocker search: has to cover the widest penumbra, or the soft edge gets cut off where the search stops finding blockers
-    float searchRadius = MAX_PENUMBRA * uvPerUnit;
+    float searchRadius = pcl.pcssMaxPenumbra * uvPerUnit;
     float blockerDepth = 0.0;
     float blockers = 0.0;
     for (int i = 0; i < BLOCKER_TAPS; i++) {
-        vec2 uv = projCoords.xy + vogelDisk(i, BLOCKER_TAPS, angle) * searchRadius;
-        float depth = textureLod(shadowMap, uv, 0.0).r;
-        if (depth < receiverDepth) {
+        vec2 offset = vogelDisk(i, BLOCKER_TAPS, angle) * searchRadius;
+        float depth = textureLod(shadowMap, projCoords.xy + offset, 0.0).r;
+        if (depth < receiverDepth + dot(depthSlope, offset)) {
             blockerDepth += depth;
             blockers += 1.0;
         }
@@ -239,12 +258,13 @@ float calcPCSS(vec3 worldPos, vec3 worldNorm, mat4 lightMVP, vec3 L) {
     // contact hardening: the further the occluder is from the receiver, the wider the edge.
     // for an orthographic light that is just distance * softness, there is no divide by the blocker depth
     float occluderDistance = (receiverDepth - blockerDepth) / depthPerUnit;
-    float penumbra = clamp(occluderDistance * SUN_SOFTNESS, 0.0, MAX_PENUMBRA) * uvPerUnit;
+    float penumbra = clamp(occluderDistance * pcl.pcssSoftness, 0.0, pcl.pcssMaxPenumbra) * uvPerUnit;
     penumbra = max(penumbra, texel * 1.5);
 
     float lit = 0.0;
     for (int i = 0; i < FILTER_TAPS; i++) {
-        lit += shadowTap(projCoords.xy + vogelDisk(i, FILTER_TAPS, angle) * penumbra, receiverDepth);
+        vec2 offset = vogelDisk(i, FILTER_TAPS, angle) * penumbra;
+        lit += shadowTap(projCoords.xy + offset, receiverDepth + dot(depthSlope, offset));
     }
 
     return 1.0 - lit / float(FILTER_TAPS);
@@ -523,7 +543,9 @@ void main() {
     
     // float shadow = 1.0 - calcShadow(worldPos);
     // float shadow = 1.0 - calcMSMShadow(worldPos + N * pcl.bias);
-    float shadow = 1.0 - calcPCSS(worldPos, normalize(worldNorm), pcl.sunlightMVP, normalize(pcl.direction.xyz));
+    float shadow = pcl.rtShadow != 0
+        ? texelFetch(rtShadowImage, ivec2(gl_FragCoord.xy), 0).r
+        : 1.0 - calcPCSS(worldPos, normalize(worldNorm), pcl.sunlightMVP, normalize(pcl.direction.xyz));
     vec3 L_sun = normalize(pcl.direction.xyz); 
     vec3 sunRadiance = pcl.color.rgb * shadow;
 

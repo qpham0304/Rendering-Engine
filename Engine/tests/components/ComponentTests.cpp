@@ -1,5 +1,18 @@
 #include <gtest/gtest.h>
 #include "core/components/MComponent.h"
+#include "core/entities/Entity.h"
+#include "core/scene/EntitySerializer.h"
+
+namespace {
+
+// the scene loader's path: emplace the component from json, then run its registered load hook
+void loadComponent(const std::string& type, Entity entity, const nlohmann::json& data)
+{
+	EntitySerializer::RegisterComponents();
+	EntitySerializer::getComponentFactory().at(type)(entity, data)();
+}
+
+}
 
 TEST(TransformComponent, JsonRoundTripKeepsValues)
 {
@@ -18,11 +31,13 @@ TEST(TransformComponent, JsonRoundTripKeepsValues)
 
 TEST(TransformComponent, LoadingRebuildsModelMatrix)
 {
-	// from_json calls onDeserialized(), so the matrix must reflect the loaded fields without a manual update
+	// the registered load hook rebuilds the matrix, so it reflects the loaded fields without a manual update
+	entt::registry registry;
+	Entity entity(registry.create(), registry);
 	nlohmann::json j = { { "translateVec", { 4.0f, 5.0f, 6.0f } } };
-	TransformComponent loaded = j.get<TransformComponent>();
+	loadComponent("TransformComponent", entity, j);
 
-	const glm::mat4& m = loaded.getModelMatrix();
+	const glm::mat4& m = entity.getComponent<TransformComponent>().getModelMatrix();
 	EXPECT_FLOAT_EQ(m[3][0], 4.0f);
 	EXPECT_FLOAT_EQ(m[3][1], 5.0f);
 	EXPECT_FLOAT_EQ(m[3][2], 6.0f);
@@ -74,4 +89,30 @@ TEST(SpriteComponent, LoadKeepsValuesAsWritten)
 	EXPECT_EQ(sprite.numRows, 0);
 	EXPECT_EQ(sprite.numCols, 0);
 	EXPECT_EQ(sprite.frameIndex, 5);
+}
+
+TEST(LightProbeComponent, LoadingRebuildsTheProbeGrid)
+{
+	LightProbeComponent original;
+	original.probeCounts = { 3, 2, 4 };
+	original.spacing = 2.0f;
+	original.gridOrigin = { -2.0f, 0.0f, -3.0f, 1.0f };
+	original.probeGrid.resize(24);
+
+	nlohmann::json j = original;
+	EXPECT_FALSE(j.contains("probeGrid"));
+
+	entt::registry registry;
+	Entity entity(registry.create(), registry);
+	loadComponent("LightProbeComponent", entity, j);
+
+	const LightProbeComponent& loaded = entity.getComponent<LightProbeComponent>();
+	EXPECT_EQ(loaded.probeCounts, original.probeCounts);
+	EXPECT_EQ(loaded.gridOrigin, original.gridOrigin);
+
+	// centered on the entity: (count - 1) * spacing / 2 on each side
+	ASSERT_EQ(loaded.probeGrid.size(), 3u * 2u * 4u);
+	EXPECT_EQ(loaded.probeGrid.front(), glm::vec4(-2.0f, -1.0f, -3.0f, 1.0f));
+	EXPECT_EQ(loaded.probeGrid.back(), glm::vec4(2.0f, 1.0f, 3.0f, 1.0f));
+	EXPECT_EQ(loaded.bufferSize, 3u * 2u * 4u * sizeof(glm::vec4));
 }

@@ -46,6 +46,8 @@ namespace Common {
 		glm::mat4 invProj;
 		float width;
 		float height;
+		glm::vec2 jitter;
+		float mipBias;
 	};
 
 }

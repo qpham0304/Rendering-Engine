@@ -24,6 +24,30 @@ file(GLOB_RECURSE ENGINE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
 )
 
+# TODO: ideally subsystems or services each have their own cmake only scripting system atm, eventually refactor everything else
+# a src folder with its own CMakeLists.txt is a separate target that links itself into the engine
+file(GLOB_RECURSE ENGINE_MODULE_LISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/*/CMakeLists.txt)
+set(ENGINE_MODULE_DIRS)
+foreach(moduleList ${ENGINE_MODULE_LISTS})
+    cmake_path(GET moduleList PARENT_PATH moduleDir)
+    list(APPEND ENGINE_MODULE_DIRS ${moduleDir})
+endforeach()
+
+set(ENGINE_OWN_SOURCES)
+foreach(source ${ENGINE_SOURCES})
+    set(inModule FALSE)
+    foreach(moduleDir ${ENGINE_MODULE_DIRS})
+        cmake_path(IS_PREFIX moduleDir ${source} NORMALIZE isPrefix)
+        if(isPrefix)
+            set(inModule TRUE)
+        endif()
+    endforeach()
+    if(NOT inModule)
+        list(APPEND ENGINE_OWN_SOURCES ${source})
+    endif()
+endforeach()
+set(ENGINE_SOURCES ${ENGINE_OWN_SOURCES})
+
 set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/imgui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/imgui/imgui_draw.cpp
@@ -92,6 +116,15 @@ add_subdirectory(extern/box3d)
 add_subdirectory(extern/vma)
 add_subdirectory(extern/volk)
 add_subdirectory(extern/vk-bootstrap)
+add_subdirectory(extern/dlss)
+
+# miniaudio static with only its built-in wav/flac/mp3 decoders, no vorbis/opus lookups
+set(MINIAUDIO_NO_LIBVORBIS ON CACHE BOOL "" FORCE)
+set(MINIAUDIO_NO_LIBOPUS ON CACHE BOOL "" FORCE)
+set(MINIAUDIO_NO_EXTRA_NODES ON CACHE BOOL "" FORCE)
+set(MINIAUDIO_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(extern/miniaudio)
+target_compile_definitions(miniaudio PRIVATE MA_COINIT_VALUE=2)	# COINIT_APARTMENTTHREADED
 
 find_package(Vulkan REQUIRED)
 
@@ -148,12 +181,17 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     opengl32
     lua::lib
     box3d::box3d
+    dlss
+    miniaudio
 )
-
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /bigobj /utf-8 /MP)
 endif()
+
+foreach(moduleDir ${ENGINE_MODULE_DIRS})
+    add_subdirectory(${moduleDir})
+endforeach()
 
 if(WK_TESTS_ENABLED)
     add_subdirectory(tests)

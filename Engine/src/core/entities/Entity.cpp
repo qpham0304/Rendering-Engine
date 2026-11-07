@@ -168,6 +168,39 @@ Entity::HookFunction Entity::_onSkinningComponentAdded()
     return function;
 }
 
+Entity::HookFunction Entity::_onTransformComponentAdded()
+{
+    HookFunction function = [](Entity entity)
+    {
+        entity.getComponent<TransformComponent>().updateTransform();
+    };
+    return function;
+}
+
+Entity::HookFunction Entity::_onLightProbeComponentAdded()
+{
+    HookFunction function = [](Entity entity)
+    {
+        // the grid is generated from the saved counts and spacing, local to the entity
+        LightProbeComponent& probe = entity.getComponent<LightProbeComponent>();
+        glm::ivec3 counts = (probe.probeCounts.x > 0 && probe.probeCounts.y > 0 && probe.probeCounts.z > 0)
+            ? probe.probeCounts : glm::ivec3(probe.probesPerDimension);
+        glm::vec3 offset = glm::vec3(counts - 1) * probe.spacing * 0.5f;
+
+        // index order has to match ddgiProbeIndex in assets/shaders/common/ddgi.glsl
+        probe.probeGrid.resize(counts.x * counts.y * counts.z);
+        for (int y = 0; y < counts.y; y++) {
+            for (int z = 0; z < counts.z; z++) {
+                for (int x = 0; x < counts.x; x++) {
+                    probe.probeGrid[x + (z * counts.x) + (y * counts.x * counts.z)] = glm::vec4(glm::vec3(x, y, z) * probe.spacing - offset, 1.0f);
+                }
+            }
+        }
+        probe.bufferSize = probe.probeGrid.size() * sizeof(glm::vec4);
+    };
+    return function;
+}
+
 Entity::HookFunction Entity::_onModelComponentAdded()
 {
     HookFunction function = [](Entity entity)

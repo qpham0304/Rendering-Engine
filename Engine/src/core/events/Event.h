@@ -15,7 +15,9 @@ enum class EventType
 	AsyncEvent, ModelLoadEvent, AnimationLoadEvent,
 	GuiMessageEvent, GuiFocusedEvent,
 	CameraUpdateEvent,
-	ContactBegin, ContactEnd, ContactHit
+	ContactBegin, ContactEnd, ContactHit,
+	RenderResize,
+	PlayAudio
 };
 
 class Event : public Object
@@ -119,6 +121,20 @@ public:
 
 	EventType GetEventType() const override { return EventType::WindowResize; }
 	const char* GetName() const override { return "WindowResizeEvent"; };
+
+};
+
+// the render graph's render size changed without the window resizing (upscaler mode)
+class RenderResizeEvent : public Event
+{
+public:
+	uint32_t m_width;
+	uint32_t m_height;
+
+	RenderResizeEvent(uint32_t width, uint32_t height) : m_width(width), m_height(height){ setFootprint("RenderResizeEvent", sizeof(RenderResizeEvent), MemorySystem::Core); }
+
+	EventType GetEventType() const override { return EventType::RenderResize; }
+	const char* GetName() const override { return "RenderResizeEvent"; };
 
 };
 
@@ -308,5 +324,33 @@ public:
 		member("point", &ContactHitEvent::point),
 		member("normal", &ContactHitEvent::normal),
 		member("approachSpeed", &ContactHitEvent::approachSpeed)
+	);
+};
+// the audio manager plays it, a spatial sound is placed at position, otherwise it plays flat
+class PlayAudioEvent : public Event
+{
+public:
+	std::string path;
+	glm::vec3 position { 0.0f };
+	float volume = 1.0f;
+	float pitch = 1.0f;
+	bool spatial = true;
+
+	PlayAudioEvent() { setFootprint("PlayAudioEvent", sizeof(PlayAudioEvent), MemorySystem::Core); }
+	PlayAudioEvent(std::string_view path, const glm::vec3& position, float volume = 1.0f, bool spatial = true)
+		: path(path), position(position), volume(volume), spatial(spatial)
+	{
+		setFootprint("PlayAudioEvent", sizeof(PlayAudioEvent), MemorySystem::Core);
+	}
+
+	EventType GetEventType() const override { return EventType::PlayAudio; }
+	const char* GetName() const override { return "PlayAudioEvent"; };
+
+	DEFINE_TYPE(PlayAudioEvent,
+		member("path", &PlayAudioEvent::path),
+		member("position", &PlayAudioEvent::position),
+		member("volume", &PlayAudioEvent::volume),
+		member("pitch", &PlayAudioEvent::pitch),
+		member("spatial", &PlayAudioEvent::spatial)
 	);
 };

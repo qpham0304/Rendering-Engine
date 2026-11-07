@@ -138,10 +138,6 @@ void ImGuiRightSidebarWidget::environmentControl()
     if (!list.empty() && list[0].hasComponent<CubeMapComponent>()) {
         cubeMap = &list[0].getComponent<CubeMapComponent>();
     }
-
-    ImGui::Begin("Environment Control");
-
-    ImGui::End();
 }
 
 void ImGuiRightSidebarWidget::TextureModal(const ImTextureID& id) {

@@ -35,7 +35,7 @@ void ParticleManager::destroy(uint32_t id)
     if(id == 0 || id >= m_containers.size()) {
         m_logger->error("particle container id: {} does not exist", id);
     } else {    //TODO: not thread safe, 2 request to delete the same id will causes issues
-        m_toBeDestroyed.emplace_back(id);
+        m_toBeDestroyed.push_back({ id, RELEASE_DELAY_FRAMES });
     }
 }
 
@@ -48,13 +48,17 @@ std::vector<uint32_t> ParticleManager::listIDs() const
 
 void ParticleManager::onUpdate(const FrameTime& frameTime)
 {
+    // the frames in flight may still simulate or draw a destroyed container, its buffers are released once they finished.
     // slots are emptied instead of erased so the ids held by emitters stay valid
-    for(auto& containerID : m_toBeDestroyed) {
-        _releaseBuffers(m_containerData[containerID]);
-        m_containers[containerID] = {};
+    std::erase_if(m_toBeDestroyed, [this](PendingRelease& pending) {
+        if(pending.framesLeft-- > 0) {
+            return false;
+        }
+        _releaseBuffers(m_containerData[pending.containerID]);
+        m_containers[pending.containerID] = {};
         m_version++;
-    }
-    m_toBeDestroyed.clear();
+        return true;
+    });
 }
 
 const ParticleManager::ContainerData& ParticleManager::getContainerData(uint32_t id) const
@@ -84,6 +88,21 @@ uint32_t ParticleManager::createContainer(uint32_t capacity)
 {
     //NOTE: m_ids starts at 1 which matches container's index 1 with dummy container at 0
     capacity = std::max(capacity, 1u);
+
+    // a destroyed slot is reused, otherwise every scene reload would use up new ids until MAX_CONTAINERS
+    for(uint32_t id = 1; id < m_containers.size(); id++) {
+        bool pending = std::any_of(m_toBeDestroyed.begin(), m_toBeDestroyed.end(), [id](const PendingRelease& p) { return p.containerID == id; });
+        if(m_containers[id].m_size != 0 || pending) {
+            continue;
+        }
+
+        m_containers[id] = ParticleContainer(capacity);
+        _allocateBuffers(m_containerData[id], capacity);
+        _uploadInitialState(m_containerData[id], capacity);
+        m_version++;
+        return id;
+    }
+
     m_containers.push_back(ParticleContainer(capacity));
     m_containerData.push_back(ContainerData());
 

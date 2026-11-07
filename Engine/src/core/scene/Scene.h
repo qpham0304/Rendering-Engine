@@ -96,6 +96,8 @@ private:
 	Logger& m_logger;
 	EntitySerializer m_serializer{ registry, entities };
 	std::vector<EventSubscription> m_eventSubscriptions;
+	nlohmann::json m_playSnapshot;
+	bool m_hasPlaySnapshot = false;
 
 	bool controlPressed = false;
 	bool shiftPressed = false;

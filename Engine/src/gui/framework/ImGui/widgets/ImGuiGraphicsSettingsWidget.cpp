@@ -17,6 +17,8 @@ ImGuiGraphicsSettingsWidget::ImGuiGraphicsSettingsWidget(std::string name)
     m_drawers.add<ImageBasedSettings>();
     m_drawers.add<DeferredSettings>();
     m_drawers.add<DDGISettings>();
+    m_drawers.add<DLSSSettings>();
+    m_drawers.add<TonemapSettings>();
 }
 
 void ImGuiGraphicsSettingsWidget::render()

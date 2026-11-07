@@ -33,6 +33,18 @@ struct ShadowMapSettings {
 	bool useOrtho { true };
 	uint32_t blurRadius { 64 };			// moment blur
 	float blurSigma { 15.0f };
+	int method { 0 };
+	float rtSoftness { 0.5f };
+	int rtRayCount { 4 };
+	int rtBlurRadius { 3 };
+	int resolution { 1 };
+	float pcssSoftness { 0.04f };
+	float pcssMaxPenumbra { 0.75f };
+	float depthBias { 0.01f };
+	float slopeBias { 1.0f };
+	float slopeBiasMax { 0.05f };
+	float normalBias { 0.0f };
+	float maxDepthSlope { 16.0f };
 
 	// runtime state, not reflected
 	glm::vec3 lightDir { glm::normalize(glm::vec3(1.0f)) };	// toward the sun, what the shadow map is rendered from
@@ -46,7 +58,23 @@ struct ShadowMapSettings {
 		member("zFar", &ShadowMapSettings::zFar, FieldMeta{ .min = 50.0f, .max = 200.0f }),
 		member("useOrtho", &ShadowMapSettings::useOrtho),
 		member("blurRadius", &ShadowMapSettings::blurRadius, FieldMeta{ .min = 1.0f, .max = 64.0f }),
-		member("blurSigma", &ShadowMapSettings::blurSigma, FieldMeta{ .min = 1.0f, .max = 30.0f, .format = "%.4f", .logarithmic = true })
+		member("blurSigma", &ShadowMapSettings::blurSigma, FieldMeta{ .min = 1.0f, .max = 30.0f, .format = "%.4f", .logarithmic = true }),
+		member("method", &ShadowMapSettings::method, FieldMeta{ .widget = FieldWidget::Combo,
+			.tooltip = "ray traced needs ray tracing support, it falls back to the shadow map without it",
+			.options = "Shadow Map\0Ray Traced\0\0" }),
+		member("rtSoftness", &ShadowMapSettings::rtSoftness, FieldMeta{ .min = 0.0f, .max = 5.0f, .tooltip = "degrees, 0 is a hard shadow" }),
+		member("rtRayCount", &ShadowMapSettings::rtRayCount, FieldMeta{ .min = 1.0f, .max = 16.0f }),
+		member("rtBlurRadius", &ShadowMapSettings::rtBlurRadius, FieldMeta{ .min = 0.0f, .max = 8.0f, .tooltip = "0 turns the blur off" }),
+		member("resolution", &ShadowMapSettings::resolution, FieldMeta{ .widget = FieldWidget::Combo,
+			.tooltip = "shadow map texels per side, orthoExtent sets how much of the world they cover",
+			.options = "512\0" "1024\0" "2048\0" "4096\0\0" }),
+		member("pcssSoftness", &ShadowMapSettings::pcssSoftness, FieldMeta{ .min = 0.0f, .max = 0.2f, .format = "%.3f", .tooltip = "how fast the penumbra widens with distance from the occluder" }),
+		member("pcssMaxPenumbra", &ShadowMapSettings::pcssMaxPenumbra, FieldMeta{ .min = 0.05f, .max = 3.0f, .tooltip = "widest soft edge in world units, also how far the blocker search looks" }),
+		member("depthBias", &ShadowMapSettings::depthBias, FieldMeta{ .min = 0.0f, .max = 0.2f, .format = "%.4f", .tooltip = "constant bias in world units" }),
+		member("slopeBias", &ShadowMapSettings::slopeBias, FieldMeta{ .min = 0.0f, .max = 4.0f, .tooltip = "scales the bias for the surface slope inside one shadow texel" }),
+		member("slopeBiasMax", &ShadowMapSettings::slopeBiasMax, FieldMeta{ .min = 0.0f, .max = 0.5f, .format = "%.3f", .tooltip = "cap on the slope bias in world units, larger lifts the shadow off its caster at a low sun" }),
+		member("normalBias", &ShadowMapSettings::normalBias, FieldMeta{ .min = 0.0f, .max = 4.0f, .tooltip = "moves the lookup along the normal in shadow texels, also detaches contact at a low sun" }),
+		member("maxDepthSlope", &ShadowMapSettings::maxDepthSlope, FieldMeta{ .min = 1.0f, .max = 64.0f, .tooltip = "cap on the receiver plane slope, keeps silhouettes from exploding" })
 	)
 };
 
@@ -81,12 +109,25 @@ struct LightingSettings {
 };
 
 struct AmbientOcclusionSettings {
+	int method { 0 };
+	float radius { 0.75f };
+	float intensity { 2.0f };
+	int rayCount { 4 };
+	int blurType { 3 };
 	int blurRadius { 4 };
 	float blurScale { 100.0f };
 
 	DEFINE_TYPE(AmbientOcclusionSettings,
+		member("method", &AmbientOcclusionSettings::method, FieldMeta{ .widget = FieldWidget::Combo,
+			.tooltip = "ray traced needs ray tracing support, it falls back to GTAO without it",
+			.options = "Alchemy\0GTAO\0Ray Traced\0\0" }),
+		member("radius", &AmbientOcclusionSettings::radius, FieldMeta{ .min = 0.05f, .max = 5.0f, .tooltip = "world space reach of the occlusion" }),
+		member("intensity", &AmbientOcclusionSettings::intensity, FieldMeta{ .min = 0.1f, .max = 4.0f }),
+		member("rayCount", &AmbientOcclusionSettings::rayCount, FieldMeta{ .min = 1.0f, .max = 32.0f, .tooltip = "rays per pixel, ray traced only" }),
+		member("blurType", &AmbientOcclusionSettings::blurType, FieldMeta{ .widget = FieldWidget::Combo,
+			.options = "None\0Box\0Gaussian\0Bilateral\0\0" }),
 		member("blurRadius", &AmbientOcclusionSettings::blurRadius, FieldMeta{ .min = 1.0f, .max = 16.0f }),
-		member("blurScale", &AmbientOcclusionSettings::blurScale, FieldMeta{ .min = 1.0f, .max = 100.0f })
+		member("blurScale", &AmbientOcclusionSettings::blurScale, FieldMeta{ .min = 1.0f, .max = 100.0f, .tooltip = "bilateral depth edge sharpness" })
 	)
 };
 
@@ -171,6 +212,39 @@ struct DeferredSettings {
 		member("depth", &DeferredSettings::depth, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
 		member("motion", &DeferredSettings::motion, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
 		member("shadowDepth", &DeferredSettings::shadowDepth, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true })
+	)
+};
+
+struct DLSSSettings {
+	bool enabled { true };
+	int mode { 1 };
+	bool resetHistory { false };
+
+	bool supported { false };
+	uint32_t renderWidth { 0 };
+	uint32_t renderHeight { 0 };
+
+	DEFINE_TYPE(DLSSSettings,
+		member("enabled", &DLSSSettings::enabled),
+		member("mode", &DLSSSettings::mode, FieldMeta{ .widget = FieldWidget::Combo,
+			.options = "DLAA\0Quality\0Balanced\0Performance\0Ultra Performance\0\0" }),
+		member("resetHistory", &DLSSSettings::resetHistory, FieldMeta{ .widget = FieldWidget::Button }),
+		member("supported", &DLSSSettings::supported, FieldMeta{ .readOnly = true }),
+		member("renderWidth", &DLSSSettings::renderWidth, FieldMeta{ .readOnly = true }),
+		member("renderHeight", &DLSSSettings::renderHeight, FieldMeta{ .readOnly = true })
+	)
+};
+
+struct TonemapSettings {
+	int tonemapper { 1 };
+	float exposure { 1.0f };
+	float gamma { 2.2f };
+
+	DEFINE_TYPE(TonemapSettings,
+		member("tonemapper", &TonemapSettings::tonemapper, FieldMeta{ .widget = FieldWidget::Combo,
+			.options = "None\0Reinhard\0ACES (Narkowicz)\0ACES (Hill)\0Uncharted 2\0AgX\0Khronos PBR Neutral\0\0" }),
+		member("exposure", &TonemapSettings::exposure, FieldMeta{ .min = 0.0f, .max = 8.0f }),
+		member("gamma", &TonemapSettings::gamma, FieldMeta{ .min = 1.0f, .max = 3.0f })
 	)
 };
 

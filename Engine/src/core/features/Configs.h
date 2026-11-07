@@ -31,6 +31,10 @@ enum class MYGRAPHICSENGINE_EXPORT PhysicsFramework {
 	UNDEFINED, BOX3D, JOLT, PHYSX
 };
 
+enum class MYGRAPHICSENGINE_EXPORT AudioFramework {
+	UNDEFINED, MINIAUDIO
+};
+
 struct MYGRAPHICSENGINE_EXPORT WindowConfig {
 	std::string title = "Untitled";
 	WindowPlatform windowPlatform = WindowPlatform::UNDEFINED;
@@ -39,6 +43,7 @@ struct MYGRAPHICSENGINE_EXPORT WindowConfig {
 	OperatingSystem os = OperatingSystem::UNDEFINED;
 	ScriptingPlatform scriptingPlatform = ScriptingPlatform::LUA;
 	PhysicsFramework physicsFramework = PhysicsFramework::BOX3D;
+	AudioFramework audioFramework = AudioFramework::MINIAUDIO;
 	int width = 1280;
 	int height = 720;
 	bool vsync = true;

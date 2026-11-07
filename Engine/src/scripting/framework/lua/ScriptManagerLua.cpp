@@ -3,14 +3,17 @@
 #include "core/features/ServiceLocator.h"
 #include "core/scene/SceneManager.h"
 #include "core/events/EventManager.h"
+#include "core/features/EngineStates.h"
 #include "core/entities/Entity.h"
 #include "window/AppWindow.h"
 #include "bindings/SharedFunctionsLua.h"
 #include "bindings/EventToLuaBindings.h"
 #include "bindings/MathToLuaBindings.h"
 #include "bindings/PhysicsToLuaBindings.h"
+#include "bindings/AudioToLuaBindings.h"
 #include "bindings/ComponentToLuaBindings.h"
 #include "physics/PhysicsManager.h"
+#include "audio/AudioManager.h"
 
 
 ScriptManagerLua::ScriptManagerLua(std::string serviceName)
@@ -37,6 +40,7 @@ bool ScriptManagerLua::init(WindowConfig config)
     MathToLuaBindings::exportMath(m_luaState);
     EventToLuaBindings::exportEvent(m_luaState, m_logger.get());
     PhysicsToLuaBindings::exportPhysics(m_luaState, &ServiceLocator::GetService<PhysicsManager>("PhysicsManager"));
+    AudioToLuaBindings::exportAudio(m_luaState, &ServiceLocator::GetService<AudioManager>("AudioManager"));
     
     SharedFunctionsLua shareToLua(m_logger.get()); 
     
@@ -101,6 +105,18 @@ void ScriptManagerLua::onUpdate(const FrameTime& frameTime)
         for (const auto& path : localReloadQueue) {
             _reloadScript(path);
         }
+    }
+
+    // a stop destroyed the scene's script instances, collect them so their event subscriptions end too
+    EngineState::State state = EngineState::getState();
+    if(state != m_lastState && state == EngineState::State::Stopped) {
+        m_luaState.collect_garbage();
+    }
+    m_lastState = state;
+
+    // scripts are game logic, they init on the first play and freeze while paused
+    if(state != EngineState::State::Playing) {
+        return;
     }
 
     SceneManager& sceneManager = SceneManager::getInstance();

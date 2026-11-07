@@ -38,3 +38,6 @@
 [submodule "Engine/extern/SDL"]
 	path = Engine/extern/SDL
 	url = https://github.com/libsdl-org/SDL.git
+[submodule "Engine/extern/miniaudio"]
+	path = Engine/extern/miniaudio
+	url = https://github.com/mackron/miniaudio.git

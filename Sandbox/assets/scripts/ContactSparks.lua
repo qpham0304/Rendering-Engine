@@ -7,6 +7,9 @@
 -- (center minus footOffset), so this assumes flat ground. they come out of a second emitter,
 -- the first child entity with a ParticleEmitter (set it up burst only: emitRate 0, burstInterval 0, its own color)
 -- an entity has one emitter and its color applies to all its particles, so a different look needs another emitter
+--
+-- audio: every hit publishes a PlayAudioEvent at the contact point, the audio manager reacts to it and plays a 3D clank
+-- that is louder and lower for faster impacts. a looping background track starts with the script
 ContactSparks = {}
 ContactSparks.__index = ContactSparks
 
@@ -29,6 +32,13 @@ function ContactSparks.new(entityWrapper)
         footOffset = 0.5,     -- body center to the ground it slides on, half the box height
         glideSparksPerMeter = 120,
         glideAccumulator = 0, -- fractional sparks carried to the next step
+
+        hitSound = "assets/audio/impact.wav",
+        hitVolumePerSpeed = 0.15, -- volume per m/s of approach speed
+        hitMinVolume = 0.1,
+        music = "assets/audio/ambient-loop.wav",
+        musicVolume = 0.35,
+        musicFadeIn = 2.0,
 
         glideTest = true,
         launchVelocity = vec3(6, 0, 0),
@@ -91,6 +101,7 @@ function ContactSparks:onInit()
         -- the normal points from A to B, flip it so the sparks fly away from the other shape
         local direction = hit.entityA == myID and -hit.normal or hit.normal
         self.entity:getComponent("ParticleEmitter"):burstAt(hit.point, direction, count)
+        self:playHitSound(hit.point, hit.approachSpeed)
         log_info("ContactSparks: hit at " .. tostring(hit.point) .. " speed " .. tostring(math.floor(hit.approachSpeed * 100 + 0.5) / 100) .. ", " .. count .. " sparks")
     end)
 
@@ -113,6 +124,18 @@ function ContactSparks:onInit()
             self:launch()
         end
     end)
+
+    audio.playMusic(self.music, self.musicVolume, self.musicFadeIn)
+end
+
+function ContactSparks:playHitSound(point, speed)
+    local sound = PlayAudioEvent.new()
+    sound.path = self.hitSound
+    sound.position = point
+    sound.volume = math.max(self.hitMinVolume, math.min(speed * self.hitVolumePerSpeed, 1.0))
+    sound.pitch = math.max(0.7, 1.2 - speed * 0.05) + (math.random() - 0.5) * 0.1
+    sound.spatial = true
+    publish(sound)
 end
 
 function ContactSparks:launch()

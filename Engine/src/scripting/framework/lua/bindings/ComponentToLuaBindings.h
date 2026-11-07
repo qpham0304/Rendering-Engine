@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include "core/entities/Entity.h"
 #include "core/components/MComponent.h"
+#include "core/scene/EntitySerializer.h"
 
 class Logger;
 
@@ -59,7 +60,14 @@ private:
                 });
             }
 
-            return sol::make_object(lua, &component);
+            // the registered load hook runs like scene component load
+            const auto& factory = EntitySerializer::getComponentFactory();
+            auto loader = factory.find(T::GetStaticType());
+            if (loader != factory.end()) {
+                loader->second(e, nlohmann::json(component))();
+            }
+
+            return sol::make_object(lua, &e.getComponent<T>());
         };
 
         return luaType;

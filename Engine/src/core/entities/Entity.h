@@ -20,7 +20,7 @@ public:
 
 	template<typename T, typename ...Args>
 	T& addComponent(Args&& ...args) {
-		T& component = registry->emplace<T>(entity, std::forward<Args>(args)...);
+		T& component = registry->emplace_or_replace<T>(entity, std::forward<Args>(args)...);
 		return component;
 	}
 
@@ -64,6 +64,7 @@ public:
 
 	typedef std::function<void(Entity)> HookFunction;
 
+	static HookFunction _onTransformComponentAdded();
 	static HookFunction _onModelComponentAdded();
 	static HookFunction _onSpriteComponentAdded();
 	static HookFunction _onAnimationComponentAdded();
@@ -75,6 +76,7 @@ public:
 	static HookFunction _onCameraComponentAdded();
 	static HookFunction _onParticleEmitterAdded();
 	static HookFunction _onSkinningComponentAdded();
+	static HookFunction _onLightProbeComponentAdded();
 
 private:
 	entt::entity entity;

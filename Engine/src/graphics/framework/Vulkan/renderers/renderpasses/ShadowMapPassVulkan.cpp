@@ -20,6 +20,10 @@
 #include <graphics/framework/Vulkan/renderers/RendererManagerVulkan.h>
 #include <core/scene/SceneManager.h>
 #include <animation/AnimationManager.h>
+#include "BlurPassVulkan.h"
+#include "GeometryPassVulkan.h"
+#include <graphics/framework/vulkan/renderers/renderpiplines/RayTraceRendererVulkan.h>
+#include <graphics/framework/Vulkan/resources/buffers/AccelStructureBufferVulkan.h>
 #include <volk.h>
 
 ShadowMapPassVulkan::ShadowMapPassVulkan() 
@@ -54,6 +58,13 @@ bool ShadowMapPassVulkan::init(WindowConfig config)
 	textureManagerVulkan->registerBindlessTexture(depthMap->id());
 	textureManagerVulkan->registerBindlessTexture(blueNoiseImage->id());
 
+	// the ray trace renderer is only added on gpus with ray tracing, without it there is no tlas to trace against
+	rtSupported = rendererManagerVulkan->getRenderer("RayTraceRendererVulkan") != nullptr;
+	blurPass = dynamic_cast<BlurPassVulkan*>(rendererManagerVulkan->getRenderer("BlurPassVulkan"));
+	if(rtSupported) {
+		_createRayTraced();
+	}
+
 	settings =&rendererManagerVulkan->getGraphicsSettings().add<ShadowMapSettings>("Shadow Map");
 
 	return true;
@@ -69,8 +80,10 @@ bool ShadowMapPassVulkan::onClose()
 	vkDestroyRenderPass(renderDeviceVulkan->device, shadowRenderPass, nullptr);
 
 	computePipeline->destroy();
+	if(rtPipeline) {
+		rtPipeline->destroy();
+	}
 
-	
 	return false;
 }
 
@@ -81,6 +94,7 @@ void ShadowMapPassVulkan::onUpdate()
 void ShadowMapPassVulkan::render(Camera& camera)
 {
 	RendererVulkan::render(camera);
+	_applyResolution();
 
 	glm::mat4 lightProjection;
 	if(settings->useOrtho) {
@@ -446,6 +460,12 @@ void ShadowMapPassVulkan::_createMomentDescriptor()
 
 	compDescSetMtoT_ID = descriptorManagerVulkan->createSets(compDescriptorLayoutID, compDescriptorPoolID, 1);
 	compDescSetTtoM_ID = descriptorManagerVulkan->createSets(compDescriptorLayoutID, compDescriptorPoolID, 1);
+	_writeMomentDescriptors();
+}
+
+// the blur ping-pongs moment -> temp -> moment, rewritten when the shadow map size changes
+void ShadowMapPassVulkan::_writeMomentDescriptors()
+{
 	auto setsMtoT = descriptorManagerVulkan->getDescriptorSet(compDescSetMtoT_ID);
 	auto setsTtoM = descriptorManagerVulkan->getDescriptorSet(compDescSetTtoM_ID);
 
@@ -516,6 +536,7 @@ void ShadowMapPassVulkan::_cleanupResources()
 
 void ShadowMapPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
+	_applyResolution();
 	auto depth = graph.importTexture(depthMap);
 
 	RenderPassNode node{};
@@ -532,4 +553,140 @@ void ShadowMapPassVulkan::addToGraph(RenderGraphVulkan& graph)
 	};
 
 	graph.addPass(node);
+}
+
+void ShadowMapPassVulkan::_createRayTraced()
+{
+	rtBindings = {
+		{ 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 3, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+	};
+
+	uint32_t frameCount = VulkanUtils::numFrames();
+	std::vector<VkDescriptorPoolSize> poolSizes {
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 2 },
+		{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, frameCount },
+	};
+	rtLayoutID = descriptorManagerVulkan->createLayout(rtBindings);
+	rtPoolID = descriptorManagerVulkan->createPool(poolSizes, frameCount);
+	rtSetsID = descriptorManagerVulkan->createSets(rtLayoutID, rtPoolID, frameCount);
+
+	VkDescriptorSetLayout layout = descriptorManagerVulkan->getDescriptorLayout(rtLayoutID);
+	rtPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+	rtPipeline->createComputePipeline("assets/shaders/spv/rtShadow.comp.spv", { layout }, sizeof(RayTracedPushConstant));
+}
+
+void ShadowMapPassVulkan::addRayTracedToGraph(RenderGraphVulkan& graph)
+{
+	m_rayTraced = false;
+	if(!rtSupported || !rtPipeline || settings->method != 1) {
+		return;
+	}
+
+	// built here instead of when the node runs so a scene without a tlas yet keeps the shadow map this frame
+	auto raytracer = dynamic_cast<RayTraceRendererVulkan*>(rendererManagerVulkan->getRenderer("RayTraceRendererVulkan"));
+	raytracer->updateTlas();
+	rtTlas = raytracer->m_rtBuilder.getTlas();
+	if(!rtTlas) {
+		return;
+	}
+
+	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+	TextureVulkan* positionImage = geometryPass->renderTarget.gBufferPos;
+	TextureVulkan* normalImage = geometryPass->renderTarget.gBufferNorm;
+	TextureVulkan* depthImage = geometryPass->renderTarget.depthTexture;
+
+	RGTextureDesc desc{};
+	desc.config.format = VK_FORMAT_R16_SFLOAT;
+	desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	rtMaskHandle = graph.createRenderTexture("Shadow.RTMask", desc);
+	rtMask = graph.getTexture(rtMaskHandle);
+
+	auto position = graph.importTexture(positionImage);
+	auto normal = graph.importTexture(normalImage);
+
+	RenderPassNode node{};
+	node.name = "RayTracedShadow";
+	node.reads = {
+		{ position, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+		{ normal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+	};
+	node.writes = { { rtMaskHandle, VK_IMAGE_LAYOUT_GENERAL } };
+	node.execute = [this, positionImage, normalImage](VkCommandBuffer cmd, uint32_t currentFrame) {
+		_writeRayTraced(cmd, currentFrame, positionImage, normalImage);
+	};
+	graph.addPass(node);
+
+	rtMaskOutput = rtMask;
+	if(settings->rtBlurRadius > 0 && blurPass) {
+		BlurPassVulkan::BlurParams blurParams{};
+		blurParams.type = BlurType::Bilateral;
+		blurParams.depth = graph.importTexture(depthImage);
+		if(Camera* camera = SceneManager::cameraController) {
+			glm::mat4 proj = camera->getProjectionMatrix();
+			proj[1][1] *= -1.0f;
+			blurParams.invProj = glm::inverse(proj);
+		}
+		blurParams.radius = settings->rtBlurRadius;
+		blurParams.sigma = static_cast<float>(settings->rtBlurRadius);
+		blurParams.depthScale = 100.0f;
+		rtMaskOutput = graph.getTexture(blurPass->blur(graph, "Shadow", rtMaskHandle, blurParams));
+	}
+
+	m_rayTraced = true;
+}
+
+void ShadowMapPassVulkan::_writeRayTraced(VkCommandBuffer cmd, uint32_t currentFrame, TextureVulkan* positionImage, TextureVulkan* normalImage)
+{
+	// the sun direction comes from the shadow map node earlier this frame, the tlas can be rebuilt between frames
+	rtPush.sunDirection = glm::vec4(settings->lightDir, 0.0f);
+	rtPush.coneAngle = glm::radians(std::max(settings->rtSoftness, 0.0f)) * 0.5f;
+	rtPush.rayCount = std::clamp(settings->rtRayCount, 1, 64);
+	rtPush.maxDistance = 1000.0f;
+
+	auto sets = descriptorManagerVulkan->getDescriptorSet(rtSetsID);
+	VkDescriptorImageInfo maskInfo{ rtMask->textureSampler, rtMask->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+	VkDescriptorImageInfo positionInfo{ positionImage->textureSampler, positionImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo normalInfo{ normalImage->textureSampler, normalImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+
+	std::vector<VkWriteDescriptorSet> writes;
+	descriptorManagerVulkan->writeStorageImage(&writes, sets[currentFrame], 0, maskInfo);
+	descriptorManagerVulkan->writeImage(&writes, sets[currentFrame], 1, positionInfo);
+	descriptorManagerVulkan->writeImage(&writes, sets[currentFrame], 2, normalInfo);
+	descriptorManagerVulkan->writeAccelStruct(&writes, sets[currentFrame], 3, rtBindings, rtTlas->getDescAccelStructInfo());
+	descriptorManagerVulkan->updateDescriptorSets(&writes);
+
+	renderDeviceVulkan->beginLabel(cmd, "Ray Traced Shadow");
+	rtPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+	vkCmdPushConstants(cmd, rtPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(RayTracedPushConstant), &rtPush);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, rtPipeline->pipelineLayout, 0, 1, &sets[currentFrame], 0, nullptr);
+	vkCmdDispatch(cmd, (rtMask->width() + 15) / 16, (rtMask->height() + 15) / 16, 1);
+	renderDeviceVulkan->endLabel(cmd);
+}
+
+// resolution comes from the settings, everything sized by it is rebuilt before this frame uses the shadow map
+void ShadowMapPassVulkan::_applyResolution()
+{
+	static constexpr uint32_t sizes[] = { 512, 1024, 2048, 4096 };
+	uint32_t size = sizes[std::clamp(settings->resolution, 0, 3)];
+	if(size == width && size == height) {
+		return;
+	}
+
+	renderDeviceVulkan->waitIdle();
+	vkDestroyFramebuffer(renderDeviceVulkan->device, shadowFramebuffer, nullptr);
+	textureManagerVulkan->destroy(depthID);
+	textureManagerVulkan->destroy(momentImage->id());
+	textureManagerVulkan->destroy(tempMomentImage->id());
+
+	width = size;
+	height = size;
+	_createDepthMap();
+	_createMomentImage();
+	_writeMomentDescriptors();
+	_createShadowFrameBuffer();
+	textureManagerVulkan->registerBindlessTexture(depthMap->id());
 }

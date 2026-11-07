@@ -12,6 +12,7 @@
 #include "core/resources/managers/ModelManager.h"
 #include "core/resources/managers/MeshManager.h"
 #include "core/resources/managers/MaterialManager.h"
+#include "particle/ParticleManager.h"
 
 Scene::Scene(std::string name) 
 	: 	sceneName(name),
@@ -229,6 +230,30 @@ const std::string& Scene::getName() const
 	return sceneName;
 }
 
+void Scene::onStart()
+{
+	for(auto& entity : frameNewEntities) {
+		entities[entity.getID()] = entity;
+	}
+	frameNewEntities.clear();
+
+	m_playSnapshot = nlohmann::json::object();
+	serialize(m_playSnapshot);
+	m_hasPlaySnapshot = true;
+}
+
+void Scene::onStop()
+{
+	if(!m_hasPlaySnapshot) {
+		return;
+	}
+
+	unloadScene();
+	deserialize(m_playSnapshot);
+	m_playSnapshot = nlohmann::json();
+	m_hasPlaySnapshot = false;
+}
+
 bool Scene::saveScene(std::string_view filePath)
 {
     std::filesystem::path path(filePath);
@@ -311,9 +336,20 @@ bool Scene::unloadScene()
 	// this is not manageable, either a resource manager or use entity add and remove hook
     auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
     auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-	auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
-	
+	auto particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
+
+	for(auto& entity : frameNewEntities) {
+		entities[entity.getID()] = entity;
+	}
+
 	for(auto& [id, entity] : entities) {
+		if(entity.hasComponent<ParticleEmitter>()) {
+			uint32_t containerID = entity.getComponent<ParticleEmitter>().containerID;
+			if(containerID != 0) {
+				particleManager->destroy(containerID);
+			}
+		}
+
 		if(entity.hasComponent<SpriteComponent>() && entity.hasComponent<ModelComponent>()) {
 			ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
 			Model* model = modelManager->getModel(modelComponent.modelID);
@@ -324,11 +360,10 @@ bool Scene::unloadScene()
 				modelManager->destroy(modelComponent.modelID);
 			}
 		}
-		if(entity.hasComponent<ColliderComponent>()){
-			ColliderComponent& colliderComponent = entity.getComponent<ColliderComponent>();
-			if(colliderComponent.shapeID != 0) {
-				physicsManager->destroy(colliderComponent.shapeID);
-			}
+
+		// unload hooks release what the load hooks created, scripts get their onDestroy, colliders their body
+		for(const auto& [name, destroyer] : EntitySerializer::getComponentDestroyer()) {
+			destroyer(entity);
 		}
 	}
 

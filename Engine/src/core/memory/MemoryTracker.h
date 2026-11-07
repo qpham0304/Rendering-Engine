@@ -32,6 +32,7 @@ enum class MemorySystem : uint8_t
 	Particle,
 	Scripting,
 	Gui,
+	Audio,
 	Count,
 };
 

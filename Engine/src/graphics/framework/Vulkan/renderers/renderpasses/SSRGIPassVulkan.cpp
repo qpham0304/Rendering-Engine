@@ -183,15 +183,15 @@ void SSRGIPassVulkan::_createResources()
     // same texture every frame, the graph recreates it when the render size changes
     // traced at 1, 1/2 or 1/4 of the render size, the passes reading it sample with uvs so it upscales on read
     int downsample = settings ? std::clamp(settings->downsample, 0, 2) : 0;
-    VulkanSwapChain& swapchain = renderDeviceVulkan->swapchain;
+    VkExtent2D extent = rendererManagerVulkan->getRenderGraph().getRenderSize();
 
     RGTextureDesc desc{};
     desc.config.format = VK_FORMAT_R16G16B16A16_SFLOAT;	// usage defaults to storage | sampled
     desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     desc.scale = 1.0f / static_cast<float>(1 << downsample);
     // same rounding as the graph so the dispatch covers the texture exactly
-    traceWidth = std::max(1u, static_cast<uint32_t>(swapchain.swapChainExtent.width * desc.scale));
-    traceHeight = std::max(1u, static_cast<uint32_t>(swapchain.swapChainExtent.height * desc.scale));
+    traceWidth = std::max(1u, static_cast<uint32_t>(extent.width * desc.scale));
+    traceHeight = std::max(1u, static_cast<uint32_t>(extent.height * desc.scale));
 
     RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
     outputHandle = graph.createRenderTexture("SSRGI.Output", desc);
