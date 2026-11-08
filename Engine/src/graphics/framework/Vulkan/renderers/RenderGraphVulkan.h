@@ -10,11 +10,7 @@
 #include <string_view>
 #include <functional>
 #include "graphics/framework/Vulkan/resources/textures/TextureVulkan.h"
-#include "core/features/Object.h"
-
-struct RGHandle { 
-    uint32_t index; 
-};
+#include "graphics/renderers/RenderGraph.h"
 
 struct RGAccess {
     RGHandle handle;
@@ -26,6 +22,7 @@ struct RenderPassNode {
     std::vector<RGAccess> reads{};  // Dependencies during the pass
     std::vector<RGAccess> writes{}; // Outputs during the pass
     std::function<void(VkCommandBuffer, uint32_t)> execute;
+    const void* settings { nullptr };   // ties the pass to its entry in the graphics settings
 };
 
 
@@ -44,22 +41,21 @@ struct RGTextureDesc {
     bool outputSized { false };
 };
 
-class RenderGraphVulkan : public Object {
+class RenderGraphVulkan : public RenderGraph {
 public:
     RenderGraphVulkan();
     void addPass(RenderPassNode node);
     // bool compile();
     // const std::vector<std::shared_ptr<RenderPassNode>>& getExecutionOrder() const;
     void execute(VkCommandBuffer cmd, uint32_t currentFrame);
-    void reset();
+    virtual void reset() override;
+    virtual std::vector<RGPassInfo> getPasses() const override;
     RGHandle importTexture(
         TextureVulkan* texture,
         VkImageLayout initial = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         VkImageLayout final = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
 
-    void setRenderSize(uint32_t width, uint32_t height);
-    void setOutputSize(uint32_t width, uint32_t height);
     VkExtent2D getRenderSize() const { return { m_renderWidth, m_renderHeight }; }
     VkExtent2D getOutputSize() const { return { m_outputWidth, m_outputHeight }; }
 
@@ -76,6 +72,7 @@ private:
     //     std::unordered_set<std::string>& visiting
     // );
     TextureVulkan* _createTexture(const std::string& name, const RGTextureDesc& desc);
+    std::string _textureName(TextureVulkan* texture) const;
     void _prepareAccess(VkCommandBuffer cmd, const RGAccess& access, bool isWrite);
 
     struct RenderTexture {
@@ -89,8 +86,4 @@ private:
     std::vector<RenderPassNode> m_passes;   // atm are executed in the order they were added
 
     std::unordered_map<std::string, RenderTexture> m_ownedTextures;   // do not clear by reset
-    uint32_t m_renderWidth { 0 };
-    uint32_t m_renderHeight { 0 };
-    uint32_t m_outputWidth { 0 };
-    uint32_t m_outputHeight { 0 };
 };

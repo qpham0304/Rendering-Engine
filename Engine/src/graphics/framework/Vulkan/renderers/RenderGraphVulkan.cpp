@@ -28,7 +28,10 @@ void RenderGraphVulkan::execute(VkCommandBuffer cmd, uint32_t currentFrame)
             _prepareAccess(cmd, access, true);
         }
 
-        passNode.execute(cmd, currentFrame);
+        // still transitioned above, so the passes after it see the same layouts as when it runs
+        if(isPassEnabled(passNode.name)) {
+            passNode.execute(cmd, currentFrame);
+        }
     }
 
     for(auto& resource : m_resources) {
@@ -62,23 +65,45 @@ void RenderGraphVulkan::_prepareAccess(VkCommandBuffer cmd, const RGAccess& acce
     resource.lastWasWrite = isWrite;
 }
 
-// passes rebuild on this like on a window resize, the upscaler can change it while the window stays the same
-void RenderGraphVulkan::setRenderSize(uint32_t width, uint32_t height)
+std::vector<RGPassInfo> RenderGraphVulkan::getPasses() const
 {
-    bool changed = m_renderWidth != 0 && (m_renderWidth != width || m_renderHeight != height);
-    m_renderWidth = width;
-    m_renderHeight = height;
-
-    if(changed) {
-        RenderResizeEvent event(width, height);
-        EventManager::getInstance().publish(event);
+    std::vector<RGPassInfo> passes;
+    passes.reserve(m_passes.size());
+    for(const auto& passNode : m_passes) {
+        RGPassInfo info{};
+        info.name = passNode.name;
+        info.readCount = static_cast<uint32_t>(passNode.reads.size());
+        info.writeCount = static_cast<uint32_t>(passNode.writes.size());
+        info.enabled = isPassEnabled(passNode.name);
+        info.settings = passNode.settings;
+        for(const auto& access : passNode.writes) {
+            const RGResource& resource = m_resources[access.handle.index];
+            info.outputs.push_back({
+                _textureName(resource.texture),
+                resource.texture->id(),
+                resource.texture->width(),
+                resource.texture->height(),
+                resource.finalLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            });
+        }
+        passes.push_back(std::move(info));
     }
+    return passes;
 }
 
-void RenderGraphVulkan::setOutputSize(uint32_t width, uint32_t height)
+// graph owned textures go by the name they were created with, imported ones by their file or their id
+std::string RenderGraphVulkan::_textureName(TextureVulkan* texture) const
 {
-    m_outputWidth = width;
-    m_outputHeight = height;
+    for(const auto& [name, owned] : m_ownedTextures) {
+        if(owned.texture == texture) {
+            return name;
+        }
+    }
+    std::string path = texture->path();
+    if(!path.empty() && path != "n/a") {
+        return path;
+    }
+    return "texture " + std::to_string(texture->id());
 }
 
 RGHandle RenderGraphVulkan::createRenderTexture(const std::string& name, const RGTextureDesc& desc)

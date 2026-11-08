@@ -61,13 +61,14 @@ struct Object {
     uint materialIdx;
     uint flags;
     uint padding;
+    uint64_t rtVertexAddress;   // what ray hits read: the skinned copy for animated meshes, the mesh vertices otherwise
 };
 
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT topLevelAS;
-layout(set = 0, binding = 1, rgba32f) uniform image2D outputImage;
+layout(set = 0, binding = 1, rgba16f) uniform writeonly image2D outputImage;   // this frame's light, demodulated by the albedo
 layout(set = 0, binding = 2) uniform UniformBufferObject {
     mat4 view;
     mat4 prevViewProj;
@@ -80,7 +81,28 @@ layout(set = 0, binding = 2) uniform UniformBufferObject {
     float frameSeed;
     int frameCount;
     bool clear;
+    vec4 sunDirection;      // xyz toward the sun, w = angular radius in radians
+    vec4 sunColor;          // rgb = color * intensity tinted by the atmosphere, w = sky intensity
+    uint lightCount;
+    int maxBounces;
 } ubo;
+
+layout(set = 0, binding = 4) uniform samplerCube environmentMap;    // the sky the raster path uses, prefiltered mip 0 is sharp
+
+// the surface the camera ray hit first, for the denoiser
+layout(set = 0, binding = 5, rgba32f) uniform writeonly image2D gPosition;    // world xyz, w = 1 on geometry, 0 for sky
+layout(set = 0, binding = 6, rgba16f) uniform writeonly image2D gNormal;      // world normal, w = roughness
+layout(set = 0, binding = 7, rgba16f) uniform writeonly image2D gAlbedo;
+layout(set = 0, binding = 8, rgba16f) uniform writeonly image2D gEmission;    // seen directly, not denoised
+
+struct PointLight {
+    vec4 color;
+    vec4 position;
+    float intensity;
+    float padding0;
+    float padding1;
+    float padding2;
+};
 
 struct Light {
     vec4 v0;                // 16 bytes
@@ -105,12 +127,14 @@ layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; };
 layout(buffer_reference, scalar) buffer Indices { uint i[]; };
 layout(buffer_reference, scalar) buffer MaterialsBuffer { Material m[]; };
 layout(buffer_reference, scalar) readonly buffer MaterialIndicesBuffer { uint i[]; };
+layout(buffer_reference, scalar) readonly buffer LightsBuffer { PointLight lights[]; };
 
 layout(push_constant) uniform PushConstant {
     ObjectsBuffer objRef;
     uint objIdx;
     uint bluenoiseIdx;
     uint explicitPass;
+    LightsBuffer lightsRef;
 } pc;
 
 uint tea(uint val0, uint val1) {
@@ -157,7 +181,7 @@ void getHitObjectData(out Material mat, out vec3 nrm) {
     Object obj = pc.objRef.objects[payload.instanceIndex];
     
     // dereference addresses
-    Vertices vertices = Vertices(obj.vertexAddress);
+    Vertices vertices = Vertices(obj.rtVertexAddress);
     Indices indices = Indices(obj.indexAddress);
     MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
     MaterialIndicesBuffer matIndices = MaterialIndicesBuffer(obj.materialIndiciesRef);
@@ -291,6 +315,68 @@ vec3 CookTorranceSpecular(vec3 N, vec3 V, vec3 L, vec3 F, float alphaRoughness) 
     return (D * F * G) / (4.0 * NdotV * NdotL + 1e-5);
 }
 
+// true when nothing blocks the segment, the miss shader clears isShadowed
+bool traceUnoccluded(vec3 origin, vec3 dir, float dist) {
+    payload.isShadowed = 1;
+    traceRayEXT(topLevelAS,
+        gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
+        0xFF, 0, 0, 0, origin, 0.0, dir, dist, 0);
+    return payload.isShadowed == 0;
+}
+
+// diffuse + specular toward a light, times n.l
+vec3 evalBrdf(Material mat, vec3 N, vec3 V, vec3 L) {
+    float NdotL = max(dot(N, L), 0.0);
+    if (NdotL <= 0.0) {
+        return vec3(0.0);
+    }
+    float roughness = clamp(mat.roughnessFactor, 0.02, 1.0);
+    vec3 F0 = mix(vec3(0.04), mat.albedoFactor.rgb, mat.metallicFactor);
+    vec3 H = normalize(L + V);
+    vec3 F = Fresnel(F0, max(dot(V, H), 0.0));
+    vec3 spec = CookTorranceSpecular(N, V, L, F, roughness * roughness);
+    vec3 diff = (vec3(1.0) - F) * (1.0 - mat.metallicFactor) * (mat.albedoFactor.rgb / PI);
+    return (diff + spec) * NdotL;
+}
+
+// a direction inside the sun's disk, so its shadows get a soft edge as they accumulate
+vec3 sampleSunDirection(inout uint seed) {
+    vec3 L = normalize(ubo.sunDirection.xyz);
+    float radius = ubo.sunDirection.w;
+    if (radius <= 0.0) {
+        return L;
+    }
+    vec3 T = normalize(cross(L, abs(L.y) < 0.99 ? vec3(0, 1, 0) : vec3(1, 0, 0)));
+    vec3 B = cross(L, T);
+    float r = sqrt(rnd(seed)) * tan(radius);
+    float phi = 2.0 * PI * rnd(seed);
+    return normalize(L + (T * cos(phi) + B * sin(phi)) * r);
+}
+
+// direct light at a hit: the sun and one point light picked at random, each with a shadow ray
+vec3 directLight(Material mat, vec3 P, vec3 N, vec3 V) {
+    vec3 radiance = vec3(0.0);
+    vec3 origin = P + N * 0.001;
+
+    vec3 sunL = sampleSunDirection(payload.seed);
+    if (dot(N, sunL) > 0.0 && dot(ubo.sunColor.rgb, vec3(1.0)) > 0.0 && traceUnoccluded(origin, sunL, 10000.0)) {
+        radiance += evalBrdf(mat, N, V, sunL) * ubo.sunColor.rgb;
+    }
+
+    if (ubo.lightCount > 0u) {
+        uint index = min(uint(rnd(payload.seed) * float(ubo.lightCount)), ubo.lightCount - 1u);
+        PointLight light = pc.lightsRef.lights[index];
+        vec3 toLight = light.position.xyz - P;
+        float distance2 = max(dot(toLight, toLight), 1e-4);
+        float distance = sqrt(distance2);
+        vec3 L = toLight / distance;
+        if (dot(N, L) > 0.0 && traceUnoccluded(origin, L, distance - 0.01)) {
+            radiance += evalBrdf(mat, N, V, L) * light.color.rgb * light.intensity / distance2 * float(ubo.lightCount);
+        }
+    }
+    return radiance;
+}
+
 void main() {
     ivec2 pixelCoords = ivec2(gl_LaunchIDEXT.xy);
     payload.seed = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, uint(ubo.frameSeed));
@@ -306,28 +392,55 @@ void main() {
     
     vec3 accumulatedColor = vec3(0.0);
     vec3 throughput = vec3(1.0);
-    
-    const int numBounces = 8;
+
+    // what the denoiser needs about the surface the camera sees, the light is demodulated by its albedo so texture
+    // detail stays out of the blur, and whatever the camera sees directly (sky, emissive) skips the denoiser
+    vec4 primaryPos = vec4(0.0);
+    vec4 primaryNormal = vec4(0.0);
+    vec3 primaryAlbedo = vec3(0.0);
+    vec3 primaryEmission = vec3(0.0);
+
+    int numBounces = clamp(ubo.maxBounces, 1, 16);
     for (int i = 0; i < numBounces; i++) {
         payload.hit = 0;
-        traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 0, 0, rayOrigin, 0.001, rayDir, 10000.0, 0);
+        traceRayEXT(topLevelAS, gl_RayFlagsNoneEXT, 0xFF, 0, 0, 0, rayOrigin, 0.001, rayDir, 10000.0, 0);
 
         if (payload.hit == 0) {
-            accumulatedColor += throughput * mix(vec3(0.02), vec3(0.1, 0.3, 0.5), max(rayDir.y, 0.0));
+            vec3 sky = textureLod(environmentMap, rayDir, 0.0).rgb * ubo.sunColor.w;
+            if (i == 0) {
+                primaryEmission = sky;
+            } else {
+                accumulatedColor += throughput * sky;
+            }
             break;
         }
-        
+
         Material mat;
         vec3 worldNormal;
         getHitObjectData(mat, worldNormal);
         vec3 V = -rayDir;
         vec3 N = normalize(worldNormal);
-        
+        if (dot(N, V) < 0.0) {
+            N = -N;     // two sided, the back of a card or a leaf
+        }
+
+        if (i == 0) {
+            primaryPos = vec4(payload.hitPos, 1.0);
+            primaryNormal = vec4(N, clamp(mat.roughnessFactor, 0.02, 1.0));
+            primaryAlbedo = mat.albedoFactor.rgb;
+            if (mat.emissiveFactor > 0.01) {
+                primaryEmission = mat.albedoFactor.rgb * mat.emissiveFactor;
+            }
+        }
+
         // record current hit state locally because NEE will overwrite the payload
         vec3 currentHitPos = payload.hitPos;
+        accumulatedColor += throughput * directLight(mat, currentHitPos, N, V);
+        payload.hitPos = currentHitPos;
+        payload.hit = 1;
 
         // direct light hit
-        if (mat.emissiveFactor > 0.01) {
+        if (mat.emissiveFactor > 0.01 && i > 0) {
             // If NEE is on, weight this accidental hit. If NEE is off, we take full power.
             float misWeight = (pc.explicitPass == 1 && i > 0) ? 0.5 : 1.0; 
             accumulatedColor += throughput * (mat.albedoFactor.rgb * mat.emissiveFactor) * misWeight;
@@ -351,7 +464,7 @@ void main() {
                 
                 // overwrites payload.hitPos and payload.hit
                 traceRayEXT(topLevelAS, 
-                    gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT, 
+                    gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT, 
                     0xFF, 0, 0, 0, 
                     currentHitPos + N * 0.001, 0.0, Ldir, dist - 0.001, 0
                 );
@@ -442,7 +555,7 @@ void main() {
 
         // Russian Roulette: flip if a ray survive, or not
         // if a ray doesn't survive, terminate, it if does, boost its contribution
-        if (i > 3) {
+        if (i >= 2) {   // russian roulette keeps the long paths cheap, the bounces beyond still add light
             float p = clamp(max(throughput.r, max(throughput.g, throughput.b)), 0.1, 0.95);
             if (rnd(payload.seed) > p) {
                 break;
@@ -454,15 +567,18 @@ void main() {
         rayDir = L;
     }
     
-    vec4 old = imageLoad(outputImage, pixelCoords);
-    if(ubo.clear) {
-        old = vec4(0.0);
+    // one sample per pixel per frame, the temporal and a-trous passes turn it into a stable image
+    vec3 lighting = accumulatedColor / max(primaryAlbedo, vec3(0.01));
+    float maxLuminance = 32.0;     // a single lucky bounce would sit in the history as a firefly
+    float luminance = dot(lighting, vec3(0.2126, 0.7152, 0.0722));
+    lighting *= luminance > maxLuminance ? maxLuminance / luminance : 1.0;
+    if (any(isnan(lighting)) || any(isinf(lighting))) {
+        lighting = vec3(0.0);
     }
 
-    vec3 ave = old.xyz;
-    float numSamples = old.w;
-
-    ave += (accumulatedColor - ave)/(numSamples + 1.0);
-    numSamples += 1.0;
-    imageStore(outputImage, pixelCoords, vec4(ave, numSamples));
+    imageStore(outputImage, pixelCoords, vec4(lighting, 1.0));
+    imageStore(gPosition, pixelCoords, primaryPos);
+    imageStore(gNormal, pixelCoords, primaryNormal);
+    imageStore(gAlbedo, pixelCoords, vec4(primaryAlbedo, 1.0));
+    imageStore(gEmission, pixelCoords, vec4(primaryEmission, 1.0));
 }

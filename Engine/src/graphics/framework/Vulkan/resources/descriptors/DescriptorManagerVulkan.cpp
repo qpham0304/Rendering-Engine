@@ -5,6 +5,7 @@
 #include "../../renderers/RenderDeviceVulkan.h"
 #include "core/features/ServiceLocator.h"
 #include "Logging/logger.h"
+#include <algorithm>
 
 DescriptorManagerVulkan::DescriptorManagerVulkan(std::string serviceName)
 	: DescriptorManager(serviceName)
@@ -260,11 +261,13 @@ void DescriptorManagerVulkan::writeAccelStruct(
     write.dstBinding      = binding;
     write.dstArrayElement = 0;
     write.descriptorCount = 1;
-    write.descriptorType  = bindingTable[binding].descriptorType;
+    write.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     write.pNext      = &descASInfo;
 
-    assert(bindingTable[binding].binding == binding);
-    assert(write.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+    // layouts don't have to list their bindings in binding order
+    auto entry = std::find_if(bindingTable.begin(), bindingTable.end(),
+        [binding](const VkDescriptorSetLayoutBinding& b) { return b.binding == binding; });
+    assert(entry != bindingTable.end() && entry->descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 
 	writes->push_back(write);
 }
@@ -366,11 +369,13 @@ void DescriptorManagerVulkan::writeAccelStruct2(
     write.dstBinding      = writer.writes.size();
     write.dstArrayElement = 0;
     write.descriptorCount = 1;
-    write.descriptorType  = bindingTable[binding].descriptorType;
+    write.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     write.pNext      = &descASInfo;
 
-    assert(bindingTable[binding].binding == binding);
-    assert(write.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+    // layouts don't have to list their bindings in binding order
+    auto entry = std::find_if(bindingTable.begin(), bindingTable.end(),
+        [binding](const VkDescriptorSetLayoutBinding& b) { return b.binding == binding; });
+    assert(entry != bindingTable.end() && entry->descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 
 	writer.writes.push_back(write);
 }

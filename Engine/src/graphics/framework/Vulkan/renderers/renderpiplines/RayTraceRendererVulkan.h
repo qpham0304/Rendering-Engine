@@ -20,6 +20,7 @@ private:
 		uint32_t objectIdx;
 		uint32_t bluenoiseIdx;
 		uint32_t explicitPass;
+		uint64_t lightsRef { 0 };
 	};
 
 	struct ObjectDesc {
@@ -40,7 +41,11 @@ private:
 		float height;
 		float frameSeed;
 		int frameCount;
-		bool clear;
+		int32_t clear;	// glsl bools are 4 bytes
+		alignas(16) glm::vec4 sunDirection;
+		alignas(16) glm::vec4 sunColor;
+		uint32_t lightCount;
+		int32_t maxBounces;
 	};
 
 	struct StorageBufferObject {
@@ -70,6 +75,7 @@ public:
 	void writePostProcess(VkCommandBuffer cmd, uint32_t currentFrame);
 	void writeRayTracing(VkCommandBuffer cmd, uint32_t currentFrame);
 	void updateTlas();
+	uint64_t getSkinnedVertexAddress(uint32_t meshID, uint32_t boneMatricesIdx);
 
 public:	//TODO: make private once done testing	
 	const int numInstances = 1;
@@ -78,6 +84,8 @@ public:	//TODO: make private once done testing
 	uint32_t frameCounter { 0 };
 	bool m_tlasInitialized { false };
 	uint64_t m_lastTlasFrame { 0 };
+	std::vector<uint32_t> m_instanceBufferIDs;
+	std::vector<uint32_t> m_instanceBufferCapacity;
 	bool clear { false };
 	bool explicitPass { false };
 
@@ -126,6 +134,77 @@ public:	//TODO: make private once done testing
     VkStridedDeviceAddressRegionKHR m_hitRegion{};       	// Hit shader region
     VkStridedDeviceAddressRegionKHR m_callRegion{};
 
+	struct SkinnedInstance {
+		uint32_t meshID { 0 };
+		uint32_t vertexBufferID { 0 };
+		uint64_t vertexAddress { 0 };
+		uint32_t vertexCount { 0 };
+		uint64_t lastSkinnedFrame { 0 };
+		RaytracingBuilderKHR::DynamicBlas blas {};
+	};
+	struct SkinningPushConstant {
+		uint64_t source;
+		uint64_t destination;
+		uint64_t boneTable;
+		uint32_t boneMatricesIdx;
+		uint32_t vertexCount;
+	};
+	std::unordered_map<uint64_t, SkinnedInstance> m_skinned;
+	std::unique_ptr<VulkanPipeline> m_skinningPipeline;
+
+	// real time denoise of the one sample per pixel trace: svgf style temporal accumulation then a-trous
+	struct DenoiseTargets {
+		TextureVulkan* noisy { nullptr };
+		TextureVulkan* albedo { nullptr };
+		TextureVulkan* emission { nullptr };
+		TextureVulkan* position[2] {};		// this frame's and last frame's, swap every frame
+		TextureVulkan* normal[2] {};
+		TextureVulkan* historyColor[2] {};
+		TextureVulkan* historyMoments[2] {};
+		TextureVulkan* atrous[2] {};
+	};
+	struct TemporalPushConstant {
+		glm::mat4 prevViewProj;
+		glm::vec4 cameraPos;
+		glm::ivec2 resolution;
+		float maxHistory;
+		float normalThreshold;
+		float positionTolerance;
+	};
+	struct AtrousPushConstant {
+		glm::vec4 cameraPos;
+		glm::ivec2 resolution;
+		int stepSize;
+		int composite;
+		float luminanceSigma;
+		float normalPower;
+		float positionSigma;
+	};
+	static constexpr int kMaxAtrousIterations = 5;
+	DenoiseTargets m_denoise;
+	uint32_t m_denoiseCurrent { 0 };
+	PathTracingSettings* m_pathTracingSettings { nullptr };
+	std::unique_ptr<VulkanPipeline> m_temporalPipeline;
+	std::unique_ptr<VulkanPipeline> m_atrousPipeline;
+	uint32_t m_temporalLayoutID { 0 };
+	uint32_t m_temporalPoolID { 0 };
+	uint32_t m_temporalSetsID { 0 };
+	uint32_t m_atrousLayoutID { 0 };
+	uint32_t m_atrousPoolID { 0 };
+	uint32_t m_atrousSetsID { 0 };
+
+	void _createDenoiseTargets();
+	void _destroyDenoiseTargets();
+	void _createDenoiseDescriptors();
+	void _createDenoisePipelines();
+	void _updateDenoiseDescriptors(uint32_t frameIndex, int atrousIterations);
+	void _writeDenoise(VkCommandBuffer cmd, uint32_t frameIndex);
+
+	static uint64_t _skinnedKey(uint32_t meshID, uint32_t boneMatricesIdx) { return (uint64_t(meshID) << 32) | boneMatricesIdx; }
+	void _skinAndRefit(VkCommandBuffer cmd);
+	void _releaseStaleSkinned();
+	void _updateSceneLighting(uint32_t frameIndex);
+
 	void _createResources();
 	void _createPipeline();
 	void _createDescriptor();
@@ -144,7 +223,7 @@ public:	//TODO: make private once done testing
 		return out_matrix;
 	}
 
-	BlasInput _toVkGeometry(uint32_t meshID);
+	BlasInput _toVkGeometry(uint32_t meshID, uint64_t vertexAddressOverride = 0);
 	void _createAccelStructure();
 	void _buildNewBlas();
 	void _createShaderBindingTable();

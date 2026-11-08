@@ -59,6 +59,7 @@ struct Object {
     uint materialIdx;
     uint flags;
     uint padding;
+    uint64_t rtVertexAddress;   // what ray hits read: the skinned copy for animated meshes, the mesh vertices otherwise
 };
 
 
@@ -152,7 +153,7 @@ void getHitObjectData(out Material mat, out vec3 nrm) {
     Object obj = pc.objRef.objects[payload.instanceIndex];
     
     // dereference addresses
-    Vertices vertices = Vertices(obj.vertexAddress);
+    Vertices vertices = Vertices(obj.rtVertexAddress);
     Indices indices = Indices(obj.indexAddress);
     MaterialsBuffer materials = MaterialsBuffer(obj.materialsRef);
     MaterialIndicesBuffer matIndices = MaterialIndicesBuffer(obj.materialIndiciesRef);
@@ -341,7 +342,7 @@ ivec2 pixelCoords = ivec2(gl_LaunchIDEXT.xy);
         vec3 emissive = mat.emissiveFactor * mat.albedoFactor.rgb;
         if (mat.emissiveIdx != uint(0)) {
             Object obj = pc.objRef.objects[payload.instanceIndex];
-            Vertices vertices = Vertices(obj.vertexAddress);
+            Vertices vertices = Vertices(obj.rtVertexAddress);
             Indices indices = Indices(obj.indexAddress);
 
             uint i0 = indices.i[3 * payload.primitiveIndex + 0];

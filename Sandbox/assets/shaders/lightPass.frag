@@ -59,7 +59,7 @@ layout(set = 1, binding = 10) uniform LightData {
     float skyboxDetail;
     int aoOn;
     float G;
-    float scatteringScale;
+    float fogDensity;       // extinction per meter at fogBaseHeight, 0 turns the fog off
     float iblDiffuse;       // whether to use ibl 1 or use global illumination 0
     int rtShadow;
     float pcssSoftness;
@@ -70,6 +70,14 @@ layout(set = 1, binding = 10) uniform LightData {
     float maxDepthSlope;
     mat4 sunNormalMatrix;   // world normals into the sun clip space
     float normalBias;       // shadow texels
+    int ambientInCombine;   // the combine pass adds all ambient (ssgi / ddgi / ibl), this pass is direct light only
+    float fogHeightFalloff;
+    float fogBaseHeight;
+    float fogMaxDistance;
+    int fogSteps;
+    uint frameIndex;
+    float fogSunScattering;     // artistic multipliers on what the fog scatters, 1 is physical
+    float fogAmbientScattering;
 } pcl;
 
 const float PI = 3.14159265359;
@@ -283,6 +291,56 @@ float mieScattering(float cosTheta, float G) {
 	return numerator / denominator;
 }
 
+// sun visibility of a point in the air, outside the shadow map counts as lit instead of repeating its edge
+float airShadow(vec3 p) {
+    vec4 lightSpace = pcl.sunlightMVP * vec4(p, 1.0);
+    vec3 coords = lightSpace.xyz / lightSpace.w;
+    coords.xy = coords.xy * 0.5 + 0.5;
+    if (any(lessThan(coords.xy, vec2(0.0))) || any(greaterThan(coords.xy, vec2(1.0))) || coords.z > 1.0) {
+        return 1.0;
+    }
+    return textureLod(shadowMap, coords.xy, 0.0).r > coords.z - 0.0005 ? 1.0 : 0.0;
+}
+
+// exponential height fog, clamped so the density can't explode far below the base height
+float fogExtinction(float height) {
+    return pcl.fogDensity * exp(clamp(-pcl.fogHeightFalloff * (height - pcl.fogBaseHeight), -40.0, 4.0));
+}
+
+// single scattering of the sun and the sky through the fog along the view ray, the god rays are its shadowed steps.
+// albedo 1, everything the fog takes out is scattered, and each step integrates its own extinction (Hillaire 2015)
+// so the result doesn't depend on the step size. transmittance is what is left of the surface or sky behind it
+vec3 integrateFog(vec3 rayDir, float rayLength, vec3 sunDir, out float transmittance) {
+    transmittance = 1.0;
+    if (pcl.fogDensity <= 0.0) {
+        return vec3(0.0);
+    }
+
+    int steps = max(pcl.fogSteps, 1);
+    float dt = min(rayLength, pcl.fogMaxDistance) / float(steps);
+
+    // blue noise start, stepped by the golden ratio every frame so dlss / taa average the steps into the full integral
+    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
+    float jitter = fract(texture(blueNoise, noiseUV).r + float(pcl.frameIndex % 64u) * 0.61803398875);
+
+    // the multipliers only change what is scattered, not the extinction, so the shafts can be pushed without hiding the scene
+    vec3 sunLight = pcl.color.rgb * mieScattering(dot(rayDir, sunDir), pcl.G) * pcl.fogSunScattering;
+    vec3 skyLight = max(sh.shCoeffs[0].rgb * 0.282095, vec3(0.0)) * pcl.fogAmbientScattering;   // average sky radiance, isotropic so no phase
+
+    vec3 scattered = vec3(0.0);
+    for (int i = 0; i < steps; i++) {
+        vec3 p = ubo.cameraPos.xyz + rayDir * ((float(i) + jitter) * dt);
+        float stepTransmittance = exp(-fogExtinction(p.y) * dt);
+        vec3 incoming = sunLight * airShadow(p) + skyLight;
+        scattered += transmittance * incoming * (1.0 - stepTransmittance);
+        transmittance *= stepTransmittance;
+        if (transmittance < 0.01) {
+            break;
+        }
+    }
+    return scattered;
+}
+
 float rand(vec3 p) {
     return fract(sin(dot(p, vec3(12.345, 67.89, 412.12))) * 42123.45) * 2.0 - 1.0;
 }
@@ -451,15 +509,6 @@ vec3 GetImportanceSampledSpecular(vec3 V, vec3 N, float roughness, vec3 F0) {
     return specularLighting / float(SAMPLE_COUNT);
 }
 
-vec3 aces(vec3 x) {
-  const float a = 2.51;
-  const float b = 0.03;
-  const float c = 2.43;
-  const float d = 0.59;
-  const float e = 0.14;
-  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
-}
-
 void main() {
     vec3 worldPos  = texelFetch(inputPos, ivec2(gl_FragCoord.xy), 0).rgb;
     vec3 worldNorm = texelFetch(inputNorm, ivec2(gl_FragCoord.xy), 0).rgb;
@@ -497,7 +546,9 @@ void main() {
 
         // envColor = envColor / (envColor + 1.0);
         // outColor = vec4(pow(envColor, vec3(1.0/2.2)), 1.0);
-        outColor = vec4(envColor, 1.0); 
+        float skyTransmittance;
+        vec3 skyFog = integrateFog(V_sky_norm, pcl.fogMaxDistance, normalize(pcl.direction.xyz), skyTransmittance);
+        outColor = vec4(envColor * skyTransmittance + skyFog, 1.0);
         return;
     }
     
@@ -579,7 +630,7 @@ void main() {
     }
     
     //use IBL or not... if ddgi and ssgi enabled then  pcl.iblDiffuse = 0
-    vec3 ambient = (kD * diffuseIBL * pcl.iblDiffuse + specularIBL) * ao;
+    vec3 ambient = pcl.ambientInCombine != 0 ? vec3(0.0) : (kD * diffuseIBL * pcl.iblDiffuse + specularIBL) * ao;
     vec3 finalColor = ambient + Lo + sunlight + emissive.rgb;
 
     // if(pcl.aoOn != 0) {
@@ -587,51 +638,12 @@ void main() {
     //     return;
     // }
 
-    // vec3 V_dir = normalize(worldPos - ubo.cameraPos.xyz);
-    vec3 V_ray = normalize(worldPos - ubo.cameraPos.xyz);
-    float maxDist = length(worldPos - ubo.cameraPos.xyz);
-
-    const int numSteps = 16;
-    float stepSize = maxDist / float(numSteps);
-
-    // Dithering to hide banding
-    float dither = DITHER_PATTERN[int(gl_FragCoord.x) % 4][int(gl_FragCoord.y) % 4];
-    vec2 noiseUV = gl_FragCoord.xy / vec2(textureSize(blueNoise, 0));
-    dither *= texture(blueNoise, noiseUV).r;
-    // vec3 rayPos = ubo.cameraPos.xyz + (V_ray * stepSize * dither);
-    vec3 rayPos = ubo.cameraPos.xyz;
-    vec3 step = V_ray * stepSize;
-    rayPos += step * dither;
-
-    vec3 volume = vec3(0.0f);
-	vec4 color = vec4(0.0f);
-    float transparency = 1.0;
-    float absorptionCoefficient = 0.15;
-    for(int i = 0; i < numSteps; i++) {
-        vec4 fragPosLight = pcl.sunlightMVP * vec4(rayPos, 1.0);
-        vec3 projCoords = fragPosLight.xyz / fragPosLight.w;
-        projCoords.xy = projCoords.xy * 0.5 + 0.5;
-
-        float shadowDepth = texture(shadowMap, projCoords.xy).r;
-
-        // is the air-point closer to sun than the shadow-map
-        if(shadowDepth > projCoords.z - 0.0005) {
-            float phase = mieScattering(dot(V_ray, L_sun), pcl.G);
-            vec3 scattering = pcl.color.rgb * phase * absorptionCoefficient;
-            volume += scattering * transparency * stepSize;
-        }
-        transparency *= exp(-absorptionCoefficient * stepSize);
-        
-        if(transparency <= 0.01) {
-            break;
-        }
-        rayPos += step;
-    }
-
-    vec3 finalVolume = (volume / float(numSteps)) * (pcl.scatteringScale*3);
-    finalColor += finalVolume;
-    // finalColor = finalColor / (finalColor + vec3(1.0));
-    // finalColor = pow(finalColor, vec3(1.0/2.2));
+    // the fog in front of the surface dims it and adds the light it scatters toward the camera.
+    // the combine pass adds the ambient after this, so far surfaces keep some of it through thick fog
+    vec3 toSurface = worldPos - ubo.cameraPos.xyz;
+    float fogTransmittance;
+    vec3 fog = integrateFog(normalize(toSurface), length(toSurface), L_sun, fogTransmittance);
+    finalColor = finalColor * fogTransmittance + fog;
     
     // the target is float now: one nan / inf pixel survives, and bloom smears it into a black block
     if (any(isnan(finalColor)) || any(isinf(finalColor))) {

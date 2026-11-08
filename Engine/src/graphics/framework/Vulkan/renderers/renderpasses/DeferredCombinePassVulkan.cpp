@@ -18,6 +18,7 @@
 #include <math.h>
 #include <algorithm>
 #include "TemporalPassVulkan.h"
+#include "AtrousPassVulkan.h"
 #include "BloomPassVulkan.h"
 
 DeferredCombinePassVulkan::DeferredCombinePassVulkan(std::string serviceName)
@@ -86,6 +87,8 @@ void DeferredCombinePassVulkan::render(Camera &camera)
 	}
 
     pushConstant.shouldCombine = (deferredSettings && deferredSettings->combine) ? 1 : 0;
+    const LightingSettings* lightingSettings = graphicsSettings.get<LightingSettings>();
+    pushConstant.aoOn = (lightingSettings && lightingSettings->ambientOcclusion) ? 1 : 0;
 
     // the grid values are published by the ddgi builder so they always match what the atlases were built with
     pushConstant.ddgiMode = 0;
@@ -133,11 +136,18 @@ void DeferredCombinePassVulkan::_fetchInputImages(uint32_t currentFrame)
     renderer = rendererManagerVulkan->getRenderer("BloomPassVulkan");
 	auto bloomPassRenderer = dynamic_cast<BloomPassVulkan*>(renderer);
 
-    if(deferredSettings && deferredSettings->temporalReprojection) {
+    auto atrousPass = dynamic_cast<AtrousPassVulkan*>(rendererManagerVulkan->getRenderer("AtrousPassVulkan"));
+    if(deferredSettings && deferredSettings->temporalReprojection && atrousPass && atrousPass->isFiltering()) {
+        denoisedGIImage = atrousPass->getDiffuseOutputImage();
+        specularGIImage = atrousPass->getSpecularOutputImage();
+    } else if(deferredSettings && deferredSettings->temporalReprojection) {
         denoisedGIImage = temporalPassRenderer->getOutputImage();
+        specularGIImage = temporalPassRenderer->getSpecularOutputImage();
     } else {
         denoisedGIImage = SSRGIPassRenderer->getOutputImage();
+        specularGIImage = SSRGIPassRenderer->getSpecularImage();
     }
+    aoImage = dynamic_cast<PostProcessRendererVulkan*>(rendererManagerVulkan->getRenderer("AmbientOcclusionPassVulkan"))->getOutputImage();
 
     sceneImage = lightingPass->renderTarget.colorTexture;
     albedoImage = geometryPass->renderTarget.gBufferAlbedo;
@@ -172,15 +182,19 @@ void DeferredCombinePassVulkan::writeCombinedImage(VkCommandBuffer cmd, uint32_t
     vkCmdDispatch(cmd, groupX, groupY, 1);
 }
 
-void DeferredCombinePassVulkan::_createResources()
+// keeps its contents between frames (no UNDEFINED initial layout): ssrgi shades its hits with last frame's result
+RGTextureDesc DeferredCombinePassVulkan::outputDesc()
 {
     RGTextureDesc desc{};
     desc.config.format = VK_FORMAT_R16G16B16A16_SFLOAT;
-    desc.config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    return desc;
+}
 
+void DeferredCombinePassVulkan::_createResources()
+{
     RenderGraphVulkan& graph = rendererManagerVulkan->getRenderGraph();
     uint32_t previousOutputID = outputImageID;
-    outputHandle = graph.createRenderTexture("DeferredCombine.Output", desc);
+    outputHandle = graph.createRenderTexture(OutputName, outputDesc());
     outputImage = graph.getTexture(outputHandle);
     outputImageID = outputImage->id();
 
@@ -219,12 +233,16 @@ void DeferredCombinePassVulkan::_createDescriptors()
 		{ 9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 10, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 11, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 12, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 13, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 14, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 15, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     };
 
 	uint32_t frameCount = VulkanUtils::numFrames();
     std::vector<VkDescriptorPoolSize> poolSizes {
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 11},
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 15},
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 1},
 	};
@@ -297,6 +315,11 @@ void DeferredCombinePassVulkan::_updateDescriptor(uint32_t index)
 	visibilityAtlasImageInfo.imageView = visibilityAtlasImageGI->textureImageView;
 	visibilityAtlasImageInfo.sampler = visibilityAtlasImageGI->textureSampler;
 
+	VkDescriptorImageInfo specularGIInfo{ specularGIImage->textureSampler, specularGIImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo prefilterInfo{ imageBasedRenderer->prefilterMap->textureSampler, imageBasedRenderer->prefilterMap->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo brdfLutInfo{ imageBasedRenderer->brdfLUT->textureSampler, imageBasedRenderer->brdfLUT->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo aoInfo{ aoImage->textureSampler, aoImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+
 	std::vector<VkWriteDescriptorSet> writes;
 	descriptorManagerVulkan->writeUniform(&writes, descriptorSets[index], 0, bufferInfo);
 	descriptorManagerVulkan->writeStorageImage(&writes, descriptorSets[index], 1, outputImageInfo);
@@ -310,6 +333,10 @@ void DeferredCombinePassVulkan::_updateDescriptor(uint32_t index)
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 9, visibilityAtlasImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 10, pbrImageInfo);
 	descriptorManagerVulkan->writeStorage(&writes, descriptorSets[index], 11, imageBasedRenderer->finalSumBuffers[index]->getDescStorageBufferInfo());
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 12, specularGIInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 13, prefilterInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 14, brdfLutInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 15, aoInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
@@ -349,8 +376,11 @@ void DeferredCombinePassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto normal = graph.importTexture(normalImage);
     auto visibility = graph.importTexture(visibilityAtlasImageGI);
     auto pbr = graph.importTexture(pbrImage);
+    auto specularGI = graph.importTexture(specularGIImage);
+    auto ao = graph.importTexture(aoImage);
 
     RenderPassNode node{};
+    node.settings = rendererManagerVulkan->getGraphicsSettings().get<DeferredSettings>();
     node.name = "DeferredCombine";
     node.reads = {
         { gi, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
@@ -362,6 +392,8 @@ void DeferredCombinePassVulkan::addToGraph(RenderGraphVulkan& graph)
         { normal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
         { visibility, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
         { pbr, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { specularGI, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { ao, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
     };
     node.writes = {
         { outputHandle, VK_IMAGE_LAYOUT_GENERAL },

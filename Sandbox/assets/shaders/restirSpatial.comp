@@ -1,0 +1,120 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+
+#include "common/restir.glsl"
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(set = 0, binding = 0, rgba32f) uniform readonly image2D u_Reservoir0;
+layout(set = 0, binding = 1, rgba32f) uniform readonly image2D u_Reservoir1;
+layout(set = 0, binding = 2, rgba32f) uniform readonly image2D u_Reservoir2;
+layout(set = 0, binding = 3, rgba32f) uniform readonly image2D u_Reservoir3;
+layout(set = 0, binding = 4, rgba16f) uniform writeonly image2D u_OutDiffuse;   // rgb = radiance * confidence, a = confidence
+
+layout(push_constant) uniform Constants {
+    ivec2 traceRes;
+    float radius;           // trace pixels
+    int samples;
+    uint frameSeed;
+    float maxJacobian;
+} pc;
+
+Reservoir loadReservoir(ivec2 coord) {
+    return unpackReservoir(imageLoad(u_Reservoir0, coord), imageLoad(u_Reservoir1, coord),
+        imageLoad(u_Reservoir2, coord), imageLoad(u_Reservoir3, coord));
+}
+
+uint hashSeed(uint x) {
+    x ^= x >> 16;
+    x *= 0x7feb352du;
+    x ^= x >> 15;
+    x *= 0x846ca68bu;
+    x ^= x >> 16;
+    return x;
+}
+
+float random(inout uint state) {
+    state = state * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return float((word >> 22u) ^ word) / 4294967295.0;
+}
+
+// a neighbor's sample seen from this pixel: the solid angle it covers changes with the distance and the angle at the
+// sample point, this is d(solid angle here) / d(solid angle at the neighbor)
+float reconnectionJacobian(Reservoir neighbor, vec3 receiverPos) {
+    vec3 toCenter = receiverPos - neighbor.samplePos;
+    vec3 toNeighbor = neighbor.visiblePos - neighbor.samplePos;
+    float distCenter = length(toCenter);
+    float distNeighbor = length(toNeighbor);
+    if (distCenter < 1e-4 || distNeighbor < 1e-4) {
+        return 0.0;
+    }
+    float cosCenter = abs(dot(neighbor.sampleNormal, toCenter / distCenter));
+    float cosNeighbor = abs(dot(neighbor.sampleNormal, toNeighbor / distNeighbor));
+    if (cosNeighbor < 1e-4) {
+        return 0.0;
+    }
+    return (cosCenter / cosNeighbor) * (distNeighbor * distNeighbor) / (distCenter * distCenter);
+}
+
+// spatial reuse: the pixel's temporal reservoir merged with a few on similar surfaces nearby, then resolved into the
+// same diffuse estimate the plain trace writes. visibility between the pixel and a reused sample is not traced, the
+// surface tests keep that from leaking across edges
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    if (pixel.x >= pc.traceRes.x || pixel.y >= pc.traceRes.y) {
+        return;
+    }
+
+    Reservoir center = loadReservoir(pixel);
+    if (center.M <= 0.0) {
+        imageStore(u_OutDiffuse, pixel, vec4(0.0));
+        return;
+    }
+
+    uint state = hashSeed(uint(pixel.x) + uint(pixel.y) * uint(pc.traceRes.x) + pc.frameSeed * 9781u);
+
+    Reservoir r = emptyReservoir(center.visiblePos, center.visibleNormal);
+    float centerTarget = restirTarget(center.radiance, center.confidence, center.samplePos, center.visiblePos, center.visibleNormal);
+    updateReservoir(r, center, centerTarget * center.W * center.M, center.M, random(state));
+
+    for (int i = 0; i < pc.samples; i++) {
+        float angle = random(state) * 6.28318530718;
+        float dist = sqrt(random(state)) * pc.radius;
+        ivec2 coord = pixel + ivec2(round(vec2(cos(angle), sin(angle)) * dist));
+        if (coord == pixel || any(lessThan(coord, ivec2(0))) || any(greaterThanEqual(coord, pc.traceRes))) {
+            continue;
+        }
+
+        Reservoir neighbor = loadReservoir(coord);
+        if (neighbor.M <= 0.0) {
+            continue;
+        }
+
+        vec3 offset = neighbor.visiblePos - center.visiblePos;
+        float planeDistance = abs(dot(center.visibleNormal, offset));
+        if (dot(center.visibleNormal, neighbor.visibleNormal) < 0.9 || planeDistance > 0.05 * max(length(offset), 0.1) + 0.02) {
+            continue;
+        }
+
+        float weight = 0.0;
+        if (neighbor.confidence > 0.0 && neighbor.W > 0.0) {
+            float jacobian = reconnectionJacobian(neighbor, center.visiblePos);
+            if (jacobian <= 0.0 || jacobian > pc.maxJacobian || jacobian < 1.0 / pc.maxJacobian) {
+                continue;
+            }
+            float target = restirTarget(neighbor.radiance, neighbor.confidence, neighbor.samplePos, center.visiblePos, center.visibleNormal);
+            weight = target * neighbor.W * neighbor.M * jacobian;   // W is per solid angle at the neighbor, the jacobian moves it here
+        }
+        updateReservoir(r, neighbor, weight, neighbor.M, random(state));
+    }
+
+    finalizeReservoir(r);
+    vec4 result = resolveReservoir(r);
+    result.a = min(result.a, 1.0);
+    if (any(isnan(result)) || any(isinf(result))) {
+        result = vec4(0.0);
+    }
+    imageStore(u_OutDiffuse, pixel, result);
+}

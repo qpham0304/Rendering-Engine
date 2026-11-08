@@ -20,6 +20,19 @@ public:
 		alignas(8) uint64_t objectsRef;
 		alignas(8) uint64_t lightsRef;
 		alignas(4) uint32_t lightCount;
+		alignas(4) float maxSampleLuminance;
+		alignas(4) int reflectionOnly;
+		alignas(4) uint32_t frameIndex { 0 };
+		alignas(4) int restir { 0 };
+		alignas(4) float restirMaxHistory { 20.0f };
+	};
+
+	struct SpatialPushConstant {
+		glm::ivec2 traceRes;
+		float radius;
+		int samples;
+		uint32_t frameSeed;
+		float maxJacobian;
 	};
 
 	struct UniformBufferObject {
@@ -49,6 +62,7 @@ public:
 	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
     void writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame, VulkanPipeline* activePipeline);
+	TextureVulkan* getSpecularImage() const { return specularImage; }
 
 public: // TODO: consider make private
 	TextureVulkan* depthImageHiZ;
@@ -59,6 +73,13 @@ public: // TODO: consider make private
 	TextureVulkan* emissiveImage;
 	TextureVulkan* colorImage;
 	RGHandle outputHandle {};
+	TextureVulkan* specularImage { nullptr };
+	RGHandle specularHandle {};
+	uint32_t specularImageID { 0 };
+	TextureVulkan* motionImage { nullptr };
+	TextureVulkan* prevColorImage { nullptr };
+	RGHandle prevColorHandle {};
+	uint32_t prevColorImageID { 0 };
 	
 protected:
 	void _createResources();
@@ -85,5 +106,17 @@ protected:
 	uint32_t hizImageID { 0 };
 	uint32_t traceWidth { 0 };
 	uint32_t traceHeight { 0 };
+
+	void _updateReservoirDescriptors(uint32_t index);
+	void _writeSpatialReuse(VkCommandBuffer cmd, uint32_t currentFrame);
+
+	TextureVulkan* reservoirs[2][4] {};
+	RGHandle reservoirHandles[2][4] {};
+	int reservoirCurrent { 0 };
+	std::unique_ptr<VulkanPipeline> spatialPipeline;
+	uint32_t spatialLayoutID { 0 };
+	uint32_t spatialPoolID { 0 };
+	uint32_t spatialSetsID { 0 };
+	SpatialPushConstant spatialPushConstant {};
 
 };

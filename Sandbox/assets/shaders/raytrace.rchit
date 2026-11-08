@@ -60,6 +60,7 @@ struct Object {
     uint materialIdx;
     uint flags;
     uint padding;
+    uint64_t rtVertexAddress;   // what ray hits read: the skinned copy for animated meshes, the mesh vertices otherwise
 };
 
 
@@ -82,7 +83,7 @@ hitAttributeEXT vec2 attribs;
 
 void main() {
     Object obj = pc.objRef.objects[gl_InstanceCustomIndexEXT];
-    Vertices vertices = Vertices(obj.vertexAddress);
+    Vertices vertices = Vertices(obj.rtVertexAddress);
     Indices indices = Indices(obj.indexAddress);
     MaterialIndicesBuffer matIndices = MaterialIndicesBuffer(obj.materialIndiciesRef);
 
@@ -98,7 +99,7 @@ void main() {
     // payload.matIdx = matIndices.i[gl_PrimitiveID];
 
     payload.hitPos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
-    payload.worldNormal = normalize(nrmObject * gl_ObjectToWorldEXT).xyz;
+    payload.worldNormal = normalize(vec3(nrmObject * gl_WorldToObjectEXT));  // inverse transpose of object to world
     payload.instanceIndex = gl_InstanceCustomIndexEXT;
     payload.primitiveIndex = gl_PrimitiveID;
     payload.bc = bc;

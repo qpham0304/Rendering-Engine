@@ -30,24 +30,8 @@ bool AnimationManager::init(WindowConfig config)
     m_skinAnimator.init(this);
     m_spriteAnimator.init(this);
     
-    // m_boneMatricesBuffers.push_back(0);
-    // m_boneMatricesData.push_back({glm::mat4(1.0)});
-    
     //populate the first array slot for an empty array of one basic bone for debugging
-    const int boneCount = 1;
-    std::vector<glm::mat4> boneMatrices{{glm::mat4(1.0)}};
-    boneMatrices.resize(boneCount, glm::mat4(1.0f));
-
-    size_t bufferSize = boneCount * sizeof(glm::mat4);
-    uint32_t bufferID = m_bufferManager->createBufferDeviceAddress(bufferSize);
-    m_bufferManager->updateBufferDeviceAddress(bufferID, boneMatrices.data(), bufferSize);
-    m_boneMatricesData.push_back(std::move(boneMatrices));
-
-    m_boneMatricesBuffers.emplace_back(m_bufferManager->getVirtualMemoryAddress(bufferID));
-    size_t containerBufferSize = sizeof(uint64_t) * m_boneMatricesBuffers.size();
-    deviceAdressBufferID = m_bufferManager->createBufferDeviceAddress(containerBufferSize);
-    m_bufferManager->updateBufferDeviceAddress(deviceAdressBufferID, m_boneMatricesBuffers.data(), containerBufferSize);
-
+    m_boneMatricesData.push_back({ glm::mat4(1.0f) });
 
     return true;
 }
@@ -73,56 +57,52 @@ void AnimationManager::onUpdate(const FrameTime& frameTime)
 {
     m_spriteAnimator.onUpdate(frameTime.gameDeltaTime);
     m_skinAnimator.onUpdate(frameTime.gameDeltaTime);
+}
 
-    int i = 0;
-    for(auto& boneMatrices : m_boneMatricesData) {
-        size_t bufferSize = boneMatrices.size() * sizeof(glm::mat4);
-        if(bufferSize == 0){
-            m_logger->warn("boneMatrices id: {} is empty", i);
-        } else {
-            //TODO: brute force search all buffers to find a match because no way to store
-            // m_boneMatricesBuffers as bufferid instead of direct memory address without breaking
-            // review this when have time
-            uint32_t bufferID = m_bufferManager->findBufferID(m_boneMatricesBuffers[i]);
-            if(bufferID != 0) {
-                m_bufferManager->updateBufferDeviceAddress(bufferID, m_boneMatricesData[i].data(), bufferSize);
-            }
+// only called once this frame's fence has signaled, so nothing on the gpu still reads its buffers
+void AnimationManager::uploadBoneMatrices(uint32_t frameIndex)
+{
+    if(frameIndex >= m_frameBones.size()) {
+        m_frameBones.resize(frameIndex + 1);
+    }
+    FrameBones& frame = m_frameBones[frameIndex];
+
+    // bone sets added since this frame last ran get their buffers here, the address table grows with them
+    if(frame.bufferIDs.size() < m_boneMatricesData.size()) {
+        for(size_t i = frame.bufferIDs.size(); i < m_boneMatricesData.size(); i++) {
+            uint32_t bufferID = m_bufferManager->createBufferDeviceAddress(m_boneMatricesData[i].size() * sizeof(glm::mat4));
+            frame.bufferIDs.push_back(bufferID);
+            frame.addresses.push_back(m_bufferManager->getVirtualMemoryAddress(bufferID));
         }
-        i++;
+
+        if(frame.tableID != 0) {
+            m_bufferManager->destroy(frame.tableID);
+        }
+        size_t tableSize = sizeof(uint64_t) * frame.addresses.size();
+        frame.tableID = m_bufferManager->createBufferDeviceAddress(tableSize);
+        m_bufferManager->updateBufferDeviceAddress(frame.tableID, frame.addresses.data(), tableSize);
+    }
+
+    for(size_t i = 0; i < m_boneMatricesData.size(); i++) {
+        m_bufferManager->updateBufferDeviceAddress(frame.bufferIDs[i], m_boneMatricesData[i].data(), m_boneMatricesData[i].size() * sizeof(glm::mat4));
     }
 }
 
-uint32_t AnimationManager::getAnimationBufferAddressID()
+uint32_t AnimationManager::getAnimationBufferAddressID(uint32_t frameIndex) const
 {
-    return deviceAdressBufferID;
+    return frameIndex < m_frameBones.size() ? m_frameBones[frameIndex].tableID : 0;
 }
 
 uint32_t AnimationManager::addBoneMatrices(size_t boneCount)
 {
-    std::vector<glm::mat4> boneMatrices;
-    boneMatrices.resize(boneCount, glm::mat4(1.0f));
-
-    size_t bufferSize = boneCount * sizeof(glm::mat4);
-    uint32_t bufferID = m_bufferManager->createBufferDeviceAddress(bufferSize);
-    m_bufferManager->updateBufferDeviceAddress(bufferID, boneMatrices.data(), bufferSize);
-    m_boneMatricesData.push_back(std::move(boneMatrices));
-
-    
-    m_boneMatricesBuffers.emplace_back(m_bufferManager->getVirtualMemoryAddress(bufferID));
-    size_t containerBufferSize = sizeof(uint64_t) * m_boneMatricesBuffers.size();
-    if(deviceAdressBufferID != 0) {  // resizeable bda so this need to be recreated every new added bone
-        m_bufferManager->destroy(deviceAdressBufferID);
-    }
-    deviceAdressBufferID = m_bufferManager->createBufferDeviceAddress(containerBufferSize);
-    m_bufferManager->updateBufferDeviceAddress(deviceAdressBufferID, m_boneMatricesBuffers.data(), containerBufferSize);
-
+    m_boneMatricesData.push_back(std::vector<glm::mat4>(boneCount, glm::mat4(1.0f)));
     return m_boneMatricesData.size() - 1;   // use array incremental size as access index but not thread friendly
 }
 
 // return modifiable bone matrices per unique entity
 std::vector<glm::mat4> &AnimationManager::getFinalBoneMatrices(uint32_t id)
 {
-    if(id <= 0 || id >= m_boneMatricesBuffers.size()) {
+    if(id <= 0 || id >= m_boneMatricesData.size()) {
         m_logger->warn("bone matrices with id: {} does not exist", id);
         return m_boneMatricesData[0];
     }

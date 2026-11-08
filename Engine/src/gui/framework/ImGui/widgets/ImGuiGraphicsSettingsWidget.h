@@ -13,5 +13,7 @@ public:
     virtual void render() override;
 
 private:
+    void _drawOutputs(const std::vector<RGPassInfo>& passes, const void* settings);
+
     ImGuiReflectionRegistry m_drawers;
 };

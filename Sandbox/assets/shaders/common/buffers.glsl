@@ -55,6 +55,7 @@ struct Object {
     uint materialIdx;
     uint flags;
     uint padding;
+    uint64_t rtVertexAddress;   // what ray hits read: the skinned copy for animated meshes, the mesh vertices otherwise
 };
 
 layout(buffer_reference, scalar) buffer ObjectsBuffer{ Object objects[]; };
@@ -77,6 +78,19 @@ layout(buffer_reference, scalar) readonly buffer MaterialIndicesBuffer { uint i[
 
 layout(buffer_reference, scalar) buffer BoneModelBuffer { mat4 boneMatrices[]; };
 layout(buffer_reference, scalar) buffer BoneMatrixArrayTable { BoneModelBuffer ptrs[]; };
+
+// the uv a material is sampled at. sprite sheets show one frame: uvScale is the cell size and uvOffset its corner
+// (SpriteAnimator), plain materials have scale 1 and can scroll with the offset. a cell is clamped half a texel
+// inside its edges so bilinear filtering doesn't bleed the neighbouring frame in, albedoSize is the sheet's size
+vec2 materialUV(Material mat, vec2 uv, ivec2 albedoSize) {
+    vec2 scale = any(equal(mat.uvScale, vec2(0.0))) ? vec2(1.0) : mat.uvScale;
+    vec2 frameUV = uv * scale + mat.uvOffset;
+    if (any(lessThan(scale, vec2(1.0 - 1e-4)))) {
+        vec2 halfTexel = 0.5 / vec2(max(albedoSize, ivec2(1)));
+        frameUV = clamp(frameUV, mat.uvOffset + halfTexel, mat.uvOffset + scale - halfTexel);
+    }
+    return frameUV;
+}
 
 // alpha masked materials (foliage cards) cut their shape out of the albedo alpha, 0 cutoff is opaque
 bool alphaClipped(Material mat, float albedoAlpha) {

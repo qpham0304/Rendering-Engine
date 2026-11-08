@@ -2,6 +2,7 @@
 
 #include "core/resources/managers/Manager.h"
 #include "graphics/renderers/Renderer.h"
+#include "graphics/renderers/RenderGraph.h"
 #include "core/features/Texture.h"
 #include "graphics/utils/GraphicsSettingsSerializer.h"
 #include <glm/glm.hpp>
@@ -35,8 +36,13 @@ public:
 	}
 
     virtual Renderer* getRenderer(std::string_view name) = 0;
+	virtual RenderGraph& getRenderGraph() = 0;
 
 	GraphicsSettingsSerializer& getGraphicsSettings() { return m_graphicsSettings; }
+
+	// debug view: the viewport shows this texture instead of the final image, 0 shows the final image
+	void setViewTexture(uint32_t textureID) { m_viewTextureID = textureID; }
+	uint32_t getViewTexture() const { return m_viewTextureID; }
 
 protected:
 	friend class Engine;
@@ -45,5 +51,6 @@ protected:
 
 	std::vector<std::tuple<std::string, std::shared_ptr<Renderer>>> m_renderers;
 	GraphicsSettingsSerializer m_graphicsSettings;
+	uint32_t m_viewTextureID { 0 };
 
 };

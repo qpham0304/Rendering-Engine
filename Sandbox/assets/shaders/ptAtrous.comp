@@ -1,0 +1,90 @@
+#version 460
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0, rgba16f) uniform readonly image2D u_In;         // rgb, a = variance
+layout(set = 0, binding = 1, rgba16f) uniform writeonly image2D u_Out;
+layout(set = 0, binding = 2, rgba32f) uniform readonly image2D u_Position;
+layout(set = 0, binding = 3, rgba16f) uniform readonly image2D u_Normal;
+layout(set = 0, binding = 4, rgba16f) uniform readonly image2D u_Albedo;
+layout(set = 0, binding = 5, rgba16f) uniform readonly image2D u_Emission;
+layout(set = 0, binding = 6, rgba32f) uniform writeonly image2D u_Composite; // the last iteration's lit image
+
+layout(push_constant) uniform Constants {
+    vec4 cameraPos;
+    ivec2 resolution;
+    int stepSize;
+    int composite;
+    float luminanceSigma;
+    float normalPower;
+    float positionSigma;
+} pc;
+
+const float kernel[3] = float[](3.0 / 8.0, 1.0 / 4.0, 1.0 / 16.0);
+
+float luminance(vec3 c) {
+    return dot(c, vec3(0.2126, 0.7152, 0.0722));
+}
+
+// one svgf a-trous iteration: an edge avoiding 5x5 b3 spline spread stepSize pixels apart. brightness differences
+// only count against the noise this pixel still has (its variance), so converged areas keep their detail.
+// the last iteration multiplies the albedo back in and adds what the camera sees directly
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    if (pixel.x >= pc.resolution.x || pixel.y >= pc.resolution.y) {
+        return;
+    }
+
+    vec4 position = imageLoad(u_Position, pixel);
+    vec4 center = imageLoad(u_In, pixel);
+    if (position.w <= 0.0) {
+        imageStore(u_Out, pixel, vec4(0.0));
+        if (pc.composite != 0) {
+            imageStore(u_Composite, pixel, vec4(imageLoad(u_Emission, pixel).rgb, 1.0));
+        }
+        return;
+    }
+
+    vec3 normal = imageLoad(u_Normal, pixel).xyz;
+    float distanceToCamera = max(length(position.xyz - pc.cameraPos.xyz), 0.1);
+    float centerLum = luminance(center.rgb);
+    float lumScale = pc.luminanceSigma * sqrt(max(center.a, 0.0)) + 1e-4;
+
+    vec3 sumColor = vec3(0.0);
+    float sumVariance = 0.0;
+    float sumWeight = 0.0;
+    int radius = pc.stepSize > 0 ? 2 : 0;     // step 0 only resolves the history, denoise off
+    for (int y = -radius; y <= radius; y++) {
+        for (int x = -radius; x <= radius; x++) {
+            ivec2 coord = pixel + ivec2(x, y) * pc.stepSize;
+            if (any(lessThan(coord, ivec2(0))) || any(greaterThanEqual(coord, pc.resolution))) {
+                continue;
+            }
+            vec4 samplePosition = imageLoad(u_Position, coord);
+            if (samplePosition.w <= 0.0) {
+                continue;
+            }
+            vec4 value = imageLoad(u_In, coord);
+            vec3 sampleNormal = imageLoad(u_Normal, coord).xyz;
+
+            float planeDistance = abs(dot(normal, samplePosition.xyz - position.xyz));
+            float wPosition = exp(-planeDistance / (pc.positionSigma * distanceToCamera));
+            float wNormal = pow(max(dot(normal, sampleNormal), 0.0), pc.normalPower);
+            float wLuminance = exp(-abs(centerLum - luminance(value.rgb)) / lumScale);
+            float w = kernel[abs(x)] * kernel[abs(y)] * wPosition * wNormal * wLuminance;
+
+            sumColor += value.rgb * w;
+            sumVariance += value.a * w * w;
+            sumWeight += w;
+        }
+    }
+
+    vec4 filtered = sumWeight > 1e-6 ? vec4(sumColor / sumWeight, sumVariance / (sumWeight * sumWeight)) : center;
+    imageStore(u_Out, pixel, filtered);
+
+    if (pc.composite != 0) {
+        vec3 albedo = max(imageLoad(u_Albedo, pixel).rgb, vec3(0.01));
+        vec3 lit = filtered.rgb * albedo + imageLoad(u_Emission, pixel).rgb;
+        imageStore(u_Composite, pixel, vec4(lit, 1.0));
+    }
+}

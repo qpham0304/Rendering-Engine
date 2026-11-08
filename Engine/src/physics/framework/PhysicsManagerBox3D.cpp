@@ -79,7 +79,7 @@ std::vector<uint32_t> PhysicsManagerBox3D::listIDs() const
 
 void PhysicsManagerBox3D::onUpdate(const FrameTime& frameTime)
 {
-    if(EngineState::isStopped()) {
+    if(EngineState::isStopped() || EngineState::isPaused()) {
         SceneManager& sceneManager = SceneManager::getInstance();
         for(uint32_t sceneID : sceneManager.listIDs()) {
             Scene* scene = sceneManager.getScene(sceneID);
@@ -119,24 +119,22 @@ void PhysicsManagerBox3D::onUpdate(const FrameTime& frameTime)
 void PhysicsManagerBox3D::onFixedUpdate(float fixedDeltaTime)
 {
     const int subStepCount = 4;
-    b3World_Step(m_worldId, fixedDeltaTime, subStepCount);
-
     Scene* scene = SceneManager::getInstance().getActiveScene();
     if(!scene) {
+        b3World_Step(m_worldId, fixedDeltaTime, subStepCount);
         return;
     }
 
-    auto func = std::function<void(Entity)>([&](Entity entity) -> void {
+    // stop and pause leave every body kinematic for editing, restore the real types before stepping
+    auto restoreType = std::function<void(Entity)>([&](Entity entity) -> void {
         auto& collider = entity.getComponent<ColliderComponent>();
-        auto& transform = entity.getComponent<TransformComponent>();
 
         auto shape = m_shapeIDs.find(collider.shapeID);
         if(shape == m_shapeIDs.end()) {
             return;
         }
 
-        b3ShapeId shapeId = shape->second;
-        b3BodyId bodyId = b3Shape_GetBody(shapeId);
+        b3BodyId bodyId = b3Shape_GetBody(shape->second);
         b3BodyType bodyType = b3Body_GetType(bodyId);
         ColliderType colliderType = static_cast<ColliderType>(collider.colliderType);
 
@@ -149,6 +147,22 @@ void PhysicsManagerBox3D::onFixedUpdate(float fixedDeltaTime)
             b3Body_SetType(bodyId, b3_kinematicBody);
             b3Body_SetLinearVelocity(bodyId, {0.0f, 0.0f, 0.0f}); // Clear momentum
         }
+    });
+
+    scene->forEnitiesWith<ColliderComponent>(restoreType);
+
+    b3World_Step(m_worldId, fixedDeltaTime, subStepCount);
+
+    auto func = std::function<void(Entity)>([&](Entity entity) -> void {
+        auto& collider = entity.getComponent<ColliderComponent>();
+        auto& transform = entity.getComponent<TransformComponent>();
+
+        auto shape = m_shapeIDs.find(collider.shapeID);
+        if(shape == m_shapeIDs.end()) {
+            return;
+        }
+
+        b3BodyId bodyId = b3Shape_GetBody(shape->second);
 
         b3Vec3 physicsPos = b3Body_GetPosition(bodyId);
         transform.translate({physicsPos.x, physicsPos.y, physicsPos.z});

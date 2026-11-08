@@ -155,7 +155,7 @@ void DDGIBuilderVulkan::render(Camera &camera)
 	}
 	ubo.randomRotation = randomRotation();
 	ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), 0.0f);
-	ubo.sunColor = lightingSettings ? lightingSettings->sunColor * lightingSettings->sunIntensity : glm::vec4(0.0f);
+	ubo.sunColor = sceneSunColor(lightingSettings, graphicsSettings.get<SkyAtmosphereSettings>());
 	ubo.maxRayDistance = probeGrid->spacing * 1.5f;	// a bit less than the diagonal of a grid cell
 	ubo.clear = resetHistory ? 1 : 0;
 	ubo.hysteresis = settings->hysteresis;
@@ -568,6 +568,7 @@ void DDGIBuilderVulkan::addToGraph(RenderGraphVulkan& graph)
     }
 
     RenderPassNode node{};
+    node.settings = settings;
     node.name = "DDGI";
     node.reads = {};
     

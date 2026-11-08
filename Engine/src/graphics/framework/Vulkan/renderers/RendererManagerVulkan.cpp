@@ -16,6 +16,7 @@
 #include "graphics/framework/vulkan/renderers/renderpasses/SSRGIPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/BloomPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/TemporalPassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/AtrousPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/DeferredCombinePassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/DLSSPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/TonemapPassVulkan.h"
@@ -28,6 +29,7 @@
 #include "core/features/camera.h"
 #include "core/events/EventManager.h"
 #include <core/resources/managers/MeshManager.h>
+#include "animation/AnimationManager.h"
 #include <core/resources/managers/ModelManager.h>
 #include <core/features/Mesh.h>
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
@@ -113,6 +115,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     SSRGIPassRenderer = addRenderer<SSRGIPassVulkan>("SSRGIPassVulkan");
     bloomRenderer = addRenderer<BloomPassVulkan>("BloomPassVulkan");
     temporalPassRenderer = addRenderer<TemporalPassVulkan>("TemporalPassVulkan");
+    atrousPassRenderer = addRenderer<AtrousPassVulkan>("AtrousPassVulkan");
     if(rtSupported) {
         ddgiPassRenderer = addRenderer<DDGIBuilderVulkan>("DDGIBuilderVulkan");
     }
@@ -278,6 +281,7 @@ void RendererManagerVulkan::render()
 
     collectMeshDraws();
     collectLights();
+    ServiceLocator::GetService<AnimationManager>("AnimationManager").uploadBoneMatrices(currentFrame);  // after the fence, like the objects
 	lastViewProj = unjitteredProj * ubo.view;
 
     VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
@@ -314,6 +318,7 @@ void RendererManagerVulkan::render()
         bloomRenderer->addToGraph(m_renderGraph);
         if(m_graphicsSettings.get<DeferredSettings>()->temporalReprojection) {
             temporalPassRenderer->addToGraph(m_renderGraph);
+            atrousPassRenderer->addToGraph(m_renderGraph);
         }
         if(ddgiPassRenderer) {
             ddgiPassRenderer->addToGraph(m_renderGraph);
@@ -326,10 +331,30 @@ void RendererManagerVulkan::render()
 
         m_renderGraph.execute(cmd, currentFrame);
     } else if(currentRenderMode == 2 && raytracingRenderer) {
+        // the path tracer lights with the same sky the raster path builds
+        m_renderGraph.reset();
+        skyAtmosphereRenderer->addToGraph(m_renderGraph);
+        imageBasedRenderer->addToGraph(m_renderGraph);
+        m_renderGraph.execute(cmd, currentFrame);
+
         raytracingRenderer->render(*camera);
+
+        // same tonemapper, exposure and gamma as the raster path
+        m_renderGraph.reset();
+        tonemapRenderer->setInputOverride(raytracingRenderer->rayTraceImage);
+        tonemapRenderer->addToGraph(m_renderGraph);
+        m_renderGraph.execute(cmd, currentFrame);
+        tonemapRenderer->setInputOverride(nullptr);
     }
 
     debugRenderer->render(*camera);
+
+    // debug view of a graph texture, the graph left it shader readable. a recreated texture has a new id and falls back
+    auto& textureManager = dynamic_cast<TextureManagerVulkan&>(ServiceLocator::GetService<TextureManager>("TextureManagerVulkan"));
+    TextureVulkan* viewTexture = m_viewTextureID != 0 ? textureManager.getTexture(m_viewTextureID) : nullptr;
+    if(currentRenderMode == 1 && viewTexture) {
+        setDisplayImage(viewTexture);
+    }
 
     applicationRenderer->render(*camera);
     endFrame();
@@ -390,6 +415,7 @@ void RendererManagerVulkan::collectMeshDraws()
             draw.model = probe ? glm::translate(worldMatrix, glm::vec3(probe->probeGrid[i])) : worldMatrix;	//TODO: this couple the probe data to the renderer
             draw.meshID = model->meshIDs[i];
             draw.objectIdx = static_cast<uint32_t>(m_meshDraws.size());
+            draw.boneMatricesIdx = boneMatricesIdx;
             m_meshDraws.push_back(draw);
 
             const Mesh* mesh = meshManager->getMesh(draw.meshID);
@@ -405,6 +431,10 @@ void RendererManagerVulkan::collectMeshDraws()
             object.boneMatricesIdx = boneMatricesIdx;
             object.materialIdx = mesh->materialID;
             object.flags = probe ? Common::OBJECT_LIGHT_PROBE : 0;
+            // ray hits read the posed vertices, the raster passes skin the rest pose themselves
+            object.rtVertexAddress = (boneMatricesIdx != 0 && raytracingRenderer)
+                ? raytracingRenderer->getSkinnedVertexAddress(draw.meshID, boneMatricesIdx)
+                : object.vertexAddress;
 
             VkDrawIndirectCommand& command = m_drawCommands[draw.objectIdx];
             command.vertexCount = static_cast<uint32_t>(mesh->indices.size());

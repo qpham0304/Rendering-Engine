@@ -20,6 +20,7 @@ file(GLOB_RECURSE SHADER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.rgen
     ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.rmiss
     ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.rchit
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.rahit
 )
 
 # shared includes, a change in one of them has to recompile every shader
@@ -73,6 +74,7 @@ if(WK_EXPORT_GAME)
         PATTERN "*.rgen" EXCLUDE
         PATTERN "*.rmiss" EXCLUDE
         PATTERN "*.rchit" EXCLUDE
+        PATTERN "*.rahit" EXCLUDE
         PATTERN "*.glsl" EXCLUDE
         PATTERN "common" EXCLUDE
         PATTERN "compile.bat" EXCLUDE

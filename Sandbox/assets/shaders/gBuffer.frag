@@ -62,7 +62,8 @@ void main() {
     uint matID = matIndices.i[gl_PrimitiveID];
     Material mat = materials.m[matID];
 
-    vec4 albedo = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], inTexCoord + mat.uvOffset, ubo.mipBias);
+    vec2 matUV = materialUV(mat, inTexCoord, textureSize(samplerImages[nonuniformEXT(mat.albedoIdx)], 0));
+    vec4 albedo = texture(samplerImages[nonuniformEXT(mat.albedoIdx)], matUV, ubo.mipBias);
     if (alphaClipped(mat, albedo.a)) {
         discard;
     }
@@ -75,18 +76,18 @@ void main() {
         TBN = -TBN;
     }
 
-    vec4 normalMap = texture(samplerImages[mat.normalIdx], inTexCoord + mat.uvOffset, ubo.mipBias);
+    vec4 normalMap = texture(samplerImages[mat.normalIdx], matUV, ubo.mipBias);
     vec3 N = getNormalFromMap(normalMap, mat, TBN);
     outNorm = vec4(N, 1.0);
     
     outAlbedo = albedo * mat.albedoFactor;
     
-    float ao        = texture(samplerImages[mat.aoIdx], inTexCoord + mat.uvOffset, ubo.mipBias).r        * mat.aoFactor;
-    float roughness = texture(samplerImages[mat.roughnessIdx], inTexCoord + mat.uvOffset, ubo.mipBias).g * mat.roughnessFactor;
-    float metallic  = texture(samplerImages[mat.metalnessIdx], inTexCoord + mat.uvOffset, ubo.mipBias).b * mat.metallicFactor;
+    float ao        = texture(samplerImages[mat.aoIdx], matUV, ubo.mipBias).r        * mat.aoFactor;
+    float roughness = texture(samplerImages[mat.roughnessIdx], matUV, ubo.mipBias).g * mat.roughnessFactor;
+    float metallic  = texture(samplerImages[mat.metalnessIdx], matUV, ubo.mipBias).b * mat.metallicFactor;
     outPBR = vec4(ao, roughness, metallic, 1.0);
 
-    outEmissive = texture(samplerImages[mat.emissiveIdx], inTexCoord + mat.uvOffset, ubo.mipBias) * mat.emissiveFactor;
+    outEmissive = texture(samplerImages[mat.emissiveIdx], matUV, ubo.mipBias) * mat.emissiveFactor;
 
     // without the jitter, prevViewProj has none so the vector is only real motion
     vec2 curNDC = outCurNDC.xy / outCurNDC.w - ubo.jitter;

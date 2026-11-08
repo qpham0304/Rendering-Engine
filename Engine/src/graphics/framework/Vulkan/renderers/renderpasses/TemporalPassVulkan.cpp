@@ -39,6 +39,7 @@ bool TemporalPassVulkan::init(WindowConfig config)
 
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     ssrgiImage = SSRGIPassRenderer->getOutputImage();
+    ssrgiSpecularImage = SSRGIPassRenderer->getSpecularImage();
     motionImage = geometryPass->renderTarget.gBufferMotion;
     depthImage = geometryPass->renderTarget.depthTexture;
     normalImage = geometryPass->renderTarget.gBufferNorm;
@@ -50,6 +51,8 @@ bool TemporalPassVulkan::init(WindowConfig config)
     _createDescriptors();
     _createPipelines();
 
+    settings = &rendererManagerVulkan->getGraphicsSettings().add<TemporalSettings>("Temporal Denoise");
+
     return true;
 }
 
@@ -58,6 +61,8 @@ bool TemporalPassVulkan::onClose()
     PostProcessRendererVulkan::onClose();
     
     pipeline->destroy();
+    rendererManagerVulkan->getGraphicsSettings().remove<TemporalSettings>();
+    settings = nullptr;
     
     return true;
 }
@@ -71,8 +76,8 @@ void TemporalPassVulkan::onUpdate()
 void TemporalPassVulkan::render(Camera &camera)
 {
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
-    _updateDescriptor(TemporalSetsID, currentFrame, outputImage, ssrgiHistoryImage);
-    _updateDescriptor(TemporalSetsHistoryID, currentFrame, ssrgiHistoryImage, outputImage);
+    _updateDescriptor(TemporalSetsID, currentFrame, true);
+    _updateDescriptor(TemporalSetsHistoryID, currentFrame, false);
     
     glm::mat4 currentView = camera.getViewMatrix();
     glm::mat4 currentProj = camera.getProjectionMatrix();
@@ -82,8 +87,14 @@ void TemporalPassVulkan::render(Camera &camera)
 	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
 	auto geometryPass = dynamic_cast<GeometryPassVulkan*>(rendererManagerVulkan->getRenderer("GeometryPassVulkan"));
+	pushConstant.invProj = glm::inverse(currentProj);
 	pushConstant.screenRes = { geometryPass->renderTarget.width, geometryPass->renderTarget.height };
-    pushConstant.maxAccumulation = 128.0f;
+    pushConstant.maxHistoryRough = std::max(settings->maxHistoryRough, 1.0f);
+    pushConstant.maxHistorySmooth = std::max(settings->maxHistorySmooth, 1.0f);
+    pushConstant.maxHistoryMoving = std::max(settings->maxHistoryMoving, 1.0f);
+    pushConstant.clampGamma = std::max(settings->clampGamma, 0.0f);
+    pushConstant.depthTolerance = std::max(settings->depthTolerance, 0.0f);
+    pushConstant.normalThreshold = std::clamp(settings->normalThreshold, -1.0f, 1.0f);
 
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     renderDeviceVulkan->beginLabel(cmd, "Temporal Reprojection Pass");
@@ -127,6 +138,16 @@ TextureVulkan* TemporalPassVulkan::getOutputImage()
     return flip ? outputImage : ssrgiHistoryImage;
 }
 
+TextureVulkan* TemporalPassVulkan::getSpecularOutputImage()
+{
+    return flip ? specularA : specularB;
+}
+
+TextureVulkan* TemporalPassVulkan::getHistoryLengthImage()
+{
+    return flip ? lengthA : lengthB;
+}
+
 void TemporalPassVulkan::writeTAA(VkCommandBuffer cmd, uint32_t currentFrame)
 {
     
@@ -151,6 +172,10 @@ void TemporalPassVulkan::_createResources()
     ssrgiHistoryImage = createTexture("TAA.HistoryB", VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0, historyBHandle);
     prevDepthImage = createTexture("TAA.PrevDepth", depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT, prevDepthHandle);
     prevNormalImage = createTexture("TAA.PrevNormal", VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT, prevNormalHandle);
+    specularA = createTexture("TAA.SpecularA", VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0, specularAHandle);
+    specularB = createTexture("TAA.SpecularB", VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0, specularBHandle);
+    lengthA = createTexture("TAA.LengthA", VK_FORMAT_R16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0, lengthAHandle);
+    lengthB = createTexture("TAA.LengthB", VK_FORMAT_R16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 0, lengthBHandle);
 
     outputImageID = outputImage->id();
     ssrgiHistoryImageID = ssrgiHistoryImage->id();
@@ -183,13 +208,18 @@ void TemporalPassVulkan::_createDescriptors()
 		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 10, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 11, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 12, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 13, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 14, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     };
 
 	uint32_t frameCount = VulkanUtils::numFrames();
     uint32_t totalSetsNeeded = frameCount * 2;
     std::vector<VkDescriptorPoolSize> poolSizes {
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1 * totalSetsNeeded},
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 8  * totalSetsNeeded},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 3 * totalSetsNeeded},
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 11 * totalSetsNeeded},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1  * totalSetsNeeded},
 	};
 	
@@ -199,13 +229,20 @@ void TemporalPassVulkan::_createDescriptors()
 	TemporalSetsHistoryID = descriptorManagerVulkan->createSets(TemporalLayoutID, TemporalPoolID, frameCount);
 
     for(int i = 0; i < frameCount; i++) {
-        _updateDescriptor(TemporalSetsID, i, outputImage, ssrgiHistoryImage);
-        _updateDescriptor(TemporalSetsHistoryID, i, ssrgiHistoryImage, outputImage);
+        _updateDescriptor(TemporalSetsID, i, true);
+        _updateDescriptor(TemporalSetsHistoryID, i, false);
     }
 }
 
-void TemporalPassVulkan::_updateDescriptor(uint32_t currentSetsID, uint32_t index, TextureVulkan* writeImg, TextureVulkan* readImage)
+// set A writes the A textures and reads last frame's B, the other set the other way around
+void TemporalPassVulkan::_updateDescriptor(uint32_t currentSetsID, uint32_t index, bool writeA)
 {
+	TextureVulkan* writeImg = writeA ? outputImage : ssrgiHistoryImage;
+	TextureVulkan* readImage = writeA ? ssrgiHistoryImage : outputImage;
+	TextureVulkan* specularWrite = writeA ? specularA : specularB;
+	TextureVulkan* specularRead = writeA ? specularB : specularA;
+	TextureVulkan* lengthWrite = writeA ? lengthA : lengthB;
+	TextureVulkan* lengthRead = writeA ? lengthB : lengthA;
 	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(currentSetsID);
     
     VkDescriptorImageInfo outputImageInfo{};
@@ -269,6 +306,16 @@ void TemporalPassVulkan::_updateDescriptor(uint32_t currentSetsID, uint32_t inde
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 7, currNormalImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 8, prevNormalImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 9, pbrImageInfo);
+	VkDescriptorImageInfo specularWriteInfo{ specularWrite->textureSampler, specularWrite->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+	VkDescriptorImageInfo ssrgiSpecularInfo{ ssrgiSpecularImage->textureSampler, ssrgiSpecularImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo specularReadInfo{ specularRead->textureSampler, specularRead->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo lengthWriteInfo{ lengthWrite->textureSampler, lengthWrite->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+	VkDescriptorImageInfo lengthReadInfo{ lengthRead->textureSampler, lengthRead->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	descriptorManagerVulkan->writeStorageImage(&writes, descriptorSets[index], 10, specularWriteInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 11, ssrgiSpecularInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 12, specularReadInfo);
+	descriptorManagerVulkan->writeStorageImage(&writes, descriptorSets[index], 13, lengthWriteInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 14, lengthReadInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
@@ -298,6 +345,7 @@ void TemporalPassVulkan::addToGraph(RenderGraphVulkan& graph)
 
     uint32_t currentFrame = renderDeviceVulkan->getCurrentFrameIndex();
     ssrgiImage = SSRGIPassRenderer->getOutputImage();
+    ssrgiSpecularImage = SSRGIPassRenderer->getSpecularImage();
     motionImage = geometryPass->renderTarget.gBufferMotion;
     depthImage = geometryPass->renderTarget.depthTexture;
     normalImage = geometryPass->renderTarget.gBufferNorm;
@@ -313,14 +361,20 @@ void TemporalPassVulkan::addToGraph(RenderGraphVulkan& graph)
     flip = !flip;
     RGHandle currentWriteTargetHandle = flip ? historyAHandle : historyBHandle;
     RGHandle historyHandle = flip ? historyBHandle : historyAHandle;	// keeps its contents, last frame's result
+    RGHandle specularWriteHandle = flip ? specularAHandle : specularBHandle;
+    RGHandle specularHistoryHandle = flip ? specularBHandle : specularAHandle;
+    RGHandle lengthWriteHandle = flip ? lengthAHandle : lengthBHandle;
+    RGHandle lengthHistoryHandle = flip ? lengthBHandle : lengthAHandle;
 
     auto ssrgiImageHandle = graph.importTexture(ssrgiImage);
+    auto ssrgiSpecularHandle = graph.importTexture(ssrgiSpecularImage);
     auto motionImageHandle = graph.importTexture(motionImage);
     auto depthImageHandle = graph.importTexture(depthImage);
     auto normalImageHandle = graph.importTexture(normalImage);
     auto pbrImageHandle = graph.importTexture(pbrImage);
 
     RenderPassNode node{};
+    node.settings = settings;
     node.name = "TAA";
     node.reads = {
         { ssrgiImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
@@ -328,11 +382,16 @@ void TemporalPassVulkan::addToGraph(RenderGraphVulkan& graph)
         { depthImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
         { normalImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
         { pbrImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-        { historyHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
+        { historyHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { ssrgiSpecularHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { specularHistoryHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { lengthHistoryHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
     };
     
     node.writes = {
         { currentWriteTargetHandle, VK_IMAGE_LAYOUT_GENERAL },
+        { specularWriteHandle, VK_IMAGE_LAYOUT_GENERAL },
+        { lengthWriteHandle, VK_IMAGE_LAYOUT_GENERAL },
         { prevDepthHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
         { prevNormalHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
     };

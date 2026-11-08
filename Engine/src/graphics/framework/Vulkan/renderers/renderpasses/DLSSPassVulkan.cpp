@@ -441,6 +441,7 @@ void DLSSPassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto motion = graph.importTexture(motionImage);
 
     RenderPassNode motionNode{};
+    motionNode.settings = settings;
     motionNode.name = "DLSS.Motion";
     motionNode.reads = {
         { depth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
@@ -453,6 +454,7 @@ void DLSSPassVulkan::addToGraph(RenderGraphVulkan& graph)
     graph.addPass(motionNode);
 
     RenderPassNode node{};
+    node.settings = settings;
     node.name = "DLSS";
     node.reads = {
         { color, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },

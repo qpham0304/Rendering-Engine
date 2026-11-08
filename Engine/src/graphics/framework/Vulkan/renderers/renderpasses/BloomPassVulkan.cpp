@@ -366,6 +366,7 @@ void BloomPassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto scene = graph.importTexture(inputImage);
 
     RenderPassNode node{};
+    node.settings = settings;
     node.name = "Bloom";
     node.reads  = { { scene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
     // each mip goes GENERAL and back inside the down/up sample loops, the chain rests in SHADER_READ_ONLY

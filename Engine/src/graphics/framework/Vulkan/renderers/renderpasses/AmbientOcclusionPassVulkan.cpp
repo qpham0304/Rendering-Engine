@@ -283,6 +283,7 @@ void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
     needResize = false;
 
     RenderPassNode node{};
+    node.settings = settings;
     node.name = "AO";
     node.reads  = { {depthHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL} };
     node.writes = { {aoMapHandle, VK_IMAGE_LAYOUT_GENERAL} };
@@ -319,6 +320,7 @@ void AmbientOcclusionPassVulkan::addToGraph(RenderGraphVulkan& graph)
     blurParams.radius = std::max(settings->blurRadius, 1);
     blurParams.sigma = static_cast<float>(blurParams.radius);
     blurParams.depthScale = settings->blurScale;
+    blurParams.settings = settings;
 
     RGHandle blurredHandle = blurPass->blur(graph, "AO", aoMapHandle, blurParams);
     outputImage = graph.getTexture(blurredHandle);

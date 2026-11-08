@@ -69,32 +69,136 @@
       }
     },
     {
-      "components": {
-        "ColliderComponent": { "bodyType": "Cube", "colliderType": 2, "shapeID": 0 },
-        "ModelComponent": { "path": "assets/models/cube/cube-notex.gltf" },
-        "NameComponent": { "name": "contact test cube" },
-        "ScriptComponent": { "path": "assets/scripts/ContactSparks.lua" },
-        "TransformComponent": {
-          "rotateVec": [0.3, 0.0, 0.2],
-          "scaleVec": [0.5, 0.5, 0.5],
-          "translateVec": [0.0, 6.0, 0.0]
-        }
-      },
       "children": [
         {
           "components": {
-            "NameComponent": { "name": "glide sparks" },
-            "TransformComponent": { "rotateVec": [0.0, 0.0, 0.0], "scaleVec": [1.0, 1.0, 1.0], "translateVec": [0.0, 0.0, 0.0] },
+            "NameComponent": {
+              "name": "glide sparks"
+            },
             "ParticleEmitter": {
-              "emitRate": 0.0, "burstInterval": 0.0, "maxParticles": 2000,
-              "spawnShape": 0, "spreadAngle": 25.0, "speedMin": 2.0, "speedMax": 5.0,
-              "lifetimeMin": 0.5, "lifetimeMax": 1.0, "gravityScale": 1.0, "drag": 1.0,
-              "sizeMin": 0.12, "sizeMax": 0.2, "sizeEndScale": 0.3,
-              "colorStart": [0.2, 0.7, 1.0, 1.0], "colorEnd": [0.0, 0.2, 1.0, 0.0], "renderMode": 2, "blendMode": 1
+              "angularVelocityMax": 0.0,
+              "angularVelocityMin": 0.0,
+              "attractStrength": 0.0,
+              "blendMode": 1,
+              "burstCount": 0,
+              "burstInterval": 0.0,
+              "colorEnd": [
+                0.0,
+                0.20000000298023224,
+                1.0,
+                0.0
+              ],
+              "colorStart": [
+                0.20000000298023224,
+                0.699999988079071,
+                1.0,
+                1.0
+              ],
+              "direction": [
+                0.0,
+                1.0,
+                0.0
+              ],
+              "drag": 1.0,
+              "emitFromShell": false,
+              "emitRate": 0.0,
+              "fadeIn": 0.0,
+              "fadeOut": 0.0,
+              "flipbookCols": 1,
+              "flipbookFPS": 0.0,
+              "flipbookRows": 1,
+              "force": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "gravityScale": 1.0,
+              "isPlaying": true,
+              "lifetimeMax": 1.0,
+              "lifetimeMin": 0.5,
+              "localSpace": false,
+              "maxParticles": 2000,
+              "meshDoubleSided": false,
+              "meshPath": "$prim$Cube",
+              "meshShading": 0.5,
+              "renderMode": 2,
+              "rotationMax": 0.0,
+              "rotationMin": 0.0,
+              "shapeConeAngle": 25.0,
+              "shapeExtents": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "shapeRadius": 1.0,
+              "sizeEndScale": 0.30000001192092896,
+              "sizeMax": 0.20000000298023224,
+              "sizeMin": 0.11999999731779099,
+              "spawnShape": 0,
+              "speedMax": 5.0,
+              "speedMin": 2.0,
+              "spreadAngle": 25.0,
+              "stretchFactor": 0.10000000149011612,
+              "texturePath": "None",
+              "turbulenceFrequency": 1.0,
+              "turbulenceStrength": 0.0,
+              "useModelTexture": true,
+              "velocityFromShape": false,
+              "vortexStrength": 0.0
+            },
+            "TransformComponent": {
+              "rotateVec": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "scaleVec": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "translateVec": [
+                0.0,
+                0.0,
+                0.0
+              ]
             }
           }
         }
-      ]
+      ],
+      "components": {
+        "ColliderComponent": {
+          "bodyType": "Cube",
+          "colliderType": 2,
+          "shapeID": 3
+        },
+        "ModelComponent": {
+          "path": "assets/models/cube/cube-notex.gltf"
+        },
+        "NameComponent": {
+          "name": "contact test cube"
+        },
+        "ScriptComponent": {
+          "path": "assets/scripts/ContactSparks.lua"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.30000001192092896,
+            0.0,
+            0.20000000298023224
+          ],
+          "scaleVec": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "translateVec": [
+            0.0,
+            6.0,
+            0.0
+          ]
+        }
+      }
     },
     {
       "components": {
@@ -305,6 +409,145 @@
           "translateVec": [
             -1.5120028257369995,
             13.15613842010498,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "LightProbeComponent": {
+          "gridOrigin": [
+            -9.0,
+            -4.6438517570495605,
+            -9.0,
+            1.0
+          ],
+          "probeCounts": [
+            10,
+            7,
+            10
+          ],
+          "probesPerDimension": 10,
+          "spacing": 2.0
+        },
+        "NameComponent": {
+          "name": "probe manager"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translateVec": [
+            0.0,
+            1.3561482429504395,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "NameComponent": {
+          "name": "lightning"
+        },
+        "RibbonComponent": {
+          "bladeBase": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "bladeTip": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "blendMode": 0,
+          "branchLength": 0.3499999940395355,
+          "branches": 3,
+          "colorEnd": [
+            1.2000000476837158,
+            1.5,
+            3.0,
+            0.800000011920929
+          ],
+          "colorStart": [
+            2.0,
+            2.4000000953674316,
+            4.0,
+            1.0
+          ],
+          "flicker": 0.4000000059604645,
+          "isPlaying": true,
+          "jitter": 0.11999999731779099,
+          "maxPoints": 64,
+          "minSegmentLength": 0.05000000074505806,
+          "mode": 2,
+          "regenerateInterval": 0.05999999865889549,
+          "segments": 32,
+          "subdivisions": 4,
+          "target": [
+            0.0,
+            -6.0,
+            0.0
+          ],
+          "targetInLocalSpace": true,
+          "texturePath": "None",
+          "textureScroll": 0.0,
+          "textureTiling": 1.0,
+          "trailLifetime": 0.5,
+          "uvMode": 0,
+          "widthEnd": 0.03999999910593033,
+          "widthStart": 0.07999999821186066
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translateVec": [
+            0.0,
+            6.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "ModelComponent": {
+          "path": "assets/models/sponza/gltf/sponza.gltf"
+        },
+        "NameComponent": {
+          "name": "assets/models/sponza/gltf/sponza.gltf"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "translateVec": [
+            0.0,
+            0.0,
             0.0
           ]
         }

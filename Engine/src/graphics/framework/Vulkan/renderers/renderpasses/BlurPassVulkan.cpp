@@ -85,6 +85,7 @@ RGHandle BlurPassVulkan::blur(RenderGraphVulkan& graph, const std::string& name,
     request.push.depthScale = params.depthScale;
 
     RenderPassNode horizontal{};
+    horizontal.settings = params.settings;
     horizontal.name = name + ".BlurH";
     horizontal.reads = { { input, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
     if(bilateral) {
@@ -97,6 +98,7 @@ RGHandle BlurPassVulkan::blur(RenderGraphVulkan& graph, const std::string& name,
     graph.addPass(horizontal);
 
     RenderPassNode vertical{};
+    vertical.settings = params.settings;
     vertical.name = name + ".BlurV";
     vertical.reads = { { temp, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
     if(bilateral) {

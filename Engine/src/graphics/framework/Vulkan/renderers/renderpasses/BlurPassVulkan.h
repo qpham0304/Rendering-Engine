@@ -27,6 +27,7 @@ public:
 		std::optional<RGHandle> depth;
 		glm::mat4 invProj { 1.0f };
 		float depthScale { 100.0f };
+		const void* settings { nullptr };	// the caller's settings, the blur shows up under them
 	};
 
 public:

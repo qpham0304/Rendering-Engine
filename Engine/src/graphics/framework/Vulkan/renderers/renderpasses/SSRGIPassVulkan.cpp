@@ -1,4 +1,5 @@
 #include "SSRGIPassVulkan.h"
+#include "DeferredCombinePassVulkan.h"
 #include <core/scene/SceneManager.h>
 #include <core/features/camera.h>
 #include <graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h>
@@ -48,6 +49,10 @@ bool SSRGIPassVulkan::init(WindowConfig config)
     albedoImage = geometryPass->renderTarget.gBufferAlbedo;
     pbrImage = geometryPass->renderTarget.gPBR;
     emissiveImage = geometryPass->renderTarget.gBufferEmissive;
+    motionImage = geometryPass->renderTarget.gBufferMotion;
+    prevColorHandle = rendererManagerVulkan->getRenderGraph().createRenderTexture(DeferredCombinePassVulkan::OutputName, DeferredCombinePassVulkan::outputDesc());
+    prevColorImage = rendererManagerVulkan->getRenderGraph().getTexture(prevColorHandle);
+    prevColorImageID = prevColorImage->id();
 
     bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
     settings = &rendererManagerVulkan->getGraphicsSettings().add<SSRSettings>("Screen Space Reflections");
@@ -69,6 +74,9 @@ bool SSRGIPassVulkan::onClose()
     pipeline->destroy();
     if(rayQueryPipeline) {
         rayQueryPipeline->destroy();
+    }
+    if(spatialPipeline) {
+        spatialPipeline->destroy();
     }
 
     return true;
@@ -114,7 +122,7 @@ void SSRGIPassVulkan::render(Camera &camera)
         sunDirection = glm::vec3(0.0f, 1.0f, 0.0f);
     }
     ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), 0.0f);
-    ubo.sunColor = lightingSettings ? lightingSettings->sunColor * lightingSettings->sunIntensity : glm::vec4(0.0f);
+    ubo.sunColor = sceneSunColor(lightingSettings, graphicsSettings.get<SkyAtmosphereSettings>());
     ubo.skyIntensity = ddgiSettings ? ddgiSettings->skyIntensity : 1.0f;	// traced hits see the same sky as the ddgi probes
     // tlas hits take their bounce light from last frame's probes, same grid the combine pass samples
     ubo.ddgiReady = (ddgiSettings && ddgiSettings->isReady() && ddgiIrradianceAtlas) ? 1 : 0;
@@ -137,7 +145,14 @@ void SSRGIPassVulkan::render(Camera &camera)
     pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
     pushConstant.lightsRef = rendererManagerVulkan->getLightsAddress();
     pushConstant.lightCount = rendererManagerVulkan->getLightCount();
+    pushConstant.maxSampleLuminance = std::max(settings->maxSampleLuminance, 0.1f);
+    pushConstant.reflectionOnly = settings->reflectionOnly ? 1 : 0;
+    pushConstant.frameIndex++;
     pushConstant.useTLAS = 0;
+    bool restir = settings->restir && !settings->reflectionOnly;
+    pushConstant.restir = restir ? 1 : 0;
+    pushConstant.restirMaxHistory = std::max(settings->restirMaxHistory, 1.0f);
+    _updateReservoirDescriptors(currentFrame);
 
     // only switch to the ray query pipeline when it can actually trace, otherwise skip the tlas update entirely
     VulkanPipeline* activePipeline = pipeline.get();
@@ -154,8 +169,58 @@ void SSRGIPassVulkan::render(Camera &camera)
 	VkCommandBuffer cmd = renderDeviceVulkan->commandPool.currentBuffer();
     renderDeviceVulkan->beginLabel(cmd, "SSRGI Pass");
     writeSSRGI(cmd, currentFrame, activePipeline);
+    if(restir) {
+        _writeSpatialReuse(cmd, currentFrame);
+    }
     renderDeviceVulkan->endLabel(cmd);
 
+}
+
+// this frame's reservoirs were just written by the trace, the spatial pass reads its neighbors' and writes the diffuse output
+void SSRGIPassVulkan::_writeSpatialReuse(VkCommandBuffer cmd, uint32_t currentFrame)
+{
+    VkMemoryBarrier barrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0, 1, &barrier, 0, nullptr, 0, nullptr);
+
+    spatialPushConstant.traceRes = { static_cast<int>(traceWidth), static_cast<int>(traceHeight) };
+    spatialPushConstant.radius = std::max(settings->restirSpatialRadius, 1.0f);
+    spatialPushConstant.samples = std::clamp(settings->restirSpatialSamples, 0, 16);
+    spatialPushConstant.frameSeed = pushConstant.frameIndex;
+    spatialPushConstant.maxJacobian = std::max(settings->restirMaxJacobian, 1.01f);
+
+    spatialPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+    VkDescriptorSet set = descriptorManagerVulkan->getDescriptorSet(spatialSetsID)[currentFrame];
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, spatialPipeline->pipelineLayout, 0, 1, &set, 0, nullptr);
+    vkCmdPushConstants(cmd, spatialPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SpatialPushConstant), &spatialPushConstant);
+    vkCmdDispatch(cmd, (traceWidth + 7) / 8, (traceHeight + 7) / 8, 1);
+}
+
+// the current and previous reservoirs swap every frame, only this frame's sets are rewritten (the other may be in flight)
+void SSRGIPassVulkan::_updateReservoirDescriptors(uint32_t index)
+{
+    TextureVulkan* const* current = reservoirs[reservoirCurrent];
+    TextureVulkan* const* previous = reservoirs[1 - reservoirCurrent];
+    VkDescriptorImageInfo currentInfos[4];
+    VkDescriptorImageInfo previousInfos[4];
+    for(int i = 0; i < 4; i++) {
+        currentInfos[i] = { current[i]->textureSampler, current[i]->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+        previousInfos[i] = { previous[i]->textureSampler, previous[i]->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+    }
+    VkDescriptorImageInfo outputInfo{ outputImage->textureSampler, outputImage->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+
+    const VkDescriptorSet& traceSet = descriptorManagerVulkan->getDescriptorSet(SSRGISetsID)[index];
+    const VkDescriptorSet& spatialSet = descriptorManagerVulkan->getDescriptorSet(spatialSetsID)[index];
+    std::vector<VkWriteDescriptorSet> writes;
+    for(uint32_t i = 0; i < 4; i++) {
+        descriptorManagerVulkan->writeStorageImage(&writes, traceSet, 17 + i, currentInfos[i]);
+        descriptorManagerVulkan->writeStorageImage(&writes, traceSet, 21 + i, previousInfos[i]);
+        descriptorManagerVulkan->writeStorageImage(&writes, spatialSet, i, currentInfos[i]);
+    }
+    descriptorManagerVulkan->writeStorageImage(&writes, spatialSet, 4, outputInfo);
+    descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
 void SSRGIPassVulkan::writeSSRGI(VkCommandBuffer cmd, uint32_t currentFrame, VulkanPipeline* activePipeline)
@@ -197,6 +262,25 @@ void SSRGIPassVulkan::_createResources()
     outputHandle = graph.createRenderTexture("SSRGI.Output", desc);
     outputImage = graph.getTexture(outputHandle);
     outputImageID = outputImage->id();
+
+    specularHandle = graph.createRenderTexture("SSRGI.Specular", desc);
+    specularImage = graph.getTexture(specularHandle);
+    specularImageID = specularImage->id();
+
+    // restir reservoirs keep their contents across frames, last frame's set is this frame's history
+    RGTextureDesc reservoirDesc{};
+    reservoirDesc.config.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    reservoirDesc.scale = desc.scale;
+    const char* names[2][4] = {
+        { "SSRGI.ReservoirA0", "SSRGI.ReservoirA1", "SSRGI.ReservoirA2", "SSRGI.ReservoirA3" },
+        { "SSRGI.ReservoirB0", "SSRGI.ReservoirB1", "SSRGI.ReservoirB2", "SSRGI.ReservoirB3" },
+    };
+    for(int set = 0; set < 2; set++) {
+        for(int i = 0; i < 4; i++) {
+            reservoirHandles[set][i] = graph.createRenderTexture(names[set][i], reservoirDesc);
+            reservoirs[set][i] = graph.getTexture(reservoirHandles[set][i]);
+        }
+    }
 }
 
 void SSRGIPassVulkan::_createPipelines()
@@ -214,6 +298,13 @@ void SSRGIPassVulkan::_createPipelines()
 		layouts,
 		sizeof(PushConstant)
 	);
+
+    spatialPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+    spatialPipeline->createComputePipeline(
+        "assets/shaders/spv/restirSpatial.comp.spv",
+        { descriptorManagerVulkan->getDescriptorLayout(spatialLayoutID) },
+        sizeof(SpatialPushConstant)
+    );
 
     if(rtSupported) {
         rayQueryPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
@@ -238,14 +329,28 @@ void SSRGIPassVulkan::_createDescriptors()
 		{ 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
 		{ 9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 14, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },	// specular, 10 - 13 are the ray query bindings
+		{ 15, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+		{ 16, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     };
+    for(uint32_t binding = 17; binding <= 24; binding++) {	// restir reservoirs, this frame's then last frame's
+        bindings.push_back({ binding, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });
+    }
 
 	uint32_t frameCount = VulkanUtils::numFrames();
     std::vector<VkDescriptorPoolSize> poolSizes {
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 8},
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 10},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 10},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
 	};
+
+    std::vector<VkDescriptorSetLayoutBinding> spatialBindings;
+    for(uint32_t binding = 0; binding <= 4; binding++) {
+        spatialBindings.push_back({ binding, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });
+    }
+    spatialLayoutID = descriptorManagerVulkan->createLayout(spatialBindings);
+    spatialPoolID = descriptorManagerVulkan->createPool({ { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 5 } }, frameCount);
+    spatialSetsID = descriptorManagerVulkan->createSets(spatialLayoutID, spatialPoolID, frameCount);
 
     // tlas and sky sh for the ray query fallback, written every frame it is used
     if(rtSupported) {
@@ -283,6 +388,7 @@ void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
     albedoImage = geometryPass->renderTarget.gBufferAlbedo;
     pbrImage = geometryPass->renderTarget.gPBR;
     emissiveImage = geometryPass->renderTarget.gBufferEmissive;
+    motionImage = geometryPass->renderTarget.gBufferMotion;
 
 	auto descriptorSets = descriptorManagerVulkan->getDescriptorSet(SSRGISetsID);
     VkDescriptorImageInfo depthImageInfo{};
@@ -304,6 +410,10 @@ void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
 	outputImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 	outputImageInfo.imageView = outputImage->textureImageView;
 	outputImageInfo.sampler = outputImage->textureSampler;
+
+	VkDescriptorImageInfo specularImageInfo{ specularImage->textureSampler, specularImage->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+	VkDescriptorImageInfo motionInfo{ motionImage->textureSampler, motionImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+	VkDescriptorImageInfo prevColorInfo{ prevColorImage->textureSampler, prevColorImage->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer = static_cast<VkBuffer>(*uniformbuffersList[index]);
@@ -348,6 +458,9 @@ void SSRGIPassVulkan::_updateDescriptor(uint32_t index)
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 7, pbrImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 8, emissiveImageInfo);
 	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 9, blueNoiseInfo);
+	descriptorManagerVulkan->writeStorageImage(&writes, descriptorSets[index], 14, specularImageInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 15, motionInfo);
+	descriptorManagerVulkan->writeImage(&writes, descriptorSets[index], 16, prevColorInfo);
 	descriptorManagerVulkan->updateDescriptorSets(&writes);
 }
 
@@ -388,13 +501,23 @@ void SSRGIPassVulkan::_cleanupResources()
     if(rayQueryPipeline) {
         rayQueryPipeline->destroy();
     }
+    if(spatialPipeline) {
+        spatialPipeline->destroy();
+    }
 }
 
 void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
 {
     // same output as last frame unless the render size or downsample changed, then the graph recreated it
     uint32_t previousOutputID = outputImageID;
+    uint32_t previousSpecularID = specularImageID;
     _createResources();
+
+    // last frame's final hdr image, same graph texture the combine pass writes later this frame
+    uint32_t previousColorID = prevColorImageID;
+    prevColorHandle = graph.createRenderTexture(DeferredCombinePassVulkan::OutputName, DeferredCombinePassVulkan::outputDesc());
+    prevColorImage = graph.getTexture(prevColorHandle);
+    prevColorImageID = prevColorImage->id();
 
     if(needResize) {
 		_recreateResources();
@@ -404,7 +527,8 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
 
     // compared by id, a recreated texture can land at the same address
     auto highZRendererVulkan = dynamic_cast<HiZPassVulkan*>(rendererManagerVulkan->getRenderer("HiZPassVulkan"));
-    if(outputImageID != previousOutputID || highZRendererVulkan->hizImage->id() != hizImageID) {
+    if(outputImageID != previousOutputID || specularImageID != previousSpecularID || prevColorImageID != previousColorID
+        || highZRendererVulkan->hizImage->id() != hizImageID) {
         for(uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
             _updateDescriptor(i);
         }
@@ -420,6 +544,7 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto emissiveImageHandle = graph.importTexture(emissiveImage);
 
     RenderPassNode node{};
+    node.settings = settings;
     node.name = "SSRGI";
     node.reads = {
         { depthImageHiZHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
@@ -428,7 +553,9 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
         { colorImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
         { albedoImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
         { pbrImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-        { emissiveImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
+        { emissiveImageHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { graph.importTexture(motionImage), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        { prevColorHandle, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
     };
 
     // the tlas fallback samples last frame's probes, picked here so the reads and the descriptors agree
@@ -441,8 +568,17 @@ void SSRGIPassVulkan::addToGraph(RenderGraphVulkan& graph)
     }
 
     node.writes = {
-        { outputHandle, VK_IMAGE_LAYOUT_GENERAL }
+        { outputHandle, VK_IMAGE_LAYOUT_GENERAL },
+        { specularHandle, VK_IMAGE_LAYOUT_GENERAL }
     };
+
+    // last frame's reservoirs are read and this frame's written, both stay in general
+    reservoirCurrent = 1 - reservoirCurrent;
+    for(int set = 0; set < 2; set++) {
+        for(int i = 0; i < 4; i++) {
+            node.writes.push_back({ reservoirHandles[set][i], VK_IMAGE_LAYOUT_GENERAL });
+        }
+    }
 
     node.execute = [this] (VkCommandBuffer cmd, uint32_t currentFrame){
         Scene* scene = SceneManager::getInstance().getActiveScene();

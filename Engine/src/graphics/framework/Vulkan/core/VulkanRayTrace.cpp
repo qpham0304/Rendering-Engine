@@ -1,4 +1,5 @@
 #include "VulkanRayTrace.h"
+#include <algorithm>
 #include "../renderers/RenderDeviceVulkan.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
 #include <graphics/framework/Vulkan/resources/buffers/AccelStructureBufferVulkan.h>
@@ -503,3 +504,114 @@ void RaytracingBuilderKHR::buildTlas(
     
     bufferManager->destroy(instancesBufferID);
  }
+
+namespace {
+    const VkBuildAccelerationStructureFlagsKHR kDynamicBlasFlags =
+        VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
+
+    VkAccelerationStructureBuildGeometryInfoKHR dynamicBlasBuildInfo(const BlasInput& input) {
+        VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
+        buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+        buildInfo.flags = kDynamicBlasFlags;
+        buildInfo.geometryCount = static_cast<uint32_t>(input.asGeometry.size());
+        buildInfo.pGeometries = input.asGeometry.data();
+        return buildInfo;
+    }
+}
+
+RaytracingBuilderKHR::DynamicBlas RaytracingBuilderKHR::createDynamicBlas(const BlasInput& input)
+{
+    VkAccelerationStructureBuildGeometryInfoKHR buildInfo = dynamicBlasBuildInfo(input);
+    std::vector<uint32_t> primitiveCounts;
+    for(const auto& range : input.asBuildOffsetInfo) {
+        primitiveCounts.push_back(range.primitiveCount);
+    }
+
+    VkAccelerationStructureBuildSizesInfoKHR sizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
+    vkGetAccelerationStructureBuildSizesKHR(*m_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+        &buildInfo, primitiveCounts.data(), &sizeInfo);
+
+    VkAccelerationStructureCreateInfoKHR createInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
+    createInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+    createInfo.size = sizeInfo.accelerationStructureSize;
+
+    DynamicBlas blas{};
+    blas.as = createAcceleration(renderDevice, bufferManager, createInfo);
+    VkDeviceSize scratchSize = std::max(sizeInfo.buildScratchSize, sizeInfo.updateScratchSize);
+    VkDeviceSize alignment = std::max<VkDeviceSize>(m_asProperties.minAccelerationStructureScratchOffsetAlignment, 1);
+    blas.scratchID = bufferManager->createBufferObject(scratchSize + alignment);
+    return blas;
+}
+
+void RaytracingBuilderKHR::cmdBuildDynamicBlas(VkCommandBuffer cmd, DynamicBlas& blas, const BlasInput& input)
+{
+    VkDeviceAddress scratch = bufferManager->getVirtualMemoryAddress(blas.scratchID);
+    VkDeviceSize alignment = std::max<VkDeviceSize>(m_asProperties.minAccelerationStructureScratchOffsetAlignment, 1);
+    scratch = (scratch + alignment - 1) / alignment * alignment;
+
+    VkAccelerationStructureBuildGeometryInfoKHR buildInfo = dynamicBlasBuildInfo(input);
+    buildInfo.mode = blas.built ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+    buildInfo.srcAccelerationStructure = blas.built ? blas.as->getAccelStr() : VK_NULL_HANDLE;
+    buildInfo.dstAccelerationStructure = blas.as->getAccelStr();
+    buildInfo.scratchData.deviceAddress = scratch;
+
+    const VkAccelerationStructureBuildRangeInfoKHR* ranges = input.asBuildOffsetInfo.data();
+    vkCmdBuildAccelerationStructuresKHR(cmd, 1, &buildInfo, &ranges);
+    blas.built = true;
+}
+
+void RaytracingBuilderKHR::destroyDynamicBlas(DynamicBlas& blas)
+{
+    if(blas.as) {
+        bufferManager->destroy(blas.as->id());
+    }
+    if(blas.scratchID) {
+        bufferManager->destroy(blas.scratchID);
+    }
+    blas = DynamicBlas{};
+}
+
+VkDeviceAddress RaytracingBuilderKHR::getAccelDeviceAddress(AccelStructureBufferVulkan* as) const
+{
+    VkAccelerationStructureDeviceAddressInfoKHR addressInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR };
+    addressInfo.accelerationStructure = as->getAccelStr();
+    return vkGetAccelerationStructureDeviceAddressKHR(*m_device, &addressInfo);
+}
+
+void RaytracingBuilderKHR::cmdUpdateTlas(
+    VkCommandBuffer cmd,
+    uint32_t countInstance,
+    VkDeviceAddress instanceAddress,
+    VkBuildAccelerationStructureFlagsKHR flags
+) {
+    bool update = m_tlas != nullptr && countInstance == m_tlasInstanceCount;
+    if(!update && m_tlas != nullptr) {
+        vkDeviceWaitIdle(*m_device);
+        destroyTlas();
+        bufferManager->destroy(m_scratch2_ID);
+        m_scratch2_ID = 0;
+    }
+    m_tlasInstanceCount = countInstance;
+
+    const VkPipelineStageFlags readers = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+        | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+        | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+
+    // the frames still in flight trace the same tlas and the refit reuses one scratch buffer
+    VkMemoryBarrier before{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+    before.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+    before.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+    vkCmdPipelineBarrier(cmd,
+        readers | VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+        VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+        0, 1, &before, 0, nullptr, 0, nullptr);
+
+    _cmdCreateTlas(cmd, countInstance, instanceAddress, flags, update, false);
+
+    VkMemoryBarrier after{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+    after.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+    after.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+    vkCmdPipelineBarrier(cmd,
+        VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, readers,
+        0, 1, &after, 0, nullptr, 0, nullptr);
+}

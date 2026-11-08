@@ -23,6 +23,7 @@ public:
 		alignas(4) int ddgiMode;	// 0: off, 1: on, 2: show the ddgi term only
 		alignas(16) glm::ivec4 probeCounts;
 		alignas(4) float skyIntensity;
+		alignas(4) int aoOn;
 	};
 
 	struct UniformBufferObject {
@@ -44,8 +45,13 @@ public:
 
     void writeCombinedImage(VkCommandBuffer cmd, uint32_t currentFrame);
 
+	static constexpr const char* OutputName = "DeferredCombine.Output";
+	static RGTextureDesc outputDesc();
+
 private: // TODO: consider make private
 	TextureVulkan* denoisedGIImage;
+	TextureVulkan* specularGIImage { nullptr };
+	TextureVulkan* aoImage { nullptr };
 	TextureVulkan* sceneImage;
 	TextureVulkan* albedoImage;
 	TextureVulkan* positionImage;

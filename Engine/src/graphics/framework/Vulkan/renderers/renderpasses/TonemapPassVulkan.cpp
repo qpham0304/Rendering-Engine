@@ -49,7 +49,9 @@ void TonemapPassVulkan::onUpdate()
 
 void TonemapPassVulkan::_fetchInputImage()
 {
-    if(rendererManagerVulkan->isUpscaling()) {
+    if(inputOverride) {
+        inputImage = inputOverride;
+    } else if(rendererManagerVulkan->isUpscaling()) {
         inputImage = dynamic_cast<DLSSPassVulkan*>(rendererManagerVulkan->getRenderer("DLSSPassVulkan"))->getOutputImage();
     } else {
         inputImage = dynamic_cast<DeferredCombinePassVulkan*>(rendererManagerVulkan->getRenderer("DeferredCombinePassVulkan"))->getOutputImage();
@@ -173,6 +175,7 @@ void TonemapPassVulkan::addToGraph(RenderGraphVulkan& graph)
     auto input = graph.importTexture(inputImage);
 
     RenderPassNode node{};
+    node.settings = settings;
     node.name = "Tonemap";
     node.reads = { { input, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL } };
     node.writes = { { outputHandle, VK_IMAGE_LAYOUT_GENERAL } };
