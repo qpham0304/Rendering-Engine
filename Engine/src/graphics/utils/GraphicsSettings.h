@@ -213,6 +213,30 @@ struct AtrousSettings {
 	)
 };
 
+struct PathTracingSettings {
+	int maxBounces { 8 };
+	bool denoise { true };
+	float maxHistory { 32.0f };
+	int atrousIterations { 4 };
+	float luminanceSigma { 4.0f };
+	float normalPower { 128.0f };
+	float positionSigma { 0.01f };
+	float normalThreshold { 0.9f };
+	float positionTolerance { 0.02f };
+
+	DEFINE_TYPE(PathTracingSettings,
+		member("maxBounces", &PathTracingSettings::maxBounces, FieldMeta{ .min = 1.0f, .max = 16.0f, .tooltip = "longest path, interiors lit only by bounced light need more, russian roulette ends most paths early" }),
+		member("denoise", &PathTracingSettings::denoise, FieldMeta{ .tooltip = "temporal accumulation and a-trous filter, off shows the raw one sample per pixel image" }),
+		member("maxHistory", &PathTracingSettings::maxHistory, FieldMeta{ .min = 1.0f, .max = 256.0f, .tooltip = "frames a pixel averages over, higher is cleaner but lags behind light changes" }),
+		member("atrousIterations", &PathTracingSettings::atrousIterations, FieldMeta{ .min = 0.0f, .max = 5.0f, .tooltip = "each pass doubles the filter reach, 4 reaches about 30 pixels" }),
+		member("luminanceSigma", &PathTracingSettings::luminanceSigma, FieldMeta{ .min = 0.1f, .max = 32.0f, .tooltip = "how much of the remaining noise counts as noise rather than an edge, higher blurs more" }),
+		member("normalPower", &PathTracingSettings::normalPower, FieldMeta{ .min = 1.0f, .max = 256.0f, .tooltip = "higher keeps creases sharper" }),
+		member("positionSigma", &PathTracingSettings::positionSigma, FieldMeta{ .min = 0.001f, .max = 0.2f, .format = "%.3f", .tooltip = "distance off the pixel's plane that still blurs together, relative to the camera distance" }),
+		member("normalThreshold", &PathTracingSettings::normalThreshold, FieldMeta{ .min = 0.5f, .max = 1.0f, .format = "%.3f", .tooltip = "how alike the normals of last frame's pixel must be to reuse it" }),
+		member("positionTolerance", &PathTracingSettings::positionTolerance, FieldMeta{ .min = 0.001f, .max = 0.2f, .format = "%.3f", .tooltip = "how far last frame's pixel may be, relative to the camera distance, to reuse it" })
+	)
+};
+
 struct SkyAtmosphereSettings {
 	bool enabled { true };
 	float intensity { 1.0f };
@@ -255,6 +279,19 @@ inline glm::vec4 sceneSunColor(const LightingSettings* lighting, const SkyAtmosp
 		color *= glm::vec4(sky->sunTransmittance, 1.0f);
 	}
 	return color;
+}
+
+// toward the sun from its angles, the same axis the shadow pass renders from (lightDir is only written when it runs)
+inline glm::vec3 sceneSunDirection(const ShadowMapSettings* shadow)
+{
+	if (!shadow) {
+		return glm::vec3(0.0f, 1.0f, 0.0f);
+	}
+	if (!shadow->useOrtho) {
+		return glm::normalize(shadow->lightDir);
+	}
+	float cosElevation = std::cos(shadow->sunElevation);
+	return glm::normalize(glm::vec3(cosElevation * std::sin(shadow->sunAzimuth), std::sin(shadow->sunElevation), cosElevation * std::cos(shadow->sunAzimuth)));
 }
 
 struct ImageBasedSettings {

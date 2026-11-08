@@ -99,7 +99,7 @@ void main() {
     // payload.matIdx = matIndices.i[gl_PrimitiveID];
 
     payload.hitPos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
-    payload.worldNormal = normalize(nrmObject * gl_ObjectToWorldEXT).xyz;
+    payload.worldNormal = normalize(vec3(nrmObject * gl_WorldToObjectEXT));  // inverse transpose of object to world
     payload.instanceIndex = gl_InstanceCustomIndexEXT;
     payload.primitiveIndex = gl_PrimitiveID;
     payload.bc = bc;

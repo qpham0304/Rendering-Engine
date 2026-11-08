@@ -21,6 +21,7 @@ ImGuiGraphicsSettingsWidget::ImGuiGraphicsSettingsWidget(std::string name)
     m_drawers.add<TonemapSettings>();
     m_drawers.add<TemporalSettings>();
     m_drawers.add<AtrousSettings>();
+    m_drawers.add<PathTracingSettings>();
 }
 
 void ImGuiGraphicsSettingsWidget::render()

@@ -26,6 +26,7 @@ public:
 	virtual void addToGraph(RenderGraphVulkan& graph) override;
 
 	void writeTonemap(VkCommandBuffer cmd, uint32_t currentFrame);
+	void setInputOverride(TextureVulkan* texture) { inputOverride = texture; }	// another renderer's hdr image, nullptr goes back to combine / dlss
 
 protected:
 	void _fetchInputImage();
@@ -39,5 +40,6 @@ protected:
 	TonemapSettings* settings { nullptr };
 	PushConstant tonemapPush {};
 	TextureVulkan* inputImage { nullptr };
+	TextureVulkan* inputOverride { nullptr };
 	RGHandle outputHandle {};
 };

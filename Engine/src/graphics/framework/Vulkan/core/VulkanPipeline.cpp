@@ -431,13 +431,19 @@ void VulkanPipeline::createRayTracePipeline(
 
     group.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
     group.closestHitShader = stages.size()-1;   // Index of hit shader
+
+    // alpha test, runs only on geometry the blas left non opaque
+    stage.module = createShaderModule(VulkanUtils::readFile("assets/shaders/spv/raytrace.rahit.spv"));
+    stage.stage = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+    stages.push_back(stage);
+    group.anyHitShader = stages.size()-1;
     groups.push_back(group);
 
     // Create the ray tracing pipeline layout.
     // Push constant: we want to be able to update constants used by the shaders
     VkPushConstantRange pushConstant {
-		VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
-        0, 
+		VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR,
+        0,
 		pushConstantSize
 	};
 

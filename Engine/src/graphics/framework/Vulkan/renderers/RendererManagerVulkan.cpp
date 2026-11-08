@@ -331,7 +331,20 @@ void RendererManagerVulkan::render()
 
         m_renderGraph.execute(cmd, currentFrame);
     } else if(currentRenderMode == 2 && raytracingRenderer) {
+        // the path tracer lights with the same sky the raster path builds
+        m_renderGraph.reset();
+        skyAtmosphereRenderer->addToGraph(m_renderGraph);
+        imageBasedRenderer->addToGraph(m_renderGraph);
+        m_renderGraph.execute(cmd, currentFrame);
+
         raytracingRenderer->render(*camera);
+
+        // same tonemapper, exposure and gamma as the raster path
+        m_renderGraph.reset();
+        tonemapRenderer->setInputOverride(raytracingRenderer->rayTraceImage);
+        tonemapRenderer->addToGraph(m_renderGraph);
+        m_renderGraph.execute(cmd, currentFrame);
+        tonemapRenderer->setInputOverride(nullptr);
     }
 
     debugRenderer->render(*camera);

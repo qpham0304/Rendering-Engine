@@ -49,7 +49,9 @@ void TonemapPassVulkan::onUpdate()
 
 void TonemapPassVulkan::_fetchInputImage()
 {
-    if(rendererManagerVulkan->isUpscaling()) {
+    if(inputOverride) {
+        inputImage = inputOverride;
+    } else if(rendererManagerVulkan->isUpscaling()) {
         inputImage = dynamic_cast<DLSSPassVulkan*>(rendererManagerVulkan->getRenderer("DLSSPassVulkan"))->getOutputImage();
     } else {
         inputImage = dynamic_cast<DeferredCombinePassVulkan*>(rendererManagerVulkan->getRenderer("DeferredCombinePassVulkan"))->getOutputImage();

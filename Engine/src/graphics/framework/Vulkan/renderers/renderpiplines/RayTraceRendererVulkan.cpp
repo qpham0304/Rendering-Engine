@@ -40,6 +40,7 @@ RayTraceRendererVulkan::~RayTraceRendererVulkan()
 bool RayTraceRendererVulkan::init(WindowConfig config)
 {
 	RendererVulkan::init(config);
+	m_pathTracingSettings = &rendererManagerVulkan->getGraphicsSettings().add<PathTracingSettings>("Path Tracing");
 	
 	bufferManagerVulkan->createUniformBuffers(uniformbuffersList, sizeof(UniformBufferObject));
 	
@@ -147,7 +148,7 @@ void RayTraceRendererVulkan::render(Camera& camera)
     ubo.height = currHeight;
     
     bool shouldClear = camera.isMoving() || clear;
-    ubo.frameSeed = !shouldClear ? rand() % 32768 : ubo.frameSeed;
+    ubo.frameSeed = static_cast<float>(rand() % 32768);	// a new sample every frame, the denoiser accumulates them
     ubo.frameCount += 1;
     ubo.clear = shouldClear;
 	
@@ -167,17 +168,27 @@ void RayTraceRendererVulkan::render(Camera& camera)
 	pushConstant.objectsRef = rendererManagerVulkan->getObjectsAddress();
 	pushConstant.objectIdx  = 0;//objectsIndex;
     pushConstant.explicitPass = explicitPass ? 1 : 0;
+    pushConstant.lightsRef = rendererManagerVulkan->getLightsAddress();
+    _updateSceneLighting(currentFrame);
+	uniformbuffersList[currentFrame]->update(&ubo, sizeof(ubo));
 
 	updateTlas();
     
 	StorageBufferVulkan* lightSSBO = lightStoragebuffers[currentFrame];
 	lightSSBO->update(lights.data(), lights.size() * sizeof(LightSSBO));
 
-	writeRayTracing(cmd, currentFrame);
-	writePostProcess(cmd, currentFrame);
+	_updateDenoiseDescriptors(currentFrame, kMaxAtrousIterations);
 
-	// rendererManagerVulkan->setDisplayImage(rayTraceImage);
-	rendererManagerVulkan->setDisplayImage(postProcessImage);
+	// the denoiser of the frames before may still read what the trace is about to overwrite
+	VkMemoryBarrier beforeTrace{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+	beforeTrace.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+	beforeTrace.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+		0, 1, &beforeTrace, 0, nullptr, 0, nullptr);
+
+	writeRayTracing(cmd, currentFrame);
+	_writeDenoise(cmd, currentFrame);
+	// the tonemap pass shows rayTraceImage with the same settings as the raster path
 }
 
 void RayTraceRendererVulkan::writePostProcess(VkCommandBuffer cmd, uint32_t currentFrame)
@@ -224,7 +235,7 @@ void RayTraceRendererVulkan::writeRayTracing(VkCommandBuffer cmd, uint32_t curre
 
 	vkCmdPushConstants(
         cmd, rtPipeline->pipelineLayout, 
-        VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 
+        VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR,
         0, sizeof(PushConstant), &pushConstant
     );
 
@@ -253,6 +264,7 @@ void RayTraceRendererVulkan::_createResources()
 
     textureManagerVulkan->registerBindlessTexture(rayTraceImage->id());
     textureManagerVulkan->registerBindlessTexture(postProcessImage->id());
+    _createDenoiseTargets();
 }
 
 void RayTraceRendererVulkan::_createPipeline()
@@ -280,6 +292,8 @@ void RayTraceRendererVulkan::_createPipeline()
 		sizeof(PushConstant)
 	);
 
+	_createDenoisePipelines();
+
 }
 
 void RayTraceRendererVulkan::_createDescriptor()
@@ -292,12 +306,18 @@ void RayTraceRendererVulkan::_createDescriptor()
 		{ 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
 		{ 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
 		{ 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
+		{ 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },	// sky, written every frame
+		{ 5, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },	// primary surface for the denoiser
+		{ 6, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
+		{ 7, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
+		{ 8, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, nullptr },
 	};
     std::vector<VkDescriptorPoolSize> rtPoolSizes {
 		{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, frameCount * 1 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 1},
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 5},
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, frameCount * 1},
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frameCount * 1},
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 1},
 	};
     raytraceLayoutID = descriptorManagerVulkan->createLayout(rtBindings);
     raytracePoolID = descriptorManagerVulkan->createPool(rtPoolSizes, frameCount);
@@ -319,6 +339,8 @@ void RayTraceRendererVulkan::_createDescriptor()
     postProcessPoolID = descriptorManagerVulkan->createPool(postPoolSizes, frameCount);
 	postProcessSetID = descriptorManagerVulkan->createSets(postProcessLayoutID, postProcessPoolID, frameCount);
 
+	_createDenoiseDescriptors();
+
     for(int i = 0; i < frameCount; i++) {
         _updateDescriptor(i);
     }
@@ -332,7 +354,7 @@ void RayTraceRendererVulkan::_updateDescriptor(uint32_t index)
 	auto rtDescriptorSets = descriptorManagerVulkan->getDescriptorSet(raytraceSetID);
 	DescriptorWriter writesRayTrace { {}, rtDescriptorSets[index] };
 	descriptorManagerVulkan->writeAccelStruct2(writesRayTrace, rtBindings,  tlas->getDescAccelStructInfo());
-	descriptorManagerVulkan->writeStorageImage2(writesRayTrace, rayTraceImage->getDescImageInfoGeneral());
+	descriptorManagerVulkan->writeStorageImage2(writesRayTrace, m_denoise.noisy->getDescImageInfoGeneral());
 	descriptorManagerVulkan->writeUniform2(writesRayTrace, uniformbuffersList[index]->getDescUniformBufferInfo());
 	descriptorManagerVulkan->writeStorage2(writesRayTrace, lightStoragebuffers[index]->getDescStorageBufferInfo());
 	descriptorManagerVulkan->updateDescriptorSets(&writesRayTrace.writes);
@@ -365,8 +387,11 @@ void RayTraceRendererVulkan::_cleanupResources()
 {
     textureManagerVulkan->destroy(rayTraceImage->id());
     textureManagerVulkan->destroy(postProcessImage->id());
+    _destroyDenoiseTargets();
 	rtPipeline->destroy();
 	postProcessPipeline->destroy();
+	m_temporalPipeline->destroy();
+	m_atrousPipeline->destroy();
 }
 
 void RayTraceRendererVulkan::_populateData(std::vector<VkAccelerationStructureInstanceKHR>& tlas)
@@ -435,8 +460,12 @@ BlasInput RayTraceRendererVulkan::_toVkGeometry(uint32_t meshID, uint64_t vertex
     VkAccelerationStructureGeometryKHR geometry{};
     geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
     geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-    geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
-    
+    // alpha tested materials stay non opaque so the path tracer's any-hit can cut them out,
+    // the ray queries elsewhere force opaque and are unaffected
+    bool alphaTested = materialManager->getMaterial(mesh->materialID).alphaCutoff > 0.0f;
+    VkGeometryFlagsKHR geometryFlags = alphaTested ? VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR : VK_GEOMETRY_OPAQUE_BIT_KHR;
+    geometry.flags = geometryFlags;
+
     auto& triangles = geometry.geometry.triangles;
     triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
     triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
@@ -454,7 +483,7 @@ BlasInput RayTraceRendererVulkan::_toVkGeometry(uint32_t meshID, uint64_t vertex
 
 	VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
     asGeom.geometryType       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-    asGeom.flags              = VK_GEOMETRY_OPAQUE_BIT_KHR;
+    asGeom.flags              = geometryFlags;
     asGeom.geometry.triangles = triangles;
 
     // The entire array will be used to build the BLAS.
@@ -683,6 +712,30 @@ void RayTraceRendererVulkan::addToGraph(RenderGraphVulkan& graph)
 {
 }
 
+// the same sun, sky and point lights the raster path lights the scene with
+void RayTraceRendererVulkan::_updateSceneLighting(uint32_t frameIndex)
+{
+    const GraphicsSettingsSerializer& graphicsSettings = rendererManagerVulkan->getGraphicsSettings();
+    const ShadowMapSettings* shadowSettings = graphicsSettings.get<ShadowMapSettings>();
+    const LightingSettings* lightingSettings = graphicsSettings.get<LightingSettings>();
+    const DDGISettings* ddgiSettings = graphicsSettings.get<DDGISettings>();
+
+    glm::vec3 sunDirection = sceneSunDirection(shadowSettings);
+    const float sunAngularRadius = 0.0093f;  // about twice the real sun, keeps the shadow edge visible
+    ubo.sunDirection = glm::vec4(glm::normalize(sunDirection), sunAngularRadius);
+    float skyIntensity = ddgiSettings ? ddgiSettings->skyIntensity : 1.0f;
+    ubo.sunColor = glm::vec4(glm::vec3(sceneSunColor(lightingSettings, graphicsSettings.get<SkyAtmosphereSettings>())), skyIntensity);
+    ubo.lightCount = rendererManagerVulkan->getLightCount();
+    ubo.maxBounces = std::clamp(m_pathTracingSettings->maxBounces, 1, 16);
+
+    auto imageBasedRenderer = dynamic_cast<ImageBasedRendererVulkan*>(rendererManagerVulkan->getRenderer("ImageBasedRendererVulkan"));
+    TextureVulkan* sky = imageBasedRenderer->prefilterMap;
+    VkDescriptorImageInfo skyInfo{ sky->textureSampler, sky->textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+    std::vector<VkWriteDescriptorSet> writes;
+    descriptorManagerVulkan->writeImage(&writes, descriptorManagerVulkan->getDescriptorSet(raytraceSetID)[frameIndex], 4, skyInfo);
+    descriptorManagerVulkan->updateDescriptorSets(&writes);
+}
+
 // one skinned copy of the vertices per animated mesh instance, ray hits read it through Object::rtVertexAddress.
 // created on first use, filled by _skinAndRefit before the tlas references it
 uint64_t RayTraceRendererVulkan::getSkinnedVertexAddress(uint32_t meshID, uint32_t boneMatricesIdx)
@@ -785,3 +838,192 @@ void RayTraceRendererVulkan::_releaseStaleSkinned()
         }
     }
 }
+
+#pragma region denoise
+// all stay in the general layout for their whole life, cleared once so the first frame's history reads zeros
+void RayTraceRendererVulkan::_createDenoiseTargets()
+{
+    auto create = [this](VkFormat format) {
+        TextureSamplerConfig samplerConfig = { VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_MIPMAP_MODE_NEAREST };
+        TextureConfig config{ .width = currWidth, .height = currHeight, .format = format };
+        config.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        config.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        uint32_t id = textureManagerVulkan->createTexture(config, samplerConfig);
+        return dynamic_cast<TextureVulkan*>(textureManagerVulkan->getTexture(id));
+    };
+
+    const VkFormat half = VK_FORMAT_R16G16B16A16_SFLOAT;
+    m_denoise.noisy = create(half);
+    m_denoise.albedo = create(half);
+    m_denoise.emission = create(half);
+    for(int i = 0; i < 2; i++) {
+        m_denoise.position[i] = create(VK_FORMAT_R32G32B32A32_SFLOAT);
+        m_denoise.normal[i] = create(half);
+        m_denoise.historyColor[i] = create(half);
+        m_denoise.historyMoments[i] = create(half);
+        m_denoise.atrous[i] = create(half);
+    }
+
+    std::vector<TextureVulkan*> all = { m_denoise.noisy, m_denoise.albedo, m_denoise.emission };
+    for(int i = 0; i < 2; i++) {
+        all.insert(all.end(), { m_denoise.position[i], m_denoise.normal[i], m_denoise.historyColor[i], m_denoise.historyMoments[i], m_denoise.atrous[i] });
+    }
+
+    VkCommandBuffer cmd = renderDeviceVulkan->commandPool.beginSingleTimeCommand();
+    VkClearColorValue zero{};
+    VkImageSubresourceRange range{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    for(TextureVulkan* texture : all) {
+        texture->transitImage(cmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+        vkCmdClearColorImage(cmd, texture->textureImage, VK_IMAGE_LAYOUT_GENERAL, &zero, 1, &range);
+    }
+    renderDeviceVulkan->commandPool.endSingleTimeCommand(cmd);
+    m_denoiseCurrent = 0;
+}
+
+void RayTraceRendererVulkan::_destroyDenoiseTargets()
+{
+    std::vector<TextureVulkan*> all = { m_denoise.noisy, m_denoise.albedo, m_denoise.emission };
+    for(int i = 0; i < 2; i++) {
+        all.insert(all.end(), { m_denoise.position[i], m_denoise.normal[i], m_denoise.historyColor[i], m_denoise.historyMoments[i], m_denoise.atrous[i] });
+    }
+    for(TextureVulkan* texture : all) {
+        if(texture) {
+            textureManagerVulkan->destroy(texture->id());
+        }
+    }
+    m_denoise = DenoiseTargets{};
+}
+
+void RayTraceRendererVulkan::_createDenoiseDescriptors()
+{
+    uint32_t frameCount = VulkanUtils::numFrames();
+    auto storageBindings = [](uint32_t count) {
+        std::vector<VkDescriptorSetLayoutBinding> bindings;
+        for(uint32_t i = 0; i < count; i++) {
+            bindings.push_back({ i, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr });
+        }
+        return bindings;
+    };
+
+    m_temporalLayoutID = descriptorManagerVulkan->createLayout(storageBindings(9));
+    m_temporalPoolID = descriptorManagerVulkan->createPool({ { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, frameCount * 9 } }, frameCount);
+    m_temporalSetsID = descriptorManagerVulkan->createSets(m_temporalLayoutID, m_temporalPoolID, frameCount);
+
+    uint32_t atrousSets = frameCount * kMaxAtrousIterations;
+    m_atrousLayoutID = descriptorManagerVulkan->createLayout(storageBindings(7));
+    m_atrousPoolID = descriptorManagerVulkan->createPool({ { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, atrousSets * 7 } }, atrousSets);
+    m_atrousSetsID = descriptorManagerVulkan->createSets(m_atrousLayoutID, m_atrousPoolID, atrousSets);
+}
+
+void RayTraceRendererVulkan::_createDenoisePipelines()
+{
+    m_temporalPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+    m_temporalPipeline->createComputePipeline("assets/shaders/spv/ptTemporal.comp.spv",
+        { descriptorManagerVulkan->getDescriptorLayout(m_temporalLayoutID) }, sizeof(TemporalPushConstant));
+
+    m_atrousPipeline = std::make_unique<VulkanPipeline>(renderDeviceVulkan->device);
+    m_atrousPipeline->createComputePipeline("assets/shaders/spv/ptAtrous.comp.spv",
+        { descriptorManagerVulkan->getDescriptorLayout(m_atrousLayoutID) }, sizeof(AtrousPushConstant));
+}
+
+// this frame's and last frame's targets swap every frame, only this frame index's sets are rewritten
+void RayTraceRendererVulkan::_updateDenoiseDescriptors(uint32_t frameIndex, int atrousIterations)
+{
+    uint32_t current = m_denoiseCurrent;
+    uint32_t previous = 1 - current;
+    auto info = [](TextureVulkan* texture) {
+        return VkDescriptorImageInfo{ texture->textureSampler, texture->textureImageView, VK_IMAGE_LAYOUT_GENERAL };
+    };
+
+    // the trace writes this frame's surface
+    VkDescriptorImageInfo traceInfos[4] = { info(m_denoise.position[current]), info(m_denoise.normal[current]),
+        info(m_denoise.albedo), info(m_denoise.emission) };
+    std::vector<VkWriteDescriptorSet> writes;
+    const VkDescriptorSet& traceSet = descriptorManagerVulkan->getDescriptorSet(raytraceSetID)[frameIndex];
+    for(uint32_t i = 0; i < 4; i++) {
+        descriptorManagerVulkan->writeStorageImage(&writes, traceSet, 5 + i, traceInfos[i]);
+    }
+
+    VkDescriptorImageInfo temporalInfos[9] = {
+        info(m_denoise.noisy), info(m_denoise.position[current]), info(m_denoise.normal[current]),
+        info(m_denoise.position[previous]), info(m_denoise.normal[previous]),
+        info(m_denoise.historyColor[previous]), info(m_denoise.historyMoments[previous]),
+        info(m_denoise.historyColor[current]), info(m_denoise.historyMoments[current]),
+    };
+    const VkDescriptorSet& temporalSet = descriptorManagerVulkan->getDescriptorSet(m_temporalSetsID)[frameIndex];
+    for(uint32_t i = 0; i < 9; i++) {
+        descriptorManagerVulkan->writeStorageImage(&writes, temporalSet, i, temporalInfos[i]);
+    }
+
+    // iteration 0 filters the accumulated history, the rest ping-pong, the last one also writes the composite
+    VkDescriptorImageInfo atrousInfos[kMaxAtrousIterations][7];
+    int passes = std::max(atrousIterations, 1);
+    for(int i = 0; i < passes; i++) {
+        TextureVulkan* input = i == 0 ? m_denoise.historyColor[current] : m_denoise.atrous[(i - 1) % 2];
+        TextureVulkan* output = m_denoise.atrous[i % 2];
+        TextureVulkan* sources[7] = { input, output, m_denoise.position[current], m_denoise.normal[current],
+            m_denoise.albedo, m_denoise.emission, rayTraceImage };
+        const VkDescriptorSet& set = descriptorManagerVulkan->getDescriptorSet(m_atrousSetsID)[frameIndex * kMaxAtrousIterations + i];
+        for(uint32_t b = 0; b < 7; b++) {
+            atrousInfos[i][b] = info(sources[b]);
+            descriptorManagerVulkan->writeStorageImage(&writes, set, b, atrousInfos[i][b]);
+        }
+    }
+    descriptorManagerVulkan->updateDescriptorSets(&writes);
+}
+
+// trace -> temporal accumulation -> a-trous iterations, the last one writes the lit image the post process tonemaps
+void RayTraceRendererVulkan::_writeDenoise(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+    bool denoise = m_pathTracingSettings->denoise;
+    int iterations = denoise ? std::clamp(m_pathTracingSettings->atrousIterations, 0, kMaxAtrousIterations) : 0;
+    int passes = std::max(iterations, 1);
+    uint32_t groupX = (currWidth + 15) / 16;
+    uint32_t groupY = (currHeight + 15) / 16;
+
+    auto computeBarrier = [cmd](VkPipelineStageFlags src) {
+        VkMemoryBarrier barrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+        barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+        vkCmdPipelineBarrier(cmd, src, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+    };
+    computeBarrier(VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR);
+
+    TemporalPushConstant temporal{};
+    temporal.prevViewProj = ubo.prevViewProj;
+    temporal.cameraPos = ubo.cameraPos;
+    temporal.resolution = { static_cast<int>(currWidth), static_cast<int>(currHeight) };
+    temporal.maxHistory = denoise ? std::max(m_pathTracingSettings->maxHistory, 1.0f) : 1.0f;
+    temporal.normalThreshold = m_pathTracingSettings->normalThreshold;
+    temporal.positionTolerance = m_pathTracingSettings->positionTolerance;
+
+    m_temporalPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+    VkDescriptorSet temporalSet = descriptorManagerVulkan->getDescriptorSet(m_temporalSetsID)[frameIndex];
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_temporalPipeline->pipelineLayout, 0, 1, &temporalSet, 0, nullptr);
+    vkCmdPushConstants(cmd, m_temporalPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(TemporalPushConstant), &temporal);
+    vkCmdDispatch(cmd, groupX, groupY, 1);
+    computeBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    rayTraceImage->transitImage(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 1, 1);
+    AtrousPushConstant atrous{};
+    atrous.cameraPos = ubo.cameraPos;
+    atrous.resolution = temporal.resolution;
+    atrous.luminanceSigma = std::max(m_pathTracingSettings->luminanceSigma, 0.01f);
+    atrous.normalPower = std::max(m_pathTracingSettings->normalPower, 1.0f);
+    atrous.positionSigma = std::max(m_pathTracingSettings->positionSigma, 0.0001f);
+
+    m_atrousPipeline->bind(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+    for(int i = 0; i < passes; i++) {
+        VkDescriptorSet set = descriptorManagerVulkan->getDescriptorSet(m_atrousSetsID)[frameIndex * kMaxAtrousIterations + i];
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_atrousPipeline->pipelineLayout, 0, 1, &set, 0, nullptr);
+        atrous.stepSize = iterations == 0 ? 0 : (1 << i);    // 0 only resolves, no filtering
+        atrous.composite = i == passes - 1 ? 1 : 0;
+        vkCmdPushConstants(cmd, m_atrousPipeline->pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(AtrousPushConstant), &atrous);
+        vkCmdDispatch(cmd, groupX, groupY, 1);
+        computeBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    }
+    rayTraceImage->transitImage(cmd, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 1);
+
+    m_denoiseCurrent = 1 - m_denoiseCurrent;
+}
+#pragma endregion denoise
