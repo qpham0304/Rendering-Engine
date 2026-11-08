@@ -43,14 +43,14 @@ bool SandBoxLayer::init()
     // only build it on first load, reloading dll wont recreate scene;
     if (!SceneManager::getInstance().getScene("sandbox-scene")) {
         Scene* scene = SceneManager::getInstance().addScene("sandbox-scene");
-        scene->loadScene("assets/data/sandbox-scene.json");
-        // scene->loadScene("assets/data/particle-showcase.json");
+        scene->loadScene("assets/data/Scenes/sandbox-scene.json");
+        // scene->loadScene("assets/data/Scenes/particle-showcase.json");
         // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
-        // scene1->loadScene("assets/data/Level1.json");
+        // scene1->loadScene("assets/data/Scenes/Level1.json");
         // Scene* scene2 = SceneManager::getInstance().addScene("Level2");
-        // scene2->loadScene("assets/data/Level2.json");
+        // scene2->loadScene("assets/data/Scenes/Level2.json");
         // Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
-        // scene3->loadScene("assets/data/default-scene.json");
+        // scene3->loadScene("assets/data/Scenes/default-scene.json");
 
         SceneManager::getInstance().setActiveScene(scene->getName());
         createLightProbes();

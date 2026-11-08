@@ -21,5 +21,8 @@ protected:
 	std::vector<std::shared_ptr<Widget>> m_widgetRefs;
 	bool m_showDebug;
 
+private:
+	void _activeSceneButton();
+
 };
 

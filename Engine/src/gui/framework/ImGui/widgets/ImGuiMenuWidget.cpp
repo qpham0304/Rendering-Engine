@@ -1,5 +1,9 @@
 #include "ImGuiMenuWidget.h"
 
+#include <algorithm>
+#include "ImGuiScenePicker.h"
+#include "core/scene/SceneManager.h"
+
 ImGuiMenuWidget::ImGuiMenuWidget(std::span<std::shared_ptr<Widget>> widgets) 
 	: MenuWidget("ImGuiMenuWidget")
 {
@@ -17,6 +21,7 @@ ImGuiMenuWidget::~ImGuiMenuWidget()
 void ImGuiMenuWidget::render()
 {
 	MainMenuBar();
+	ImGuiScenePicker::draw();
 }
 
 void ImGuiMenuWidget::MainMenuBar()
@@ -28,31 +33,39 @@ void ImGuiMenuWidget::MainMenuBar()
 		ToolMenu();
 		WindowMenu();
 		HelpMenu();
+		_activeSceneButton();
 
 		ImGui::EndMainMenuBar();
 	}
 }
 
+// the shortcut text is only a hint, the keys are not bound from the menu yet
 void ImGuiMenuWidget::FileMenu()
 {
 	if (ImGui::BeginMenu("File"))
 	{
-		if (ImGui::MenuItem("New"))
-		{
+		Scene* scene = SceneManager::getInstance().getActiveScene();
 
+		if (ImGui::MenuItem("New Scene", "Ctrl+N")) {
+			ImGuiScenePicker::newScene();
+		}
+		if (ImGui::MenuItem("Open Scene...", "Ctrl+O")) {
+			ImGuiScenePicker::open();
 		}
 
-		if (ImGui::MenuItem("Open"))
-		{
-
+		ImGui::Separator();
+		if (ImGui::MenuItem("Save Scene", "Ctrl+S", false, scene != nullptr)) {
+			ImGuiScenePicker::saveActiveScene();
+		}
+		if (scene && ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("%s", scene->savePath().c_str());
+		}
+		if (ImGui::MenuItem("Reload Scene", "Ctrl+R", false, scene != nullptr)) {
+			scene->requestReload();
 		}
 
-		if (ImGui::MenuItem("Save"))
-		{
-
-		}
-
-		if (ImGui::MenuItem("Exit"))
+		ImGui::Separator();
+		if (ImGui::MenuItem("Exit", "Alt+F4"))
 		{
 
 		}
@@ -64,26 +77,51 @@ void ImGuiMenuWidget::EditMenu()
 {
 	if (ImGui::BeginMenu("Edit"))
 	{
-		if (ImGui::MenuItem("Undo"))
+		if (ImGui::MenuItem("Undo", "Ctrl+Z"))
 		{
 
 		}
 
-		if (ImGui::MenuItem("Redo"))
+		if (ImGui::MenuItem("Redo", "Ctrl+Y"))
 		{
 
 		}
 
-		if (ImGui::MenuItem("Cut"))
+		ImGui::Separator();
+		if (ImGui::MenuItem("Cut", "Ctrl+X"))
 		{
 
 		}
 
-		if (ImGui::MenuItem("Select"))
+		if (ImGui::MenuItem("Duplicate", "Ctrl+D"))
+		{
+
+		}
+
+		if (ImGui::MenuItem("Select All", "Ctrl+A"))
 		{
 
 		}
 		ImGui::EndMenu();
+	}
+}
+
+void ImGuiMenuWidget::_activeSceneButton()
+{
+	Scene* scene = SceneManager::getInstance().getActiveScene();
+	std::string label = (scene ? scene->getName() : std::string("No scene")) + "  v";
+	float width = ImGui::CalcTextSize(label.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+	float hintWidth = ImGui::CalcTextSize("Scene").x + ImGui::GetStyle().ItemSpacing.x;
+	ImGui::SameLine(std::max(ImGui::GetWindowWidth() - width - hintWidth - ImGui::GetStyle().WindowPadding.x, ImGui::GetCursorPosX()));
+	ImGui::TextDisabled("Scene");
+	ImGui::SameLine();
+	ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+	if (ImGui::Button(label.c_str())) {
+		ImGuiScenePicker::open();
+	}
+	ImGui::PopStyleColor();
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Open Scene (Ctrl+O)");
 	}
 }
 

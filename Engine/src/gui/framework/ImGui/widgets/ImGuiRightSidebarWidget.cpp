@@ -15,6 +15,7 @@
 #include "scripting/ScriptManager.h"
 #include "physics/PhysicsManager.h"
 #include "ImGuiParticleInspector.h"
+#include "ImGuiScenePicker.h"
 
 
 ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
@@ -25,7 +26,161 @@ ImGuiRightSidebarWidget::ImGuiRightSidebarWidget()
 {
     setFootprint("ImGuiRightSidebarWidget", sizeof(ImGuiRightSidebarWidget), MemorySystem::Gui);
     m_logger = &ServiceLocator::GetService<Logger>("Engine_LoggerSPD");
+    _registerComponents();
+}
 
+void ImGuiRightSidebarWidget::_registerComponents()
+{
+    m_components.add<NameComponent>("Name", { .removable = false });
+
+    m_components.add<TransformComponent>("Transform", {
+        .removable = false,
+        .styles = {
+            { "translateVec", ImGuiReflection::AxisStyle(0.0f, "Translation") },
+            { "rotateVec", ImGuiReflection::AxisStyle(0.0f, "Rotation") },
+            { "scaleVec", ImGuiReflection::AxisStyle(1.0f, "Scale") },
+        },
+        .onChanged = [](Entity, TransformComponent& transform) { transform.updateTransform(); },
+    });
+
+    m_components.add<PrefabComponent>("Prefab", { .removable = false });
+
+    m_components.add<ModelComponent>("Model", {
+        .onFieldChanged = {
+            { "path", [](Entity entity, ModelComponent& model) {
+                if (model.path == "None") {
+                    model.reset();
+                    return;
+                }
+                Entity::_onModelComponentAdded()(entity);
+                if (entity.hasComponent<SpriteComponent>()) {
+                    Entity::_onSpriteComponentAdded()(entity);
+                }
+            } },
+        },
+    });
+
+    m_components.add<MeshComponent>("Mesh", {
+        .draw = [](Entity, MeshComponent& mesh) {
+            ImGui::Text("%zu meshes", mesh.meshIDs.size());
+            return false;
+        },
+    });
+
+    m_components.add<SpriteComponent>("Sprite", {
+        .onFieldChanged = {
+            { "path", [](Entity entity, SpriteComponent&) { Entity::_onSpriteComponentAdded()(entity); } },
+        },
+        .onChanged = [this](Entity entity, SpriteComponent& sprite) {
+            sprite.numRows = std::max(sprite.numRows, 1);
+            sprite.numCols = std::max(sprite.numCols, 1);
+            int numRows = sprite.numRows;
+            int numCols = sprite.numCols;
+            sprite.frameIndex = std::clamp(sprite.frameIndex, 0, numRows * numCols - 1);
+            if (!entity.hasComponent<ModelComponent>()) {
+                return;
+            }
+
+            // row is y and col is x, the sampled row is flipped
+            int currentRow = sprite.frameIndex / numCols;
+            int currentCol = sprite.frameIndex % numCols;
+            int flippedRow = (numRows - 1) - currentRow;
+            sprite.uvScale = { 1.0f / numCols, 1.0f / numRows };
+            sprite.uvOffset = { sprite.uvScale.x * currentCol, sprite.uvScale.y * flippedRow };
+
+            Model* model = modelManager->getModel(entity.getComponent<ModelComponent>().modelID);
+            Mesh* mesh = (model && !model->meshIDs.empty()) ? meshManager->getMesh(model->meshIDs[0]) : nullptr;
+            if (mesh) {
+                MaterialDesc material = materialManager->getMaterial(mesh->materialID);
+                material.uv = sprite.uvOffset;
+                material.uvScale = sprite.uvScale;
+                materialManager->updateMaterial(mesh->materialID, material);
+            }
+        },
+    });
+
+    m_components.add<AnimationComponent>("Animation", { .addable = true });
+    m_components.add<AnimationStateComponent>("Animation State", { .addable = true });
+    m_components.add<SkinningComponent>("Skinning");
+
+    m_components.add<ScriptComponent>("Script", {
+        .extras = [](Entity, ScriptComponent& script) {
+            if (ImGui::Button("Reload Script", ImVec2(-FLT_MIN, 0.0f))) {
+                ServiceLocator::GetService<ScriptManager>("ScriptManager").reloadScript(script.path);
+            }
+        },
+        .onFieldChanged = {
+            { "path", [](Entity entity, ScriptComponent& script) {
+                Entity::_onScriptComponentRemoved()(entity);
+                script.onInit = []() {};
+                script.onUpdate = [](double) {};
+                script.onFixedUpdate = [](double) {};
+                script.onDestroy = []() {};
+                script.initilized = false;
+                Entity::_onScriptComponentAdded()(entity);
+            } },
+        },
+    });
+
+    m_components.add<ColliderComponent>("Collider", {
+        .draw = [](Entity, ColliderComponent& collider) {
+            if (!ImGuiReflection::BeginFields("Collider")) {
+                return false;
+            }
+            FieldMeta id { .readOnly = true };
+            FieldMeta drag {};
+            bool changed = false;
+            ImGuiReflection::DrawField("shapeID", collider.shapeID, id);
+            changed |= ImGuiReflection::DrawField("mass", collider.mass, drag);
+            changed |= ImGuiReflection::DrawField("gravityCenter", collider.center, drag);
+            changed |= ImGuiReflection::DrawField("inertiaX", collider.inertia[0], drag);
+            changed |= ImGuiReflection::DrawField("inertiaY", collider.inertia[1], drag);
+            changed |= ImGuiReflection::DrawField("inertiaZ", collider.inertia[2], drag);
+            ImGuiReflection::EndFields();
+            return changed;
+        },
+        .extras = [](Entity, ColliderComponent& collider) {
+            PhysicsManager& physicsManager = ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
+            float half = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+            if (ImGui::Button("Add Force", ImVec2(half, 0.0f))) {
+                physicsManager.addForce(collider.shapeID, { 0.0, 100.0, 0.0 });
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Impulse", ImVec2(half, 0.0f))) {
+                physicsManager.addImpulse(collider.shapeID, { 0.0, 100.0, 0.0 });
+            }
+        },
+        .onChanged = [](Entity, ColliderComponent& collider) {
+            MassData data{};
+            data.mass = collider.mass;
+            data.center = collider.center;
+            data.inertia = collider.inertia;
+            ServiceLocator::GetService<PhysicsManager>("PhysicsManager").setMass(collider.shapeID, data);
+        },
+    });
+
+    m_components.add<LightComponent>("Light", { .addable = true });
+    m_components.add<CameraComponent>("Camera", { .addable = true });
+
+    m_components.add<LightProbeComponent>("Light Probes", {
+        .addable = true,
+        .onChanged = [](Entity entity, LightProbeComponent&) { Entity::_onLightProbeComponentAdded()(entity); },
+    });
+
+    m_components.add<ParticleEmitter>("Particle", {
+        .addable = true,
+        .draw = [this](Entity, ParticleEmitter& emitter) {
+            ImGuiParticleInspector::draw(emitter, textureManager, modelManager);
+            return false;
+        },
+    });
+
+    m_components.add<RibbonComponent>("Ribbon", {
+        .draw = [this](Entity, RibbonComponent& ribbon) {
+            ImGuiParticleInspector::drawRibbon(ribbon, textureManager);
+            return false;
+        },
+    });
 }
 
 void ImGuiRightSidebarWidget::_addModelDialog(Entity& entity) {
@@ -62,7 +217,7 @@ void ImGuiRightSidebarWidget::_addModelDialog(Entity& entity) {
     }
 }
 
-void ImGuiRightSidebarWidget::errorModal(const char* message) {
+void ImGuiRightSidebarWidget::_errorModal(const char* message) {
     if (ImGui::BeginPopupModal("Model loading error", &errorPopupOpen, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text(message);
         ImGui::Separator();
@@ -81,47 +236,6 @@ void ImGuiRightSidebarWidget::errorModal(const char* message) {
         }
         ImGui::EndPopup();
     }
-}
-
-void ImGuiRightSidebarWidget::textInput(std::string* text, std::string message)
-{
-    static std::string buffer;
-        
-    ImGui::Columns(2);
-    ImGui::SetColumnWidth(0, 120.0f);
-    ImGui::Text(message.c_str());
-    ImGui::NextColumn();
-
-    std::string fieldID = "##" + message;
-    ImGuiID id = ImGui::GetID(std::string(fieldID + "_State").c_str());
-    ImGuiStorage* storage = ImGui::GetStateStorage();
-    bool isEditing = storage->GetBool(id, false);
-
-    if (!isEditing) {
-        ImGui::TextUnformatted(text->c_str());
-        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 45);
-        
-        if (ImGui::Button(std::string("Edit" + fieldID).c_str())) {
-            buffer = *text; 
-            storage->SetBool(id, true);
-        }
-    } else {
-        ImGui::PushItemWidth(-1);
-        bool entered = ImGui::InputText(fieldID.c_str(), &buffer, ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::PopItemWidth();
-
-        if (entered || ImGui::Button(std::string("Save" + fieldID).c_str())) {
-            *text = buffer;
-            storage->SetBool(id, false);
-        }
-        
-        ImGui::SameLine();
-        
-        if (ImGui::Button(std::string("Cancel" + fieldID).c_str())) {
-            storage->SetBool(id, false);
-        }
-    }
-    ImGui::Columns(1);
 }
 
 
@@ -378,26 +492,13 @@ void ImGuiRightSidebarWidget::_componentsControl()
 
     Entity& entity = const_cast<Entity&>(selectedEntities[0]);
     ImGui::Begin("Components");
-    _nameControl(entity);
-    _transformControl(entity);
-    _modelControl(entity);
-    _meshControl(entity);
-    _spriteControl(entity);
-    _animationControl(entity);
-    _scriptControl(entity);
-    _colliderControl(entity);
-    _lightControl(entity);
-    _particleControl(entity);
-    _ribbonControl(entity);
+    m_components.draw(entity);
 
     ImGui::Separator();
     if (ImGui::Button("+ Add Component", ImVec2(-1.0f, 0.0f))) {
-        ImGui::OpenPopup("AddComponentPopup"); 
+        ImGui::OpenPopup("AddComponentPopup");
     }
 
-    //TODO: currently manually add every single component to display
-    // loop through the serializer object to get the list of components
-    // use write an adapter to translate nlohman json to imgui component
     float buttonWidth = ImGui::GetContentRegionAvail().x;
     ImGui::SetNextWindowSizeConstraints(ImVec2(buttonWidth, 0.0f), ImVec2(buttonWidth, 500.0f));
     if (ImGui::BeginPopup("AddComponentPopup")) {
@@ -487,17 +588,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
             ImGui::EndMenu();
         }
 
-        if (ImGui::Selectable("Camera")) { 
-            entity.addComponent<CameraComponent>();
-
-            // CameraComponent& cameraComponent = entity.getComponent<CameraComponent>();
-            // cameraComponent.viewWidth = AppWindow::getWidth();
-            // cameraComponent.viewHeight = AppWindow::getHeight();
-            // cameraComponent.projection = projection;
-            // cameraComponent.view = entity.getComponent<TransformComponent>().translateVec;
-            // cameraComponent.orientation = -cameraTransform.translateVec;
-            // cameraEntity.addComponent<CameraComponent>(cameraComponent);
-        }
+        m_components.drawAddMenu(entity);
 
         if (ImGui::BeginMenu("Scripts")) {
             if (ImGui::Selectable("LoadOneTimeScript")) { 
@@ -576,362 +667,122 @@ void ImGuiRightSidebarWidget::_componentsControl()
     ImGui::PopStyleColor(4);
 }
 
-void ImGuiRightSidebarWidget::_nameControl(const Entity& entity)
-{
-    NameComponent& nameComponent = entity.getComponent<NameComponent>();
-    if (ImGui::CollapsingHeader("Name", ImGuiTreeNodeFlags_DefaultOpen)) {
-        textInput(&nameComponent.name, "Entity Name");
-    }
-}
-
-void ImGuiRightSidebarWidget::_transformControl(const Entity& entity)
-{
-    TransformComponent& transform = entity.getComponent<TransformComponent>();
-
-    auto DrawVec3Control = [](const std::string& label, glm::vec3& values, float resetValue = 0.0f)
-    {
-        bool changed = false;
-        ImGui::PushID(label.c_str());
-
-        ImGui::Columns(2);
-        // Increased width to prevent "Translation" from cutting off
-        ImGui::SetColumnWidth(0, 120.0f); 
-        
-        // Align text vertically with the input boxes
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("%s", label.c_str());
-        ImGui::NextColumn();
-
-        // Calculate available width for the 3 segments
-        float totalWidth = ImGui::GetContentRegionAvail().x;
-        float itemWidth = (totalWidth - (ImGui::GetStyle().ItemSpacing.x * 2.0f)) / 3.0f;
-        
-        // Control Spacing: Tighten the gap between the Colored Button and the Value Box
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
-        
-        auto RenderAxis = [&](const char* axisLabel, float& value, ImVec4 color, ImVec4 hoverColor, bool isLast) {
-            ImGui::PushID(axisLabel);
-            
-            // Button style
-            ImGui::PushStyleColor(ImGuiCol_Button, color);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hoverColor);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
-            
-            // The square colored button (X, Y, or Z)
-            if (ImGui::Button(axisLabel, ImVec2(25, 0))) {
-                value = resetValue;
-                changed = true;
-            }
-            ImGui::PopStyleColor(3);
-
-            ImGui::SameLine();
-            
-            // The DragFloat
-            // Subtract button width from the segment width
-            ImGui::SetNextItemWidth(itemWidth - 25.0f);
-            if (ImGui::DragFloat("##val", &value, 0.01f, 0.0f, 0.0f, "%.2f")) {
-                changed = true;
-            }
-
-            // Add a small gap between the X, Y, and Z groups, but NOT after the last one (Z)
-            if (!isLast) {
-                ImGui::SameLine();
-                ImGui::Dummy(ImVec2(5, 0)); // Spacing between groups
-                ImGui::SameLine();
-            }
-            
-            ImGui::PopID();
-        };
-
-        RenderAxis("X", values.x, { 0.8f, 0.1f, 0.15f, 1.0f }, { 0.9f, 0.2f, 0.2f, 1.0f }, false);
-        RenderAxis("Y", values.y, { 0.2f, 0.7f, 0.2f, 1.0f }, { 0.3f, 0.8f, 0.3f, 1.0f }, false);
-        RenderAxis("Z", values.z, { 0.1f, 0.25f, 0.8f, 1.0f }, { 0.2f, 0.35f, 0.9f, 1.0f }, true);
-
-        ImGui::PopStyleVar(); // Pop ItemSpacing
-        ImGui::Columns(1);
-        ImGui::PopID();
-
-        return changed;
-    };
-
-    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) 
-    {
-        glm::vec3 translation = transform.translateVec;
-        if (DrawVec3Control("Translation", translation)) 
-            transform.translate(translation);
-
-        glm::vec3 rotation = transform.rotateVec;
-        if (DrawVec3Control("Rotation", rotation)) 
-            transform.rotate(rotation);
-
-        glm::vec3 scale = transform.scaleVec;
-        if (DrawVec3Control("Scale", scale, 1.0f)) 
-            transform.scale(scale);
-    }
-
-}
-
-void ImGuiRightSidebarWidget::_modelControl(const Entity& entity)
-{
-    if(!entity.hasComponent<ModelComponent>()) {
-        return;
-    }
-
-    ModelComponent& model = entity.getComponent<ModelComponent>();
-    if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen)) {
-
-    }
-}
-
-void ImGuiRightSidebarWidget::_meshControl(const Entity& entity)
-{
-    if(!entity.hasComponent<MeshComponent>()) {
-        return;
-    }
-    
-    MeshComponent& mesh = entity.getComponent<MeshComponent>();
-    if (ImGui::CollapsingHeader("Mesh", ImGuiTreeNodeFlags_DefaultOpen)) {
-
-    }
-}
-
-void ImGuiRightSidebarWidget::_spriteControl(const Entity& entity)
-{
-    if(!entity.hasComponent<SpriteComponent>()) {
-        return;
-    }
-    auto& sprite = entity.getComponent<SpriteComponent>();
-
-    // Create a 2-column table. ImGuiTableFlags_SizingFixedFit makes the left column fit the text.
-    if (ImGui::CollapsingHeader("Sprite", ImGuiTreeNodeFlags_DefaultOpen)) {
-        textInput(&sprite.path, "path");
-        textInput(&sprite.targetRenderer, "renderer");
-        
-        if (ImGui::BeginTable("SpriteProperties", 2, ImGuiTableFlags_SizingFixedFit)) {
-            
-            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-            ImGui::TableSetupColumn("Widget", ImGuiTableColumnFlags_WidthStretch);
-
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn(); ImGui::Text("path:");
-            ImGui::TableNextColumn(); ImGui::Text("%s", sprite.path.c_str());
-
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn(); ImGui::Text("targetRenderer:");
-            ImGui::TableNextColumn(); ImGui::Text("%s", sprite.targetRenderer.c_str());
-
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn(); ImGui::Text("numRows:");
-            ImGui::TableNextColumn(); 
-            ImGui::SetNextItemWidth(-FLT_MIN); // Makes the widget fill the remaining column space
-            ImGui::DragInt("##numRows", &sprite.numRows, 0.1f, 1.0f, 16.0f);
-
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn(); ImGui::Text("numCols:");
-            ImGui::TableNextColumn(); 
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            ImGui::DragInt("##numCols", &sprite.numCols, 0.1f, 1.0f, 16.0f);
-
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn(); ImGui::Text("frameIndex:");
-            ImGui::TableNextColumn(); 
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            int numRows = std::max(sprite.numRows, 1);  // minimum of 1 column and row
-            int numCols = std::max(sprite.numCols, 1);
-            int maxFrames = (numRows * numCols) - 1;
-            if (ImGui::DragInt("##frameIndex", &sprite.frameIndex, 0.1f, 0, maxFrames) && entity.hasComponent<ModelComponent>()) {
-                int currentRow = sprite.frameIndex / numCols;   // row represents y while col represents x
-                int currentCol = sprite.frameIndex % numCols;   // i.e pixel 1, 2 =  arr[2][1] NOT [arr1][2]
-                int flippedRow = (numRows - 1) - currentRow;    // uv offset sampling need to be flipped also
-                sprite.uvScale = {1.0 / numCols, 1.0 / numRows};
-                sprite.uvOffset = {sprite.uvScale.x * currentCol, sprite.uvScale.y * flippedRow};
-
-
-                ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
-                Model* model = modelManager->getModel(modelComponent.modelID);
-                Mesh* mesh = (model && !model->meshIDs.empty()) ? meshManager->getMesh(model->meshIDs[0]) : nullptr;
-                if (mesh) {
-                    MaterialDesc material = materialManager->getMaterial(mesh->materialID);
-                    material.uv = sprite.uvOffset;
-                    material.uvScale = sprite.uvScale;
-                    materialManager->updateMaterial(mesh->materialID, material);
-                }
-            }
-
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn(); ImGui::Text("color:");
-            ImGui::TableNextColumn(); 
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            ImGui::ColorEdit4("##color", &sprite.color[0]);
-
-            ImGui::EndTable();
-        }
-    }
-}
-
-void ImGuiRightSidebarWidget::_animationControl(const Entity &entity)
-{
-    //TODO: only support sprite animation now, later add option for 3D skin animation and so on
-    if(!entity.hasComponent<AnimationComponent>()) {
-        return;
-    }
-
-    if (ImGui::CollapsingHeader("Animation", ImGuiTreeNodeFlags_DefaultOpen)) {
-        int maxFrameCount = 0;
-        if(entity.hasComponent<SpriteComponent>()) {
-            auto& sprite = entity.getComponent<SpriteComponent>();
-            maxFrameCount = sprite.numRows * sprite.numCols - 1;
-        }
-
-        auto& animation = entity.getComponent<AnimationComponent>();
-        ImGui::SliderInt("Frame count", &animation.frameCount, 1, maxFrameCount);
-        ImGui::DragFloat("Frame duration", &animation.frameDuration, 0.0001, 0.0001, 0.001);
-        ImGui::DragFloat("Frame delay", &animation.frameDelay, 0.000, 0.01, 1.0);
-
-
-        if(entity.hasComponent<RelationshipComponent>()) {
-            auto& relationship = entity.getComponent<RelationshipComponent>();
-            auto& children = relationship.children;
-            // m_logger->error("error has relationship Component");
-            // for(auto& child : children) {
-            //     ImGui::TableNextRow();
-            //     ImGui::TableNextColumn(); ImGui::Text("color:");
-            //     ImGui::TableNextColumn(); 
-            //     ImGui::SetNextItemWidth(-FLT_MIN);
-
-            //     Entity entity(scene. child)
-            //     if(child.has)
-            //     ImGui::Text()
-            // }
-        }
-    }
-}
-
-void ImGuiRightSidebarWidget::_scriptControl(const Entity &entity)
-{
-    if(!entity.hasComponent<ScriptComponent>()) {
-        return;
-    }
-    
-    ScriptComponent& script = entity.getComponent<ScriptComponent>();
-    if (ImGui::CollapsingHeader("Script", ImGuiTreeNodeFlags_DefaultOpen)) {
-        textInput(&script.path, "path");
-        
-        if(ImGui::Button("Reload Script", ImVec2(-1.0f, 0.0f))) {
-            ScriptManager* scriptManager = &ServiceLocator::GetService<ScriptManager>("ScriptManager");
-            scriptManager->reloadScript(script.path);
-        }
-    }
-}
-
-void ImGuiRightSidebarWidget::_colliderControl(const Entity &entity)
-{
-    if(!entity.hasComponent<ColliderComponent>()) {
-        return;
-    }
-
-    auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-    auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-    auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
-    
-    ColliderComponent& collider = entity.getComponent<ColliderComponent>();
-    
-    bool changed = false;
-    if (ImGui::CollapsingHeader("Collider", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Text(std::string("collider id: " + std::to_string(collider.shapeID)).c_str());
-        if(ImGui::Button("Add Force")) {
-            physicsManager->addForce(collider.shapeID, {0.0, 100.0, 0.0});
-        }
-        ImGui::SameLine();
-        if(ImGui::Button("Impulse")) {
-            physicsManager->addImpulse(collider.shapeID, {0.0, 100.0, 0.0});
-        }
-        changed |= ImGui::DragFloat("mass: ", &collider.mass, 0.01f, -25.0f, 25.0f);
-        changed |= ImGui::DragFloat3("Gravity Center", &collider.center[0], 0.0f, 0.0f, 10.0f);
-        changed |= ImGui::DragFloat3("Inertia x", &collider.inertia[0][0], 0.0f, 0.0f, 10.0f);
-        changed |= ImGui::DragFloat3("Inertia y", &collider.inertia[1][0], 0.0f, 0.0f, 10.0f);
-        changed |= ImGui::DragFloat3("Inertia z", &collider.inertia[2][0], 0.0f, 0.0f, 10.0f);
-    }
-
-    if(changed) {
-        MassData data{};
-        data.mass = collider.mass;
-        data.center = collider.center;
-        data.inertia = collider.inertia;
-        physicsManager->setMass(collider.shapeID, data);
-    }
-
-    // MassData data = physicsManager->getMass(collider.shapeID);
-    // m_logger->info("updated mass: {}", data.mass);
-    // m_logger->info("updated Gravity Center: x:{}, y:{}, z:{}", data.center.x, data.center.y, data.center.z);
-
-}
-
-void ImGuiRightSidebarWidget::_lightControl(const Entity &entity)
-{
-    if(!entity.hasComponent<LightComponent>()) {
-        return;
-    }
-
-    LightComponent& light = entity.getComponent<LightComponent>();
-    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::ColorEdit4("Color", &light.color[0]);
-        ImGui::DragFloat("Intensity", &light.intensity, 0.1f, 0.0f, 1000.0f);
-    }
-}
-
-void ImGuiRightSidebarWidget::_particleControl(const Entity &entity)
-{
-    if(!entity.hasComponent<ParticleEmitter>()) {
-        return;
-    }
-
-    ParticleEmitter& emitter = entity.getComponent<ParticleEmitter>();
-    if (!ImGui::CollapsingHeader("Particle", ImGuiTreeNodeFlags_DefaultOpen)) {
-        return;
-    }
-
-    ImGuiParticleInspector::draw(emitter, textureManager, modelManager);
-}
-
-void ImGuiRightSidebarWidget::_ribbonControl(const Entity &entity)
-{
-    if(!entity.hasComponent<RibbonComponent>()) {
-        return;
-    }
-
-    // the header's close button removes the component
-    bool keep = true;
-    if (ImGui::CollapsingHeader("Ribbon", &keep, ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGuiParticleInspector::drawRibbon(entity.getComponent<RibbonComponent>(), textureManager);
-    }
-    if (!keep) {
-        const_cast<Entity&>(entity).removeComponent<RibbonComponent>();
-    }
-}
-
 void ImGuiRightSidebarWidget::_scenesControl()
 {
     SceneManager& sceneManager = SceneManager::getInstance();
+    Scene* active = sceneManager.getActiveScene();
+
+    auto hint = [](const char* text) {
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", text);
+        }
+    };
+
     ImGui::Begin("Scenes Control");
-    if(ImGui::Button("Add Scene")) {
-        // Scene* scene = SceneManager::getInstance().addScene("Level1");
-        // scene->loadScene("assets/data/level2.json");
-        // SceneManager::getInstance().setActiveScene(scene->getName());
+
+    ImGui::SeparatorText("Active Scene");
+    ImGui::AlignTextToFramePadding();
+    if (active) {
+        ImGui::TextUnformatted(active->getName().c_str());
+        hint(active->savePath().c_str());
+    } else {
+        ImGui::TextDisabled("none");
     }
 
-    for(uint32_t id : sceneManager.listIDs()) {
-        Scene* scene = sceneManager.getScene(id);
-        if(!scene){
+    const ImGuiStyle& style = ImGui::GetStyle();
+    float quarter = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x * 3.0f) * 0.25f;
+    if (ImGui::Button("Load...", ImVec2(quarter, 0.0f))) {
+        ImGuiScenePicker::open();
+    }
+    hint("Open Scene (Ctrl+O)");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!active);
+    if (ImGui::Button("Reload", ImVec2(quarter, 0.0f))) {
+        active->requestReload();
+    }
+    hint("Reload Scene (Ctrl+R)");
+    ImGui::SameLine();
+    if (ImGui::Button("Save", ImVec2(quarter, 0.0f))) {
+        ImGuiScenePicker::saveActiveScene();
+    }
+    hint("Save Scene (Ctrl+S)");
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Add", ImVec2(quarter, 0.0f))) {
+        ImGuiScenePicker::newScene();
+    }
+    hint("New Scene (Ctrl+N)");
+
+    ImGui::SeparatorText("Scenes");
+    std::vector<uint32_t> ids = sceneManager.listIDs();
+    bool canRemove = ids.size() > 1;
+    for (uint32_t id : ids) {
+        Scene* loaded = sceneManager.getScene(id);
+        if (!loaded) {
             continue;
         }
+        const std::string& name = loaded->getName();
+        bool isActive = loaded == active;
 
-        bool isSelected = sceneManager.getActiveScene()->getName() == scene->getName();
-        if(ImGui::Selectable(scene->getName().c_str(), isSelected, 0, ImVec2(0, 0))) {
-            sceneManager.setActiveScene(scene->getName());
-            // scene->reloadScene();
+        // the header's close button removes the scene like a component, the last one has none
+        ImGui::PushID(static_cast<int>(id));
+        bool keep = true;
+        std::string label = (isActive ? name + "  (active)" : name) + "###scene";
+        if (isActive) {
+            ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
         }
+        bool open = ImGui::CollapsingHeader(label.c_str(), canRemove ? &keep : nullptr);
+        if (isActive) {
+            ImGui::PopStyleColor();
+        }
+        hint(canRemove ? "Right-click for options, x removes the scene (the file is kept)" : "Right-click for options");
+
+        if (ImGui::BeginPopupContextItem("##sceneMenu")) {
+            ImGui::TextDisabled("%s", name.c_str());
+            ImGui::Separator();
+            if (ImGui::MenuItem("Set Active", nullptr, false, !isActive)) {
+                sceneManager.setActiveScene(name);
+            }
+            if (ImGui::MenuItem("Reload")) {
+                loaded->requestReload();
+            }
+            if (ImGui::MenuItem("Save")) {
+                loaded->saveScene(loaded->savePath());
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Remove", nullptr, false, canRemove)) {
+                keep = false;
+            }
+            ImGui::EndPopup();
+        }
+
+        if (open) {
+            ImGui::Indent();
+            ImGui::TextDisabled("%s", loaded->getPath().empty() ? "not saved" : loaded->getPath().c_str());
+            float third = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x * 2.0f) / 3.0f;
+            ImGui::BeginDisabled(isActive);
+            if (ImGui::Button("Set Active", ImVec2(third, 0.0f))) {
+                sceneManager.setActiveScene(name);
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Reload", ImVec2(third, 0.0f))) {
+                loaded->requestReload();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Save", ImVec2(third, 0.0f))) {
+                loaded->saveScene(loaded->savePath());
+            }
+            hint(loaded->savePath().c_str());
+            ImGui::Unindent();
+        }
+
+        if (!keep) {
+            sceneManager.removeScene(name);
+        }
+        ImGui::PopID();
     }
     ImGui::End();
 
+    ImGuiScenePicker::draw();
 }

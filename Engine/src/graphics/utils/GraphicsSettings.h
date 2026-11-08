@@ -59,13 +59,13 @@ struct ShadowMapSettings {
 		member("useOrtho", &ShadowMapSettings::useOrtho),
 		member("blurRadius", &ShadowMapSettings::blurRadius, FieldMeta{ .min = 1.0f, .max = 64.0f }),
 		member("blurSigma", &ShadowMapSettings::blurSigma, FieldMeta{ .min = 1.0f, .max = 30.0f, .format = "%.4f", .logarithmic = true }),
-		member("method", &ShadowMapSettings::method, FieldMeta{ .widget = FieldWidget::Combo,
+		member("method", &ShadowMapSettings::method, FieldMeta{
 			.tooltip = "ray traced needs ray tracing support, it falls back to the shadow map without it",
 			.options = "Shadow Map\0Ray Traced\0\0" }),
 		member("rtSoftness", &ShadowMapSettings::rtSoftness, FieldMeta{ .min = 0.0f, .max = 5.0f, .tooltip = "degrees, 0 is a hard shadow" }),
 		member("rtRayCount", &ShadowMapSettings::rtRayCount, FieldMeta{ .min = 1.0f, .max = 16.0f }),
 		member("rtBlurRadius", &ShadowMapSettings::rtBlurRadius, FieldMeta{ .min = 0.0f, .max = 8.0f, .tooltip = "0 turns the blur off" }),
-		member("resolution", &ShadowMapSettings::resolution, FieldMeta{ .widget = FieldWidget::Combo,
+		member("resolution", &ShadowMapSettings::resolution, FieldMeta{
 			.tooltip = "shadow map texels per side, orthoExtent sets how much of the world they cover",
 			.options = "512\0" "1024\0" "2048\0" "4096\0\0" }),
 		member("pcssSoftness", &ShadowMapSettings::pcssSoftness, FieldMeta{ .min = 0.0f, .max = 0.2f, .format = "%.3f", .tooltip = "how fast the penumbra widens with distance from the occluder" }),
@@ -103,7 +103,7 @@ struct LightingSettings {
 	float litBias { 0.0005f };
 
 	DEFINE_TYPE(LightingSettings,
-		member("sunColor", &LightingSettings::sunColor, FieldMeta{ .widget = FieldWidget::Color }),
+		member("sunColor", &LightingSettings::sunColor),
 		member("sunIntensity", &LightingSettings::sunIntensity, FieldMeta{ .min = 1.0f, .max = 15.0f }),
 		member("skyboxDetail", &LightingSettings::skyboxDetail, FieldMeta{ .min = 0.0f, .max = 1.0f }),
 		member("ambientOcclusion", &LightingSettings::ambientOcclusion),
@@ -134,13 +134,13 @@ struct AmbientOcclusionSettings {
 	float blurScale { 100.0f };
 
 	DEFINE_TYPE(AmbientOcclusionSettings,
-		member("method", &AmbientOcclusionSettings::method, FieldMeta{ .widget = FieldWidget::Combo,
+		member("method", &AmbientOcclusionSettings::method, FieldMeta{
 			.tooltip = "ray traced needs ray tracing support, it falls back to GTAO without it",
 			.options = "Alchemy\0GTAO\0Ray Traced\0\0" }),
 		member("radius", &AmbientOcclusionSettings::radius, FieldMeta{ .min = 0.05f, .max = 5.0f, .tooltip = "world space reach of the occlusion" }),
 		member("intensity", &AmbientOcclusionSettings::intensity, FieldMeta{ .min = 0.1f, .max = 4.0f }),
 		member("rayCount", &AmbientOcclusionSettings::rayCount, FieldMeta{ .min = 1.0f, .max = 32.0f, .tooltip = "rays per pixel, ray traced only" }),
-		member("blurType", &AmbientOcclusionSettings::blurType, FieldMeta{ .widget = FieldWidget::Combo,
+		member("blurType", &AmbientOcclusionSettings::blurType, FieldMeta{
 			.options = "None\0Box\0Gaussian\0Bilateral\0\0" }),
 		member("blurRadius", &AmbientOcclusionSettings::blurRadius, FieldMeta{ .min = 1.0f, .max = 16.0f }),
 		member("blurScale", &AmbientOcclusionSettings::blurScale, FieldMeta{ .min = 1.0f, .max = 100.0f, .tooltip = "bilateral depth edge sharpness" })
@@ -256,14 +256,14 @@ struct SkyAtmosphereSettings {
 		member("enabled", &SkyAtmosphereSettings::enabled, FieldMeta{ .tooltip = "light the scene from the atmosphere instead of the environment map" }),
 		member("intensity", &SkyAtmosphereSettings::intensity, FieldMeta{ .min = 0.0f, .max = 10.0f }),
 		member("viewHeight", &SkyAtmosphereSettings::viewHeight, FieldMeta{ .min = 0.0f, .max = 100.0f, .tooltip = "km above the ground the sky is seen from" }),
-		member("groundAlbedo", &SkyAtmosphereSettings::groundAlbedo, FieldMeta{ .widget = FieldWidget::Color }),
+		member("groundAlbedo", &SkyAtmosphereSettings::groundAlbedo),
 		member("rayleighScale", &SkyAtmosphereSettings::rayleighScale, FieldMeta{ .min = 0.0f, .max = 10.0f }),
 		member("mieScale", &SkyAtmosphereSettings::mieScale, FieldMeta{ .min = 0.0f, .max = 10.0f }),
 		member("mieAnisotropy", &SkyAtmosphereSettings::mieAnisotropy, FieldMeta{ .min = 0.0f, .max = 0.99f }),
 		member("ozone", &SkyAtmosphereSettings::ozone),
-		member("transmittance", &SkyAtmosphereSettings::transmittance, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
-		member("multiScattering", &SkyAtmosphereSettings::multiScattering, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
-		member("environment", &SkyAtmosphereSettings::environment, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true })
+		member("transmittance", &SkyAtmosphereSettings::transmittance, FieldMeta{ .readOnly = true }),
+		member("multiScattering", &SkyAtmosphereSettings::multiScattering, FieldMeta{ .readOnly = true }),
+		member("environment", &SkyAtmosphereSettings::environment, FieldMeta{ .readOnly = true })
 	)
 };
 
@@ -302,7 +302,7 @@ struct ImageBasedSettings {
 	// "assets/textures/hdr/photo_studio_loft_hall_2k.hdr",
 
 	DEFINE_TYPE(ImageBasedSettings,
-		member("environmentMap", &ImageBasedSettings::environmentMap, FieldMeta{ .widget = FieldWidget::FilePath })
+		member("environmentMap", &ImageBasedSettings::environmentMap)
 	)
 };
 
@@ -322,14 +322,14 @@ struct DeferredSettings {
 	DEFINE_TYPE(DeferredSettings,
 		member("temporalReprojection", &DeferredSettings::temporalReprojection),
 		member("combine", &DeferredSettings::combine),
-		member("litColor", &DeferredSettings::litColor, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
-		member("position", &DeferredSettings::position, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
-		member("normal", &DeferredSettings::normal, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
-		member("albedo", &DeferredSettings::albedo, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
-		member("pbr", &DeferredSettings::pbr, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
-		member("depth", &DeferredSettings::depth, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
-		member("motion", &DeferredSettings::motion, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
-		member("shadowDepth", &DeferredSettings::shadowDepth, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true })
+		member("litColor", &DeferredSettings::litColor, FieldMeta{ .readOnly = true }),
+		member("position", &DeferredSettings::position, FieldMeta{ .readOnly = true }),
+		member("normal", &DeferredSettings::normal, FieldMeta{ .readOnly = true }),
+		member("albedo", &DeferredSettings::albedo, FieldMeta{ .readOnly = true }),
+		member("pbr", &DeferredSettings::pbr, FieldMeta{ .readOnly = true }),
+		member("depth", &DeferredSettings::depth, FieldMeta{ .readOnly = true }),
+		member("motion", &DeferredSettings::motion, FieldMeta{ .readOnly = true }),
+		member("shadowDepth", &DeferredSettings::shadowDepth, FieldMeta{ .readOnly = true })
 	)
 };
 
@@ -344,9 +344,9 @@ struct DLSSSettings {
 
 	DEFINE_TYPE(DLSSSettings,
 		member("enabled", &DLSSSettings::enabled),
-		member("mode", &DLSSSettings::mode, FieldMeta{ .widget = FieldWidget::Combo,
+		member("mode", &DLSSSettings::mode, FieldMeta{
 			.options = "DLAA\0Quality\0Balanced\0Performance\0Ultra Performance\0\0" }),
-		member("resetHistory", &DLSSSettings::resetHistory, FieldMeta{ .widget = FieldWidget::Button }),
+		member("resetHistory", &DLSSSettings::resetHistory, FieldMeta{ .action = true }),
 		member("supported", &DLSSSettings::supported, FieldMeta{ .readOnly = true }),
 		member("renderWidth", &DLSSSettings::renderWidth, FieldMeta{ .readOnly = true }),
 		member("renderHeight", &DLSSSettings::renderHeight, FieldMeta{ .readOnly = true })
@@ -359,7 +359,7 @@ struct TonemapSettings {
 	float gamma { 2.2f };
 
 	DEFINE_TYPE(TonemapSettings,
-		member("tonemapper", &TonemapSettings::tonemapper, FieldMeta{ .widget = FieldWidget::Combo,
+		member("tonemapper", &TonemapSettings::tonemapper, FieldMeta{
 			.options = "None\0Reinhard\0ACES (Narkowicz)\0ACES (Hill)\0Uncharted 2\0AgX\0Khronos PBR Neutral\0\0" }),
 		member("exposure", &TonemapSettings::exposure, FieldMeta{ .min = 0.0f, .max = 8.0f }),
 		member("gamma", &TonemapSettings::gamma, FieldMeta{ .min = 1.0f, .max = 3.0f })
@@ -394,7 +394,7 @@ struct DDGISettings {
 	DEFINE_TYPE(DDGISettings,
 		member("enabled", &DDGISettings::enabled),
 		member("indirectOnly", &DDGISettings::indirectOnly),
-		member("resetProbes", &DDGISettings::resetProbes, FieldMeta{ .widget = FieldWidget::Button }),
+		member("resetProbes", &DDGISettings::resetProbes, FieldMeta{ .action = true }),
 		member("intensity", &DDGISettings::intensity, FieldMeta{ .min = 0.0f, .max = 5.0f }),
 		member("skyIntensity", &DDGISettings::skyIntensity, FieldMeta{ .min = 0.0f, .max = 2.0f }),
 		member("hysteresis", &DDGISettings::hysteresis, FieldMeta{ .min = 0.0f, .max = 0.99f }),
@@ -402,8 +402,8 @@ struct DDGISettings {
 		member("probeCounts", &DDGISettings::probeCounts, FieldMeta{ .readOnly = true }),
 		member("gridMin", &DDGISettings::gridMin, FieldMeta{ .format = "%.1f", .readOnly = true }),
 		member("gridMax", &DDGISettings::gridMax, FieldMeta{ .format = "%.1f", .readOnly = true }),
-		member("irradianceAtlas", &DDGISettings::irradianceAtlas, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true }),
-		member("visibilityAtlas", &DDGISettings::visibilityAtlas, FieldMeta{ .widget = FieldWidget::Texture, .readOnly = true })
+		member("irradianceAtlas", &DDGISettings::irradianceAtlas, FieldMeta{ .readOnly = true }),
+		member("visibilityAtlas", &DDGISettings::visibilityAtlas, FieldMeta{ .readOnly = true })
 	)
 };
 

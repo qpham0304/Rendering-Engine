@@ -94,7 +94,7 @@ bool EditorLayer::init()
 		SceneManager::getInstance().addScene("default scene");
 		Scene* scene = SceneManager::getInstance().getActiveScene();
 		if(scene) {
-			// scene->loadScene("assets/data/default-scene.json");
+			// scene->loadScene("assets/data/Scenes/default-scene.json");
 		}
 	}
 

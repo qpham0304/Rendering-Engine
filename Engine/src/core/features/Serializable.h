@@ -7,20 +7,18 @@
 #include <nlohmann/json.hpp>
 #include "core/features/Object.h"
 
-// how an editor draws a reflected field
-enum class FieldWidget { Auto, Drag, Color, Button, FilePath, Texture, Combo };
-
-// optional third argument of a DEFINE_TYPE member, visitors that don't draw ui ignore it
+// optional third argument of a DEFINE_TYPE member, what the value means rather than how it is drawn,
+// an editor picks the widget from the value type and these, visitors that don't draw ui ignore it
 struct FieldMeta {
-	FieldWidget widget { FieldWidget::Auto };
 	float min { 0.0f };
 	float max { 0.0f };				// min and max for slider
 	float speed { 0.01f };
 	const char* format { nullptr };
 	bool logarithmic { false };
 	bool readOnly { false };		// option to viewonly, no edit
+	bool action { false };			// a bool request that is consumed in one frame, not saved
 	const char* tooltip { nullptr };
-	const char* options { nullptr };	// Combo entries for an int, "\0" separated and ending in "\0\0", the index is the value
+	const char* options { nullptr };	// named values of an int, "\0" separated and ending in "\0\0", the index is the value
 };
 
 // for resolving optional meta field for visitor, default when member has none

@@ -79,6 +79,7 @@ void SceneManager::onFixedUpdate(float fixedDeltaTime)
 
 void SceneManager::onUpdate(const FrameTime& frameTime)
 {
+	_removeScenes();
 	_syncWithGameState();
 
 	for (auto& [name, scene] : scenes) {
@@ -173,15 +174,23 @@ bool SceneManager::setSceneName(Scene* scene, const std::string& newName)
 }
 
 
-bool SceneManager::removeScene(const std::string& name)
+void SceneManager::removeScene(const std::string& name)
 {
-	if (scenes.find(name) != scenes.end()) {
-		scenes[name].reset();
-		scenes.erase(name);
-		return true;
+	if (std::find(m_pendingRemovals.begin(), m_pendingRemovals.end(), name) == m_pendingRemovals.end()) {
+		m_pendingRemovals.push_back(name);
 	}
-	else {
-		return false;
+}
+
+// removed between frames instead of while widgets and renderers still hold the scene, the active one falls back to any other
+void SceneManager::_removeScenes()
+{
+	for (const std::string& name : m_pendingRemovals) {
+		scenes.erase(name);
+	}
+	m_pendingRemovals.clear();
+
+	if (!getActiveScene() && !scenes.empty()) {
+		activeScene = scenes.begin()->first;
 	}
 }
 
