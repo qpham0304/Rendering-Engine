@@ -73,7 +73,7 @@ bool TextureManagerVulkan::onClose()
 void TextureManagerVulkan::destroy(uint32_t id)
 {
 	if (id == 0) {
-		return;	// the missing texture, shared by every failed load
+		return;
 	}
 
 	auto it = m_textures.find(id);

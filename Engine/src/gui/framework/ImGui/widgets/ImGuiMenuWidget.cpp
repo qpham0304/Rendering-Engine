@@ -2,6 +2,26 @@
 
 #include "ImGuiScenePicker.h"
 #include "core/scene/SceneManager.h"
+#include "core/features/ServiceLocator.h"
+#include "gui/GuiManager.h"
+#include <imgui_internal.h>
+
+namespace {
+	// spacing the shortcut from the button text
+	bool ShortcutItem(const char* label, const char* shortcut, bool selected = false, bool enabled = true)
+	{
+		ImVec2 pos = ImGui::GetCursorScreenPos();
+		float right = pos.x + ImGui::GetContentRegionAvail().x;
+		bool pressed = ImGui::MenuItem(label, nullptr, selected, enabled);
+
+		float width = ImGui::CalcTextSize(shortcut).x;
+		ImGui::GetCurrentWindow()->DC.MenuColumns.DeclColumns(0.0f, 0.0f, width, 0.0f);
+
+		float alpha = enabled ? 1.0f : ImGui::GetStyle().DisabledAlpha;
+		ImGui::GetWindowDrawList()->AddText(ImVec2(right - width, pos.y), ImGui::GetColorU32(ImGuiCol_TextDisabled, alpha), shortcut);
+		return pressed;
+	}
+}
 
 ImGuiMenuWidget::ImGuiMenuWidget(std::span<std::shared_ptr<Widget>> widgets) 
 	: MenuWidget("ImGuiMenuWidget")
@@ -30,6 +50,7 @@ void ImGuiMenuWidget::MainMenuBar()
 		FileMenu();
 		EditMenu();
 		ToolMenu();
+		ViewMenu();
 		WindowMenu();
 		HelpMenu();
 
@@ -44,26 +65,26 @@ void ImGuiMenuWidget::FileMenu()
 	{
 		Scene* scene = SceneManager::getInstance().getActiveScene();
 
-		if (ImGui::MenuItem("New Scene", "Ctrl+N")) {
+		if (ShortcutItem("New Scene", "Ctrl+N")) {
 			ImGuiScenePicker::newScene();
 		}
-		if (ImGui::MenuItem("Open Scene...", "Ctrl+O")) {
+		if (ShortcutItem("Open Scene...", "Ctrl+O")) {
 			ImGuiScenePicker::open();
 		}
 
 		ImGui::Separator();
-		if (ImGui::MenuItem("Save Scene", "Ctrl+S", false, scene != nullptr)) {
+		if (ShortcutItem("Save Scene", "Ctrl+S", false, scene != nullptr)) {
 			ImGuiScenePicker::saveActiveScene();
 		}
 		if (scene && ImGui::IsItemHovered()) {
 			ImGui::SetTooltip("%s", scene->savePath().c_str());
 		}
-		if (ImGui::MenuItem("Reload Scene", "Ctrl+R", false, scene != nullptr)) {
+		if (ShortcutItem("Reload Scene", "Ctrl+R", false, scene != nullptr)) {
 			scene->requestReload();
 		}
 
 		ImGui::Separator();
-		if (ImGui::MenuItem("Exit", "Alt+F4"))
+		if (ShortcutItem("Exit", "Alt+F4"))
 		{
 
 		}
@@ -75,28 +96,28 @@ void ImGuiMenuWidget::EditMenu()
 {
 	if (ImGui::BeginMenu("Edit"))
 	{
-		if (ImGui::MenuItem("Undo", "Ctrl+Z"))
+		if (ShortcutItem("Undo", "Ctrl+Z"))
 		{
 
 		}
 
-		if (ImGui::MenuItem("Redo", "Ctrl+Y"))
+		if (ShortcutItem("Redo", "Ctrl+Y"))
 		{
 
 		}
 
 		ImGui::Separator();
-		if (ImGui::MenuItem("Cut", "Ctrl+X"))
+		if (ShortcutItem("Cut", "Ctrl+X"))
 		{
 
 		}
 
-		if (ImGui::MenuItem("Duplicate", "Ctrl+D"))
+		if (ShortcutItem("Duplicate", "Ctrl+D"))
 		{
 
 		}
 
-		if (ImGui::MenuItem("Select All", "Ctrl+A"))
+		if (ShortcutItem("Select All", "Ctrl+A"))
 		{
 
 		}
@@ -126,6 +147,24 @@ void ImGuiMenuWidget::ToolMenu()
 		if (ImGui::MenuItem("Blur"))
 		{
 
+		}
+		ImGui::EndMenu();
+	}
+}
+
+void ImGuiMenuWidget::ViewMenu()
+{
+	if (ImGui::BeginMenu("View"))
+	{
+		if (ImGui::BeginMenu("Appearance")) {
+			GuiManager& guiManager = ServiceLocator::GetService<GuiManager>("ImGuiManager");
+			for (const std::string& name : guiManager.listThemes()) {
+				bool current = guiManager.getTheme() == name;
+				if (ImGui::MenuItem(name.c_str(), nullptr, current) && !current) {
+					guiManager.setTheme(name);
+				}
+			}
+			ImGui::EndMenu();
 		}
 		ImGui::EndMenu();
 	}

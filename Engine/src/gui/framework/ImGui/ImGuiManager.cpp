@@ -11,7 +11,10 @@
 #include "core/features/EngineStates.h"
 #include "logging/Logger.h"
 #include "volk.h"
+#include <imgui_internal.h>
 #include <filesystem>
+#include <format>
+#include <string_view>
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
@@ -114,6 +117,7 @@ bool ImGuiManager::init(WindowConfig config)
 
 	m_baseStyle = style;
 	setTheme(theme);
+	_registerSettingsHandler();
 
 	return true;
 }
@@ -309,7 +313,35 @@ bool ImGuiManager::setTheme(const std::string& name)
 	theme = name;
 	ImGui::GetStyle() = m_baseStyle;
 	found->apply();
+	ImGui::MarkIniSettingsDirty();
 	return true;
+}
+
+// get the saved themes info from imgui .ini to runtime, also write/save it to .ini
+void ImGuiManager::_registerSettingsHandler()
+{
+	static constexpr std::string_view section = "Settings";
+	static constexpr std::string_view themeKey = "Theme=";
+
+	ImGuiSettingsHandler handler;
+	handler.TypeName = "Editor";
+	handler.TypeHash = ImHashStr(handler.TypeName);
+	handler.UserData = this;
+	handler.ReadOpenFn = [](ImGuiContext*, ImGuiSettingsHandler* settings, const char* name) -> void* {
+		return std::string_view(name) == section ? settings->UserData : nullptr;
+	};
+	handler.ReadLineFn = [](ImGuiContext*, ImGuiSettingsHandler*, void* entry, const char* line) {
+		std::string_view text = line;
+		if (text.starts_with(themeKey)) {
+			static_cast<ImGuiManager*>(entry)->setTheme(std::string(text.substr(themeKey.size())));
+		}
+	};
+	handler.WriteAllFn = [](ImGuiContext*, ImGuiSettingsHandler* settings, ImGuiTextBuffer* out) {
+		const ImGuiManager* manager = static_cast<const ImGuiManager*>(settings->UserData);
+		std::string text = std::format("[{}][{}]\n{}{}\n\n", settings->TypeName, section, themeKey, manager->getTheme());
+		out->append(text.c_str());
+	};
+	ImGui::AddSettingsHandler(&handler);
 }
 
 std::vector<std::string> ImGuiManager::listThemes() const

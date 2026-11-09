@@ -135,14 +135,14 @@ bool AnimationManager::loadAnimation(std::string_view path, const aiScene* scene
         animation->duration = aiAnimation->mDuration;
 
         //TODO: support mesh morph channel
-        for(int j = 0; j < aiAnimation->mNumMorphMeshChannels; j++) {
-            aiMeshMorphAnim* aiMeshMorphChannel = aiAnimation->mMorphMeshChannels[j];
+        // for(int j = 0; j < aiAnimation->mNumMorphMeshChannels; j++) {
+        //     aiMeshMorphAnim* aiMeshMorphChannel = aiAnimation->mMorphMeshChannels[j];
 
-            for(int k = 0; k < aiMeshMorphChannel->mNumKeys; k++) {
-                aiMeshMorphKey morpKey = aiMeshMorphChannel->mKeys[k];
+        //     for(int k = 0; k < aiMeshMorphChannel->mNumKeys; k++) {
+        //         aiMeshMorphKey morpKey = aiMeshMorphChannel->mKeys[k];
 
-            }
-        }
+        //     }
+        // }
         
         for(int j = 0; j < aiAnimation->mNumChannels; j++) {
             aiNodeAnim* aiChannel = aiAnimation->mChannels[j];

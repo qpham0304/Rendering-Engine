@@ -337,6 +337,8 @@ bool Scene::unloadScene()
     auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
     auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
 	auto particleManager = &ServiceLocator::GetService<ParticleManager>("ParticleManager");
+	auto materialManager = &ServiceLocator::GetService<MaterialManager>("MaterialManagerVulkan");
+	auto textureManager = &ServiceLocator::GetService<TextureManager>("TextureManagerVulkan");
 
 	for(auto& entity : frameNewEntities) {
 		entities[entity.getID()] = entity;
@@ -355,6 +357,16 @@ bool Scene::unloadScene()
 			Model* model = modelManager->getModel(modelComponent.modelID);
 			if(model) {
 				for(auto& meshID : model->meshIDs) {
+					// Mesh* mesh = meshManager->getMesh(meshID);
+					// if(mesh) {
+					// 	MaterialDesc material = materialManager->getMaterial(mesh->materialID);
+					// 	textureManager->destroy(material.albedoID);
+					// 	textureManager->destroy(material.normalID);
+					// 	textureManager->destroy(material.metallicID);
+					// 	textureManager->destroy(material.roughnessID);
+					// 	textureManager->destroy(material.aoID);
+					// 	textureManager->destroy(material.emissiveID);
+					// }
 					meshManager->destroy(meshID);
 				}
 				modelManager->destroy(modelComponent.modelID);

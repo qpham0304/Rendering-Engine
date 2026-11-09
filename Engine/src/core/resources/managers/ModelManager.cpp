@@ -234,9 +234,6 @@ bool ModelManager::_loadModel(std::string_view path)
     std::string loadTimer = std::string("Model loading ") + path.data();
     Timer timer(loadTimer.c_str(), true);
 
-    std::string directory = std::string(path).substr(0, path.find_last_of('/'));
-    std::string fileName = std::string(path).substr(path.find_last_of('/') + 1);
-
     Assimp::Importer import;
     unsigned int flags = aiProcess_Triangulate
         | aiProcess_SortByPType
@@ -261,13 +258,13 @@ bool ModelManager::_loadModel(std::string_view path)
         animationManager->loadAnimation(path, scene);
     }
     
-    uint32_t skeletonID = skeletonManager->addSkeleton(fileName);
+    uint32_t skeletonID = skeletonManager->addSkeleton(path);
     _processSkeletonNodeHierarchy(skeletonID, scene->mRootNode, -1);
     
     std::vector<uint32_t> meshes = {};
     std::unordered_map<uint32_t, uint32_t> meshCache; //assimp mesh index to engine meshID
     auto skeleton = skeletonManager->getSkeleton(skeletonID);
-    _processNode(scene->mRootNode, scene, meshes, meshCache, directory, skeletonID, skeleton ? skeleton->rootIndex : 0);
+    _processNode(scene->mRootNode, scene, meshes, meshCache, path, skeletonID, skeleton ? skeleton->rootIndex : 0);
 
     if(meshes.empty()) {
         m_logger->error("Model Loading failed: {} has no triangle meshes", path.data());
@@ -293,7 +290,7 @@ void ModelManager::_processNode(aiNode* node,
 		const aiScene* scene,
 		std::vector<uint32_t>& meshes,
         std::unordered_map<uint32_t, uint32_t>& meshCache,
-		std::string_view directory,
+		std::string_view modelPath,
 		uint32_t skeletonID,
 		uint32_t skeletonNodeIndex
 ){
@@ -308,7 +305,7 @@ void ModelManager::_processNode(aiNode* node,
             meshID = it->second;
         } else {
             aiMesh* mesh = scene->mMeshes[aiMeshIndex];
-            meshID = _processMesh(mesh, scene, directory, skeletonID);
+            meshID = _processMesh(mesh, scene, modelPath, skeletonID);
             meshCache[aiMeshIndex] = meshID;
             if(meshID != 0) {
                 meshes.push_back(meshID);
@@ -322,15 +319,15 @@ void ModelManager::_processNode(aiNode* node,
 
     for (unsigned int i = 0; i < node->mNumChildren; i++) {
         uint32_t childIndex = skeleton ? skeleton->nodes[skeletonNodeIndex].childrenNodes[i] : 0;
-        _processNode(node->mChildren[i], scene, meshes, meshCache, directory, skeletonID, childIndex);
+        _processNode(node->mChildren[i], scene, meshes, meshCache, modelPath, skeletonID, childIndex);
     }
 }
 
-uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::string_view directory, uint32_t skeletonID)
+uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::string_view modelPath, uint32_t skeletonID)
 {
     // the renderer only draws triangles, SortByPType splits lines and points into their own meshes
     if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE || mesh->mNumVertices == 0) {
-        m_logger->warn("Skipping mesh '{}' in {}: not a triangle mesh", mesh->mName.C_Str(), directory);
+        m_logger->warn("Skipping mesh '{}' in {}: not a triangle mesh", mesh->mName.C_Str(), modelPath);
         return 0;
     }
 
@@ -389,12 +386,12 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     if (mesh->mMaterialIndex < scene->mNumMaterials) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
         
-        materialDesc.albedoID = _loadMaterial(material, scene, aiTextureType_BASE_COLOR, "albedoMap", directory);
-        materialDesc.normalID = _loadMaterial(material, scene, aiTextureType_NORMALS, "normalMap", directory);
-        materialDesc.metallicID = _loadMaterial(material, scene, aiTextureType_METALNESS, "metallicMap", directory);
-        materialDesc.roughnessID = _loadMaterial(material, scene, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", directory);
-        materialDesc.aoID = _loadMaterial(material, scene, aiTextureType_LIGHTMAP, "aoMap", directory);
-        materialDesc.emissiveID = _loadMaterial(material, scene, aiTextureType_EMISSIVE, "emissiveMap", directory);
+        materialDesc.albedoID = _loadMaterial(material, scene, aiTextureType_BASE_COLOR, "albedoMap", modelPath);
+        materialDesc.normalID = _loadMaterial(material, scene, aiTextureType_NORMALS, "normalMap", modelPath);
+        materialDesc.metallicID = _loadMaterial(material, scene, aiTextureType_METALNESS, "metallicMap", modelPath);
+        materialDesc.roughnessID = _loadMaterial(material, scene, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", modelPath);
+        materialDesc.aoID = _loadMaterial(material, scene, aiTextureType_LIGHTMAP, "aoMap", modelPath);
+        materialDesc.emissiveID = _loadMaterial(material, scene, aiTextureType_EMISSIVE, "emissiveMap", modelPath);
         if(materialDesc.emissiveID != 0){
             materialDesc.emissive  = 1.0f;
         }
@@ -402,16 +399,16 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         // try find other non compatible materials, if still fail...
         // give up and let material manager use fallback materials
         if(materialDesc.metallicID == 0) {  //TODO: need adjustment since this is not the correct pbr fallback
-            materialDesc.metallicID = _loadMaterial(material, scene, aiTextureType_SPECULAR, "metallicMap", directory);
+            materialDesc.metallicID = _loadMaterial(material, scene, aiTextureType_SPECULAR, "metallicMap", modelPath);
         }
         if(materialDesc.albedoID == 0){
-            materialDesc.albedoID = _loadMaterial(material, scene, aiTextureType_DIFFUSE, "albedoMap", directory);
+            materialDesc.albedoID = _loadMaterial(material, scene, aiTextureType_DIFFUSE, "albedoMap", modelPath);
         }
         if(materialDesc.roughnessID == 0) {
-            materialDesc.roughnessID = _loadMaterial(material, scene, aiTextureType_SHININESS, "roughnessMap", directory);
+            materialDesc.roughnessID = _loadMaterial(material, scene, aiTextureType_SHININESS, "roughnessMap", modelPath);
         }
         if(materialDesc.aoID == 0) {
-            materialDesc.aoID = _loadMaterial(material, scene, aiTextureType_AMBIENT, "aoMap", directory);
+            materialDesc.aoID = _loadMaterial(material, scene, aiTextureType_AMBIENT, "aoMap", modelPath);
         }
 
         // foliage cards are quads, the leaf shape comes from the albedo alpha
@@ -445,8 +442,10 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     return meshManager->loadMesh(m);
 }
 
-uint32_t ModelManager::_loadMaterial(aiMaterial* mat, const aiScene* scene, aiTextureType type, std::string typeName, std::string_view directory)
+uint32_t ModelManager::_loadMaterial(aiMaterial* mat, const aiScene* scene, aiTextureType type, std::string typeName, std::string_view modelPath)
 {
+    std::string_view directory = modelPath.substr(0, modelPath.find_last_of('/'));
+
     bool isData = (type == aiTextureType_NORMALS || 
                    type == aiTextureType_METALNESS || 
                    type == aiTextureType_DIFFUSE_ROUGHNESS || 
@@ -467,7 +466,7 @@ uint32_t ModelManager::_loadMaterial(aiMaterial* mat, const aiScene* scene, aiTe
         if (embeddedTexture) {
             if (embeddedTexture->mHeight == 0) {
                 // create a unique cache key for compressed memory bytes (PNG/JPG)
-                std::string cacheKey = std::string(directory) + "_" + texturePathStr; // e.g., "assets/DamagedHelmet_/*0"
+                std::string cacheKey = std::string(modelPath) + "_" + texturePathStr;
 
                 textureID = textureManager->loadTextureFromMemory(
                     embeddedTexture->pcData,
@@ -477,11 +476,11 @@ uint32_t ModelManager::_loadMaterial(aiMaterial* mat, const aiScene* scene, aiTe
                     isData
                 );
             } else {
-                m_logger->warn("Skipping {} {} in {}: uncompressed embedded textures are not supported yet", typeName, texturePathStr, directory);
+                m_logger->warn("Skipping {} {} in {}: uncompressed embedded textures are not supported yet", typeName, texturePathStr, modelPath);
                 continue;
             }
         } else if (!texturePathStr.empty() && texturePathStr[0] == '*') {
-            m_logger->warn("Skipping {} {} in {}: no embedded texture at that index", typeName, texturePathStr, directory);
+            m_logger->warn("Skipping {} {} in {}: no embedded texture at that index", typeName, texturePathStr, modelPath);
             continue;
         } else {
             std::string path = std::string(directory) + '/' + texturePathStr;

@@ -38,12 +38,12 @@ private:
 		const aiScene* scene,
 		std::vector<uint32_t>& meshes,
 		std::unordered_map<uint32_t, uint32_t>& meshCache,
-		std::string_view directory,
+		std::string_view modelPath,
 		uint32_t skeletonID,
 		uint32_t skeletonNodeIndex
 	);
-    uint32_t _processMesh(aiMesh* mesh, const aiScene* scene, std::string_view directory, uint32_t skeletonID);
-    uint32_t _loadMaterial(aiMaterial* mat, const aiScene* scene, aiTextureType type, std::string typeName, std::string_view directory);
+    uint32_t _processMesh(aiMesh* mesh, const aiScene* scene, std::string_view modelPath, uint32_t skeletonID);
+    uint32_t _loadMaterial(aiMaterial* mat, const aiScene* scene, aiTextureType type, std::string typeName, std::string_view modelPath);
 	void _processSkeletonNodeHierarchy(uint32_t skeletonID, aiNode* aiNode, int parentIndex);
 	void _extractBoneWeightForVertices(uint32_t skeletonID, std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene);
 	void _setDefaultBone(Vertex& vertex);
