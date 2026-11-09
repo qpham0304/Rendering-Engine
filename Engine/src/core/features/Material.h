@@ -1,18 +1,18 @@
 #pragma once
 
-#include <vector>
+#include <cstdint>
 #include <glm/glm.hpp>
 
 struct MaterialDesc {
-    std::vector<uint32_t> albedoIDs = {};
-    std::vector<uint32_t> normalIDs = {};
-    std::vector<uint32_t> metallicIDs = {};
-    std::vector<uint32_t> roughnessIDs = {};
-    std::vector<uint32_t> aoIDs = {};
-    std::vector<uint32_t> emissiveIDs = {};
-    
-    glm::vec2 uv = glm::vec2(0.0f);     // not the actual uv, just the offset uv
-    glm::vec2 uvScale = glm::vec2(1.0f);     // not the actual uv, just the offset uv
+    uint32_t albedoID = 0;
+    uint32_t normalID = 0;
+    uint32_t metallicID = 0;
+    uint32_t roughnessID = 0;
+    uint32_t aoID = 0;
+    uint32_t emissiveID = 0;
+
+    glm::vec2 uv = glm::vec2(0.0f);         // not the actual uv, just the offset uv
+    glm::vec2 uvScale = glm::vec2(1.0f);    // not the actual uv, just the offset uv
     glm::vec4 albedo = glm::vec4(1.0f);
     glm::vec4 normal = glm::vec4(0.0f);
     float metallic  = 1.0f;
@@ -22,21 +22,4 @@ struct MaterialDesc {
     float alphaCutoff = 0.0f;   // 0 is opaque, otherwise texels with albedo alpha below it are discarded
 };
 
-struct GPUMaterialData {
-    uint32_t albedoIdx;
-    uint32_t normalIdx;
-    uint32_t metalnessIdx;
-    uint32_t roughnessIdx;
-    uint32_t aoIdx;
-    uint32_t emissiveIdx;
-
-    glm::vec2 uv = glm::vec2(0.0f);     // not the actual uv, just the offset uv
-    glm::vec2 uvScale = glm::vec2(0.0f);     // not the actual uv, just the offset uv
-    glm::vec4 albedo = glm::vec4(1.0f);
-    glm::vec4 normal = glm::vec4(0.0f);
-    float metallic  = 1.0f;
-    float roughness = 1.0f;
-    float ao        = 1.0f;
-    float emissive  = 1.0f;
-    float alphaCutoff = 0.0f;
-};
+static_assert(sizeof(MaterialDesc) == 92, "MaterialDesc must match the shader Material layout");

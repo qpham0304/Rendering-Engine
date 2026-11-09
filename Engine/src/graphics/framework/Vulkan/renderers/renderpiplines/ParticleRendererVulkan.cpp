@@ -375,8 +375,8 @@ void ParticleRendererVulkan::_resolveAssets(ParticleEmitter& emitter)
     auto* materials = dynamic_cast<MaterialManagerVulkan*>(materialManager);
     if(materials && mesh->materialID != 0) {
         MaterialDesc material = materials->getMaterial(mesh->materialID);
-        if(!material.albedoIDs.empty() && material.albedoIDs[0] != materials->getFallbackAlbedoID()) {
-            refs.albedoTextureID = material.albedoIDs[0];
+        if(material.albedoID != materials->getFallbackAlbedoID()) {
+            refs.albedoTextureID = material.albedoID;
         }
     }
     meshRefs[emitter.meshModelID] = refs;

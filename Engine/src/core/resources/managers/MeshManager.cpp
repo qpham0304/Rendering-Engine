@@ -56,13 +56,13 @@ uint32_t MeshManager::loadMesh(Mesh& mesh)
     m_meshes[m_ids] = std::make_shared<Mesh>(std::move(mesh));
     
     MeshData meshData{};
-    meshData.vertexBufferID = m_bufferManager->createVertexBuffer(
-        m_meshes[m_ids]->vertices.data(), m_meshes[m_ids]->vertices.size() * sizeof(Vertex)
-    );
+    // meshData.vertexBufferID = m_bufferManager->createVertexBuffer(
+    //     m_meshes[m_ids]->vertices.data(), m_meshes[m_ids]->vertices.size() * sizeof(Vertex)
+    // );
     
-    meshData.indexBufferID = m_bufferManager->createIndexBuffer(
-        m_meshes[m_ids]->indices.data(), m_meshes[m_ids]->indices.size()
-    );
+    // meshData.indexBufferID = m_bufferManager->createIndexBuffer(
+    //     m_meshes[m_ids]->indices.data(), m_meshes[m_ids]->indices.size()
+    // );
 
     size_t triangleCount = m_meshes[m_ids]->indices.size() / 3;
     size_t matCount = m_meshes[m_ids]->materialIndices.size();

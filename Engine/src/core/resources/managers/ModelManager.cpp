@@ -389,29 +389,29 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     if (mesh->mMaterialIndex < scene->mNumMaterials) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
         
-        materialDesc.albedoIDs = _loadMaterial(material, scene, aiTextureType_BASE_COLOR, "albedoMap", directory);
-        materialDesc.normalIDs = _loadMaterial(material, scene, aiTextureType_NORMALS, "normalMap", directory);
-        materialDesc.metallicIDs = _loadMaterial(material, scene, aiTextureType_METALNESS, "metallicMap", directory);
-        materialDesc.roughnessIDs = _loadMaterial(material, scene, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", directory);
-        materialDesc.aoIDs = _loadMaterial(material, scene, aiTextureType_LIGHTMAP, "aoMap", directory);
-        materialDesc.emissiveIDs = _loadMaterial(material, scene, aiTextureType_EMISSIVE, "emissiveMap", directory);
-        if(!materialDesc.emissiveIDs.empty()){
+        materialDesc.albedoID = _loadMaterial(material, scene, aiTextureType_BASE_COLOR, "albedoMap", directory);
+        materialDesc.normalID = _loadMaterial(material, scene, aiTextureType_NORMALS, "normalMap", directory);
+        materialDesc.metallicID = _loadMaterial(material, scene, aiTextureType_METALNESS, "metallicMap", directory);
+        materialDesc.roughnessID = _loadMaterial(material, scene, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", directory);
+        materialDesc.aoID = _loadMaterial(material, scene, aiTextureType_LIGHTMAP, "aoMap", directory);
+        materialDesc.emissiveID = _loadMaterial(material, scene, aiTextureType_EMISSIVE, "emissiveMap", directory);
+        if(materialDesc.emissiveID != 0){
             materialDesc.emissive  = 1.0f;
         }
 
         // try find other non compatible materials, if still fail...
         // give up and let material manager use fallback materials
-        if(materialDesc.metallicIDs.empty()) {  //TODO: need adjustment since this is not the correct pbr fallback
-            materialDesc.metallicIDs = _loadMaterial(material, scene, aiTextureType_SPECULAR, "metallicMap", directory);
+        if(materialDesc.metallicID == 0) {  //TODO: need adjustment since this is not the correct pbr fallback
+            materialDesc.metallicID = _loadMaterial(material, scene, aiTextureType_SPECULAR, "metallicMap", directory);
         }
-        if(materialDesc.albedoIDs.empty()){
-            materialDesc.albedoIDs = _loadMaterial(material, scene, aiTextureType_DIFFUSE, "albedoMap", directory);
+        if(materialDesc.albedoID == 0){
+            materialDesc.albedoID = _loadMaterial(material, scene, aiTextureType_DIFFUSE, "albedoMap", directory);
         }
-        if(materialDesc.roughnessIDs.empty()) {
-            materialDesc.roughnessIDs = _loadMaterial(material, scene, aiTextureType_SHININESS, "roughnessMap", directory);
+        if(materialDesc.roughnessID == 0) {
+            materialDesc.roughnessID = _loadMaterial(material, scene, aiTextureType_SHININESS, "roughnessMap", directory);
         }
-        if(materialDesc.aoIDs.empty()) {
-            materialDesc.aoIDs = _loadMaterial(material, scene, aiTextureType_AMBIENT, "aoMap", directory);
+        if(materialDesc.aoID == 0) {
+            materialDesc.aoID = _loadMaterial(material, scene, aiTextureType_AMBIENT, "aoMap", directory);
         }
 
         // foliage cards are quads, the leaf shape comes from the albedo alpha
@@ -445,7 +445,7 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     return meshManager->loadMesh(m);
 }
 
-std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, const aiScene* scene, aiTextureType type, std::string typeName, std::string_view directory)
+uint32_t ModelManager::_loadMaterial(aiMaterial* mat, const aiScene* scene, aiTextureType type, std::string typeName, std::string_view directory)
 {
     bool isData = (type == aiTextureType_NORMALS || 
                    type == aiTextureType_METALNESS || 
@@ -454,7 +454,6 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, const aiScene
                    type == aiTextureType_HEIGHT || 
                    type == aiTextureType_SHININESS);
                    
-    std::vector<uint32_t> textureIDs;
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
         const uint32_t defaultMipLevel = TextureManager::FULL_MIP_CHAIN;
 
@@ -494,10 +493,10 @@ std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, const aiScene
             continue;
         }
 
-        textureIDs.push_back(textureID);
+        return textureID;
     }
 
-    return textureIDs;
+    return 0;
 }
 
 void ModelManager::_processSkeletonNodeHierarchy(uint32_t skeletonID, aiNode* aiNode, int parentIndex)

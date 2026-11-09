@@ -114,13 +114,8 @@ void SandBoxLayer::createLights()
         transform.translate(glm::vec3(xPos, yPos, zPos));
 
         MaterialDesc materialDesc;
-        materialDesc.albedoIDs.push_back(
-            textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
-        );
-
-        materialDesc.emissiveIDs.push_back(
-            textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
-        );
+        materialDesc.albedoID = textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false);
+        materialDesc.emissiveID = textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false);
         
         materialDesc.emissive = 5.0;    // these need to be set to have emision
 
@@ -211,9 +206,7 @@ void SandBoxLayer::createLightProbes()
 
     // debug spheres, one mesh per probe
     // MaterialDesc materialDesc;
-    // materialDesc.albedoIDs.push_back(
-    //     textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
-    // );
+    // materialDesc.albedoID = textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false);
     // Mesh mesh = EngineUtils::drawSphere(0.25f, 18, 18);
     // mesh.materialID = materialManager->createMaterial(materialDesc);
     // Model model {};

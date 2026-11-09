@@ -248,7 +248,7 @@ Entity::HookFunction Entity::_onSpriteComponentAdded()
                 return;
             }
             MaterialDesc material = materialManager->getMaterial(mesh->materialID);
-            material.albedoIDs = { sprite.textureID };
+            material.albedoID = sprite.textureID;
             materialManager->updateMaterial(mesh->materialID, material);
         }
     };

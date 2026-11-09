@@ -49,6 +49,5 @@ private:
 
 	void _registerComponents();
 	void _componentsControl();
-	void _scenesControl();
 };
 

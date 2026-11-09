@@ -1,6 +1,5 @@
 #include "ImGuiMenuWidget.h"
 
-#include <algorithm>
 #include "ImGuiScenePicker.h"
 #include "core/scene/SceneManager.h"
 
@@ -33,7 +32,6 @@ void ImGuiMenuWidget::MainMenuBar()
 		ToolMenu();
 		WindowMenu();
 		HelpMenu();
-		_activeSceneButton();
 
 		ImGui::EndMainMenuBar();
 	}
@@ -103,25 +101,6 @@ void ImGuiMenuWidget::EditMenu()
 
 		}
 		ImGui::EndMenu();
-	}
-}
-
-void ImGuiMenuWidget::_activeSceneButton()
-{
-	Scene* scene = SceneManager::getInstance().getActiveScene();
-	std::string label = (scene ? scene->getName() : std::string("No scene")) + "  v";
-	float width = ImGui::CalcTextSize(label.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
-	float hintWidth = ImGui::CalcTextSize("Scene").x + ImGui::GetStyle().ItemSpacing.x;
-	ImGui::SameLine(std::max(ImGui::GetWindowWidth() - width - hintWidth - ImGui::GetStyle().WindowPadding.x, ImGui::GetCursorPosX()));
-	ImGui::TextDisabled("Scene");
-	ImGui::SameLine();
-	ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-	if (ImGui::Button(label.c_str())) {
-		ImGuiScenePicker::open();
-	}
-	ImGui::PopStyleColor();
-	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Open Scene (Ctrl+O)");
 	}
 }
 

@@ -15,7 +15,6 @@
 #include "scripting/ScriptManager.h"
 #include "physics/PhysicsManager.h"
 #include "ImGuiParticleInspector.h"
-#include "ImGuiScenePicker.h"
 
 
 ImGuiRightSidebarWidget::ImGuiRightSidebarWidget() 
@@ -324,12 +323,12 @@ void ImGuiRightSidebarWidget::textureInspector()
             MaterialDesc materialDesc = materialManager->getMaterial(mesh->materialID);
 
             std::vector<uint32_t> ids = {
-                materialDesc.albedoIDs[0],
-                materialDesc.normalIDs[0],
-                materialDesc.metallicIDs[0],
-                materialDesc.roughnessIDs[0],
-                materialDesc.aoIDs[0],
-                materialDesc.emissiveIDs[0],
+                materialDesc.albedoID,
+                materialDesc.normalID,
+                materialDesc.metallicID,
+                materialDesc.roughnessID,
+                materialDesc.aoID,
+                materialDesc.emissiveID,
             };
 
             bool changed = false;
@@ -393,12 +392,12 @@ void ImGuiRightSidebarWidget::textureInspector()
                     std::string path = Utils::fileDialog();
                     if(!path.empty()) {
                         switch (i) {    // assume that there are 6 materials in pbr pipelines
-                            case 0: materialDesc.albedoIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, false); break;
-                            case 1: materialDesc.normalIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
-                            case 2: materialDesc.metallicIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
-                            case 3: materialDesc.roughnessIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
-                            case 4: materialDesc.aoIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
-                            case 5: materialDesc.emissiveIDs[0] = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, false); break;
+                            case 0: materialDesc.albedoID = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, false); break;
+                            case 1: materialDesc.normalID = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
+                            case 2: materialDesc.metallicID = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
+                            case 3: materialDesc.roughnessID = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
+                            case 4: materialDesc.aoID = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, true); break;
+                            case 5: materialDesc.emissiveID = textureManager->loadTexture(path, TextureManager::FULL_MIP_CHAIN, false); break;
                             default: break;
                         }
                         
@@ -439,7 +438,6 @@ void ImGuiRightSidebarWidget::render()
         // layersControl();
         textureInspector();
         environmentControl();
-        _scenesControl();
         ImGui::EndGroup();
     }
 }
@@ -529,7 +527,7 @@ void ImGuiRightSidebarWidget::_componentsControl()
             ){
                 std::string path = "assets/textures/mobi-padoru.png"; 
                 MaterialDesc materialDesc;
-                materialDesc.albedoIDs.push_back(textureManager->loadTexture(path, 1, false));
+                materialDesc.albedoID = textureManager->loadTexture(path, 1, false);
                 mesh.materialID = materialManager->createMaterial(materialDesc);
 
                 Model model {};
@@ -665,124 +663,4 @@ void ImGuiRightSidebarWidget::_componentsControl()
     }
     ImGui::End();
     ImGui::PopStyleColor(4);
-}
-
-void ImGuiRightSidebarWidget::_scenesControl()
-{
-    SceneManager& sceneManager = SceneManager::getInstance();
-    Scene* active = sceneManager.getActiveScene();
-
-    auto hint = [](const char* text) {
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("%s", text);
-        }
-    };
-
-    ImGui::Begin("Scenes Control");
-
-    ImGui::SeparatorText("Active Scene");
-    ImGui::AlignTextToFramePadding();
-    if (active) {
-        ImGui::TextUnformatted(active->getName().c_str());
-        hint(active->savePath().c_str());
-    } else {
-        ImGui::TextDisabled("none");
-    }
-
-    const ImGuiStyle& style = ImGui::GetStyle();
-    float quarter = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x * 3.0f) * 0.25f;
-    if (ImGui::Button("Load...", ImVec2(quarter, 0.0f))) {
-        ImGuiScenePicker::open();
-    }
-    hint("Open Scene (Ctrl+O)");
-    ImGui::SameLine();
-    ImGui::BeginDisabled(!active);
-    if (ImGui::Button("Reload", ImVec2(quarter, 0.0f))) {
-        active->requestReload();
-    }
-    hint("Reload Scene (Ctrl+R)");
-    ImGui::SameLine();
-    if (ImGui::Button("Save", ImVec2(quarter, 0.0f))) {
-        ImGuiScenePicker::saveActiveScene();
-    }
-    hint("Save Scene (Ctrl+S)");
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    if (ImGui::Button("Add", ImVec2(quarter, 0.0f))) {
-        ImGuiScenePicker::newScene();
-    }
-    hint("New Scene (Ctrl+N)");
-
-    ImGui::SeparatorText("Scenes");
-    std::vector<uint32_t> ids = sceneManager.listIDs();
-    bool canRemove = ids.size() > 1;
-    for (uint32_t id : ids) {
-        Scene* loaded = sceneManager.getScene(id);
-        if (!loaded) {
-            continue;
-        }
-        const std::string& name = loaded->getName();
-        bool isActive = loaded == active;
-
-        // the header's close button removes the scene like a component, the last one has none
-        ImGui::PushID(static_cast<int>(id));
-        bool keep = true;
-        std::string label = (isActive ? name + "  (active)" : name) + "###scene";
-        if (isActive) {
-            ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
-        }
-        bool open = ImGui::CollapsingHeader(label.c_str(), canRemove ? &keep : nullptr);
-        if (isActive) {
-            ImGui::PopStyleColor();
-        }
-        hint(canRemove ? "Right-click for options, x removes the scene (the file is kept)" : "Right-click for options");
-
-        if (ImGui::BeginPopupContextItem("##sceneMenu")) {
-            ImGui::TextDisabled("%s", name.c_str());
-            ImGui::Separator();
-            if (ImGui::MenuItem("Set Active", nullptr, false, !isActive)) {
-                sceneManager.setActiveScene(name);
-            }
-            if (ImGui::MenuItem("Reload")) {
-                loaded->requestReload();
-            }
-            if (ImGui::MenuItem("Save")) {
-                loaded->saveScene(loaded->savePath());
-            }
-            ImGui::Separator();
-            if (ImGui::MenuItem("Remove", nullptr, false, canRemove)) {
-                keep = false;
-            }
-            ImGui::EndPopup();
-        }
-
-        if (open) {
-            ImGui::Indent();
-            ImGui::TextDisabled("%s", loaded->getPath().empty() ? "not saved" : loaded->getPath().c_str());
-            float third = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x * 2.0f) / 3.0f;
-            ImGui::BeginDisabled(isActive);
-            if (ImGui::Button("Set Active", ImVec2(third, 0.0f))) {
-                sceneManager.setActiveScene(name);
-            }
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-            if (ImGui::Button("Reload", ImVec2(third, 0.0f))) {
-                loaded->requestReload();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Save", ImVec2(third, 0.0f))) {
-                loaded->saveScene(loaded->savePath());
-            }
-            hint(loaded->savePath().c_str());
-            ImGui::Unindent();
-        }
-
-        if (!keep) {
-            sceneManager.removeScene(name);
-        }
-        ImGui::PopID();
-    }
-    ImGui::End();
-
-    ImGuiScenePicker::draw();
 }

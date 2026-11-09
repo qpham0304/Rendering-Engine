@@ -7,6 +7,9 @@
 #include "core/features/Material.h"
 #include "logging/Logger.h"
 #include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
+#include <algorithm>
+#include <stdexcept>
+#include <string>
 
 MaterialManagerVulkan::MaterialManagerVulkan(std::string serviceName)
 	: MaterialManager(serviceName)
@@ -48,12 +51,19 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 	_createMaterialDescriptorSet();
 	
 	//TODO: hard coded the max number of material indices
-	materialsGPU.resize(Common::MAX_INSTANCES);
+	MaterialDesc unused {};
+	unused.albedoID = fallback_albedoID;
+	unused.normalID = fallback_normalID;
+	unused.metallicID = fallback_metallicID;
+	unused.roughnessID = fallback_roughnessID;
+	unused.aoID = fallback_aoID;
+	unused.emissiveID = fallback_emissiveID;
+	materials.resize(Common::MAX_INSTANCES, unused);
+
 	BufferManager& bufferManager = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
     auto bufferManagerVulkan = &dynamic_cast<BufferManagerVulkan&>(bufferManager);
 
-	
-    VkDeviceSize bufferSize = sizeof(GPUMaterialData) * materialsGPU.size();
+    VkDeviceSize bufferSize = sizeof(MaterialDesc) * materials.size();
 	uint32_t bufferID = bufferManagerVulkan->createBufferDeviceAddress(bufferSize);
 	materialDeviceAddress = (DeviceAddressBufferVulkan*)bufferManagerVulkan->getBuffer(bufferID);
 
@@ -63,7 +73,6 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 void MaterialManagerVulkan::onUpdate(const FrameTime& frameTime)
 {
 	//TODO: conditional update would be better in case of thousands materials
-	_buildMaterialCache();
 	_updateGPUBuffer();
 }
 
@@ -92,7 +101,8 @@ void MaterialManagerVulkan::destroy(uint32_t id)
 std::vector<uint32_t> MaterialManagerVulkan::listIDs() const
 {
 	std::vector<uint32_t> list;
-	for (const auto& [id, material] : materials) {
+	uint32_t count = std::min<uint32_t>(m_ids.load(std::memory_order_relaxed), static_cast<uint32_t>(materials.size()));
+	for (uint32_t id = 1; id < count; id++) {
 		list.emplace_back(id);
 	}
 	return list;
@@ -100,30 +110,17 @@ std::vector<uint32_t> MaterialManagerVulkan::listIDs() const
 
 uint32_t MaterialManagerVulkan::createMaterial(const MaterialDesc &materialDesc)
 {
-	materials[m_ids] = MaterialVulkan();
-	MaterialVulkan& material = materials[m_ids];
-
-	updateMaterial(m_ids, materialDesc);
-
-	GPUMaterialData materialGPU {};
-	materialGPU.albedoIdx = material.albedoID;
-	materialGPU.normalIdx = material.normalID;
-	materialGPU.metalnessIdx = material.metallicID;
-	materialGPU.roughnessIdx = material.roughnessID;
-	materialGPU.aoIdx = material.aoID;
-	materialGPU.emissiveIdx = material.emissiveID;
-	materialGPU.uv = material.uv;
-	materialGPU.uvScale = material.uvScale;
-	materialGPU.albedo = material.albedo;
-	materialGPU.normal = material.normal;
-	materialGPU.metallic = material.metallic;
-	materialGPU.roughness = material.roughness;
-	materialGPU.ao = material.ao;
-	materialGPU.emissive = material.emissive;
-	materialGPU.alphaCutoff = material.alphaCutoff;
-	materialsGPU[m_ids] = materialGPU;
-
+	if (m_ids >= materials.size()) {
+		m_logger->error("MaterialManagerVulkan::createMaterial: material limit {} reached", materials.size());
+		return 0;
+	}
+	_setMaterial(m_ids, materialDesc);
     return _assignID();
+}
+
+bool MaterialManagerVulkan::_exists(uint32_t id) const
+{
+	return id != 0 && id < m_ids.load(std::memory_order_relaxed) && id < materials.size();
 }
 
 void MaterialManagerVulkan::bindMaterial(void* cmdBuffer, void* p)
@@ -148,25 +145,10 @@ void MaterialManagerVulkan::bindMaterial(void* cmdBuffer, void* p)
 
 MaterialDesc MaterialManagerVulkan::getMaterial(const uint32_t &id)
 {
-	const MaterialVulkan& material = materials.at(id);
-
-    return MaterialDesc {
-		{ material.albedoID },
-		{ material.normalID },
-		{ material.metallicID },
-		{ material.roughnessID },
-		{ material.aoID },
-		{ material.emissiveID },
-		{ material.uv },
-		{ material.uvScale },
-		{ material.albedo },
-		{ material.normal },
-		{ material.metallic },
-		{ material.roughness },
-		{ material.ao },
-		{ material.emissive },
-		{ material.alphaCutoff }
-	};
+	if (!_exists(id)) {
+		throw std::out_of_range("MaterialManagerVulkan::getMaterial: invalid material id " + std::to_string(id));
+	}
+	return materials[id];
 }
 
 uint64_t MaterialManagerVulkan::getMaterialAddress()
@@ -174,57 +156,31 @@ uint64_t MaterialManagerVulkan::getMaterialAddress()
 	return materialDeviceAddress->getAddress();
 }
 
-void MaterialManagerVulkan::_buildMaterialCache()
-{
-	for (auto const& [id, pair] : materials) {
-		MaterialVulkan material = pair;
-        GPUMaterialData gpuMaterial {};
-        gpuMaterial.albedoIdx    = material.albedoID;
-        gpuMaterial.normalIdx    = material.normalID;
-        gpuMaterial.metalnessIdx = material.metallicID;
-        gpuMaterial.roughnessIdx = material.roughnessID;
-        gpuMaterial.aoIdx        = material.aoID;
-        gpuMaterial.emissiveIdx  = material.emissiveID;
-
-		gpuMaterial.uv = material.uv;
-		gpuMaterial.uvScale = material.uvScale;
-		gpuMaterial.albedo = material.albedo;
-		gpuMaterial.normal = material.normal;
-		gpuMaterial.metallic = material.metallic;
-		gpuMaterial.roughness = material.roughness;
-		gpuMaterial.ao = material.ao;
-		gpuMaterial.emissive = material.emissive;
-		gpuMaterial.alphaCutoff = material.alphaCutoff;
-        materialsGPU[id] = gpuMaterial;
-    }
-}
-
 void MaterialManagerVulkan::_updateGPUBuffer()
 {
-	materialDeviceAddress->update(materialsGPU.data(), sizeof(GPUMaterialData) * materialsGPU.size());
+	materialDeviceAddress->update(materials.data(), sizeof(MaterialDesc) * materials.size());
 }
 
 bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &materialDesc)
 {
-    auto it = materials.find(id);
-    if(it == materials.end()) return false;
-    
-    MaterialVulkan& material = it->second;
-    material.albedoID = _checkMaterial(materialDesc.albedoIDs, fallback_albedoID);
-    material.normalID = _checkMaterial(materialDesc.normalIDs, fallback_normalID);
-    material.metallicID = _checkMaterial(materialDesc.metallicIDs, fallback_metallicID);
-    material.roughnessID = _checkMaterial(materialDesc.roughnessIDs, fallback_roughnessID);
-    material.aoID = _checkMaterial(materialDesc.aoIDs, fallback_aoID);
-    material.emissiveID = _checkMaterial(materialDesc.emissiveIDs, fallback_emissiveID);
-	material.uv = materialDesc.uv;
-	material.uvScale = materialDesc.uvScale;
-	material.albedo = materialDesc.albedo;
-	material.normal = materialDesc.normal;
-	material.metallic  = materialDesc.metallic ;
-	material.roughness = materialDesc.roughness;
-	material.ao        = materialDesc.ao       ;
-	material.emissive  = materialDesc.emissive ;
-	material.alphaCutoff = materialDesc.alphaCutoff;
+    if (!_exists(id)) {
+		return false;
+	}
+
+    _setMaterial(id, materialDesc);
+    return true;
+}
+
+void MaterialManagerVulkan::_setMaterial(uint32_t id, const MaterialDesc &materialDesc)
+{
+    MaterialDesc& material = materials[id];
+    material = materialDesc;
+    material.albedoID = _checkMaterial(materialDesc.albedoID, fallback_albedoID);
+    material.normalID = _checkMaterial(materialDesc.normalID, fallback_normalID);
+    material.metallicID = _checkMaterial(materialDesc.metallicID, fallback_metallicID);
+    material.roughnessID = _checkMaterial(materialDesc.roughnessID, fallback_roughnessID);
+    material.aoID = _checkMaterial(materialDesc.aoID, fallback_aoID);
+    material.emissiveID = _checkMaterial(materialDesc.emissiveID, fallback_emissiveID);
 
 	textureManagerVulkan->registerBindlessTexture(material.albedoID);
 	textureManagerVulkan->registerBindlessTexture(material.normalID);
@@ -232,8 +188,6 @@ bool MaterialManagerVulkan::updateMaterial(uint32_t id, const MaterialDesc &mate
 	textureManagerVulkan->registerBindlessTexture(material.roughnessID);
 	textureManagerVulkan->registerBindlessTexture(material.aoID);
 	textureManagerVulkan->registerBindlessTexture(material.emissiveID);
-
-    return true;
 }
 
 void* MaterialManagerVulkan::getMaterialLayout()
@@ -242,10 +196,9 @@ void* MaterialManagerVulkan::getMaterialLayout()
 	return reinterpret_cast<void*>(layout);
 }
 
-uint32_t MaterialManagerVulkan::_checkMaterial(const std::vector<uint32_t> &textures, uint32_t fallbackID) const
+uint32_t MaterialManagerVulkan::_checkMaterial(uint32_t textureID, uint32_t fallbackID) const
 {
-	// only use the first material imported from assimp
-    return textures.empty() ? fallbackID : textures[0];
+    return textureID == 0 ? fallbackID : textureID;
 }
 
 

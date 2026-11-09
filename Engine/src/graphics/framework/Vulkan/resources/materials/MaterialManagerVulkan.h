@@ -16,26 +16,6 @@ class DeviceAddressBufferVulkan;
 class MaterialManagerVulkan : public MaterialManager
 {
 public:
-    struct MaterialVulkan {
-		uint32_t albedoID;
-		uint32_t normalID;
-		uint32_t metallicID;
-		uint32_t roughnessID;
-		uint32_t aoID;
-		uint32_t emissiveID;
-
-		glm::vec2 uv;
-		glm::vec2 uvScale;
-		glm::vec4 albedo;
-		glm::vec4 normal;
-		float metallic;
-		float roughness;
-		float ao;
-		float emissive;
-		float alphaCutoff;
-    };
-
-public:
 	MaterialManagerVulkan(std::string serviceName = "MaterialManagerVulkan");
 	~MaterialManagerVulkan();
 
@@ -55,10 +35,11 @@ public:
 	
 
 private:
-	uint32_t _checkMaterial(const std::vector<uint32_t>& textures, uint32_t fallbackID) const;
+	bool _exists(uint32_t id) const;
+	void _setMaterial(uint32_t id, const MaterialDesc& materialDesc);
+	uint32_t _checkMaterial(uint32_t textureID, uint32_t fallbackID) const;
 	uint32_t _loadFallbackTexture(const std::string& path, bool isDataTexture, std::array<uint8_t, 4> color);
 	void _createMaterialDescriptorSet();
-	void _buildMaterialCache();
 	void _updateGPUBuffer();
 
 private:
@@ -67,9 +48,7 @@ private:
 	DescriptorManagerVulkan* descriptorManagerVulkan;
 
 
-    std::unordered_map<uint32_t, MaterialVulkan> materials;
-	
-	std::vector<GPUMaterialData> materialsGPU;
+	std::vector<MaterialDesc> materials;
 	DeviceAddressBufferVulkan* materialDeviceAddress;
 	
 	uint32_t materialLayoutID;

@@ -53,6 +53,45 @@
           ]
         }
       }
+    },
+    {
+      "components": {
+        "LightProbeComponent": {
+          "gridOrigin": [
+            -9.0,
+            -4.6438517570495605,
+            -9.0,
+            1.0
+          ],
+          "probeCounts": [
+            10,
+            7,
+            10
+          ],
+          "probesPerDimension": 10,
+          "spacing": 2.0
+        },
+        "NameComponent": {
+          "name": "probe manager"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translateVec": [
+            0.0,
+            1.3561482429504395,
+            0.0
+          ]
+        }
+      }
     }
   ],
   "scene_name": "default-scene"

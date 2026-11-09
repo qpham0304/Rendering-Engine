@@ -123,10 +123,8 @@ void Engine::addFrameCallback(std::function<void()> callback)
 
 void Engine::init()
 {
-// #ifdef GAME_RELEASE
 	pushLayer(new EditorLayer("EditorLayer", *guiManager));
 	engineLogger->setLevel(LogLevel::Debug);
-// #endif
 	
 	try {
 		for (Service*& service : services) {

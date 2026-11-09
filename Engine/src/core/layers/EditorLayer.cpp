@@ -20,6 +20,7 @@
 #include "gui/framework/ImGui/widgets/ImGuiGraphicsSettingsWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiRenderGraphWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiAudioWidget.h"
+#include "gui/framework/ImGui/widgets/ImGuiScenesControlWidget.h"
 
 void EditorLayer::renderGuizmo()
 {
@@ -64,6 +65,7 @@ bool EditorLayer::init()
 	guiController.addWidget<ImGuiGraphicsSettingsWidget>();
 	guiController.addWidget<ImGuiRenderGraphWidget>();
 	guiController.addWidget<ImGuiAudioWidget>();
+	guiController.addWidget<ImGuiScenesControlWidget>();
 	guiController.addWidget<ImGuiMenuWidget>(guiController.getWidgets());
 
 	

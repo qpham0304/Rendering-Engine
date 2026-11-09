@@ -22,7 +22,6 @@ protected:
 	bool m_showDebug;
 
 private:
-	void _activeSceneButton();
 
 };
 
