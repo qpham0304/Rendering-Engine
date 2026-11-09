@@ -20,12 +20,12 @@ ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 	ImGui::CreateContext();
 }
 
-ImGuiManager::ImGuiManager(bool darkTheme) : GuiManager()
+ImGuiManager::ImGuiManager(const std::string& theme) : GuiManager()
 {
 	setFootprint("ImGuiManager", sizeof(ImGuiManager), MemorySystem::Gui);
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	this->darkTheme = darkTheme;
+	this->theme = theme;
 }
 
 bool ImGuiManager::init(WindowConfig config)
@@ -112,7 +112,8 @@ bool ImGuiManager::init(WindowConfig config)
 	style.TabRounding = 8;
 	style.GrabMinSize = 15;
 
-	darkTheme ? useDarkTheme() : useLightTheme(); // preset style from others
+	m_baseStyle = style;
+	setTheme(theme);
 
 	return true;
 }
@@ -296,20 +297,28 @@ bool ImGuiManager::onClose()
 	return true;
 }
 
-void ImGuiManager::setTheme(bool darkTheme)
+bool ImGuiManager::setTheme(const std::string& name)
 {
-	this->darkTheme = darkTheme;
+	const std::vector<ImGuiThemes::Theme>& themes = ImGuiThemes::list();
+	auto found = std::find_if(themes.begin(), themes.end(), [&name](const ImGuiThemes::Theme& entry) { return entry.name == name; });
+	if (found == themes.end()) {
+		m_logger->warn("Unknown theme: {}", name);
+		return false;
+	}
+
+	theme = name;
+	ImGui::GetStyle() = m_baseStyle;
+	found->apply();
+	return true;
 }
 
-void ImGuiManager::useLightTheme()
+std::vector<std::string> ImGuiManager::listThemes() const
 {
-	// ImGuiThemes::purpleTheme();
-	ImGuiThemes::lightTheme();
-}
-
-void ImGuiManager::useDarkTheme()
-{
-	ImGuiThemes::darkTheme();
+	std::vector<std::string> names;
+	for (const ImGuiThemes::Theme& entry : ImGuiThemes::list()) {
+		names.push_back(entry.name);
+	}
+	return names;
 }
 
 void ImGuiManager::renderGuizmo(TransformComponent& transformComponent, const glm::mat4& parentWorld)

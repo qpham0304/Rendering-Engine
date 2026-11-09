@@ -483,10 +483,10 @@ void ImGuiRightSidebarWidget::_componentsControl()
     // window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
     // ImGui::SetNextWindowClass(&window_class);
     
-    ImGui::PushStyleColor(ImGuiCol_TabActive, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg)); 
+    ImGui::PushStyleColor(ImGuiCol_TabSelected, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg)); 
     ImGui::PushStyleColor(ImGuiCol_Tab, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
     ImGui::PushStyleColor(ImGuiCol_TabHovered, ImVec4(0.3f, 0.3f, 0.35f, 1.0f)); // Subtle hover
-    ImGui::PushStyleColor(ImGuiCol_TabUnfocusedActive, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
+    ImGui::PushStyleColor(ImGuiCol_TabDimmedSelected, ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
 
     Entity& entity = const_cast<Entity&>(selectedEntities[0]);
     ImGui::Begin("Components");

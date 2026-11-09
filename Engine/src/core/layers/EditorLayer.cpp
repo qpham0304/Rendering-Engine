@@ -53,8 +53,7 @@ EditorLayer::~EditorLayer()
 
 bool EditorLayer::init()
 {
-	guiController.useDarkTheme();
-	// guiController.useLightTheme();
+	guiController.setTheme("Dark");
 	
 	guiController.addWidget<ImGuiLeftSidebarWidget>();
 	guiController.addWidget<ImGuiRightSidebarWidget>();

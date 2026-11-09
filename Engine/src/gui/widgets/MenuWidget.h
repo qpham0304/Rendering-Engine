@@ -15,6 +15,7 @@ public:
 	virtual void FileMenu() = 0;
 	virtual void EditMenu() = 0;
 	virtual void ToolMenu() = 0;
+	virtual void ViewMenu() = 0;
 	virtual void WindowMenu() = 0;
 	virtual void HelpMenu() = 0;
 };
