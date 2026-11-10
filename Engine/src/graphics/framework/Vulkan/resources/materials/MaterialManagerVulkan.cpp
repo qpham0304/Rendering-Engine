@@ -42,8 +42,7 @@ bool MaterialManagerVulkan::init(WindowConfig config)
 
 	fallback_albedoID = _loadFallbackTexture("assets/Textures/default/32x32/albedo.png", false, { 255, 255, 255, 255 });
 	fallback_normalID = _loadFallbackTexture("assets/Textures/default/32x32/normal.png", true, { 128, 128, 255, 255 });
-	// fallback_metallicID = textureManagerVulkan->loadTexture("assets/Textures/default/32x32/metallic.png", 1, true);
-	fallback_metallicID = _loadFallbackTexture("assets/Textures/default/32x32/roughness-2.png", true, { 0, 0, 0, 255 });
+	fallback_metallicID = _loadFallbackTexture("assets/Textures/default/32x32/roughness.png", true, { 255, 255, 255, 255 });
 	fallback_roughnessID = _loadFallbackTexture("assets/Textures/default/32x32/roughness.png", true, { 255, 255, 255, 255 });
 	fallback_aoID = _loadFallbackTexture("assets/Textures/default/32x32/ao.png", true, { 255, 255, 255, 255 });
 	fallback_emissiveID = _loadFallbackTexture("assets/Textures/default/32x32/emissive.png", false, { 0, 0, 0, 255 });
@@ -181,6 +180,11 @@ void MaterialManagerVulkan::_setMaterial(uint32_t id, const MaterialDesc &materi
     material.roughnessID = _checkMaterial(materialDesc.roughnessID, fallback_roughnessID);
     material.aoID = _checkMaterial(materialDesc.aoID, fallback_aoID);
     material.emissiveID = _checkMaterial(materialDesc.emissiveID, fallback_emissiveID);
+
+	// the white fallback read as smoothness would make every surface a mirror
+	if (material.roughnessID == fallback_roughnessID) {
+		material.roughnessIsSmoothness = 0;
+	}
 
 	textureManagerVulkan->registerBindlessTexture(material.albedoID);
 	textureManagerVulkan->registerBindlessTexture(material.normalID);

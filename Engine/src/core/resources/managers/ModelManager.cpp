@@ -19,6 +19,9 @@
 #include <functional>
 #include <algorithm>
 #include <set>
+#include <filesystem>
+#include <cctype>
+#include <cmath>
 
 const std::unordered_map<std::string, std::function<std::pair<std::string, Mesh>()>> meshPrimitives = {
     { "$prim$Sphere", []() { return std::pair<std::string, Mesh>( "$prim$Sphere", EngineUtils::drawSphere(0.5f, 36, 36) ); }},
@@ -235,8 +238,13 @@ bool ModelManager::_loadModel(std::string_view path)
     Timer timer(loadTimer.c_str(), true);
 
     Assimp::Importer import;
+    import.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
+    import.SetPropertyBool(AI_CONFIG_IMPORT_FBX_IGNORE_UP_DIRECTION, true);
+    import.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_POINT | aiPrimitiveType_LINE);
     unsigned int flags = aiProcess_Triangulate
         | aiProcess_SortByPType
+        | aiProcess_FindDegenerates
+        | aiProcess_FindInvalidData
         | aiProcess_GenSmoothNormals
         | aiProcess_GlobalScale
         | aiProcess_CalcTangentSpace
@@ -253,6 +261,8 @@ bool ModelManager::_loadModel(std::string_view path)
         m_logger->error("Model Loading failed: {}: ERROR::ASSIMP::{}", path.data(), error);
         return false;
     }
+
+    _correctFbxAxes(scene);
 
     if(scene->mNumAnimations > 0) {
         animationManager->loadAnimation(path, scene);
@@ -325,8 +335,9 @@ void ModelManager::_processNode(aiNode* node,
 
 uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::string_view modelPath, uint32_t skeletonID)
 {
-    // the renderer only draws triangles, SortByPType splits lines and points into their own meshes
-    if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE || mesh->mNumVertices == 0) {
+    // Triangulate tags meshes that had quads or ngons with NGONEncodingFlag, they are still pure triangles
+    const unsigned int primitiveTypes = mesh->mPrimitiveTypes & ~aiPrimitiveType_NGONEncodingFlag;
+    if (primitiveTypes != aiPrimitiveType_TRIANGLE || mesh->mNumVertices == 0) {
         m_logger->warn("Skipping mesh '{}' in {}: not a triangle mesh", mesh->mName.C_Str(), modelPath);
         return 0;
     }
@@ -373,51 +384,11 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
         vertices.push_back(vertex);
     }
 
-    // process material
     MaterialDesc materialDesc{};
-    materialDesc.uv = glm::vec2(1.0f, 1.0f);
-    materialDesc.albedo = glm::vec4(1.0);
-    materialDesc.normal = glm::vec4(0.0);
-    materialDesc.metallic  = 0.001f;
     materialDesc.roughness = 0.75f;
-    materialDesc.ao        = 1.0f;
-    materialDesc.emissive  = 0.0f;
-
+    materialDesc.emissive = 0.0f;
     if (mesh->mMaterialIndex < scene->mNumMaterials) {
-        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-        
-        materialDesc.albedoID = _loadMaterial(material, scene, aiTextureType_BASE_COLOR, "albedoMap", modelPath);
-        materialDesc.normalID = _loadMaterial(material, scene, aiTextureType_NORMALS, "normalMap", modelPath);
-        materialDesc.metallicID = _loadMaterial(material, scene, aiTextureType_METALNESS, "metallicMap", modelPath);
-        materialDesc.roughnessID = _loadMaterial(material, scene, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", modelPath);
-        materialDesc.aoID = _loadMaterial(material, scene, aiTextureType_LIGHTMAP, "aoMap", modelPath);
-        materialDesc.emissiveID = _loadMaterial(material, scene, aiTextureType_EMISSIVE, "emissiveMap", modelPath);
-        if(materialDesc.emissiveID != 0){
-            materialDesc.emissive  = 1.0f;
-        }
-
-        // try find other non compatible materials, if still fail...
-        // give up and let material manager use fallback materials
-        if(materialDesc.metallicID == 0) {  //TODO: need adjustment since this is not the correct pbr fallback
-            materialDesc.metallicID = _loadMaterial(material, scene, aiTextureType_SPECULAR, "metallicMap", modelPath);
-        }
-        if(materialDesc.albedoID == 0){
-            materialDesc.albedoID = _loadMaterial(material, scene, aiTextureType_DIFFUSE, "albedoMap", modelPath);
-        }
-        if(materialDesc.roughnessID == 0) {
-            materialDesc.roughnessID = _loadMaterial(material, scene, aiTextureType_SHININESS, "roughnessMap", modelPath);
-        }
-        if(materialDesc.aoID == 0) {
-            materialDesc.aoID = _loadMaterial(material, scene, aiTextureType_AMBIENT, "aoMap", modelPath);
-        }
-
-        // foliage cards are quads, the leaf shape comes from the albedo alpha
-        aiString alphaMode;
-        if(material->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode) == AI_SUCCESS && std::string_view(alphaMode.C_Str()) == "MASK") {
-            float cutoff = 0.5f;
-            material->Get(AI_MATKEY_GLTF_ALPHACUTOFF, cutoff);
-            materialDesc.alphaCutoff = cutoff;
-        }
+        materialDesc = _processMaterial(scene->mMaterials[mesh->mMaterialIndex], scene, modelPath);
     }
 
     uint32_t assignedMatID = materialManager->createMaterial(materialDesc);
@@ -442,60 +413,217 @@ uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::str
     return meshManager->loadMesh(m);
 }
 
-uint32_t ModelManager::_loadMaterial(aiMaterial* mat, const aiScene* scene, aiTextureType type, std::string typeName, std::string_view modelPath)
-{
-    std::string_view directory = modelPath.substr(0, modelPath.find_last_of('/'));
-
-    bool isData = (type == aiTextureType_NORMALS || 
-                   type == aiTextureType_METALNESS || 
-                   type == aiTextureType_DIFFUSE_ROUGHNESS || 
-                   type == aiTextureType_AMBIENT_OCCLUSION || 
-                   type == aiTextureType_HEIGHT || 
-                   type == aiTextureType_SHININESS);
-                   
-    for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
-        const uint32_t defaultMipLevel = TextureManager::FULL_MIP_CHAIN;
-
-        aiString str;
-        mat->GetTexture(type, i, &str);
-        std::string texturePathStr = str.C_Str();
-
-        uint32_t textureID = 0;
-        const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(str.C_Str());
-
-        if (embeddedTexture) {
-            if (embeddedTexture->mHeight == 0) {
-                // create a unique cache key for compressed memory bytes (PNG/JPG)
-                std::string cacheKey = std::string(modelPath) + "_" + texturePathStr;
-
-                textureID = textureManager->loadTextureFromMemory(
-                    embeddedTexture->pcData,
-                    embeddedTexture->mWidth, // Byte size when mHeight == 0
-                    cacheKey,
-                    defaultMipLevel,
-                    isData
-                );
-            } else {
-                m_logger->warn("Skipping {} {} in {}: uncompressed embedded textures are not supported yet", typeName, texturePathStr, modelPath);
-                continue;
-            }
-        } else if (!texturePathStr.empty() && texturePathStr[0] == '*') {
-            m_logger->warn("Skipping {} {} in {}: no embedded texture at that index", typeName, texturePathStr, modelPath);
-            continue;
-        } else {
-            std::string path = std::string(directory) + '/' + texturePathStr;
-            textureID = textureManager->loadTexture(path, defaultMipLevel, isData);
-        }
-
-        // a checker normal or roughness map breaks the lighting, let the material fall back to its flat default
-        if (isData && textureID == 0) {
-            continue;
-        }
-
-        return textureID;
+namespace {
+    std::string toLower(std::string_view text)
+    {
+        std::string lower(text);
+        std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return lower;
     }
 
+    bool isFbxPath(std::string_view path)
+    {
+        return toLower(std::filesystem::path(path).extension().string()) == ".fbx";
+    }
+
+    // obj and fbx exporters often put the normal map in the bump slot, a real height map has no use here
+    bool looksLikeNormalMap(std::string_view name)
+    {
+        std::string lower = toLower(std::filesystem::path(name).stem().string());
+        return lower.find("norm") != std::string::npos || lower.find("nrm") != std::string::npos || lower.ends_with("_n");
+    }
+}
+
+MaterialDesc ModelManager::_processMaterial(aiMaterial* material, const aiScene* scene, std::string_view modelPath)
+{
+    MaterialDesc desc{};
+    desc.emissive = 0.0f;
+
+    desc.albedoID = _loadTexture(material, scene, { aiTextureType_BASE_COLOR, aiTextureType_DIFFUSE }, false, modelPath);
+    desc.normalID = _loadTexture(material, scene, { aiTextureType_NORMALS, aiTextureType_NORMAL_CAMERA }, true, modelPath);
+    aiString heightName;
+    if (desc.normalID == 0 && material->GetTexture(aiTextureType_HEIGHT, 0, &heightName) == AI_SUCCESS && looksLikeNormalMap(heightName.C_Str())) {
+        desc.normalID = _loadTexture(material, scene, { aiTextureType_HEIGHT }, true, modelPath);
+    }
+    desc.metallicID = _loadTexture(material, scene, { aiTextureType_METALNESS }, true, modelPath);
+    desc.roughnessID = _loadTexture(material, scene, { aiTextureType_DIFFUSE_ROUGHNESS }, true, modelPath);
+    if (desc.roughnessID == 0) {
+        desc.roughnessID = _loadTexture(material, scene, { aiTextureType_SHININESS }, true, modelPath);
+        if (desc.roughnessID != 0) {
+            desc.roughnessChannel = 0;
+            desc.roughnessIsSmoothness = 1;
+        }
+    }
+    desc.aoID = _loadTexture(material, scene, { aiTextureType_LIGHTMAP, aiTextureType_AMBIENT_OCCLUSION, aiTextureType_AMBIENT }, true, modelPath);
+    desc.emissiveID = _loadTexture(material, scene, { aiTextureType_EMISSIVE, aiTextureType_EMISSION_COLOR }, false, modelPath);
+
+    aiColor4D baseColor;
+    aiColor3D diffuse;
+    if (material->Get(AI_MATKEY_BASE_COLOR, baseColor) == AI_SUCCESS) {
+        desc.albedo = glm::vec4(baseColor.r, baseColor.g, baseColor.b, baseColor.a);
+    } else if (desc.albedoID == 0 && material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse) == AI_SUCCESS) {
+        desc.albedo = glm::vec4(diffuse.r, diffuse.g, diffuse.b, 1.0f);
+    }
+
+    float metallic = 0.0f;
+    if (material->Get(AI_MATKEY_METALLIC_FACTOR, metallic) == AI_SUCCESS) {
+        desc.metallic = metallic;
+    } else {
+        desc.metallic = desc.metallicID != 0 ? 1.0f : 0.0f;
+    }
+
+    // assimp derives the fbx roughness factor from the phong exponent, it must not scale an authored roughness map
+    float roughness = 1.0f;
+    float shininess = 0.0f;
+    const bool hasRoughness = material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS;
+    if (desc.roughnessID != 0) {
+        desc.roughness = (hasRoughness && !isFbxPath(modelPath)) ? roughness : 1.0f;
+    } else if (hasRoughness) {
+        desc.roughness = glm::clamp(roughness, 0.05f, 1.0f);
+    } else if (material->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS && shininess > 0.0f) {
+        desc.roughness = glm::clamp(std::pow(2.0f / (shininess + 2.0f), 0.25f), 0.05f, 1.0f);
+    } else {
+        desc.roughness = 0.75f;
+    }
+
+    aiColor3D emissive(0.0f, 0.0f, 0.0f);
+    float intensity = 1.0f;
+    material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive);
+    material->Get(AI_MATKEY_EMISSIVE_INTENSITY, intensity);
+    const float peak = std::max({ emissive.r, emissive.g, emissive.b });
+    if (desc.emissiveID != 0) {
+        desc.emissive = (peak > 0.0f ? peak : 1.0f) * intensity;
+    } else if (peak > 0.0f) {
+        auto toByte = [peak](float c) { return static_cast<uint8_t>(std::lround(glm::clamp(c / peak, 0.0f, 1.0f) * 255.0f)); };
+        desc.emissiveID = textureManager->createColorTexture({ toByte(emissive.r), toByte(emissive.g), toByte(emissive.b), 255 }, true);
+        desc.emissive = peak * intensity;
+    }
+
+    // foliage cards are quads, the leaf shape comes from the albedo alpha
+    aiString alphaMode;
+    if (material->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode) == AI_SUCCESS && std::string_view(alphaMode.C_Str()) == "MASK") {
+        float cutoff = 0.5f;
+        material->Get(AI_MATKEY_GLTF_ALPHACUTOFF, cutoff);
+        desc.alphaCutoff = cutoff;
+    }
+
+    return desc;
+}
+
+uint32_t ModelManager::_loadTexture(aiMaterial* material, const aiScene* scene, std::initializer_list<aiTextureType> types, bool isDataTexture, std::string_view modelPath)
+{
+    for (aiTextureType type : types) {
+        for (unsigned int i = 0; i < material->GetTextureCount(type); i++) {
+            aiString str;
+            if (material->GetTexture(type, i, &str) != AI_SUCCESS) {
+                continue;
+            }
+            std::string texturePath = str.C_Str();
+
+            uint32_t textureID = 0;
+            const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(str.C_Str());
+            if (embeddedTexture) {
+                if (embeddedTexture->mHeight != 0) {
+                    m_logger->warn("Skipping {} in {}: uncompressed embedded textures are not supported yet", texturePath, modelPath);
+                    continue;
+                }
+                std::string cacheKey = std::string(modelPath) + "_" + texturePath;
+                textureID = textureManager->loadTextureFromMemory(embeddedTexture->pcData, embeddedTexture->mWidth, cacheKey, TextureManager::FULL_MIP_CHAIN, isDataTexture);
+            } else if (!texturePath.empty() && texturePath[0] == '*') {
+                m_logger->warn("Skipping {} in {}: no embedded texture at that index", texturePath, modelPath);
+                continue;
+            } else {
+                textureID = textureManager->loadTexture(_resolveTexturePath(texturePath, modelPath), TextureManager::FULL_MIP_CHAIN, isDataTexture);
+            }
+
+            // a checker normal or roughness map breaks the lighting, let the material fall back to its flat default
+            if (isDataTexture && textureID == 0) {
+                continue;
+            }
+            return textureID;
+        }
+    }
     return 0;
+}
+
+std::string ModelManager::_resolveTexturePath(std::string_view texturePath, std::string_view modelPath) const
+{
+    namespace fs = std::filesystem;
+
+    std::string normalized(texturePath);
+    std::replace(normalized.begin(), normalized.end(), '\\', '/');
+    if (normalized.starts_with("file://")) {
+        normalized.erase(0, 7);
+    }
+
+    const fs::path directory = fs::path(modelPath).parent_path();
+    const fs::path relative(normalized);
+    const fs::path filename = relative.filename();
+
+    std::vector<fs::path> candidates;
+    if (relative.is_absolute()) {
+        candidates.push_back(relative);
+    }
+    candidates.push_back(directory / relative);
+    for (const fs::path& folder : { directory, directory / "textures", directory / "Textures", directory.parent_path() / "textures", directory.parent_path() / "Textures" }) {
+        candidates.push_back(folder / filename);
+    }
+
+    // exporters reference the source .psd/.tga while the package ships a png or jpg
+    const size_t namedCandidates = candidates.size();
+    for (size_t i = 0; i < namedCandidates; i++) {
+        for (const char* extension : { ".png", ".jpg", ".jpeg", ".tga" }) {
+            candidates.push_back(fs::path(candidates[i]).replace_extension(extension));
+        }
+    }
+
+    std::error_code error;
+    for (const fs::path& candidate : candidates) {
+        if (fs::is_regular_file(candidate, error)) {
+            return candidate.lexically_normal().generic_string();
+        }
+    }
+    return (directory / relative).lexically_normal().generic_string();
+}
+
+// assimp's own fbx axis fix also multiplies the root by UnitScaleFactor on top of GlobalScale, so meter files came in 100x
+void ModelManager::_correctFbxAxes(const aiScene* scene) const
+{
+    if (!scene->mMetaData || !scene->mRootNode) {
+        return;
+    }
+
+    int32_t upAxis = 1, upSign = 1, frontAxis = 2, frontSign = 1, coordAxis = 0, coordSign = 1;
+    if (!scene->mMetaData->Get("UpAxis", upAxis) || !scene->mMetaData->Get("CoordAxis", coordAxis)) {
+        return;
+    }
+    scene->mMetaData->Get("UpAxisSign", upSign);
+    scene->mMetaData->Get("FrontAxis", frontAxis);
+    scene->mMetaData->Get("FrontAxisSign", frontSign);
+    scene->mMetaData->Get("CoordAxisSign", coordSign);
+    if (upAxis < 0 || upAxis > 2 || frontAxis < 0 || frontAxis > 2 || coordAxis < 0 || coordAxis > 2) {
+        return;
+    }
+
+    aiVector3D up, front, right;
+    up[upAxis] = static_cast<ai_real>(upSign);
+    front[frontAxis] = static_cast<ai_real>(frontSign);
+    right[coordAxis] = static_cast<ai_real>(coordSign);
+
+    aiMatrix4x4 axes(right.x, right.y, right.z, 0.0f,
+                     up.x, up.y, up.z, 0.0f,
+                     front.x, front.y, front.z, 0.0f,
+                     0.0f, 0.0f, 0.0f, 1.0f);
+    if (axes.IsIdentity()) {
+        return;
+    }
+
+    // the skeleton stores nodes as translation, rotation and scale, a mirroring basis can't be represented
+    if (axes.Determinant() < 0.0f) {
+        m_logger->warn("Skipping the fbx axis correction: the file's axes are mirrored");
+        return;
+    }
+    scene->mRootNode->mTransformation *= axes;
 }
 
 void ModelManager::_processSkeletonNodeHierarchy(uint32_t skeletonID, aiNode* aiNode, int parentIndex)

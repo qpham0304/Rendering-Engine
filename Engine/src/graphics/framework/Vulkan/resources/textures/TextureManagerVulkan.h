@@ -151,6 +151,7 @@ public:
 	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels, bool isDataTexture) override;
 	virtual uint32_t loadTextureFromMemory(const void *data, size_t size, std::string_view cacheKey, uint32_t mipLevels, bool isDataTexture) override;
 	virtual uint32_t createTexture(TextureConfig textureConfig, TextureSamplerConfig samplerConfig);
+	virtual uint32_t createColorTexture(const std::array<uint8_t, 4>& rgba, bool isDataTexture) override;
 	uint32_t createTextureFromPixels(const void* pixels, uint32_t width, uint32_t height, VkFormat format, std::string_view cacheKey, bool isDataTexture);
 	virtual TextureVulkan* getTexture(uint32_t id) override;
 	virtual void* inspectTexture(uint32_t id) override;

@@ -152,7 +152,7 @@ Entity::HookFunction Entity::_onSkinningComponentAdded()
 
         animator->animationPath = skinningComponent.animationPath;
 
-        if(skinningComponent.initialAnimation == "") {
+        if(skinningComponent.initialAnimation == "None" || skinningComponent.initialAnimation.empty()) {
             const AnimationData* animationData = animationManager->getAnimationData(skinningComponent.animationPath);
             if(!animationData) {
                 return;

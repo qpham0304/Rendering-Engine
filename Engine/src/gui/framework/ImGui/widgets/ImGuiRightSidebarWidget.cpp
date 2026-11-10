@@ -100,7 +100,31 @@ void ImGuiRightSidebarWidget::_registerComponents()
 
     m_components.add<AnimationComponent>("Animation", { .addable = true });
     m_components.add<AnimationStateComponent>("Animation State", { .addable = true });
-    m_components.add<SkinningComponent>("Skinning");
+    m_components.add<SkinningComponent>("Skinning", {
+        .addable = true,
+        .onFieldChanged = {
+            { "animationPath", 
+                [](Entity, SkinningComponent& skinning) {
+                    auto& animationManager = ServiceLocator::GetService<AnimationManager>("AnimationManager");
+                    auto animator = animationManager.getAnimator(skinning.animatorID);
+                    if (!animator) {
+                        return;
+                    }
+                    animator->animationPath = skinning.animationPath;
+                    animator->currentTime = 0.0f;
+                    const AnimationData* data = animationManager.getAnimationData(skinning.animationPath);
+                    animator->animationName = (data && !data->empty()) ? data->begin()->first : "";
+                } 
+            },
+            { "initialAnimation", 
+                [](Entity, SkinningComponent& skinning) {
+                    if (auto animator = ServiceLocator::GetService<AnimationManager>("AnimationManager").getAnimator(skinning.animatorID)) {
+                        animator->animationName = skinning.initialAnimation;
+                    }
+                } 
+            },
+        }
+    });
 
     m_components.add<ScriptComponent>("Script", {
         .extras = [](Entity, ScriptComponent& script) {
@@ -343,6 +367,17 @@ void ImGuiRightSidebarWidget::textureInspector()
                 changed |= ImGui::SliderFloat("Roughness", &materialDesc.roughness, 0.0f, 1.0f);
                 changed |= ImGui::SliderFloat("AO", &materialDesc.ao, 0.0f, 1.0f);
                 changed |= ImGui::DragFloat("Emissive", &materialDesc.emissive, 0.1f, 0.0f, 255.0f);
+
+                const char* channels[] = { "R", "G", "B", "A" };
+                changed |= ImGui::Combo("Metallic Channel", &materialDesc.metallicChannel, channels, IM_ARRAYSIZE(channels));
+                changed |= ImGui::Combo("Roughness Channel", &materialDesc.roughnessChannel, channels, IM_ARRAYSIZE(channels));
+                changed |= ImGui::Combo("AO Channel", &materialDesc.aoChannel, channels, IM_ARRAYSIZE(channels));
+
+                bool smoothness = materialDesc.roughnessIsSmoothness != 0;
+                if (ImGui::Checkbox("Roughness Map Is Smoothness", &smoothness)) {
+                    materialDesc.roughnessIsSmoothness = smoothness ? 1 : 0;
+                    changed = true;
+                }
 
                 changed |= ImGui::SliderFloat("Wave Speed", &waveSpeed, 0.0f, 10.0f);
                 changed |= ImGui::SliderFloat("Wave Amplitude", &waveAmplitude, 0.0f, 2.0f);

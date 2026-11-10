@@ -34,6 +34,10 @@ struct Material {
     float aoFactor;
     float emissiveFactor;
     float alphaCutoff;
+    int metallicChannel;
+    int roughnessChannel;
+    int aoChannel;
+    int roughnessIsSmoothness;
 };
 
 const uint MAX_BONE_INFLUENCE =  4;
@@ -211,11 +215,12 @@ void getHitObjectData(out Material mat, out vec3 nrm) {
     }
     if (mat.metalnessIdx != uint(0)) {
         vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
-        mat.metallicFactor = texture(samplerImages[mat.metalnessIdx], uv).b * mat.metallicFactor;
+        mat.metallicFactor = texture(samplerImages[mat.metalnessIdx], uv)[mat.metallicChannel] * mat.metallicFactor;
     }
     if (mat.roughnessIdx != uint(0)) {
         vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
-        mat.roughnessFactor = texture(samplerImages[mat.roughnessIdx], uv).g * mat.roughnessFactor;
+        float roughnessTexel = texture(samplerImages[mat.roughnessIdx], uv)[mat.roughnessChannel];
+        mat.roughnessFactor = (mat.roughnessIsSmoothness != 0 ? 1.0 - roughnessTexel : roughnessTexel) * mat.roughnessFactor;
     }
 }
 

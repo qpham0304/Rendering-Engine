@@ -82,9 +82,10 @@ void main() {
     
     outAlbedo = albedo * mat.albedoFactor;
     
-    float ao        = texture(samplerImages[mat.aoIdx], matUV, ubo.mipBias).r        * mat.aoFactor;
-    float roughness = texture(samplerImages[mat.roughnessIdx], matUV, ubo.mipBias).g * mat.roughnessFactor;
-    float metallic  = texture(samplerImages[mat.metalnessIdx], matUV, ubo.mipBias).b * mat.metallicFactor;
+    float ao        = texture(samplerImages[mat.aoIdx], matUV, ubo.mipBias)[mat.aoChannel]               * mat.aoFactor;
+    float roughnessTexel = texture(samplerImages[mat.roughnessIdx], matUV, ubo.mipBias)[mat.roughnessChannel];
+    float roughness = (mat.roughnessIsSmoothness != 0 ? 1.0 - roughnessTexel : roughnessTexel) * mat.roughnessFactor;
+    float metallic  = texture(samplerImages[mat.metalnessIdx], matUV, ubo.mipBias)[mat.metallicChannel]  * mat.metallicFactor;
     float alphaToonMask = (obj.flags & OBJECT_TOON) != 0u ? 0.0 : 1.0;  // 0 marks toon pixels
     outPBR = vec4(ao, roughness, metallic, alphaToonMask);
 
