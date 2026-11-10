@@ -85,11 +85,12 @@ void main() {
     float ao        = texture(samplerImages[mat.aoIdx], matUV, ubo.mipBias).r        * mat.aoFactor;
     float roughness = texture(samplerImages[mat.roughnessIdx], matUV, ubo.mipBias).g * mat.roughnessFactor;
     float metallic  = texture(samplerImages[mat.metalnessIdx], matUV, ubo.mipBias).b * mat.metallicFactor;
-    outPBR = vec4(ao, roughness, metallic, 1.0);
+    float alphaToonMask = (obj.flags & OBJECT_TOON) != 0u ? 0.0 : 1.0;  // 0 marks toon pixels
+    outPBR = vec4(ao, roughness, metallic, alphaToonMask);
 
     outEmissive = texture(samplerImages[mat.emissiveIdx], matUV, ubo.mipBias) * mat.emissiveFactor;
 
-    // without the jitter, prevViewProj has none so the vector is only real motion
+    // need jitter for prevViewProj to not be the same
     vec2 curNDC = outCurNDC.xy / outCurNDC.w - ubo.jitter;
     vec2 prevNDC = outPrevNDC.xy / outPrevNDC.w;
 

@@ -128,6 +128,15 @@ public:
 	);
 };
 
+struct MYGRAPHICSENGINE_EXPORT ToonComponent {
+public:
+	bool enabled { true };
+
+	DEFINE_TYPE(ToonComponent,
+		member("enabled", &ToonComponent::enabled)
+	);
+};
+
 struct MYGRAPHICSENGINE_EXPORT RelationshipComponent {
     entt::entity parent{ entt::null };
     std::vector<entt::entity> children;

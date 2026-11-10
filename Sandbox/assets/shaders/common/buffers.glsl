@@ -43,6 +43,7 @@ struct Vertex
 };
 
 #define OBJECT_LIGHT_PROBE 1u
+#define OBJECT_TOON 2u
 
 struct Object {
     uint64_t vertexAddress;

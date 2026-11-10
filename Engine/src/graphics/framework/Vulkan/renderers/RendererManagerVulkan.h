@@ -13,6 +13,7 @@ class DeferredRendererVulkan;
 class DepthPrepassVulkan;
 class GeometryPassVulkan;
 class LightingPassVulkan;
+class ToonPassVulkan;
 class RayTraceRendererVulkan;
 class ShadowMapPassVulkan;
 class ImageBasedRendererVulkan;
@@ -72,6 +73,7 @@ public:
 	const std::vector<MeshDraw>& getMeshDraws() const { return m_meshDraws; }
 
 	void drawObjects(VkCommandBuffer cmd);
+	void drawToonObjects(VkCommandBuffer cmd);
 	uint64_t getObjectsAddress() const;
 	uint64_t getFrameNumber() const { return m_frameNumber; }
 	void collectLights();
@@ -100,6 +102,9 @@ protected:
 	std::vector<glm::mat4> m_prevModels;
 	std::vector<VkDrawIndirectCommand> m_drawCommands;
 	std::vector<uint32_t> m_drawCommandsBufferIDs;
+	std::vector<VkDrawIndirectCommand> m_toonDrawCommands;
+	std::vector<uint32_t> m_toonDrawCommandsBufferIDs;
+	uint32_t m_toonDrawCount { 0 };
 	std::vector<Common::PointLight> m_lights;
 	std::vector<uint32_t> m_lightsBufferIDs;
 	std::vector<uint64_t> m_lightsAddresses;
@@ -110,6 +115,7 @@ protected:
 	DepthPrepassVulkan* depthPrepassRenderer { nullptr };
 	GeometryPassVulkan* geometryPassRenderer { nullptr };
 	LightingPassVulkan* lightingPassRenderer { nullptr };
+	ToonPassVulkan* toonPassRenderer { nullptr };
 	RayTraceRendererVulkan* raytracingRenderer { nullptr };
 
 	ShadowMapPassVulkan* shadowMapPass { nullptr };

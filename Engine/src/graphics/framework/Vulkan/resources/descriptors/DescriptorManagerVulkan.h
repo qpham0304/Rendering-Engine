@@ -2,7 +2,9 @@
 
 #include "graphics/framework/Vulkan/core/WrapperStructs.h"
 #include "core/resources/managers/DescriptorManager.h"
+#include "graphics/framework/Vulkan/resources/descriptors/DescriptorVulkan.h"
 #include <volk.h>
+
 class RenderDeviceVulkan;
 
 struct DescriptorWriter {
@@ -26,6 +28,11 @@ public:
 	uint32_t createLayout(std::vector<VkDescriptorSetLayoutBinding> bindings, VkDescriptorSetLayoutCreateFlags flags = 0);
 	uint32_t createPool(std::vector<VkDescriptorPoolSize> poolSizes, uint32_t maxSets, VkDescriptorPoolCreateFlags flags = 0);
 	uint32_t createSets(uint32_t layoutID, uint32_t poolID, uint32_t setsCount);
+	DescriptorVulkan createDescriptor(
+		const std::vector<VkDescriptorSetLayoutBinding>& bindings,
+		const std::vector<VkDescriptorPoolSize>& poolSizes,
+		uint32_t frameCount
+	);
 	
 	void writeUniform(
 		std::vector<VkWriteDescriptorSet>* writes,

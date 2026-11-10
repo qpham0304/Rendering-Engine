@@ -3,16 +3,15 @@
 #include "graphics/renderers/Renderer.h"
 #include "graphics/framework/vulkan/core/VulkanRenderTarget.h"
 #include "graphics/framework/vulkan/resources/buffers/BufferManagerVulkan.h"
+#include "graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h"
+#include "graphics/framework/vulkan/core/VulkanPipeline.h"
 #include "graphics/framework/Vulkan/renderers/RenderGraphVulkan.h"	// passes keep RGHandles of the textures they create
 #include "graphics/utils/GraphicsSettings.h"
-#include <glm/glm.hpp>
 #include <vector>
 
 class TextureManagerVulkan;
 class RenderDeviceVulkan;
-class DescriptorManagerVulkan;
 class MaterialManager;
-class VulkanPipeline;
 class MeshManager;
 class ModelManager;
 class GuiManager;

@@ -116,8 +116,9 @@ void OrbitCamera::reCalculateProjection() {
 
 bool OrbitCamera::processMouse() {
     bool leftPressed = AppWindow::isMousePressed(MOUSE_BUTTON_LEFT);
+    bool rightPressed = AppWindow::isMousePressed(MOUSE_BUTTON_RIGHT);
     
-    if (leftPressed) {
+    if (leftPressed | rightPressed) {
         double x, y;
         AppWindow::getCursorPos(&x, &y);
         float xpos = static_cast<float>(x);
@@ -129,7 +130,7 @@ bool OrbitCamera::processMouse() {
             firstClick = false;
         }
 
-        bool isPanning = AppWindow::isKeyPressed(KEY_LEFT_SHIFT);
+        bool isPanning = AppWindow::isKeyPressed(KEY_LEFT_SHIFT) | rightPressed;
         
         _mouseControl(isPanning); 
         return true;

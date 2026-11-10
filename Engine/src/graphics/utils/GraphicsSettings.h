@@ -353,6 +353,20 @@ struct DLSSSettings {
 	)
 };
 
+struct ToonSettings {
+	float threshold { 0.0f };
+	float softness { 0.05f };
+	glm::vec3 shadowTint { 0.55f, 0.45f, 0.6f };
+	float brightness { 1.0f };
+
+	DEFINE_TYPE(ToonSettings,
+		member("threshold", &ToonSettings::threshold, FieldMeta{ .min = -1.0f, .max = 1.0f }),
+		member("softness", &ToonSettings::softness, FieldMeta{ .min = 0.0f, .max = 0.5f }),
+		member("shadowTint", &ToonSettings::shadowTint),
+		member("brightness", &ToonSettings::brightness, FieldMeta{ .min = 0.0f, .max = 4.0f })
+	)
+};
+
 struct TonemapSettings {
 	int tonemapper { 1 };
 	float exposure { 1.0f };

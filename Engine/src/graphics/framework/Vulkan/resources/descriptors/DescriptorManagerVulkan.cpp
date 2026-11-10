@@ -156,6 +156,15 @@ uint32_t DescriptorManagerVulkan::createSets(uint32_t layoutID, uint32_t poolID,
 	return _assignID();
 }
 
+DescriptorVulkan DescriptorManagerVulkan::createDescriptor(const std::vector<VkDescriptorSetLayoutBinding>& bindings, const std::vector<VkDescriptorPoolSize>& poolSizes, uint32_t frameCount)
+{
+	uint32_t layoutID = createLayout(bindings);
+	uint32_t poolID = createPool(poolSizes, frameCount);
+	uint32_t setsID = createSets(layoutID, poolID, frameCount);
+	
+    return DescriptorVulkan(layoutID, poolID, setsID);
+}
+
 void DescriptorManagerVulkan::writeUniform(
 	std::vector<VkWriteDescriptorSet>* writes,
 	const VkDescriptorSet& dstSet,

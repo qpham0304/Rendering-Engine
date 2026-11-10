@@ -20,6 +20,7 @@ namespace Common {
 
     enum ObjectFlags : uint32_t {
         OBJECT_LIGHT_PROBE = 1 << 0,    // for the shader to know what the object is
+        OBJECT_TOON = 1 << 1,
     };
 
     struct Object {

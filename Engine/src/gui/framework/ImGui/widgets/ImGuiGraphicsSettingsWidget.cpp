@@ -28,6 +28,7 @@ ImGuiGraphicsSettingsWidget::ImGuiGraphicsSettingsWidget(std::string name)
     m_drawers.add<DDGISettings>(textures({ "irradianceAtlas", "visibilityAtlas" }));
     m_drawers.add<DLSSSettings>();
     m_drawers.add<TonemapSettings>();
+    m_drawers.add<ToonSettings>();
     m_drawers.add<TemporalSettings>();
     m_drawers.add<AtrousSettings>();
     m_drawers.add<PathTracingSettings>();

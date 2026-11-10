@@ -159,6 +159,7 @@ void ImGuiRightSidebarWidget::_registerComponents()
     });
 
     m_components.add<LightComponent>("Light", { .addable = true });
+    m_components.add<ToonComponent>("Toon Shading", { .addable = true });
     m_components.add<CameraComponent>("Camera", { .addable = true });
 
     m_components.add<LightProbeComponent>("Light Probes", {

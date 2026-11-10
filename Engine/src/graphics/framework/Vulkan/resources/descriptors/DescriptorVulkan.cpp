@@ -4,33 +4,46 @@
 #include <graphics/framework/Vulkan/resources/buffers/BufferVulkan.h>
 #include <graphics/framework/Vulkan/resources/descriptors/DescriptorManagerVulkan.h>
 #include <core/events/EventManager.h>
-#include <volk.h>
 
-
-DescriptorVulkan::DescriptorVulkan()
+DescriptorVulkan::DescriptorVulkan(uint32_t layoutID, uint32_t poolID, uint32_t setID)
+    : m_descriptorLayoutID(layoutID), m_descriptorPoolID(poolID), m_descriptorSetID(setID)
 {
 	setFootprint("DescriptorVulkan", sizeof(DescriptorVulkan), MemorySystem::Graphics);
-	BufferManager& bufferManagerTemp = ServiceLocator::GetService<BufferManager>("BufferManagerVulkan");
-	bufferManager = &dynamic_cast<BufferManagerVulkan&>(bufferManagerTemp);
 	DescriptorManager& descriptorManagerTemp = ServiceLocator::GetService<DescriptorManager>("DescriptorManagerVulkan");
-	descriptorManager = &dynamic_cast<DescriptorManagerVulkan&>(descriptorManagerTemp);
+	m_descriptorManager = &dynamic_cast<DescriptorManagerVulkan&>(descriptorManagerTemp);
 	
 }
 
-void DescriptorVulkan::addBuffer(BufferVulkan *buffer)
+DescriptorVulkan::DescriptorVulkan(const DescriptorVulkan &other)
 {
-    buffers.push_back(buffer);
+    m_descriptorLayoutID = other.m_descriptorLayoutID;
+    m_descriptorPoolID = other.m_descriptorPoolID;
+    m_descriptorSetID = other.m_descriptorSetID;
+    m_descriptorManager = other.m_descriptorManager;
 }
 
-void DescriptorVulkan::updateDescriptor()
+DescriptorVulkan& DescriptorVulkan::operator=(const DescriptorVulkan &other)
 {
-    std::vector<VkWriteDescriptorSet>* writes;
-
-    uint32_t i = 0;
-    for(auto& buffer : buffers) {
-        
-        i++;
+    if(this != &other) {
+        m_descriptorLayoutID = other.m_descriptorLayoutID;
+        m_descriptorPoolID = other.m_descriptorPoolID;
+        m_descriptorSetID = other.m_descriptorSetID;
+        m_descriptorManager = other.m_descriptorManager;
     }
+    return *this;
+}
 
-    descriptorManager->updateDescriptorSets(writes);
+VkDescriptorSetLayout DescriptorVulkan::layout() const
+{
+    return m_descriptorManager->getDescriptorLayout(m_descriptorLayoutID);
+}
+
+VkDescriptorPool DescriptorVulkan::pool() const
+{
+    return m_descriptorManager->getDescriptorPool(m_descriptorPoolID);
+}
+
+const std::vector<VkDescriptorSet>& DescriptorVulkan::sets() const
+{
+    return m_descriptorManager->getDescriptorSet(m_descriptorSetID);
 }
