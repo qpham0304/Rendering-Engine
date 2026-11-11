@@ -3,7 +3,6 @@
 #include "core/scene/SceneManager.h"
 #include "core/layers/LayerManager.h"
 #include "core/components/MComponent.h"
-#include "core/components/CubeMapComponent.h"
 #include "graphics/utils/Utils.h"
 #include "window/AppWindow.h"
 #include "logging/Logger.h"
@@ -267,12 +266,6 @@ void ImGuiRightSidebarWidget::environmentControl()
         return;
     }
 
-    auto list = scene->getEntitiesWith<CubeMapComponent>();
-    CubeMapComponent* cubeMap = nullptr;
-
-    if (!list.empty() && list[0].hasComponent<CubeMapComponent>()) {
-        cubeMap = &list[0].getComponent<CubeMapComponent>();
-    }
 }
 
 void ImGuiRightSidebarWidget::TextureModal(const ImTextureID& id) {

@@ -1,15 +1,15 @@
 #pragma once
 
 #include "Manager.h"
-#include <assimp/scene.h>
 #include "core/features/Model.h"
 #include "core/features/MathIncludes.h"
 #include "core/features/Mesh.h"
 #include "core/features/Material.h"
+#include <memory>
 #include <unordered_set>
-#include <initializer_list>
 
 class Logger;
+class ModelLoader;
 class TextureManager;
 class MeshManager;
 class SkeletonManager;
@@ -36,24 +36,11 @@ public:
 
 private:
 	bool _loadModel(std::string_view path);
-    void _processNode(aiNode* node,
-		const aiScene* scene,
-		std::vector<uint32_t>& meshes,
-		std::unordered_map<uint32_t, uint32_t>& meshCache,
-		std::string_view modelPath,
-		uint32_t skeletonID,
-		uint32_t skeletonNodeIndex
-	);
-    uint32_t _processMesh(aiMesh* mesh, const aiScene* scene, std::string_view modelPath, uint32_t skeletonID);
-	MaterialDesc _processMaterial(aiMaterial* material, const aiScene* scene, std::string_view modelPath);
-	uint32_t _loadTexture(aiMaterial* material, const aiScene* scene, std::initializer_list<aiTextureType> types, bool isDataTexture, std::string_view modelPath);
-	std::string _resolveTexturePath(std::string_view texturePath, std::string_view modelPath) const;
-	void _correctFbxAxes(const aiScene* scene) const;
-	void _processSkeletonNodeHierarchy(uint32_t skeletonID, aiNode* aiNode, int parentIndex);
-	void _extractBoneWeightForVertices(uint32_t skeletonID, std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene);
-	void _setDefaultBone(Vertex& vertex);
 
 private:
+	std::unique_ptr<ModelLoader> m_loaderGLTF;
+	std::unique_ptr<ModelLoader> m_loaderFBX;
+	std::unique_ptr<ModelLoader> m_loaderAssimp;
 	std::unordered_map<uint32_t, std::shared_ptr<Model>> m_models{};
 	std::unordered_map<std::string, uint32_t> m_modelData{};
 	std::unordered_set<std::string> m_failedPaths{};

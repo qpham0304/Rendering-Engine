@@ -41,3 +41,9 @@
 [submodule "Engine/extern/miniaudio"]
 	path = Engine/extern/miniaudio
 	url = https://github.com/mackron/miniaudio.git
+[submodule "Engine/extern/fastgltf"]
+	path = Engine/extern/fastgltf
+	url = https://github.com/spnda/fastgltf.git
+[submodule "Engine/extern/ufbx"]
+	path = Engine/extern/ufbx
+	url = https://github.com/ufbx/ufbx.git
