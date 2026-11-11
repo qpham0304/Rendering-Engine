@@ -333,9 +333,19 @@ Entity::HookFunction Entity::_onColliderComponentAdded()
             engineLogger().warn("Collider on entity {} skipped: model {} has no vertices", describe(entity), modelComponent.path);
             return;
         }
-        Mesh* mesh = &combinedMesh;
+        const glm::vec3& pos = transformComponent.translateVec;
+        const glm::vec3& scale = transformComponent.scaleVec;
+        uint32_t type = colliderComponent.colliderType;
+        const std::string& bodyType = colliderComponent.bodyType;
 
-        auto shapeID = physicsManager->createBoxBody(entity, *mesh, transformComponent.translateVec, transformComponent.scaleVec, colliderComponent.colliderType);
+        uint32_t shapeID = 0;
+        if (bodyType == "Sphere") {
+            shapeID = physicsManager->createSphereBody(entity, combinedMesh, pos, scale, 0.0f, type);
+        } else if (bodyType == "Mesh") {
+            shapeID = physicsManager->createMeshBody(entity, combinedMesh, pos, scale, type);
+        } else {
+            shapeID = physicsManager->createBoxBody(entity, combinedMesh, pos, scale, type);
+        }
         colliderComponent.shapeID = shapeID;
     };
     return function;

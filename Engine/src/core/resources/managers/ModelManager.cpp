@@ -115,7 +115,8 @@ bool ModelManager::init(WindowConfig config)
                 GuiMessageEvent failEvent(message);
                 eventManager.publish(failEvent);
 
-                e.entity.removeComponent<ModelComponent>();
+                // e.entity.removeComponent<ModelComponent>();
+                modelComponent.path = "None";
             }
         }
     }));

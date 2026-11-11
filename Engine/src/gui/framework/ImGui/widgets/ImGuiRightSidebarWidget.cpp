@@ -52,9 +52,6 @@ void ImGuiRightSidebarWidget::_registerComponents()
                     return;
                 }
                 Entity::_onModelComponentAdded()(entity);
-                if (entity.hasComponent<SpriteComponent>()) {
-                    Entity::_onSpriteComponentAdded()(entity);
-                }
             } },
         },
     });
@@ -650,46 +647,41 @@ void ImGuiRightSidebarWidget::_componentsControl()
         }
         if (colliderMenuOpen) {
             auto modelManager = &ServiceLocator::GetService<ModelManager>("ModelManager");
-            auto meshManager = &ServiceLocator::GetService<MeshManager>("MeshManager");
-            auto physicsManager = &ServiceLocator::GetService<PhysicsManager>("PhysicsManager");
-            
-            TransformComponent& transform = entity.getComponent<TransformComponent>();
+
             ModelComponent& modelComponent = entity.getComponent<ModelComponent>();
             Model* model = modelManager->getModel(modelComponent.modelID);
-            auto combinedMesh = [&]() { return meshManager->combineMeshes(model->meshIDs); };
             if (!model) {
                 ImGui::TextDisabled("the model has not loaded yet");
             }
 
-            if (model && ImGui::BeginMenu("Static Body")) {
-                if (ImGui::Selectable("Mesh collider")) { 
-                    uint32_t type = static_cast<uint32_t>(ColliderType::Static);
-                    uint32_t bodyID = physicsManager->createMeshBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, type);
-                    entity.addComponent<ColliderComponent>(bodyID, type);
-                    // entity.onColliderComponentAdded();
+            auto addCollider = [&](ColliderType type, const char* bodyType) {
+                if (entity.hasComponent<ColliderComponent>()) {
+                    Entity::_onColliderComponentRemoved()(entity);
                 }
-                ImGui::EndMenu();
-            }
-            
-            if (model && ImGui::BeginMenu("Kinematic Body")) {
-                uint32_t type = static_cast<uint32_t>(ColliderType::Kinematic);
-                // uint32_t bodyID = physicsManager->createKineticBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, type);
-                // entity.addComponent<ColliderComponent>(bodyID, type);
-                // entity.onColliderComponentAdded();
+                ColliderComponent& collider = entity.addComponent<ColliderComponent>(0u, static_cast<uint32_t>(type));
+                collider.bodyType = bodyType;
+                Entity::_onColliderComponentAdded()(entity);
+            };
+
+            if (model && ImGui::BeginMenu("Static Body")) {
+                if (ImGui::Selectable("Mesh collider")) {
+                    addCollider(ColliderType::Static, "Mesh");
+                }
+                if (ImGui::Selectable("Box collider")) {
+                    addCollider(ColliderType::Static, "Box");
+                }
+                if (ImGui::Selectable("Sphere collider")) {
+                    addCollider(ColliderType::Static, "Sphere");
+                }
                 ImGui::EndMenu();
             }
 
             if (model && ImGui::BeginMenu("Dynamic Body")) {
-                uint32_t type = static_cast<uint32_t>(ColliderType::Dynamic);
                 if (ImGui::Selectable("Box collider")) {
-                    uint32_t bodyID = physicsManager->createBoxBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, type);
-                    entity.addComponent<ColliderComponent>(bodyID, type);
-                    // entity.onColliderComponentAdded();
+                    addCollider(ColliderType::Dynamic, "Box");
                 }
                 if (ImGui::Selectable("Sphere collider")) {
-                    uint32_t bodyID = physicsManager->createSphereBody(entity, combinedMesh(), transform.translateVec, transform.scaleVec, 0.5f, type);
-                    entity.addComponent<ColliderComponent>(bodyID, type);
-                    // entity.onColliderComponentAdded();
+                    addCollider(ColliderType::Dynamic, "Sphere");
                 }
                 ImGui::EndMenu();
             }

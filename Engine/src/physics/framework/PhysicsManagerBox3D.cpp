@@ -8,6 +8,7 @@
 #include "core/features/EngineStates.h"
 #include "core/features/camera.h"
 #include <glm/gtc/constants.hpp>
+#include <algorithm>
 
 b3Vec3 toB3Vec3(glm::vec3 v) {
     return b3Vec3({ v.x, v.y, v.z });
@@ -387,19 +388,17 @@ uint32_t PhysicsManagerBox3D::createSphereBody(
     }
 
     b3Vec3 center{};
-    center.x = (minBounds.x + maxBounds.x) * 0.5;
-    center.y = (minBounds.y + maxBounds.y) * 0.5;
-    center.z = (minBounds.z + maxBounds.z) * 0.5;
+    center.x = (minBounds.x + maxBounds.x) * 0.5f * scale.x;
+    center.y = (minBounds.y + maxBounds.y) * 0.5f * scale.y;
+    center.z = (minBounds.z + maxBounds.z) * 0.5f * scale.z;
 
-    //Half-extents: distance from center to edges
-    float hx = (maxBounds.x - minBounds.x) * 0.5 * scale.x;
-    float hy = (maxBounds.y - minBounds.y) * 0.5 * scale.y;
-    float hz = (maxBounds.z - minBounds.z) * 0.5 * scale.z;
+    float hx = (maxBounds.x - minBounds.x) * 0.5f * scale.x;
+    float hy = (maxBounds.y - minBounds.y) * 0.5f * scale.y;
+    float hz = (maxBounds.z - minBounds.z) * 0.5f * scale.z;
 
-    b3Transform localTransform = {
-        center, 
-        b3Quat_identity
-    };
+    if (radius <= 0.0f) {
+        radius = std::max({ hx, hy, hz, 0.05f });
+    }
 
     b3ShapeDef shapeDef = _defaultShapeDef(entityID);
 

@@ -181,6 +181,16 @@ vec3 sampleHemisphere(vec3 normal, inout uint seed) {
 }
 
 
+vec2 materialUV(Material mat, vec2 uv, ivec2 albedoSize) {
+    vec2 scale = any(equal(mat.uvScale, vec2(0.0))) ? vec2(1.0) : mat.uvScale;
+    vec2 frameUV = uv * scale + mat.uvOffset;
+    if (any(lessThan(scale, vec2(1.0 - 1e-4)))) {
+        vec2 halfTexel = 0.5 / vec2(max(albedoSize, ivec2(1)));
+        frameUV = clamp(frameUV, mat.uvOffset + halfTexel, mat.uvOffset + scale - halfTexel);
+    }
+    return frameUV;
+}
+
 void getHitObjectData(out Material mat, out vec3 nrm) {
     Object obj = pc.objRef.objects[payload.instanceIndex];
     
@@ -208,18 +218,16 @@ void getHitObjectData(out Material mat, out vec3 nrm) {
     // nrm  = bc.x*v0.normal + bc.y*v1.normal + bc.z*v2.normal;    // three vertex normals
     nrm = payload.worldNormal;
 
-    // if the material has a texture, read texture and use as the point's diffuse color.
+    vec2 uv = bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
     if (mat.albedoIdx != uint(0)) {
-        vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
-        mat.albedoFactor = texture(samplerImages[mat.albedoIdx], uv);
+        uv = materialUV(mat, uv, textureSize(samplerImages[nonuniformEXT(mat.albedoIdx)], 0));
+        mat.albedoFactor *= textureLod(samplerImages[nonuniformEXT(mat.albedoIdx)], uv, 0.0);
     }
     if (mat.metalnessIdx != uint(0)) {
-        vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
-        mat.metallicFactor = texture(samplerImages[mat.metalnessIdx], uv)[mat.metallicChannel] * mat.metallicFactor;
+        mat.metallicFactor = textureLod(samplerImages[nonuniformEXT(mat.metalnessIdx)], uv, 0.0)[mat.metallicChannel] * mat.metallicFactor;
     }
     if (mat.roughnessIdx != uint(0)) {
-        vec2 uv =  bc.x*v0.uv + bc.y*v1.uv + bc.z*v2.uv;
-        float roughnessTexel = texture(samplerImages[mat.roughnessIdx], uv)[mat.roughnessChannel];
+        float roughnessTexel = textureLod(samplerImages[nonuniformEXT(mat.roughnessIdx)], uv, 0.0)[mat.roughnessChannel];
         mat.roughnessFactor = (mat.roughnessIsSmoothness != 0 ? 1.0 - roughnessTexel : roughnessTexel) * mat.roughnessFactor;
     }
 }

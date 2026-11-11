@@ -3,11 +3,24 @@
     {
       "overrides": {
         "components": {
+          "ToonComponent": {
+            "enabled": true
+          },
           "TransformComponent": {
             "rotateVec": [
-              0.0,
-              2.75,
-              0.0
+              4.761963623423071e-08,
+              0.5813080668449402,
+              3.7775487271574093e-07
+            ],
+            "scaleVec": [
+              0.9999998211860657,
+              1.0,
+              0.9999998211860657
+            ],
+            "translateVec": [
+              0.40160179138183594,
+              -0.9171838760375977,
+              1.2724120616912842
             ]
           }
         }
@@ -20,15 +33,18 @@
           "ColliderComponent": {
             "shapeID": 1
           },
+          "SpriteComponent": {
+            "frameIndex": 2
+          },
           "TransformComponent": {
             "rotateVec": [
-              3.1415927410125732,
-              0.39159277081489563,
-              3.1415927410125732
+              -3.141592502593994,
+              0.39159291982650757,
+              -3.141592502593994
             ],
             "translateVec": [
-              -1.4398545026779175,
-              -0.5000171065330505,
+              -1.443444013595581,
+              -0.5481574535369873,
               0.0
             ]
           }
@@ -173,29 +189,100 @@
           "shapeID": 3
         },
         "ModelComponent": {
-          "path": "assets/models/cube/cube-notex.gltf"
+          "path": "$prim$Cube"
         },
         "NameComponent": {
           "name": "contact test cube"
+        },
+        "ParticleEmitter": {
+          "angularVelocityMax": 0.0,
+          "angularVelocityMin": 0.0,
+          "attractStrength": 0.0,
+          "blendMode": 0,
+          "burstCount": 0,
+          "burstInterval": 0.0,
+          "colorEnd": [
+            1.0,
+            0.20000000298023224,
+            0.0,
+            0.0
+          ],
+          "colorStart": [
+            1.0,
+            0.800000011920929,
+            0.30000001192092896,
+            1.0
+          ],
+          "direction": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "drag": 1.0,
+          "emitFromShell": false,
+          "emitRate": 0.0,
+          "fadeIn": 0.0,
+          "fadeOut": 0.0,
+          "flipbookCols": 1,
+          "flipbookFPS": 0.0,
+          "flipbookRows": 1,
+          "force": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "gravityScale": 1.0,
+          "isPlaying": true,
+          "lifetimeMax": 0.800000011920929,
+          "lifetimeMin": 0.30000001192092896,
+          "localSpace": false,
+          "maxParticles": 2000,
+          "meshDoubleSided": false,
+          "meshPath": "$prim$Cube",
+          "meshShading": 0.5,
+          "renderMode": 2,
+          "rotationMax": 0.0,
+          "rotationMin": 0.0,
+          "shapeConeAngle": 25.0,
+          "shapeExtents": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "shapeRadius": 1.0,
+          "sizeEndScale": 0.20000000298023224,
+          "sizeMax": 0.07999999821186066,
+          "sizeMin": 0.029999999329447746,
+          "spawnShape": 0,
+          "speedMax": 6.0,
+          "speedMin": 2.0,
+          "spreadAngle": 70.0,
+          "stretchFactor": 0.10000000149011612,
+          "texturePath": "None",
+          "turbulenceFrequency": 1.0,
+          "turbulenceStrength": 0.0,
+          "useModelTexture": true,
+          "velocityFromShape": false,
+          "vortexStrength": 0.0
         },
         "ScriptComponent": {
           "path": "assets/scripts/ContactSparks.lua"
         },
         "TransformComponent": {
           "rotateVec": [
-            0.30000001192092896,
-            0.0,
-            0.20000000298023224
+            0.1267276555299759,
+            -0.021357188001275063,
+            0.866506040096283
           ],
           "scaleVec": [
-            0.5,
-            0.5,
-            0.5
+            1.0032000541687012,
+            1.0032000541687012,
+            1.0031999349594116
           ],
           "translateVec": [
-            0.0,
-            6.0,
-            0.0
+            60.77817916870117,
+            -591.8243408203125,
+            -0.4282785952091217
           ]
         }
       }
@@ -455,6 +542,164 @@
     },
     {
       "components": {
+        "ModelComponent": {
+          "path": "assets/models/japan_house_restaurant_by_night/scene.gltf"
+        },
+        "NameComponent": {
+          "name": "assets/models/japan_house_restaurant_by_night/scene.gltf"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            -1.567550778388977,
+            0.3746817409992218,
+            0.0037730145268142223
+          ],
+          "scaleVec": [
+            0.007592006586492062,
+            0.007591882720589638,
+            0.007591921836137772
+          ],
+          "translateVec": [
+            -0.10635735839605331,
+            -0.9057678580284119,
+            -0.008980125188827515
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "NameComponent": {
+          "name": "Entity"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            2.541475534439087
+          ],
+          "translateVec": [
+            0.37447983026504517,
+            0.6446545124053955,
+            1.5988037586212158
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "NameComponent": {
+          "name": "lightning"
+        },
+        "RibbonComponent": {
+          "bladeBase": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "bladeTip": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "blendMode": 0,
+          "branchLength": 0.3499999940395355,
+          "branches": 3,
+          "colorEnd": [
+            1.2000000476837158,
+            1.5,
+            3.0,
+            0.800000011920929
+          ],
+          "colorStart": [
+            2.0,
+            2.4000000953674316,
+            4.0,
+            1.0
+          ],
+          "flicker": 0.4000000059604645,
+          "isPlaying": true,
+          "jitter": 0.11999999731779099,
+          "maxPoints": 64,
+          "minSegmentLength": 0.05000000074505806,
+          "mode": 2,
+          "regenerateInterval": 0.05999999865889549,
+          "segments": 32,
+          "subdivisions": 4,
+          "target": [
+            0.0,
+            -6.0,
+            0.0
+          ],
+          "targetInLocalSpace": true,
+          "texturePath": "None",
+          "textureScroll": 0.0,
+          "textureTiling": 1.0,
+          "trailLifetime": 0.5,
+          "uvMode": 0,
+          "widthEnd": 0.03999999910593033,
+          "widthStart": 0.07999999821186066
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translateVec": [
+            0.0,
+            6.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "LightComponent": {
+          "color": [
+            0.8294197916984558,
+            0.27996379137039185,
+            0.9468438625335693,
+            1.0
+          ],
+          "intensity": 1.0,
+          "radius": 1.0
+        },
+        "NameComponent": {
+          "name": "Entity"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scaleVec": [
+            1.6299999952316284,
+            1.6299999952316284,
+            1.6299999952316284
+          ],
+          "translateVec": [
+            0.4921187460422516,
+            0.3548277020454407,
+            0.9093339443206787
+          ]
+        }
+      }
+    },
+    {
+      "components": {
         "NameComponent": {
           "name": "lightning"
         },
@@ -529,26 +774,53 @@
     {
       "components": {
         "ModelComponent": {
-          "path": "assets/models/sponza/gltf/sponza.gltf"
+          "path": "C:/Users/tomor/Desktop/Projects/C++/MyGraphicsEngine/Sandbox/assets/models/DamagedHelmet/glTF/DamagedHelmet.gltf"
         },
         "NameComponent": {
-          "name": "assets/models/sponza/gltf/sponza.gltf"
+          "name": "DamagedHelmet.gltf"
+        },
+        "TransformComponent": {
+          "rotateVec": [
+            -3.141592264175415,
+            -0.4815915822982788,
+            3.141592264175415
+          ],
+          "scaleVec": [
+            0.4200005531311035,
+            0.42000001668930054,
+            0.4200005531311035
+          ],
+          "translateVec": [
+            -0.4263247549533844,
+            0.2165483832359314,
+            4.476809978485107
+          ]
+        }
+      }
+    },
+    {
+      "components": {
+        "ModelComponent": {
+          "path": "C:/Users/tomor/Desktop/Projects/C++/MyGraphicsEngine/Sandbox/assets/models/reimu/reimu.obj"
+        },
+        "NameComponent": {
+          "name": "C:/Users/tomor/Desktop/Projects/C++/MyGraphicsEngine/Sandbox/assets/models/reimu/reimu.obj"
         },
         "TransformComponent": {
           "rotateVec": [
             0.0,
-            0.0,
+            -0.2799988389015198,
             0.0
           ],
           "scaleVec": [
-            0.01,
-            0.01,
-            0.01
+            0.08999998867511749,
+            0.09000002592802048,
+            0.08999998867511749
           ],
           "translateVec": [
-            0.0,
-            0.0,
-            0.0
+            5.155539035797119,
+            -1.0911245346069336,
+            3.493279457092285
           ]
         }
       }

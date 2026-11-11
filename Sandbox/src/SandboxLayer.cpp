@@ -55,7 +55,7 @@ bool SandBoxLayer::init()
         SceneManager::getInstance().setActiveScene(scene->getName());
         createLightProbes();
         // createParticle();
-        createRibbons();
+        // createRibbons();
     }
 
     // createScriptableCamera();
