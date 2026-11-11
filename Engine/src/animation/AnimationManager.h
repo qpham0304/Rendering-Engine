@@ -5,7 +5,6 @@
 #include "SpriteAnimator.h"
 #include "SkinAnimator.h"
 
-struct aiScene;
 class BufferManager;
 
 typedef std::unordered_map<std::string, std::shared_ptr<Animation>> AnimationData;
@@ -28,7 +27,7 @@ public:
 	uint32_t addBoneMatrices(size_t boneCount);
 	std::vector<glm::mat4>& getFinalBoneMatrices(uint32_t id);
 	
-	bool loadAnimation(std::string_view path, const aiScene* scene);
+	bool addAnimations(std::string_view path, AnimationData animations);
 	std::shared_ptr<Animation> getAnimation(std::string_view path, std::string_view name) const;
 	const AnimationData* getAnimationData(std::string_view path);
 

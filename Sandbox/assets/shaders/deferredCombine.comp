@@ -85,7 +85,8 @@ void main() {
     vec3 normal = texture(normalImage, uv).rgb;     // world space, cleared to 0 where there is no geometry
 
     // the sky is already in the scene color
-    if (length(normal) < 0.1) {
+    // for now, pixels from toon shader with pbr alpha 0, control it's own ambient
+    if (length(normal) < 0.1 || texture(pbrImage, uv).a < 0.5) {
         imageStore(outImage, pixelCoord, vec4(pc.shouldCombine == 1 ? sceneColor + bloom : vec3(0.0), 1.0));
         return;
     }

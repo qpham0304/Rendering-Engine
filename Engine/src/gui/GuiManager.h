@@ -14,7 +14,7 @@ class GuiManager : public Service
 protected:
 	std::vector<std::shared_ptr<Widget>> widgets;
 
-	bool darkTheme { false };
+	std::string theme { "Dark" };
 	bool closeable { true };
 	int width { 0 };
 	int height { 0 };
@@ -36,9 +36,9 @@ public:
 	virtual void render(void* handle = nullptr) = 0;
 	virtual void end(void* handle = nullptr) = 0;
 
-	virtual void setTheme(bool darkTheme) = 0;
-	virtual void useLightTheme() = 0;
-	virtual void useDarkTheme() = 0;
+	virtual bool setTheme(const std::string& name) = 0;
+	virtual std::vector<std::string> listThemes() const = 0;
+	const std::string& getTheme() const { return theme; }
 	
 	virtual void applicationWindow() = 0;
 	virtual void renderGuizmo(TransformComponent& transformComponent, const glm::mat4& parentWorld) = 0;

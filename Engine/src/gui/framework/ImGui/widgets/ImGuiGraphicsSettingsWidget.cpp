@@ -7,18 +7,28 @@ ImGuiGraphicsSettingsWidget::ImGuiGraphicsSettingsWidget(std::string name)
     : ImGuiWidget(name)
 {
     setFootprint("ImGuiGraphicsSettingsWidget", sizeof(ImGuiGraphicsSettingsWidget), MemorySystem::Gui);
+    // a uint32_t output can't be told apart from a number, these are drawn as the texture they hold
+    auto textures = [](std::initializer_list<const char*> fields) {
+        ImGuiReflection::FieldStyles styles;
+        for (const char* field : fields) {
+            styles[field] = ImGuiReflection::TextureStyle();
+        }
+        return styles;
+    };
+
     // every settings type a renderer can register, only the ones registered at runtime are drawn
     m_drawers.add<BloomSettings>();
     m_drawers.add<ShadowMapSettings>();
     m_drawers.add<LightingSettings>();
     m_drawers.add<AmbientOcclusionSettings>();
     m_drawers.add<SSRSettings>();
-    m_drawers.add<SkyAtmosphereSettings>();
+    m_drawers.add<SkyAtmosphereSettings>(textures({ "transmittance", "multiScattering", "environment" }));
     m_drawers.add<ImageBasedSettings>();
-    m_drawers.add<DeferredSettings>();
-    m_drawers.add<DDGISettings>();
+    m_drawers.add<DeferredSettings>(textures({ "litColor", "position", "normal", "albedo", "pbr", "depth", "motion", "shadowDepth" }));
+    m_drawers.add<DDGISettings>(textures({ "irradianceAtlas", "visibilityAtlas" }));
     m_drawers.add<DLSSSettings>();
     m_drawers.add<TonemapSettings>();
+    m_drawers.add<ToonSettings>();
     m_drawers.add<TemporalSettings>();
     m_drawers.add<AtrousSettings>();
     m_drawers.add<PathTracingSettings>();

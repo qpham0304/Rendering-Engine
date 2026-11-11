@@ -121,7 +121,20 @@ public:
 	LightComponent() = default;
 	LightComponent(glm::vec4 c, float i, float r) : color(c), intensity(i), radius(r) {};
 
-	//NLOHMANN_DEFINE_TYPE_INTRUSIVE(LightComponent, meshIDs);
+	DEFINE_TYPE(LightComponent,
+		member("color", &LightComponent::color),
+		member("intensity", &LightComponent::intensity),
+		member("radius", &LightComponent::radius)
+	);
+};
+
+struct MYGRAPHICSENGINE_EXPORT ToonComponent {
+public:
+	bool enabled { true };
+
+	DEFINE_TYPE(ToonComponent,
+		member("enabled", &ToonComponent::enabled)
+	);
 };
 
 struct MYGRAPHICSENGINE_EXPORT RelationshipComponent {

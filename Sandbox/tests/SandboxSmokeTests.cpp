@@ -24,7 +24,7 @@ public:
 	{
 		ImGui::GetIO().IniFilename = nullptr;	// the smoke window is smaller, never overwrite Sandbox/assets/imgui.ini
 		Scene* scene = SceneManager::getInstance().addScene("smoke-scene");
-		m_sceneLoaded = scene->loadScene("assets/data/sandbox-scene.json");
+		m_sceneLoaded = scene->loadScene("assets/data/Scenes/sandbox-scene.json");
 		SceneManager::getInstance().setActiveScene(scene->getName());
 		return true;
 	}
@@ -53,7 +53,7 @@ private:
 
 TEST(EngineSmoke, BootLoadSceneRunFramesShutdown)
 {
-	ASSERT_TRUE(std::filesystem::exists(std::filesystem::path(WK_SANDBOX_DIR) / "assets/data/sandbox-scene.json"))
+	ASSERT_TRUE(std::filesystem::exists(std::filesystem::path(WK_SANDBOX_DIR) / "assets/data/Scenes/sandbox-scene.json"))
 		<< "Sandbox assets not found under " << WK_SANDBOX_DIR;
 
 	WindowConfig windowConfig{};

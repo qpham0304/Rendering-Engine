@@ -4,6 +4,7 @@
 #include "core/resources/managers/TextureManager.h"
 #include "core/resources/managers/ModelManager.h"
 #include "graphics/utils/Utils.h"
+#include "gui/framework/ImGui/ImGuiReflection.h"
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include <algorithm>
@@ -53,32 +54,14 @@ namespace {
         return ImGui::DragFloatRange2(id, &minValue, &maxValue, speed, lower, upper, minFormat.c_str(), maxFormat.c_str(), ImGuiSliderFlags_AlwaysClamp);
     }
 
-    // file name, Browse and Clear on one row, the renderer loads the path on its next update
+    // editable path with Browse, Clear and the loaded textures, the renderer loads the path on its next update
     void TexturePicker(std::string& texturePath, std::string& loadedTexturePath, uint32_t& textureID, uint32_t shownTextureID, TextureManager* textureManager) {
         float thumbSize = ImGui::GetFrameHeight();
         if (shownTextureID != 0) {
             ImGui::Image((ImTextureID)textureManager->inspectTexture(shownTextureID), ImVec2(thumbSize, thumbSize), ImVec2(0, 1), ImVec2(1, 0));
             ImGui::SameLine();
         }
-        std::string textureName = texturePath != "None" ? std::filesystem::path(texturePath).filename().string() : "(none)";
-        float buttonsWidth = ImGui::CalcTextSize("BrowseClear").x + ImGui::GetStyle().FramePadding.x * 4.0f + ImGui::GetStyle().ItemSpacing.x * 2.0f;
-        ImGui::SetNextItemWidth(std::max(ImGui::GetContentRegionAvail().x - buttonsWidth, 1.0f));
-        ImGui::BeginDisabled();
-        ImGui::InputText("##textureName", &textureName, ImGuiInputTextFlags_ReadOnly);
-        ImGui::EndDisabled();
-        if (texturePath != "None" && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("%s", texturePath.c_str());
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Browse##texture")) {
-            std::string path = Utils::fileDialog();
-            if (!path.empty()) {
-                texturePath = path;
-            }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Clear##texture")) {
-            texturePath = "None";
+        if (ImGuiReflection::AssetPath("##texture", texturePath, ImGuiReflection::FieldWidget::TexturePath) && texturePath == "None") {
             loadedTexturePath = "None";
             textureID = 0;
         }

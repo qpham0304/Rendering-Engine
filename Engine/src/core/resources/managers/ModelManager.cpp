@@ -6,19 +6,19 @@
 #include "logging/Logger.h"
 #include "animation/AnimationManager.h"
 #include "core/features/ServiceLocator.h"
-#include "core/features/Timer.h"
 #include "core/features/Material.h"
 #include "core/events/EventManager.h"
 #include "core/events/Event.h"
 #include "core/features/EngineUtils.h"
+#include "core/resources/loaders/ModelLoaderGLTF.h"
+#include "core/resources/loaders/ModelLoaderFBX.h"
+#include "core/resources/loaders/ModelLoaderAssimp.h"
 
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp/GltfMaterial.h>
-#include <assimp_glm_helpers.h>
 #include <functional>
 #include <algorithm>
 #include <set>
+#include <filesystem>
+#include <cctype>
 
 const std::unordered_map<std::string, std::function<std::pair<std::string, Mesh>()>> meshPrimitives = {
     { "$prim$Sphere", []() { return std::pair<std::string, Mesh>( "$prim$Sphere", EngineUtils::drawSphere(0.5f, 36, 36) ); }},
@@ -54,6 +54,11 @@ bool ModelManager::init(WindowConfig config)
     if (!(m_logger && textureManager && meshManager && materialManager)) {
         return false;
     }
+
+    const ModelLoader::Context loaderContext{ m_logger.get(), textureManager, meshManager, skeletonManager, materialManager, animationManager };
+    m_loaderGLTF = std::make_unique<ModelLoaderGLTF>(loaderContext);
+    m_loaderFBX = std::make_unique<ModelLoaderFBX>(loaderContext);
+    m_loaderAssimp = std::make_unique<ModelLoaderAssimp>(loaderContext);
 
     EventManager& eventManager = EventManager::getInstance();
     m_eventSubscriptions.push_back(eventManager.subscribe(EventType::ModelLoadEvent, [&] (Event& event) {
@@ -112,7 +117,8 @@ bool ModelManager::init(WindowConfig config)
                 GuiMessageEvent failEvent(message);
                 eventManager.publish(failEvent);
 
-                e.entity.removeComponent<ModelComponent>();
+                // e.entity.removeComponent<ModelComponent>();
+                modelComponent.path = "None";
             }
         }
     }));
@@ -229,359 +235,23 @@ Model* ModelManager::getModel(uint32_t id) const
     return m_models.at(id).get();
 }
 
-bool ModelManager::_loadModel(std::string_view path) 
+bool ModelManager::_loadModel(std::string_view path)
 {
-    std::string loadTimer = std::string("Model loading ") + path.data();
-    Timer timer(loadTimer.c_str(), true);
-
-    std::string directory = std::string(path).substr(0, path.find_last_of('/'));
-    std::string fileName = std::string(path).substr(path.find_last_of('/') + 1);
-
-    Assimp::Importer import;
-    unsigned int flags = aiProcess_Triangulate
-        | aiProcess_SortByPType
-        | aiProcess_GenSmoothNormals
-        | aiProcess_GlobalScale
-        | aiProcess_CalcTangentSpace
-        | aiProcess_SplitByBoneCount
-        | aiProcess_LimitBoneWeights
-        | aiProcess_JoinIdenticalVertices
-        | aiProcess_RemoveRedundantMaterials
-        | aiProcess_ValidateDataStructure;
-
-    const aiScene* scene = import.ReadFile(path.data(), flags);
-    
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-        std::string error = import.GetErrorString();
-        m_logger->error("Model Loading failed: {}: ERROR::ASSIMP::{}", path.data(), error);
-        return false;
+    std::string extension = std::filesystem::path(path).extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    ModelLoader* loader = m_loaderAssimp.get();
+    if (extension == ".gltf" || extension == ".glb") {
+        loader = m_loaderGLTF.get();
+    } else if (extension == ".fbx") {
+        loader = m_loaderFBX.get();
     }
 
-    if(scene->mNumAnimations > 0) {
-        animationManager->loadAnimation(path, scene);
-    }
-    
-    uint32_t skeletonID = skeletonManager->addSkeleton(fileName);
-    _processSkeletonNodeHierarchy(skeletonID, scene->mRootNode, -1);
-    
-    std::vector<uint32_t> meshes = {};
-    std::unordered_map<uint32_t, uint32_t> meshCache; //assimp mesh index to engine meshID
-    auto skeleton = skeletonManager->getSkeleton(skeletonID);
-    _processNode(scene->mRootNode, scene, meshes, meshCache, directory, skeletonID, skeleton ? skeleton->rootIndex : 0);
-
-    if(meshes.empty()) {
-        m_logger->error("Model Loading failed: {} has no triangle meshes", path.data());
+    Model model{};
+    if (!loader->load(path, model)) {
         return false;
     }
 
     m_modelData[path.data()] = m_ids;
-    m_models[m_ids] = std::make_shared<Model>();
-    m_models[m_ids]->path = path.data();
-    
-    for (const auto& mesh : meshes) {
-        m_models[m_ids]->meshIDs.push_back(mesh);
-    }
-
-    if(skeletonID != 0) {
-        m_models[m_ids]->skeletonID = skeletonID;
-    }
-
+    m_models[m_ids] = std::make_shared<Model>(std::move(model));
     return true;
-}
-
-void ModelManager::_processNode(aiNode* node,
-		const aiScene* scene,
-		std::vector<uint32_t>& meshes,
-        std::unordered_map<uint32_t, uint32_t>& meshCache,
-		std::string_view directory,
-		uint32_t skeletonID,
-		uint32_t skeletonNodeIndex
-){
-    auto skeleton = skeletonManager->getSkeleton(skeletonID);
-
-    for (unsigned int i = 0; i < node->mNumMeshes; i++) {
-        uint32_t aiMeshIndex = node->mMeshes[i];
-        uint32_t meshID = 0;
-        
-        auto it = meshCache.find(aiMeshIndex);
-        if(it != meshCache.end()) {
-            meshID = it->second;
-        } else {
-            aiMesh* mesh = scene->mMeshes[aiMeshIndex];
-            meshID = _processMesh(mesh, scene, directory, skeletonID);
-            meshCache[aiMeshIndex] = meshID;
-            if(meshID != 0) {
-                meshes.push_back(meshID);
-            }
-        }
-
-        if(meshID != 0 && skeleton) {
-            skeleton->nodes[skeletonNodeIndex].meshIDs.push_back(meshID);
-        }
-    }
-
-    for (unsigned int i = 0; i < node->mNumChildren; i++) {
-        uint32_t childIndex = skeleton ? skeleton->nodes[skeletonNodeIndex].childrenNodes[i] : 0;
-        _processNode(node->mChildren[i], scene, meshes, meshCache, directory, skeletonID, childIndex);
-    }
-}
-
-uint32_t ModelManager::_processMesh(aiMesh* mesh, const aiScene* scene, std::string_view directory, uint32_t skeletonID)
-{
-    // the renderer only draws triangles, SortByPType splits lines and points into their own meshes
-    if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE || mesh->mNumVertices == 0) {
-        m_logger->warn("Skipping mesh '{}' in {}: not a triangle mesh", mesh->mName.C_Str(), directory);
-        return 0;
-    }
-
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    std::vector<uint32_t> materialIndices;
-    materialIndices.reserve(mesh->mNumFaces);
-
-    const bool hasNormals = mesh->HasNormals();
-    const bool hasTangents = mesh->HasTangentsAndBitangents();
-
-    // process vertices
-    for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
-        Vertex vertex;
-        _setDefaultBone(vertex);
-
-        // process vertex positions, normals and texture coordinates
-        vertex.positions = AssimpGLMHelpers::toGlmVec3(mesh->mVertices[i]);
-        if (hasNormals) {
-            vertex.normal = AssimpGLMHelpers::toGlmVec3(mesh->mNormals[i]);
-        }
-
-        // does the mesh contain texture coordinates?
-        // a vertex can contain up to 8 different texture coordinates.
-        // We thus make the assumption that we won't 
-        // use models where a vertex can have multiple texture coordinates
-        // so we always take the first set (0).
-        if (mesh->mTextureCoords[0]) {
-            vertex.texCoords.x = mesh->mTextureCoords[0][i].x;
-            vertex.texCoords.y = mesh->mTextureCoords[0][i].y;
-            if (hasTangents) {
-                vertex.tangent.x = mesh->mTangents[i].x;
-                vertex.tangent.y = mesh->mTangents[i].y;
-                vertex.tangent.z = mesh->mTangents[i].z;
-                vertex.bitangent.x = mesh->mBitangents[i].x;
-                vertex.bitangent.y = mesh->mBitangents[i].y;
-                vertex.bitangent.z = mesh->mBitangents[i].z;
-            }
-        } else {
-            vertex.texCoords = glm::vec2(0.0f, 0.0f);
-        }
-
-        vertices.push_back(vertex);
-    }
-
-    // process material
-    MaterialDesc materialDesc{};
-    materialDesc.uv = glm::vec2(1.0f, 1.0f);
-    materialDesc.albedo = glm::vec4(1.0);
-    materialDesc.normal = glm::vec4(0.0);
-    materialDesc.metallic  = 0.001f;
-    materialDesc.roughness = 0.75f;
-    materialDesc.ao        = 1.0f;
-    materialDesc.emissive  = 0.0f;
-
-    if (mesh->mMaterialIndex < scene->mNumMaterials) {
-        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-        
-        materialDesc.albedoIDs = _loadMaterial(material, scene, aiTextureType_BASE_COLOR, "albedoMap", directory);
-        materialDesc.normalIDs = _loadMaterial(material, scene, aiTextureType_NORMALS, "normalMap", directory);
-        materialDesc.metallicIDs = _loadMaterial(material, scene, aiTextureType_METALNESS, "metallicMap", directory);
-        materialDesc.roughnessIDs = _loadMaterial(material, scene, aiTextureType_DIFFUSE_ROUGHNESS, "roughnessMap", directory);
-        materialDesc.aoIDs = _loadMaterial(material, scene, aiTextureType_LIGHTMAP, "aoMap", directory);
-        materialDesc.emissiveIDs = _loadMaterial(material, scene, aiTextureType_EMISSIVE, "emissiveMap", directory);
-        if(!materialDesc.emissiveIDs.empty()){
-            materialDesc.emissive  = 1.0f;
-        }
-
-        // try find other non compatible materials, if still fail...
-        // give up and let material manager use fallback materials
-        if(materialDesc.metallicIDs.empty()) {  //TODO: need adjustment since this is not the correct pbr fallback
-            materialDesc.metallicIDs = _loadMaterial(material, scene, aiTextureType_SPECULAR, "metallicMap", directory);
-        }
-        if(materialDesc.albedoIDs.empty()){
-            materialDesc.albedoIDs = _loadMaterial(material, scene, aiTextureType_DIFFUSE, "albedoMap", directory);
-        }
-        if(materialDesc.roughnessIDs.empty()) {
-            materialDesc.roughnessIDs = _loadMaterial(material, scene, aiTextureType_SHININESS, "roughnessMap", directory);
-        }
-        if(materialDesc.aoIDs.empty()) {
-            materialDesc.aoIDs = _loadMaterial(material, scene, aiTextureType_AMBIENT, "aoMap", directory);
-        }
-
-        // foliage cards are quads, the leaf shape comes from the albedo alpha
-        aiString alphaMode;
-        if(material->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode) == AI_SUCCESS && std::string_view(alphaMode.C_Str()) == "MASK") {
-            float cutoff = 0.5f;
-            material->Get(AI_MATKEY_GLTF_ALPHACUTOFF, cutoff);
-            materialDesc.alphaCutoff = cutoff;
-        }
-    }
-
-    uint32_t assignedMatID = materialManager->createMaterial(materialDesc);
-    
-    // process indices
-    for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-        materialIndices.push_back(assignedMatID);
-
-        aiFace face = mesh->mFaces[i];
-        for (unsigned int j = 0; j < face.mNumIndices; j++) {
-            indices.push_back(face.mIndices[j]);
-        }
-    }
-
-    _extractBoneWeightForVertices(skeletonID, vertices, mesh, scene);
-    
-    Mesh m;
-    m.vertices = vertices;
-    m.indices = indices;
-    m.materialID = assignedMatID;
-    m.materialIndices = materialIndices;
-    return meshManager->loadMesh(m);
-}
-
-std::vector<uint32_t> ModelManager::_loadMaterial(aiMaterial* mat, const aiScene* scene, aiTextureType type, std::string typeName, std::string_view directory)
-{
-    bool isData = (type == aiTextureType_NORMALS || 
-                   type == aiTextureType_METALNESS || 
-                   type == aiTextureType_DIFFUSE_ROUGHNESS || 
-                   type == aiTextureType_AMBIENT_OCCLUSION || 
-                   type == aiTextureType_HEIGHT || 
-                   type == aiTextureType_SHININESS);
-                   
-    std::vector<uint32_t> textureIDs;
-    for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
-        const uint32_t defaultMipLevel = TextureManager::FULL_MIP_CHAIN;
-
-        aiString str;
-        mat->GetTexture(type, i, &str);
-        std::string texturePathStr = str.C_Str();
-
-        uint32_t textureID = 0;
-        const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(str.C_Str());
-
-        if (embeddedTexture) {
-            if (embeddedTexture->mHeight == 0) {
-                // create a unique cache key for compressed memory bytes (PNG/JPG)
-                std::string cacheKey = std::string(directory) + "_" + texturePathStr; // e.g., "assets/DamagedHelmet_/*0"
-
-                textureID = textureManager->loadTextureFromMemory(
-                    embeddedTexture->pcData,
-                    embeddedTexture->mWidth, // Byte size when mHeight == 0
-                    cacheKey,
-                    defaultMipLevel,
-                    isData
-                );
-            } else {
-                m_logger->warn("Skipping {} {} in {}: uncompressed embedded textures are not supported yet", typeName, texturePathStr, directory);
-                continue;
-            }
-        } else if (!texturePathStr.empty() && texturePathStr[0] == '*') {
-            m_logger->warn("Skipping {} {} in {}: no embedded texture at that index", typeName, texturePathStr, directory);
-            continue;
-        } else {
-            std::string path = std::string(directory) + '/' + texturePathStr;
-            textureID = textureManager->loadTexture(path, defaultMipLevel, isData);
-        }
-
-        // a checker normal or roughness map breaks the lighting, let the material fall back to its flat default
-        if (isData && textureID == 0) {
-            continue;
-        }
-
-        textureIDs.push_back(textureID);
-    }
-
-    return textureIDs;
-}
-
-void ModelManager::_processSkeletonNodeHierarchy(uint32_t skeletonID, aiNode* aiNode, int parentIndex)
-{
-    auto skeleton = skeletonManager->getSkeleton(skeletonID);
-    if (!skeleton) {
-        return;
-    }
-
-    std::string nodeName = aiNode->mName.C_Str();
-
-    aiVector3D aiTranslation;
-    aiQuaternion aiRotation;
-    aiVector3D aiScale;
-    aiNode->mTransformation.Decompose(aiScale, aiRotation, aiTranslation);  //local matrix of each node relative to the parent
-
-    SkeletonManager::SkeletonNode node{};
-    node.name = nodeName;
-    node.isBone = false;
-    node.vqs.position = glm::vec3(aiTranslation.x, aiTranslation.y, aiTranslation.z);
-    node.vqs.rotation.fromGlmQuat(glm::quat(aiRotation.w, aiRotation.x, aiRotation.y, aiRotation.z));
-    node.vqs.scale = glm::vec3(aiScale.x, aiScale.y, aiScale.z);
-    node.parentIndex = parentIndex;
-
-    int currentIndex = skeleton->nodes.size();
-    skeleton->boneMap[nodeName] = currentIndex;
-    skeleton->nodes.push_back(node);
-
-    if (parentIndex != -1) {
-        skeleton->nodes[parentIndex].childrenNodes.push_back(currentIndex);
-    } else {
-        skeleton->rootIndex = currentIndex;
-    }
-
-    for (unsigned int i = 0; i < aiNode->mNumChildren; ++i) {
-        _processSkeletonNodeHierarchy(skeletonID, aiNode->mChildren[i], currentIndex);
-    }
-}
-
-void ModelManager::_setDefaultBone(Vertex &vertex)
-{
-    for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
-        vertex.m_boneIDs[i] = -1;
-        vertex.m_weights[i] = 0.0f;
-    }
-}
-
-void ModelManager::_extractBoneWeightForVertices(uint32_t skeletonID, std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene)
-{
-    auto skeleton = skeletonManager->getSkeleton(skeletonID);
-    if(!skeleton) {
-        return;
-    }
-
-    for (unsigned int boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex) {
-        std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
-        glm::mat4 offsetMatrix = AssimpGLMHelpers::toGlmMat4(mesh->mBones[boneIndex]->mOffsetMatrix); 
-
-        auto it = skeleton->boneMap.find(boneName);
-        if (it != skeleton->boneMap.end()) {
-            int nodeBoneIndex = it->second;
-            auto& existingNode = skeleton->nodes[nodeBoneIndex];
-            existingNode.isBone = true;
-            existingNode.offsetMatrix = offsetMatrix;
-
-            auto weights = mesh->mBones[boneIndex]->mWeights;
-            int numWeights = mesh->mBones[boneIndex]->mNumWeights;
-
-            for (int i = 0; i < numWeights; ++i) {
-                unsigned int vertexId = weights[i].mVertexId;
-                float weight = weights[i].mWeight;
-                if (vertexId >= vertices.size()) {
-                    continue;
-                }
-
-                for(int j = 0; j < MAX_BONE_INFLUENCE; j++) {
-                    Vertex& vertex = vertices[vertexId];
-                    if(vertex.m_weights[j] == 0.0f) {
-                        vertex.m_boneIDs[j] = nodeBoneIndex;
-                        vertex.m_weights[j] = weight;
-                        break;
-                    }
-                }
-            }
-        }
-    }
 }

@@ -12,7 +12,7 @@ class ImGuiManager : public GuiManager
 {
 public:
 	ImGuiManager();
-	ImGuiManager(bool darkTheme);
+	ImGuiManager(const std::string& theme);
 
 	ImGuiManager(const ImGuiManager& other) = default;
 	ImGuiManager(ImGuiManager&& other) noexcept = default;
@@ -28,9 +28,8 @@ public:
 	void render(void* handle = nullptr) override;
 	void end(void* handle = nullptr) override;
 
-	void setTheme(bool darkTheme) override;
-	void useLightTheme() override;
-	void useDarkTheme() override;
+	bool setTheme(const std::string& name) override;
+	std::vector<std::string> listThemes() const override;
 
 	void renderGuizmo(TransformComponent& transformComponent, const glm::mat4& parentWorld) override;
 	void guizmoTranslate() override;
@@ -51,9 +50,12 @@ private:
 	void _onCloseVulkan();
 	void _onUpdateVulkan();
 
+	void _registerSettingsHandler();
+
 private:
 	std::unordered_map<VkImageView, VkDescriptorSet> m_images;
 	VkDescriptorPool guiDescriptorPool;
+	ImGuiStyle m_baseStyle;
 
 	ImGuizmo::OPERATION GuizmoType = ImGuizmo::OPERATION::TRANSLATE;
 	

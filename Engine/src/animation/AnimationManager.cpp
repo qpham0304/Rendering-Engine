@@ -3,10 +3,6 @@
 #include "core/features/ServiceLocator.h"
 #include "core/resources/managers/BufferManager.h"
 #include "core/resources/managers/SkeletonManager.h"
-#include <assimp/scene.h>
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp_glm_helpers.h>
 
 AnimationManager::AnimationManager()
     : Manager("AnimationManager")
@@ -115,71 +111,15 @@ bool AnimationManager::_loadAnimation(std::string_view path)
     return false;
 }
 
-bool AnimationManager::loadAnimation(std::string_view path, const aiScene* scene)
+bool AnimationManager::addAnimations(std::string_view path, AnimationData animations)
 {
-    auto it = m_animations.find(path.data());
-    if(it != m_animations.end()) {
-        m_logger->warn("failed ot load animation: animation with the same path {} exists", path.data());
+    std::string key(path);
+    if(m_animations.contains(key)) {
+        m_logger->warn("failed ot load animation: animation with the same path {} exists", key);
         return false;
     }
-    
-    m_animations[path.data()] = {};
-    // m_animations.try_emplace(path.data(), {});
-    auto& animationData = m_animations.at(path.data());
 
-    for(int i = 0; i < scene->mNumAnimations; i++) {
-        aiAnimation* aiAnimation = scene->mAnimations[i];
-        
-        auto animation = std::make_shared<Animation>();
-        animation->ticksPerSecond = aiAnimation->mTicksPerSecond;
-        animation->duration = aiAnimation->mDuration;
-
-        //TODO: support mesh morph channel
-        for(int j = 0; j < aiAnimation->mNumMorphMeshChannels; j++) {
-            aiMeshMorphAnim* aiMeshMorphChannel = aiAnimation->mMorphMeshChannels[j];
-
-            for(int k = 0; k < aiMeshMorphChannel->mNumKeys; k++) {
-                aiMeshMorphKey morpKey = aiMeshMorphChannel->mKeys[k];
-
-            }
-        }
-        
-        for(int j = 0; j < aiAnimation->mNumChannels; j++) {
-            aiNodeAnim* aiChannel = aiAnimation->mChannels[j];
-
-            Track track{};
-            track.boneName = aiChannel->mNodeName.C_Str();
-
-            for(int k = 0; k < aiChannel->mNumPositionKeys; k++) {
-                aiVectorKey aiPositionKey = aiChannel->mPositionKeys[k];
-                KeyPosition keyPosition{};
-                keyPosition.timeStamp = aiPositionKey.mTime;
-                keyPosition.position = AssimpGLMHelpers::toGlmVec3(aiPositionKey.mValue);
-                track.keyPositions.push_back(keyPosition);
-            }
-     
-            for(int k = 0; k < aiChannel->mNumRotationKeys; k++) {
-                aiQuatKey aiRotationKey = aiChannel->mRotationKeys[k];
-                aiQuaternion aiQuat = aiRotationKey.mValue;
-                KeyRotation keyRotation{};
-                keyRotation.timeStamp = aiRotationKey.mTime;
-                keyRotation.orientation.fromGlmQuat(glm::quat(aiQuat.w, aiQuat.x, aiQuat.y, aiQuat.z));
-                track.keyRotations.push_back(keyRotation);
-            }
-     
-            for(int k = 0; k < aiChannel->mNumScalingKeys; k++) {
-                aiVectorKey aiScalingKey = aiChannel->mScalingKeys[k];
-                KeyScale keyScale{};
-                keyScale.timeStamp = aiScalingKey.mTime;
-                keyScale.scale = AssimpGLMHelpers::toGlmVec3(aiScalingKey.mValue);
-                track.keyScales.push_back(keyScale);
-            }
-            
-            animation->tracks.push_back(track);
-        }
-        animationData.try_emplace(aiAnimation->mName.C_Str(), animation);
-    }
-    
+    m_animations.emplace(std::move(key), std::move(animations));
     return true;
 }
 

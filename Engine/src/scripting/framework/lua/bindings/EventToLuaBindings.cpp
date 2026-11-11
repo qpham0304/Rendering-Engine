@@ -40,11 +40,6 @@ void EventToLuaBindings::exportEvent(sol::state &luaState, Logger* logger)
         "getName", &Event::GetName
     );
 
-    // luaState.new_usertype<KeyPressedEvent>("KeyPressedEvent",
-    //     sol::base_classes, sol::bases<Event>(),
-    //     "key_code", &KeyPressedEvent::keyCode
-    // );
-
     _registerEvent<MouseMoveEvent>(luaState);
     _registerEvent<MouseScrollEvent>(luaState);
     _registerEvent<KeyPressedEvent>(luaState);
@@ -87,14 +82,13 @@ void EventToLuaBindings::exportEvent(sol::state &luaState, Logger* logger)
         auto subscriptionID = std::make_shared<uint32_t>(0);
 
         EventSubscription subscription = EventManager::getInstance().subscribe(eventType, [logger, handles, callbacks, subscriptionID](Event& event) {
-            // script callbacks are game logic like the script updates, skip when game is paused
             if (!EngineState::isPlaying()) {
-                return;
+                return; // script callbacks are game logic like the script updates, skip when game is paused
             }
 
             sol::object handle = handles[*subscriptionID];
             if (!handle.valid()) {
-                return;     // collected
+                return; // collected
             }
 
             sol::protected_function callback = callbacks[handle];

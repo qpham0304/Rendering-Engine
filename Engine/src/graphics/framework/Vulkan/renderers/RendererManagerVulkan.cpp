@@ -1,6 +1,4 @@
 #include "RendererManagerVulkan.h"
-#include <core/scene/SceneManager.h>
-#include "core/features/Timer.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ApplicationRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/ForwardRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpiplines/DeferredRendererVulkan.h"
@@ -10,6 +8,7 @@
 #include "graphics/framework/vulkan/renderers/renderpiplines/DebugRendererVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/ShadowMapPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/DepthPrepassVulkan.h"
+#include "graphics/framework/vulkan/renderers/renderpasses/ToonPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/AmbientOcclusionPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/BlurPassVulkan.h"
 #include "graphics/framework/vulkan/renderers/renderpasses/HiZPassVulkan.h"
@@ -28,12 +27,14 @@
 #include "core/features/ServiceLocator.h"
 #include "core/features/camera.h"
 #include "core/events/EventManager.h"
-#include <core/resources/managers/MeshManager.h>
+#include "core/resources/managers/MeshManager.h"
 #include "animation/AnimationManager.h"
-#include <core/resources/managers/ModelManager.h>
-#include <core/features/Mesh.h>
-#include <graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h>
-#include <graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h>
+#include "core/resources/managers/ModelManager.h"
+#include "core/scene/SceneManager.h"
+#include "core/features/Timer.h"
+#include "core/features/Mesh.h"
+#include "graphics/framework/Vulkan/resources/buffers/DeviceAddressBufferVulkan.h"
+#include "graphics/framework/Vulkan/resources/materials/MaterialManagerVulkan.h"
 #include <filesystem>
 
 RendererManagerVulkan::RendererManagerVulkan(std::string serviceName)
@@ -70,12 +71,14 @@ bool RendererManagerVulkan::init(WindowConfig config)
     // one copy per frame in flight, the cpu rewrites them every frame while the gpu may still read the previous one
     m_objects.resize(Common::MAX_INSTANCES);
     m_drawCommands.resize(Common::MAX_INSTANCES);
+    m_toonDrawCommands.resize(Common::MAX_INSTANCES);
     for(uint32_t i = 0; i < VulkanUtils::numFrames(); i++) {
         uint32_t objectsID = bufferManagerVulkan->createBufferDeviceAddress(Common::MAX_INSTANCES * sizeof(Common::Object));
         m_objectsBufferIDs.push_back(objectsID);
         m_objectsAddresses.push_back(bufferManagerVulkan->getVirtualMemoryAddress(objectsID));
 
         m_drawCommandsBufferIDs.push_back(bufferManagerVulkan->createIndirectBuffer(Common::MAX_INSTANCES * sizeof(VkDrawIndirectCommand)));
+        m_toonDrawCommandsBufferIDs.push_back(bufferManagerVulkan->createIndirectBuffer(Common::MAX_INSTANCES * sizeof(VkDrawIndirectCommand)));
 
         uint32_t lightsID = bufferManagerVulkan->createBufferDeviceAddress(Common::MAX_LIGHTS * sizeof(Common::PointLight));
         m_lightsBufferIDs.push_back(lightsID);
@@ -107,6 +110,7 @@ bool RendererManagerVulkan::init(WindowConfig config)
     alchemyAORenderer = addRenderer<AmbientOcclusionPassVulkan>("AmbientOcclusionPassVulkan");
     deferredRenderer = addRenderer<DeferredRendererVulkan>("DeferredRendererVulkan");   //TODO: only ui atm, remove soon
     lightingPassRenderer = addRenderer<LightingPassVulkan>("LightingPassVulkan");
+    toonPassRenderer = addRenderer<ToonPassVulkan>("ToonPassVulkan");
     if(rtSupported) {
         raytracingRenderer = addRenderer<RayTraceRendererVulkan>("RayTraceRendererVulkan");
     }
@@ -311,6 +315,7 @@ void RendererManagerVulkan::render()
         shadowMapPass->addRayTracedToGraph(m_renderGraph);
 
         lightingPassRenderer->addToGraph(m_renderGraph);
+        toonPassRenderer->addToGraph(m_renderGraph);
         hiZPassRenderer->addToGraph(m_renderGraph);
         particleRenderer->addToGraph(m_renderGraph);
         ribbonRenderer->addToGraph(m_renderGraph);
@@ -388,6 +393,7 @@ void RendererManagerVulkan::collectMeshDraws()
         m_prevModels[draw.objectIdx] = draw.model;
     }
     m_meshDraws.clear();
+    m_toonDrawCount = 0;
 
     Scene* scene = SceneManager::getInstance().getActiveScene();
     if(!scene) {
@@ -404,6 +410,7 @@ void RendererManagerVulkan::collectMeshDraws()
         glm::mat4 worldMatrix = entity.getComponent<TransformComponent>().getModelMatrix();
         uint32_t boneMatricesIdx = entity.hasComponent<SkinningComponent>() ? entity.getComponent<SkinningComponent>().boneMatricesID : 0;
         const LightProbeComponent* probe = entity.hasComponent<LightProbeComponent>() ? &entity.getComponent<LightProbeComponent>() : nullptr;
+        const bool toon = entity.hasComponent<ToonComponent>() && entity.getComponent<ToonComponent>().enabled;
 
         for(uint32_t i = 0; i < model->meshIDs.size(); i++) {
             if(m_meshDraws.size() >= Common::MAX_INSTANCES) {
@@ -430,7 +437,7 @@ void RendererManagerVulkan::collectMeshDraws()
             object.prevModel = draw.objectIdx < m_prevModels.size() ? m_prevModels[draw.objectIdx] : draw.model;
             object.boneMatricesIdx = boneMatricesIdx;
             object.materialIdx = mesh->materialID;
-            object.flags = probe ? Common::OBJECT_LIGHT_PROBE : 0;
+            object.flags = (probe ? Common::OBJECT_LIGHT_PROBE : 0) | (toon ? Common::OBJECT_TOON : 0);
             // ray hits read the posed vertices, the raster passes skin the rest pose themselves
             object.rtVertexAddress = (boneMatricesIdx != 0 && raytracingRenderer)
                 ? raytracingRenderer->getSkinnedVertexAddress(draw.meshID, boneMatricesIdx)
@@ -441,6 +448,10 @@ void RendererManagerVulkan::collectMeshDraws()
             command.instanceCount = 1;
             command.firstVertex = 0;
             command.firstInstance = draw.objectIdx;
+
+            if(toon) {
+                m_toonDrawCommands[m_toonDrawCount++] = command;
+            }
         }
     });
 
@@ -448,9 +459,12 @@ void RendererManagerVulkan::collectMeshDraws()
     size_t count = m_meshDraws.size();
     bufferManagerVulkan->updateBufferDeviceAddress(m_objectsBufferIDs[currentFrame], m_objects.data(), count * sizeof(Common::Object));
     bufferManagerVulkan->getBuffer(m_drawCommandsBufferIDs[currentFrame])->update(m_drawCommands.data(), count * sizeof(VkDrawIndirectCommand));
+    if(m_toonDrawCount > 0) {
+        bufferManagerVulkan->getBuffer(m_toonDrawCommandsBufferIDs[currentFrame])->update(m_toonDrawCommands.data(), m_toonDrawCount * sizeof(VkDrawIndirectCommand));
+    }
 }
 
-// one indirect draw for every object, gl_InstanceIndex is the object index, shaders pull vertices through the objects table
+// one indirect draw for per object, shaders will pull the vertices through the objects table, use gl_InstanceIndex for the object index
 void RendererManagerVulkan::drawObjects(VkCommandBuffer cmd)
 {
     if(m_meshDraws.empty()) {
@@ -459,6 +473,17 @@ void RendererManagerVulkan::drawObjects(VkCommandBuffer cmd)
 
     BufferVulkan* commands = bufferManagerVulkan->getBuffer(m_drawCommandsBufferIDs[renderDeviceVulkan->getCurrentFrameIndex()]);
     vkCmdDrawIndirect(cmd, static_cast<VkBuffer>(*commands), 0, static_cast<uint32_t>(m_meshDraws.size()), sizeof(VkDrawIndirectCommand));
+}
+
+// draw indirect for object that want to be toon shaded, object indices it the same as drawObjects
+void RendererManagerVulkan::drawToonObjects(VkCommandBuffer cmd)
+{
+    if(m_toonDrawCount == 0) {
+        return;
+    }
+
+    BufferVulkan* commands = bufferManagerVulkan->getBuffer(m_toonDrawCommandsBufferIDs[renderDeviceVulkan->getCurrentFrameIndex()]);
+    vkCmdDrawIndirect(cmd, static_cast<VkBuffer>(*commands), 0, m_toonDrawCount, sizeof(VkDrawIndirectCommand));
 }
 
 // same values the light pass uploads, as a bda table for the traced passes (ddgi probes, ssr tlas hits)

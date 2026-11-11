@@ -111,6 +111,9 @@ add_subdirectory(extern/SDL)
 add_subdirectory(extern/nlohmann)
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)    # its unit tests would show up in ctest and Test Explorer next to ours
 add_subdirectory(extern/assimp)
+set(FASTGLTF_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(extern/fastgltf)
+add_subdirectory(extern/ufbx)
 add_subdirectory(extern/lua)
 add_subdirectory(extern/box3d)
 add_subdirectory(extern/vma)
@@ -184,6 +187,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     dlss
     miniaudio
 )
+
+target_link_libraries(${PROJECT_NAME} PRIVATE fastgltf::fastgltf ufbx::ufbx)
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /bigobj /utf-8 /MP)

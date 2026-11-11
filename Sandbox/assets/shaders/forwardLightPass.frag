@@ -225,9 +225,10 @@ void main() {
     }
 
     vec3 albedo     = texture(samplerImages[mat.albedoIdx], frameUV).rgb;
-    float ao        = texture(samplerImages[mat.aoIdx], fragTexCoord).r;
-    float roughness = texture(samplerImages[mat.roughnessIdx], fragTexCoord).g;
-    float metallic  = texture(samplerImages[mat.metalnessIdx], fragTexCoord).b;
+    float ao        = texture(samplerImages[mat.aoIdx], fragTexCoord)[mat.aoChannel]               * mat.aoFactor;
+    float roughnessTexel = texture(samplerImages[mat.roughnessIdx], fragTexCoord)[mat.roughnessChannel];
+    float roughness = (mat.roughnessIsSmoothness != 0 ? 1.0 - roughnessTexel : roughnessTexel) * mat.roughnessFactor;
+    float metallic  = texture(samplerImages[mat.metalnessIdx], fragTexCoord)[mat.metallicChannel]  * mat.metallicFactor;
 
     float alpha = texture(samplerImages[mat.albedoIdx], frameUV).a;
     if (alpha < 0.01 || alphaClipped(mat, alpha)) {

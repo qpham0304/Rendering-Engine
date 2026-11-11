@@ -69,6 +69,8 @@ void EntitySerializer::RegisterComponents()
 	REGISTER_COMPONENT(RibbonComponent, NO_DEFINE, NO_DEFINE);
 	REGISTER_COMPONENT(SkinningComponent, Entity::_onSkinningComponentAdded(), NO_DEFINE);
 	REGISTER_COMPONENT(LightProbeComponent, Entity::_onLightProbeComponentAdded(), NO_DEFINE);
+	REGISTER_COMPONENT(ToonComponent, NO_DEFINE, NO_DEFINE);
+	REGISTER_COMPONENT(LightComponent, NO_DEFINE, NO_DEFINE);
 }
 
 void EntitySerializer::serialize(nlohmann::json& j) const

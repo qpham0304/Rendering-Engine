@@ -23,10 +23,9 @@ struct GraphicsSettingsEntry {
 	std::shared_ptr<void> data;
 };
 
-// readOnly fields are written by the renderer every frame and buttons are one frame requests, neither is a setting
 inline bool IsPersistentField(const FieldMeta& meta)
 {
-	return !meta.readOnly && meta.widget != FieldWidget::Button;
+	return !meta.readOnly && !meta.action;
 }
 
 // json of one settings type, works on the raw pointer of the entry like SerializerInternal does for components

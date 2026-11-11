@@ -43,19 +43,19 @@ bool SandBoxLayer::init()
     // only build it on first load, reloading dll wont recreate scene;
     if (!SceneManager::getInstance().getScene("sandbox-scene")) {
         Scene* scene = SceneManager::getInstance().addScene("sandbox-scene");
-        scene->loadScene("assets/data/sandbox-scene.json");
-        // scene->loadScene("assets/data/particle-showcase.json");
+        scene->loadScene("assets/data/Scenes/sandbox-scene.json");
+        // scene->loadScene("assets/data/Scenes/particle-showcase.json");
         // Scene* scene1 = SceneManager::getInstance().addScene("Level1");
-        // scene1->loadScene("assets/data/Level1.json");
+        // scene1->loadScene("assets/data/Scenes/Level1.json");
         // Scene* scene2 = SceneManager::getInstance().addScene("Level2");
-        // scene2->loadScene("assets/data/Level2.json");
+        // scene2->loadScene("assets/data/Scenes/Level2.json");
         // Scene* scene3 = SceneManager::getInstance().addScene("Sanbox scene");
-        // scene3->loadScene("assets/data/default-scene.json");
+        // scene3->loadScene("assets/data/Scenes/default-scene.json");
 
         SceneManager::getInstance().setActiveScene(scene->getName());
         createLightProbes();
         // createParticle();
-        createRibbons();
+        // createRibbons();
     }
 
     // createScriptableCamera();
@@ -114,13 +114,8 @@ void SandBoxLayer::createLights()
         transform.translate(glm::vec3(xPos, yPos, zPos));
 
         MaterialDesc materialDesc;
-        materialDesc.albedoIDs.push_back(
-            textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
-        );
-
-        materialDesc.emissiveIDs.push_back(
-            textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
-        );
+        materialDesc.albedoID = textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false);
+        materialDesc.emissiveID = textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false);
         
         materialDesc.emissive = 5.0;    // these need to be set to have emision
 
@@ -211,9 +206,7 @@ void SandBoxLayer::createLightProbes()
 
     // debug spheres, one mesh per probe
     // MaterialDesc materialDesc;
-    // materialDesc.albedoIDs.push_back(
-    //     textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false)
-    // );
+    // materialDesc.albedoID = textureManager->loadTexture("assets/textures/pbr/gold/metallic.png", 1, false);
     // Mesh mesh = EngineUtils::drawSphere(0.25f, 18, 18);
     // mesh.materialID = materialManager->createMaterial(materialDesc);
     // Model model {};

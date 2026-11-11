@@ -29,7 +29,7 @@ private:
     template<typename T>
     static sol::usertype<T> _registerComponent(sol::state& luaState)
     {
-        // create a lua type, match cpp type
+        // create a lua type to match the defined types from cpp side
         auto luaType = luaState.new_usertype<T>(T::GetStaticType());
 
         // static call to the VisitFields function that each component registers itself to

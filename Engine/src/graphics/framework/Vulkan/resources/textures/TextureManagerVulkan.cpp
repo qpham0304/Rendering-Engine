@@ -73,7 +73,7 @@ bool TextureManagerVulkan::onClose()
 void TextureManagerVulkan::destroy(uint32_t id)
 {
 	if (id == 0) {
-		return;	// the missing texture, shared by every failed load
+		return;
 	}
 
 	auto it = m_textures.find(id);
@@ -139,6 +139,13 @@ uint32_t TextureManagerVulkan::createTextureFromPixels(const void* pixels, uint3
 	}
 
 	return _uploadTexture(key, _assignID(), pixels, static_cast<int>(width), static_cast<int>(height), format, 1, isDataTexture);
+}
+
+uint32_t TextureManagerVulkan::createColorTexture(const std::array<uint8_t, 4>& rgba, bool isDataTexture)
+{
+	std::string key = "$color$" + std::to_string(rgba[0]) + "_" + std::to_string(rgba[1]) + "_" + std::to_string(rgba[2]) + "_" + std::to_string(rgba[3]) + (isDataTexture ? "_data" : "");
+	VkFormat format = isDataTexture ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+	return createTextureFromPixels(rgba.data(), 1, 1, format, key, isDataTexture);
 }
 
 uint32_t TextureManagerVulkan::_cacheFailedLoad(const std::string& key)

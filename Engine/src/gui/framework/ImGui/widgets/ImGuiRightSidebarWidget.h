@@ -4,6 +4,7 @@
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include "core/events/Event.h"
+#include "gui/framework/ImGui/ImGuiComponentRegistry.h"
 #include <future>
 
 class DescriptorManagerVulkan;
@@ -39,25 +40,14 @@ private:
 
 	uint32_t imGuilayoutID;
 	uint32_t imGuipoolID;
+	ImGuiComponentRegistry m_components;
 
 	void _listTextureManager();
-	void _addModelDialog(Entity& entity);
-	void errorModal(const char* message);
-	void textInput(std::string* text, std::string message);
 
-	//TODO: maybe reflection can help avoiding manual modification for every component?
+	void _addModelDialog(Entity& entity);
+	void _errorModal(const char* message);
+
+	void _registerComponents();
 	void _componentsControl();
-	void _nameControl(const Entity& entity);
-	void _transformControl(const Entity& entity);
-	void _modelControl(const Entity& entity);
-	void _meshControl(const Entity& entity);
-	void _spriteControl(const Entity& entity);
-	void _animationControl(const Entity& entity);
-	void _scriptControl(const Entity& entity);
-	void _colliderControl(const Entity& entity);
-	void _lightControl(const Entity& entity);
-	void _particleControl(const Entity& entity);
-	void _ribbonControl(const Entity& entity);
-	void _scenesControl();
 };
 

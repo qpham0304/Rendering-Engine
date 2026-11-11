@@ -117,8 +117,11 @@ bool BufferManagerVulkan::onClose()
 
 void BufferManagerVulkan::destroy(uint32_t id)
 {
+	if(id == 0) {
+		return;
+	}
 	if (buffers.find(id) == buffers.end()) {
-		throw std::runtime_error("buffer not found");
+		throw std::runtime_error(std::format("BufferManagerVulkan::destroy: buffer id: {} not found", id));
 	}
 	buffers[id]->destroy(renderDeviceVulkan->device, renderDeviceVulkan->device.getAllocator());
 	buffers.erase(id);
@@ -148,7 +151,7 @@ BufferVulkan* BufferManagerVulkan::getBuffer(uint32_t id)
 		return nullptr;
 	}
 	if (buffers.find(id) == buffers.end()) {
-		throw std::runtime_error("get buffer: buffer not found");
+		throw std::runtime_error(std::format("BufferManagerVulkan::getBuffer: buffer id: {} not found", id));
 	}
 	return buffers[id].get();
 }

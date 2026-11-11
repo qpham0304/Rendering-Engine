@@ -68,9 +68,12 @@ void SkinAnimator::_calculateBoneTransform(uint32_t boneMatricesID, uint32_t ani
     auto animator = animationManager->getAnimator(animatorID);
     auto skeleton = skeletonManager->getSkeleton(animator->skeletonID);
     auto animation = animationManager->getAnimation(animator->animationPath, animator->animationName);
-    assert(animator && "fail to retrieve animator data to calculate bone transform");
-    assert(skeleton && "fail to retrieve skeleton data to calculate bone transform");
-    assert(animation && "fail to retrieve animation data to calculate bone transform");
+    // assert(animator && "fail to retrieve animator data to calculate bone transform");
+    // assert(skeleton && "fail to retrieve skeleton data to calculate bone transform");
+    // assert(animation && "fail to retrieve animation data to calculate bone transform");
+    if(!animator || !skeleton || !animation) {
+        return;
+    }
 
     animator->currentTime += animation->ticksPerSecond * dt;
     animator->deltaTime = dt;

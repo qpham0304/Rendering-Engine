@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Manager.h"
+#include <array>
+#include <cstdint>
 
 class Texture;
 
@@ -24,6 +26,7 @@ public:
 
 	virtual uint32_t loadTexture(std::string_view path, uint32_t mipLevels = 1, bool isDataTexture = false) = 0;
 	virtual uint32_t loadTextureFromMemory(const void *data, size_t size, std::string_view cacheKey, uint32_t mipLevels, bool isDataTexture) = 0;
+	virtual uint32_t createColorTexture(const std::array<uint8_t, 4>& rgba, bool isDataTexture) = 0;
 	virtual Texture* getTexture(uint32_t id) {	//TODO: ideally remove raw pointer
 		if (m_textures.find(id) == m_textures.end()) {
 			return nullptr;

@@ -33,6 +33,10 @@ struct Material {
     float aoFactor;
     float emissiveFactor;
     float alphaCutoff;
+    int metallicChannel;
+    int roughnessChannel;
+    int aoChannel;
+    int roughnessIsSmoothness;
 };
 
 const uint MAX_BONE_INFLUENCE = 4;
@@ -98,6 +102,8 @@ void main() {
     uint i2 = indices.i[3 * gl_PrimitiveID + 2];
     vec3 bc = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
     vec2 uv = bc.x * vertices.v[i0].uv + bc.y * vertices.v[i1].uv + bc.z * vertices.v[i2].uv;
+    vec2 scale = any(equal(mat.uvScale, vec2(0.0))) ? vec2(1.0) : mat.uvScale;
+    uv = uv * scale + mat.uvOffset;
 
     float alpha = textureLod(samplerImages[nonuniformEXT(mat.albedoIdx)], uv, 0.0).a * mat.albedoFactor.a;
     if (alpha < mat.alphaCutoff) {

@@ -27,6 +27,10 @@ struct Material {
     float aoFactor;
     float emissiveFactor;
     float alphaCutoff;
+    int metallicChannel;
+    int roughnessChannel;
+    int aoChannel;
+    int roughnessIsSmoothness;
 };
 
 
@@ -43,6 +47,7 @@ struct Vertex
 };
 
 #define OBJECT_LIGHT_PROBE 1u
+#define OBJECT_TOON 2u
 
 struct Object {
     uint64_t vertexAddress;

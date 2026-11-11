@@ -37,7 +37,7 @@ public:
 	
 	bool setActiveScene(const std::string& name);
 	bool setSceneName(Scene* scene, const std::string& newName);
-	bool removeScene(const std::string& name);
+	void removeScene(const std::string& name);
 	bool empty();
 
 
@@ -51,6 +51,7 @@ private:
 	virtual void destroy(uint32_t id) override {};
 
 	void _syncWithGameState();
+	void _removeScenes();
 
 private:
 	EngineState::State m_lastState { EngineState::State::Stopped };
@@ -62,6 +63,7 @@ private:
 	std::mutex animatorsLock;
 	std::mutex modelsLock;
 	std::string activeScene;
+	std::vector<std::string> m_pendingRemovals;
 
 };
 

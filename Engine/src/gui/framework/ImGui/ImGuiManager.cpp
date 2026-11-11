@@ -11,7 +11,10 @@
 #include "core/features/EngineStates.h"
 #include "logging/Logger.h"
 #include "volk.h"
+#include <imgui_internal.h>
 #include <filesystem>
+#include <format>
+#include <string_view>
 
 ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 {
@@ -20,12 +23,12 @@ ImGuiManager::ImGuiManager() : GuiManager("ImGuiManager")
 	ImGui::CreateContext();
 }
 
-ImGuiManager::ImGuiManager(bool darkTheme) : GuiManager()
+ImGuiManager::ImGuiManager(const std::string& theme) : GuiManager()
 {
 	setFootprint("ImGuiManager", sizeof(ImGuiManager), MemorySystem::Gui);
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	this->darkTheme = darkTheme;
+	this->theme = theme;
 }
 
 bool ImGuiManager::init(WindowConfig config)
@@ -112,7 +115,9 @@ bool ImGuiManager::init(WindowConfig config)
 	style.TabRounding = 8;
 	style.GrabMinSize = 15;
 
-	darkTheme ? useDarkTheme() : useLightTheme(); // preset style from others
+	m_baseStyle = style;
+	setTheme(theme);
+	_registerSettingsHandler();
 
 	return true;
 }
@@ -296,20 +301,56 @@ bool ImGuiManager::onClose()
 	return true;
 }
 
-void ImGuiManager::setTheme(bool darkTheme)
+bool ImGuiManager::setTheme(const std::string& name)
 {
-	this->darkTheme = darkTheme;
+	const std::vector<ImGuiThemes::Theme>& themes = ImGuiThemes::list();
+	auto found = std::find_if(themes.begin(), themes.end(), [&name](const ImGuiThemes::Theme& entry) { return entry.name == name; });
+	if (found == themes.end()) {
+		m_logger->warn("Unknown theme: {}", name);
+		return false;
+	}
+
+	theme = name;
+	ImGui::GetStyle() = m_baseStyle;
+	found->apply();
+	ImGui::MarkIniSettingsDirty();
+	return true;
 }
 
-void ImGuiManager::useLightTheme()
+// get the saved themes info from imgui .ini to runtime, also write/save it to .ini
+void ImGuiManager::_registerSettingsHandler()
 {
-	// ImGuiThemes::purpleTheme();
-	ImGuiThemes::lightTheme();
+	static constexpr std::string_view section = "Settings";
+	static constexpr std::string_view themeKey = "Theme=";
+
+	ImGuiSettingsHandler handler;
+	handler.TypeName = "Editor";
+	handler.TypeHash = ImHashStr(handler.TypeName);
+	handler.UserData = this;
+	handler.ReadOpenFn = [](ImGuiContext*, ImGuiSettingsHandler* settings, const char* name) -> void* {
+		return std::string_view(name) == section ? settings->UserData : nullptr;
+	};
+	handler.ReadLineFn = [](ImGuiContext*, ImGuiSettingsHandler*, void* entry, const char* line) {
+		std::string_view text = line;
+		if (text.starts_with(themeKey)) {
+			static_cast<ImGuiManager*>(entry)->setTheme(std::string(text.substr(themeKey.size())));
+		}
+	};
+	handler.WriteAllFn = [](ImGuiContext*, ImGuiSettingsHandler* settings, ImGuiTextBuffer* out) {
+		const ImGuiManager* manager = static_cast<const ImGuiManager*>(settings->UserData);
+		std::string text = std::format("[{}][{}]\n{}{}\n\n", settings->TypeName, section, themeKey, manager->getTheme());
+		out->append(text.c_str());
+	};
+	ImGui::AddSettingsHandler(&handler);
 }
 
-void ImGuiManager::useDarkTheme()
+std::vector<std::string> ImGuiManager::listThemes() const
 {
-	ImGuiThemes::darkTheme();
+	std::vector<std::string> names;
+	for (const ImGuiThemes::Theme& entry : ImGuiThemes::list()) {
+		names.push_back(entry.name);
+	}
+	return names;
 }
 
 void ImGuiManager::renderGuizmo(TransformComponent& transformComponent, const glm::mat4& parentWorld)

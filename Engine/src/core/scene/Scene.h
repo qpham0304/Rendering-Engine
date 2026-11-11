@@ -13,6 +13,8 @@ class MYGRAPHICSENGINE_EXPORT Scene : public Serializable
 public:
 	bool isEnabled;
 
+	static constexpr const char* SceneDirectory = "assets/data/Scenes/";	// relative to WindowConfig::WorkDir
+
 public:
 	Scene(std::string name);
 	~Scene() = default;
@@ -70,6 +72,9 @@ public:
 	void onStop();
 	void onUpdate(const float& deltaTime);
 	const std::string& getName() const;
+	const std::string& getPath() const { return scenePath; }
+	std::string savePath() const { return scenePath.empty() ? std::string(SceneDirectory) + sceneName + ".json" : scenePath; }
+	void requestReload() { reloading = true; }
 	bool saveScene(std::string_view path);
 	bool loadScene(std::string_view path);
 	bool unloadScene();

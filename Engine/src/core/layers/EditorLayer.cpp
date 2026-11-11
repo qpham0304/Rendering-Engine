@@ -20,6 +20,7 @@
 #include "gui/framework/ImGui/widgets/ImGuiGraphicsSettingsWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiRenderGraphWidget.h"
 #include "gui/framework/ImGui/widgets/ImGuiAudioWidget.h"
+#include "gui/framework/ImGui/widgets/ImGuiScenesControlWidget.h"
 
 void EditorLayer::renderGuizmo()
 {
@@ -52,8 +53,7 @@ EditorLayer::~EditorLayer()
 
 bool EditorLayer::init()
 {
-	guiController.useDarkTheme();
-	// guiController.useLightTheme();
+	guiController.setTheme("Dark");
 	
 	guiController.addWidget<ImGuiLeftSidebarWidget>();
 	guiController.addWidget<ImGuiRightSidebarWidget>();
@@ -64,6 +64,7 @@ bool EditorLayer::init()
 	guiController.addWidget<ImGuiGraphicsSettingsWidget>();
 	guiController.addWidget<ImGuiRenderGraphWidget>();
 	guiController.addWidget<ImGuiAudioWidget>();
+	guiController.addWidget<ImGuiScenesControlWidget>();
 	guiController.addWidget<ImGuiMenuWidget>(guiController.getWidgets());
 
 	
@@ -94,7 +95,7 @@ bool EditorLayer::init()
 		SceneManager::getInstance().addScene("default scene");
 		Scene* scene = SceneManager::getInstance().getActiveScene();
 		if(scene) {
-			// scene->loadScene("assets/data/default-scene.json");
+			// scene->loadScene("assets/data/Scenes/default-scene.json");
 		}
 	}
 

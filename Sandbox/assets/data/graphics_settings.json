@@ -9,6 +9,14 @@
       "radius": 0.75,
       "rayCount": 4
     },
+    "AtrousSettings": {
+      "depthSigma": 0.019999999552965164,
+      "enabled": true,
+      "iterations": 4,
+      "luminanceSigma": 4.0,
+      "normalPower": 64.0,
+      "specularRoughnessStart": 0.10000000149011612
+    },
     "BloomSettings": {
       "exposure": 1.0,
       "lensDirt": true,
@@ -60,14 +68,30 @@
       "sunIntensity": 2.0,
       "volumetricFog": true
     },
+    "PathTracingSettings": {
+      "atrousIterations": 4,
+      "denoise": true,
+      "luminanceSigma": 4.0,
+      "maxBounces": 8,
+      "maxHistory": 32.0,
+      "normalPower": 128.0,
+      "normalThreshold": 0.8999999761581421,
+      "positionSigma": 0.009999999776482582,
+      "positionTolerance": 0.019999999552965164
+    },
     "SSRSettings": {
       "downsample": 0,
       "maxDistance": 500.0,
       "maxSampleLuminance": 8.0,
       "maxSteps": 64,
       "reflectionOnly": false,
+      "restir": false,
+      "restirMaxHistory": 20.0,
+      "restirMaxJacobian": 10.0,
+      "restirSpatialRadius": 16.0,
+      "restirSpatialSamples": 4,
       "thickness": 0.25,
-      "useTLAS": false
+      "useTLAS": true
     },
     "ShadowMapSettings": {
       "blurRadius": 64,
@@ -76,19 +100,19 @@
       "maxDepthSlope": 16.0,
       "method": 0,
       "normalBias": 0.0,
-      "orthoExtent": 25.0,
+      "orthoExtent": 9.020999908447266,
       "pcssMaxPenumbra": 0.75,
       "pcssSoftness": 0.03999999910593033,
-      "resolution": 1,
+      "resolution": 2,
       "rtBlurRadius": 3,
       "rtRayCount": 4,
       "rtSoftness": 0.5,
       "slopeBias": 1.0,
       "slopeBiasMax": 0.05000000074505806,
       "sunAzimuth": 0.0,
-      "sunElevation": 1.805999994277954,
+      "sunElevation": 0.8420000076293945,
       "useOrtho": true,
-      "zFar": 105.0,
+      "zFar": 116.41300201416016,
       "zNear": 0.009999999776482582
     },
     "SkyAtmosphereSettings": {
@@ -110,7 +134,7 @@
       "clampGamma": 1.5,
       "depthTolerance": 0.029999999329447746,
       "maxHistoryMoving": 8.0,
-      "maxHistoryRough": 32.0,
+      "maxHistoryRough": 76.00399780273438,
       "maxHistorySmooth": 2.0,
       "normalThreshold": 0.949999988079071
     },
